@@ -1,0 +1,509 @@
+// Enterprise LMS Multi-Tenant Relational Data Model
+// Database: PostgreSQL with Row-Level Security (RLS) support
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------------------------------------------------------
+// 1. TENANCY & ORGANIZATIONAL HIERARCHY
+// ---------------------------------------------------------
+
+enum TenantTier {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  ARCHIVED
+}
+
+model Tenant {
+  id               String       @id @default(uuid())
+  slug             String       @unique // e.g. "harvard" or "acme-corp"
+  name             String
+  customDomain     String?      @unique // e.g. "learn.university.edu"
+  tier             TenantTier   @default(ENTERPRISE)
+  status           TenantStatus @default(ACTIVE)
+  
+  // Customization & White-labeling
+  logoUrl          String?
+  primaryColor     String?      @default("#0f172a")
+  secondaryColor   String?      @default("#3b82f6")
+  faviconUrl       String?
+  customCss        String?      @db.Text
+  
+  // Compliance & Data Residency
+  dataRegion       String       @default("us-east-1")
+  ferpaCompliant   Boolean      @default(true)
+  coppaCompliant   Boolean      @default(false)
+  
+  // Relations
+  campuses         Campus[]
+  users            User[]
+  courses          Course[]
+  ltiDeployments   LtiDeployment[]
+  auditLogs        AuditLog[]
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([slug])
+  @@index([customDomain])
+}
+
+model Campus {
+  id          String       @id @default(uuid())
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  code        String       // e.g. "CAM-BOS-01"
+  departments Department[]
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  campusId    String
+  campus      Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  name        String
+  code        String   // e.g. "CS", "ENG", "MED"
+  courses     Course[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([campusId])
+}
+
+// ---------------------------------------------------------
+// 2. IDENTITY, ROLES & ACCESS CONTROL (RBAC / ABAC)
+// ---------------------------------------------------------
+
+enum GlobalRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  INSTRUCTOR
+  TEACHING_ASSISTANT
+  STUDENT
+  PARENT_GUARDIAN
+  AUDITOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  LOCKED
+  SUSPENDED
+}
+
+model User {
+  id                String       @id @default(uuid())
+  tenantId          String
+  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  email             String
+  emailVerified     Boolean      @default(false)
+  passwordHash      String?      // Null if SAML / OIDC only
+  
+  firstName         String
+  lastName          String
+  avatarUrl         String?
+  role              GlobalRole   @default(STUDENT)
+  status            UserStatus   @default(ACTIVE)
+  
+  // Identity Provider federation
+  idpProvider       String?      // "SAML", "OIDC", "AZURE_AD", "GOOGLE", "LOCAL"
+  idpSubjectId      String?      // External SSO subject/sub
+  
+  // Encrypted PII Fields (Field-Level Encryption)
+  ssnEncrypted      String?      @db.Text
+  dateOfBirthEnc    String?      @db.Text
+  
+  // Security controls
+  mfaEnabled        Boolean      @default(false)
+  mfaSecret         String?
+  failedLoginCount  Int          @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
+  
+  // Relations
+  enrollments       Enrollment[]
+  teachingCourses   CourseInstructor[]
+  submissions       QuizSubmission[]
+  assignmentSubs    AssignmentSubmission[]
+  auditLogsTriggered AuditLog[]   @relation("AuditUser")
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  
+  // Guardian Relations
+  guardians         UserGuardian[] @relation("StudentRelation")
+  wards             UserGuardian[] @relation("GuardianRelation")
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, idpSubjectId])
+  @@index([tenantId, role])
+}
+
+// Only the SHA-256 hash of the emailed token is stored.
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model UserGuardian {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    User     @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
+  guardianId String
+  guardian   User     @relation("GuardianRelation", fields: [guardianId], references: [id], onDelete: Cascade)
+  relation   String   // "PARENT", "LEGAL_GUARDIAN", "SPONSOR"
+
+  @@unique([studentId, guardianId])
+}
+
+// ---------------------------------------------------------
+// 3. COURSES, MODULES & CURRICULUM
+// ---------------------------------------------------------
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ContentType {
+  RICHTEXT
+  VIDEO
+  SCORM_PACKAGE
+  PDF_DOCUMENT
+  INTERACTIVE_CODE
+  EXTERNAL_LTI_TOOL
+}
+
+model Course {
+  id            String       @id @default(uuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  departmentId  String?
+  department    Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  
+  code          String       // e.g. "CS-101"
+  title         String
+  description   String?      @db.Text
+  syllabus      String?      @db.Text
+  thumbnailUrl  String?
+  status        CourseStatus @default(DRAFT)
+  
+  // Settings
+  passingGradePercent Float  @default(70.0)
+  enableProctoring    Boolean @default(false)
+  allowSelfEnroll     Boolean @default(false)
+  
+  // Relations
+  instructors   CourseInstructor[]
+  modules       Module[]
+  enrollments   Enrollment[]
+  quizzes       Quiz[]
+  assignments   Assignment[]
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+}
+
+model CourseInstructor {
+  id         String   @id @default(uuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPrimary  Boolean  @default(false)
+
+  @@unique([courseId, userId])
+}
+
+model Module {
+  id          String    @id @default(uuid())
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  orderIndex  Int       @default(0)
+  isLocked    Boolean   @default(false)
+  
+  lessons     Lesson[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([courseId, orderIndex])
+}
+
+model Lesson {
+  id              String      @id @default(uuid())
+  moduleId        String
+  module          Module      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title           String
+  orderIndex      Int         @default(0)
+  contentType     ContentType @default(RICHTEXT)
+  
+  // Content payloads
+  bodyContent     String?     @db.Text
+  mediaUrl        String?     // Video or asset URL
+  scormPackageId  String?     // SCORM Package Reference
+  ltiToolLaunchUrl String?
+  
+  estimatedMinutes Int        @default(15)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([moduleId, orderIndex])
+}
+
+// ---------------------------------------------------------
+// 4. ENROLLMENTS & LEARNING PROGRESS
+// ---------------------------------------------------------
+
+enum EnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED
+  FAILED
+}
+
+model Enrollment {
+  id             String           @id @default(uuid())
+  tenantId       String
+  courseId       String
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status         EnrollmentStatus @default(ENROLLED)
+  finalGrade     Float?
+  progressPercent Float           @default(0.0)
+  
+  enrolledAt     DateTime         @default(now())
+  completedAt    DateTime?
+  
+  certificate    Certificate?
+
+  @@unique([courseId, userId])
+  @@index([userId, status])
+}
+
+model Certificate {
+  id             String     @id @default(uuid())
+  enrollmentId   String     @unique
+  enrollment     Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  certificateNumber String  @unique // e.g. "CERT-2026-X89J"
+  issuedAt       DateTime   @default(now())
+  expiresAt      DateTime?
+  pdfUrl         String
+  verificationQr String     // URL for public verification
+}
+
+// ---------------------------------------------------------
+// 5. ASSESSMENTS, QUESTION BANKS & PROCTORING
+// ---------------------------------------------------------
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  MULTI_SELECT
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
+  CODE_SANDBOX
+  FORMULA_CALCULATED
+}
+
+model Quiz {
+  id             String          @id @default(uuid())
+  courseId       String
+  course         Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title          String
+  timeLimitMins  Int?            // Null = untimed
+  maxAttempts    Int             @default(1)
+  randomizeQuestions Boolean     @default(true)
+  requireProctoring   Boolean     @default(false)
+  passingPercent Float           @default(70.0)
+  
+  questions      QuizQuestion[]
+  submissions    QuizSubmission[]
+  
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model QuizQuestion {
+  id             String       @id @default(uuid())
+  quizId         String
+  quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionText   String       @db.Text
+  questionType   QuestionType @default(MULTIPLE_CHOICE)
+  points         Float        @default(1.0)
+  orderIndex     Int          @default(0)
+  
+  optionsJson    Json?        // Array of options { id, text, isCorrect }
+  correctAnswer  String?      @db.Text
+  explanation    String?      @db.Text
+
+  @@index([quizId, orderIndex])
+}
+
+model QuizSubmission {
+  id             String       @id @default(uuid())
+  quizId         String
+  quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  score          Float?
+  maxScore       Float
+  passed         Boolean      @default(false)
+  attemptNumber  Int          @default(1)
+  
+  startedAt      DateTime     @default(now())
+  submittedAt    DateTime?
+  
+  proctoringLogs ProctoringLog[]
+  
+  answersJson    Json         // User's response state
+
+  @@index([quizId, userId])
+}
+
+model ProctoringLog {
+  id             String         @id @default(uuid())
+  submissionId   String
+  submission     QuizSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  eventType      String         // "TAB_SWITCH", "FACE_NOT_DETECTED", "MULTIPLE_FACES", "AUDIO_SPIKE"
+  severity       String         // "LOW", "MEDIUM", "HIGH"
+  timestamp      DateTime       @default(now())
+  snapshotUrl    String?
+  metadataJson   Json?
+
+  @@index([submissionId, timestamp])
+}
+
+model Assignment {
+  id             String       @id @default(uuid())
+  courseId       String
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title          String
+  instructions   String       @db.Text
+  maxPoints      Float        @default(100.0)
+  dueDate        DateTime?
+  
+  submissions    AssignmentSubmission[]
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model AssignmentSubmission {
+  id             String     @id @default(uuid())
+  assignmentId   String
+  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  fileUrl        String?
+  submissionText String?    @db.Text
+  grade          Float?
+  feedback       String?    @db.Text
+  
+  plagiarismScore Float?    // Plagiarism percentage (0.0 to 100.0)
+  plagiarismReportUrl String?
+  
+  submittedAt    DateTime   @default(now())
+  gradedAt       DateTime?
+
+  @@index([assignmentId, userId])
+}
+
+// ---------------------------------------------------------
+// 6. LTI 1.3 ADVANTAGE INTEGRATIONS
+// ---------------------------------------------------------
+
+model LtiDeployment {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId     String   // Tool Client ID
+  deploymentId String   // Deployment ID from tool
+  issuer       String   // LMS platform issuer URL
+  authLoginUrl String
+  authTokensUrl String
+  keySetUrl    String
+  
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([tenantId, clientId, deploymentId])
+}
+
+// ---------------------------------------------------------
+// 7. COMPLIANCE & SECURITY AUDIT LOGGING
+// ---------------------------------------------------------
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?    @relation("AuditUser", fields: [userId], references: [id], onDelete: SetNull)
+  
+  action       String   // "USER_LOGIN", "GRADE_MODIFIED", "COURSE_DELETED", "SSO_CONFIG_UPDATED"
+  resourceType String   // "USER", "COURSE", "GRADE", "TENANT"
+  resourceId   String?
+  ipAddress    String?
+  userAgent    String?
+  
+  diffJson     Json?    // Before / After state snapshot
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, action, createdAt])
+  @@index([tenantId, resourceType, resourceId])
+}

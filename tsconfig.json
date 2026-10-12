@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@enterprise-lms/database": ["packages/database/src/index.ts"],
+      "@enterprise-lms/standards": ["packages/standards/src/index.ts"],
+      "@enterprise-lms/security": ["packages/security/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "apps/web"]
+}

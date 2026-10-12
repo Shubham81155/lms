@@ -1,0 +1,21 @@
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+# compiled TypeScript output
+apps/api/src/**/*.js
+apps/api/src/**/*.d.ts
+apps/api/src/**/*.map
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.map
+packages/*/test/**/*.js
+packages/*/test/**/*.d.ts
+packages/*/test/**/*.map
+.DS_Store
+*.log
