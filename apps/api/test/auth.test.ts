@@ -7,11 +7,17 @@ import crypto from 'crypto';
 vi.mock('../src/lib/prisma', async () => {
   const { createFakePrisma } = await import('./helpers.js');
   const fake = createFakePrisma();
-  return { prisma: fake, default: fake };
+  return {
+    prisma: fake,
+    default: fake,
+    basePrisma: fake,
+    runInTenantTransaction: async (_tenantId: string, fn: (tx: unknown) => Promise<unknown>) => fn(fake),
+  };
 });
 
 import { prisma } from '../src/lib/prisma';
 import type { FakePrisma } from './helpers';
+import { currentTenantId } from '@enterprise-lms/database';
 import { app } from '../src/server';
 import { setMailer } from '../src/lib/mailer';
 import { hashOneTimeToken } from '../src/lib/one-time-token';
@@ -116,6 +122,19 @@ describe('authentication cannot be bypassed', () => {
     expect(fake.user.findFirst.mock.calls[0][0].where).toMatchObject({ tenantId: 'ten_1' });
   });
 
+  it('runs the request inside the tenant context from the token, not from headers', async () => {
+    let seen: string | undefined;
+    fake.user.findFirst.mockImplementation(async () => {
+      seen = currentTenantId();
+      return userRecord();
+    });
+    await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${tokenFor({ tenantId: 'ten_1' })}`)
+      .set('x-tenant-id', 'ten_attacker');
+    expect(seen).toBe('ten_1');
+  });
+
   it('accepts the httpOnly session cookie', async () => {
     fake.user.findFirst.mockResolvedValue(await userRecord());
     const res = await request(app).get('/api/v1/auth/me').set('Cookie', `lms_token=${tokenFor()}`);
@@ -156,6 +175,48 @@ describe('POST /auth/login', () => {
       expect.arrayContaining([{ slug: 'harvard' }])
     );
     expect(fake.user.findFirst.mock.calls[0][0].where.tenantId).toBe('ten_1');
+  });
+
+  it('tries tenant hints in priority order: header, custom domain, subdomain, default', async () => {
+    fake.tenant.findFirst.mockResolvedValue(null);
+    await request(app)
+      .post('/api/v1/auth/login')
+      .set('Host', 'stanford.lms.example.com')
+      .set('x-tenant-id', 'ten_hdr')
+      .send({ email: 'a@x.edu', password: PASSWORD });
+
+    const hints = fake.tenant.findFirst.mock.calls.map((c: any) => c[0].where.OR[0].id);
+    expect(hints).toEqual(['ten_hdr', 'stanford.lms.example.com', 'stanford', 'harvard']);
+  });
+
+  it('does not treat an IP address host as a tenant subdomain', async () => {
+    fake.tenant.findFirst.mockResolvedValue(null);
+    await request(app)
+      .post('/api/v1/auth/login')
+      .set('Host', '10.0.0.5:4000')
+      .send({ email: 'a@x.edu', password: PASSWORD });
+    const hints = fake.tenant.findFirst.mock.calls.map((c: any) => c[0].where.OR[0].id);
+    expect(hints).toEqual(['harvard']);
+  });
+
+  it('ignores X-Forwarded-Host unless a trusted proxy is configured', async () => {
+    fake.tenant.findFirst.mockResolvedValue(null);
+    await request(app)
+      .post('/api/v1/auth/login')
+      .set('x-forwarded-host', 'victim.lms.example.com')
+      .send({ email: 'a@x.edu', password: PASSWORD });
+    const hints = fake.tenant.findFirst.mock.calls.map((c: any) => c[0].where.OR[0].id);
+    expect(hints).not.toContain('victim');
+  });
+
+  it('runs the login queries inside the resolved tenant context', async () => {
+    const seen: (string | undefined)[] = [];
+    fake.user.findFirst.mockImplementation(async () => {
+      seen.push(currentTenantId());
+      return userRecord();
+    });
+    await request(app).post('/api/v1/auth/login').send({ email: 'a@x.edu', password: PASSWORD });
+    expect(seen).toEqual(['ten_1']);
   });
 
   it('rejects a wrong password and counts the failure', async () => {
@@ -286,6 +347,7 @@ describe('password reset', () => {
 
     const emailed = sent[0].text.match(/token=([\w-]+)/)![1];
     const stored = fake.passwordResetToken.create.mock.calls[0][0].data;
+    expect(stored.tenantId).toBe('ten_1');
     expect(stored.tokenHash).toBe(hashOneTimeToken(emailed));
     expect(JSON.stringify(stored)).not.toContain(emailed);
     expect(stored.expiresAt.getTime()).toBeGreaterThan(Date.now());
@@ -293,9 +355,9 @@ describe('password reset', () => {
 
   const validRecord = (over: Record<string, unknown> = {}) => ({
     userId: 'u1',
+    tenantId: 'ten_1',
     usedAt: null,
     expiresAt: new Date(Date.now() + 60_000),
-    user: { id: 'u1', tenantId: 'ten_1', status: 'ACTIVE' },
     ...over,
   });
   const reset = (password = 'a-brand-new-password') =>
@@ -305,6 +367,7 @@ describe('password reset', () => {
 
   it('sets a bcrypt hash, clears the lockout and burns outstanding tokens', async () => {
     fake.passwordResetToken.findUnique.mockResolvedValue(validRecord());
+    fake.user.findFirst.mockResolvedValue({ status: 'ACTIVE' });
     const res = await reset();
     expect(res.status).toBe(200);
     const data = fake.user.update.mock.calls[0][0].data;
@@ -317,9 +380,10 @@ describe('password reset', () => {
     ['unknown token', null],
     ['expired token', validRecord({ expiresAt: new Date(Date.now() - 1000) })],
     ['already used token', validRecord({ usedAt: new Date() })],
-    ['suspended user', validRecord({ user: { id: 'u1', tenantId: 'ten_1', status: 'SUSPENDED' } })],
-  ])('rejects an %s', async (_label, record) => {
+    ['suspended user', validRecord()],
+  ])('rejects an %s', async (label, record) => {
     fake.passwordResetToken.findUnique.mockResolvedValue(record);
+    fake.user.findFirst.mockResolvedValue({ status: label === 'suspended user' ? 'SUSPENDED' : 'ACTIVE' });
     const res = await reset();
     expect(res.status).toBe(400);
     expect(fake.user.update).not.toHaveBeenCalled();
@@ -327,6 +391,7 @@ describe('password reset', () => {
 
   it('enforces the password policy', async () => {
     fake.passwordResetToken.findUnique.mockResolvedValue(validRecord());
+    fake.user.findFirst.mockResolvedValue({ status: 'ACTIVE' });
     expect((await reset('short')).status).toBe(400);
     expect(fake.user.update).not.toHaveBeenCalled();
   });
@@ -336,9 +401,9 @@ describe('email verification', () => {
   it('marks the email verified for a valid token', async () => {
     fake.emailVerificationToken.findUnique.mockResolvedValue({
       userId: 'u1',
+      tenantId: 'ten_1',
       usedAt: null,
       expiresAt: new Date(Date.now() + 60_000),
-      user: { id: 'u1', tenantId: 'ten_1' },
     });
     const res = await request(app).post('/api/v1/auth/verify-email').send({ token: 'x'.repeat(43) });
     expect(res.status).toBe(200);
@@ -348,9 +413,9 @@ describe('email verification', () => {
   it('rejects an expired token', async () => {
     fake.emailVerificationToken.findUnique.mockResolvedValue({
       userId: 'u1',
+      tenantId: 'ten_1',
       usedAt: null,
       expiresAt: new Date(Date.now() - 1000),
-      user: { id: 'u1', tenantId: 'ten_1' },
     });
     const res = await request(app).post('/api/v1/auth/verify-email').send({ token: 'x'.repeat(43) });
     expect(res.status).toBe(400);
@@ -364,5 +429,24 @@ describe('CORS', () => {
     expect(ok.headers['access-control-allow-origin']).toBe('http://localhost:3000');
     expect(ok.headers['access-control-allow-credentials']).toBe('true');
     expect(bad.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});
+
+describe('GET /tenant/config', () => {
+  it('is public and backed by the database', async () => {
+    fake.tenant.findUnique.mockResolvedValue({
+      id: 'ten_1', slug: 'harvard', name: 'Harvard University',
+      logoUrl: null, faviconUrl: null, primaryColor: '#a51c30', secondaryColor: '#111111',
+    });
+    const res = await request(app).get('/api/v1/tenant/config');
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ tenantId: 'ten_1', name: 'Harvard University' });
+    expect(res.body.theme.primaryColor).toBe('#a51c30');
+  });
+
+  it('404s for an unknown tenant', async () => {
+    fake.tenant.findFirst.mockResolvedValue(null);
+    const res = await request(app).get('/api/v1/tenant/config');
+    expect(res.status).toBe(404);
   });
 });

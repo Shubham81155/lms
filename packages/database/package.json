@@ -4,9 +4,12 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
+    "db:generate": "node scripts/prisma.js generate",
+    "db:push": "node scripts/prisma.js db push",
+    "db:migrate": "node scripts/prisma.js migrate dev",
+    "db:deploy": "node scripts/prisma.js migrate deploy",
+    "db:status": "node scripts/prisma.js migrate status",
+    "test": "vitest run",
     "db:seed": "ts-node src/seed.ts"
   },
   "dependencies": {
@@ -15,6 +18,9 @@
     "dotenv": "^16.6.1"
   },
   "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "embedded-postgres": "^18.4.0-beta.17",
+    "pg": "^8.23.1",
     "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.0"

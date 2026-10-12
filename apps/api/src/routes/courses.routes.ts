@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { AccessControlEngine } from '@enterprise-lms/security';
 import { CourseStatus } from '@enterprise-lms/database';
 
@@ -46,7 +46,7 @@ const createModuleSchema = z.object({
  */
 router.get('/', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 10));
     const skip = (page - 1) * limit;
@@ -129,7 +129,7 @@ router.get('/', authenticateJWT, async (req: Request, res: Response) => {
  */
 router.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
 
     const course = await prisma.course.findFirst({
@@ -198,7 +198,7 @@ router.post(
   requireRole('INSTRUCTOR', 'TENANT_ADMIN', 'SUPER_ADMIN'),
   async (req: Request, res: Response) => {
     try {
-      const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+      const tenantId = tenantIdOf(req);
       const parseResult = createCourseSchema.safeParse(req.body);
 
       if (!parseResult.success) {
@@ -279,7 +279,7 @@ router.post(
  */
 router.put('/:id', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
 
     const parseResult = updateCourseSchema.safeParse(req.body);
@@ -358,7 +358,7 @@ router.delete(
   requireRole('SUPER_ADMIN', 'TENANT_ADMIN'),
   async (req: Request, res: Response) => {
     try {
-      const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+      const tenantId = tenantIdOf(req);
       const id = String(req.params.id);
 
       const course = await prisma.course.findFirst({
@@ -403,7 +403,7 @@ router.delete(
  */
 router.get('/:id/modules', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
 
     // Verify course exists under this tenant
@@ -439,7 +439,7 @@ router.get('/:id/modules', authenticateJWT, async (req: Request, res: Response) 
  */
 router.post('/:id/modules', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
 
     const course = await prisma.course.findFirst({

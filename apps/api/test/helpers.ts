@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 
 export interface FakePrisma {
-  tenant: { findFirst: ReturnType<typeof vi.fn> };
+  tenant: { findFirst: ReturnType<typeof vi.fn>; findUnique: ReturnType<typeof vi.fn> };
   user: {
     findFirst: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
@@ -22,7 +22,7 @@ export interface FakePrisma {
 
 export function createFakePrisma(): FakePrisma {
   return {
-    tenant: { findFirst: vi.fn() },
+    tenant: { findFirst: vi.fn(), findUnique: vi.fn() },
     user: { findFirst: vi.fn(), update: vi.fn() },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     passwordResetToken: {

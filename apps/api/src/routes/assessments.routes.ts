@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 
 const router = Router();
 
@@ -30,7 +30,7 @@ const gradeSubmissionSchema = z.object({
  */
 router.get('/courses/:courseId/quizzes', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const courseId = String(req.params.courseId);
 
     const course = await prisma.course.findFirst({
@@ -81,7 +81,7 @@ router.get('/courses/:courseId/quizzes', authenticateJWT, async (req: Request, r
  */
 router.get('/quizzes/:id', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
     const currentUserRole = req.user!.role;
 
@@ -147,7 +147,7 @@ router.get('/quizzes/:id', authenticateJWT, async (req: Request, res: Response) 
  */
 router.post('/quizzes/:id/submit', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
     const userId = req.user!.id;
 
@@ -292,7 +292,7 @@ router.post('/quizzes/:id/submit', authenticateJWT, async (req: Request, res: Re
  */
 router.get('/courses/:courseId/assignments', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const courseId = String(req.params.courseId);
 
     const course = await prisma.course.findFirst({
@@ -327,7 +327,7 @@ router.get('/courses/:courseId/assignments', authenticateJWT, async (req: Reques
  */
 router.post('/assignments/:id/submit', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
     const userId = req.user!.id;
 
@@ -406,7 +406,7 @@ router.patch(
   requireRole('INSTRUCTOR', 'TEACHING_ASSISTANT', 'TENANT_ADMIN', 'SUPER_ADMIN'),
   async (req: Request, res: Response) => {
     try {
-      const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+      const tenantId = tenantIdOf(req);
       const id = String(req.params.id);
       const subId = String(req.params.subId);
       const graderId = req.user!.id;

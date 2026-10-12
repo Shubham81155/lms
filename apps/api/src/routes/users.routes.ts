@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { GlobalRole, UserStatus } from '@enterprise-lms/database';
 
 const router = Router();
@@ -42,7 +42,7 @@ router.get(
   requireRole('SUPER_ADMIN', 'TENANT_ADMIN'),
   async (req: Request, res: Response) => {
     try {
-      const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+      const tenantId = tenantIdOf(req);
       const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 10));
       const skip = (page - 1) * limit;
@@ -116,7 +116,7 @@ router.get(
  */
 router.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;
@@ -158,7 +158,7 @@ router.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
  */
 router.patch('/:id', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;
@@ -239,7 +239,7 @@ router.patch('/:id', authenticateJWT, async (req: Request, res: Response) => {
  */
 router.get('/:id/enrollments', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;

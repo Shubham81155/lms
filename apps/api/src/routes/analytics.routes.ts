@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { AiCurriculumGenerator } from '@enterprise-lms/security';
 
 const router = Router();
@@ -11,7 +11,7 @@ const router = Router();
  */
 router.get('/cohort', authenticateJWT, requireRole('INSTRUCTOR', 'TENANT_ADMIN', 'SUPER_ADMIN'), async (req: Request, res: Response) => {
   try {
-    const tenantId = req.tenantId || 'default-tenant';
+    const tenantId = tenantIdOf(req);
 
     const [totalEnrollments, completedEnrollments, inProgressEnrollments] = await Promise.all([
       prisma.enrollment.count({ where: { tenantId } }),

@@ -73,12 +73,13 @@ node -e "console.log('PII_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).t
 ```
 
 ### 3. Database
-Prisma reads `DATABASE_URL` from the environment, not from the root `.env`, so export it first (or run these from a shell where it is set):
+Needs PostgreSQL. Use two roles: an unprivileged `lms_app` for the API and a privileged one for migrations (see [multi-tenancy](docs/architecture/multi_tenancy.md#3-database-roles-important)).
 ```bash
-npm run db:generate -w @enterprise-lms/database
-npm run db:push     -w @enterprise-lms/database
-npm run db:seed     -w @enterprise-lms/database   # dev only; users get SEED_PASSWORD
+psql -f packages/database/sql/create_app_role.sql        # once, as a superuser
+npm run db:deploy -w @enterprise-lms/database           # migrations (uses DIRECT_URL)
+npm run db:seed   -w @enterprise-lms/database           # dev only; users get SEED_PASSWORD
 ```
+The `db:*` scripts load the root `.env` for you.
 
 ### 4. Run
 ```bash
@@ -98,5 +99,6 @@ npm test
 - `POST /api/v1/auth/login` sets the session as an **httpOnly, SameSite=Lax** cookie (`Secure` in production). No token is returned to JavaScript. API clients may also send `Authorization: Bearer <jwt>`.
 - The web app proxies `/api/v1/*` to the API (`API_URL`), so the cookie is first-party. `src/middleware.ts` validates the session with the API before serving `/student`, `/teacher` and `/admin`.
 - After `MAX_FAILED_LOGINS` failures an account is locked for `LOCKOUT_MINUTES`. Login and token endpoints are rate limited per IP; set `TRUST_PROXY=1` when the API sits behind the Next.js proxy or a load balancer and is not directly reachable from the internet.
-- The tenant of an authenticated request always comes from the verified token. `x-tenant-id` / subdomain are only hints used to pick the tenant at login.
+- The tenant of an authenticated request always comes from the verified token. `x-tenant-id` / host are only hints used to pick the tenant at login.
+- Tenant isolation is enforced by PostgreSQL row-level security as well as by application queries; see [docs/architecture/multi_tenancy.md](docs/architecture/multi_tenancy.md).
 - Password reset and email verification use single-use, hashed, expiring tokens. Until a real mail transport is registered with `setMailer()`, links are only printed to the console in development.

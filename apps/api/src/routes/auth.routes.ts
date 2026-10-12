@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
-import { prisma } from '../lib/prisma';
+import { runWithTenant } from '@enterprise-lms/database';
+import { prisma, runInTenantTransaction } from '../lib/prisma';
+import { resolveTenant } from '../lib/tenant';
 import { logAuditEvent } from '../lib/audit';
 import { config } from '../config';
 import {
@@ -51,17 +53,6 @@ const limiter = (limit: number, message: string) =>
 const loginLimiter = limiter(config.LOGIN_RATE_LIMIT_MAX, 'Too many login attempts. Try again later.');
 const tokenFlowLimiter = limiter(config.TOKEN_FLOW_RATE_LIMIT_MAX, 'Too many requests. Try again later.');
 
-/** Resolves the unauthenticated tenant hint (id, slug or custom domain) to an active tenant. */
-async function resolveTenant(hint: string | undefined) {
-  if (!hint) return null;
-  const tenant = await prisma.tenant.findFirst({
-    where: { OR: [{ id: hint }, { slug: hint }, { customDomain: hint }] },
-    select: { id: true, status: true },
-  });
-  if (!tenant || tenant.status === 'SUSPENDED' || tenant.status === 'ARCHIVED') return null;
-  return tenant;
-}
-
 const publicUserSelect = {
   id: true,
   email: true,
@@ -92,96 +83,99 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
     const { email, password } = parseResult.data;
     const invalid = () => res.status(401).json({ error: 'Invalid email or password' });
 
-    const tenant = await resolveTenant(req.tenantHint);
+    const tenant = await resolveTenant(req.tenantHints);
     if (!tenant) {
       await verifyPassword(password, null); // keep timing similar to the unknown-user path
       return invalid();
     }
 
-    const user = await prisma.user.findFirst({
-      where: { tenantId: tenant.id, email: email.toLowerCase() },
-    });
+    return await runWithTenant(tenant.id, async () => {
 
-    if (user?.lockedUntil && user.lockedUntil > new Date()) {
-      return res.status(423).json({
-        error: 'Account temporarily locked due to repeated failed sign-ins. Try again later.',
-        retryAfter: user.lockedUntil.toISOString(),
+      const user = await prisma.user.findFirst({
+        where: { tenantId: tenant.id, email: email.toLowerCase() },
       });
-    }
 
-    const check = await verifyPassword(password, user?.passwordHash ?? null);
+      if (user?.lockedUntil && user.lockedUntil > new Date()) {
+        return res.status(423).json({
+          error: 'Account temporarily locked due to repeated failed sign-ins. Try again later.',
+          retryAfter: user.lockedUntil.toISOString(),
+        });
+      }
 
-    if (!user || !check.valid) {
-      if (user) {
-        const { failedLoginCount } = await prisma.user.update({
-          where: { id: user.id },
-          data: { failedLoginCount: { increment: 1 } },
-          select: { failedLoginCount: true },
+      const check = await verifyPassword(password, user?.passwordHash ?? null);
+
+      if (!user || !check.valid) {
+        if (user) {
+          const { failedLoginCount } = await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginCount: { increment: 1 } },
+            select: { failedLoginCount: true },
+          });
+
+          if (failedLoginCount >= config.MAX_FAILED_LOGINS) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginCount: 0,
+                lockedUntil: new Date(Date.now() + config.LOCKOUT_MINUTES * 60 * 1000),
+              },
+            });
+          }
+        }
+
+        await logAuditEvent({
+          tenantId: tenant.id,
+          userId: user?.id ?? null,
+          action: 'USER_LOGIN_FAILED',
+          resourceType: 'USER',
+          resourceId: user?.id ?? null,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          diffJson: { email },
         });
 
-        if (failedLoginCount >= config.MAX_FAILED_LOGINS) {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              failedLoginCount: 0,
-              lockedUntil: new Date(Date.now() + config.LOCKOUT_MINUTES * 60 * 1000),
-            },
-          });
-        }
+        return invalid();
       }
+
+      if (user.status !== 'ACTIVE') {
+        return res.status(403).json({
+          error: `Account is ${user.status.toLowerCase()}. Please contact your tenant administrator.`,
+        });
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginCount: 0,
+          lockedUntil: null,
+          lastLoginAt: new Date(),
+          ...(check.needsRehash ? { passwordHash: await hashPassword(password) } : {}),
+        },
+        select: publicUserSelect,
+      });
+
+      setAuthCookie(
+        res,
+        generateToken({
+          id: updatedUser.id,
+          role: updatedUser.role,
+          email: updatedUser.email,
+          tenantId: updatedUser.tenantId,
+        })
+      );
 
       await logAuditEvent({
         tenantId: tenant.id,
-        userId: user?.id ?? null,
-        action: 'USER_LOGIN_FAILED',
+        userId: updatedUser.id,
+        action: 'USER_LOGIN',
         resourceType: 'USER',
-        resourceId: user?.id ?? null,
+        resourceId: updatedUser.id,
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
-        diffJson: { email },
       });
 
-      return invalid();
-    }
-
-    if (user.status !== 'ACTIVE') {
-      return res.status(403).json({
-        error: `Account is ${user.status.toLowerCase()}. Please contact your tenant administrator.`,
-      });
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        failedLoginCount: 0,
-        lockedUntil: null,
-        lastLoginAt: new Date(),
-        ...(check.needsRehash ? { passwordHash: await hashPassword(password) } : {}),
-      },
-      select: publicUserSelect,
+      return res.status(200).json({ user: updatedUser });
     });
-
-    setAuthCookie(
-      res,
-      generateToken({
-        id: updatedUser.id,
-        role: updatedUser.role,
-        email: updatedUser.email,
-        tenantId: updatedUser.tenantId,
-      })
-    );
-
-    await logAuditEvent({
-      tenantId: tenant.id,
-      userId: updatedUser.id,
-      action: 'USER_LOGIN',
-      resourceType: 'USER',
-      resourceId: updatedUser.id,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
-
-    return res.status(200).json({ user: updatedUser });
   } catch (error: any) {
     console.error('Error in POST /api/v1/auth/login:', error);
     return res.status(500).json({ error: 'Internal server error during authentication' });
@@ -254,13 +248,24 @@ router.post('/forgot-password', tokenFlowLimiter, async (req: Request, res: Resp
       return res.status(400).json({ error: 'Validation failed', details: parsed.error.format() });
     }
 
-    const tenant = await resolveTenant(req.tenantHint);
-    const user = tenant
-      ? await prisma.user.findFirst({
-          where: { tenantId: tenant.id, email: parsed.data.email.toLowerCase(), status: 'ACTIVE' },
-          select: { id: true, email: true, tenantId: true },
-        })
-      : null;
+    const tenant = await resolveTenant(req.tenantHints);
+    if (tenant) {
+      await runWithTenant(tenant.id, () => sendResetLink(req, tenant.id, parsed.data.email));
+    }
+
+    return res.status(200).json(GENERIC_FORGOT_RESPONSE);
+  } catch (error: any) {
+    console.error('Error in POST /api/v1/auth/forgot-password:', error);
+    return res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+});
+
+async function sendResetLink(req: Request, tenantId: string, email: string): Promise<void> {
+  {
+    const user = await prisma.user.findFirst({
+      where: { tenantId, email: email.toLowerCase(), status: 'ACTIVE' },
+      select: { id: true, email: true, tenantId: true },
+    });
 
     if (user) {
       const { token, tokenHash } = generateOneTimeToken();
@@ -269,7 +274,12 @@ router.post('/forgot-password', tokenFlowLimiter, async (req: Request, res: Resp
         data: { usedAt: new Date() },
       });
       await prisma.passwordResetToken.create({
-        data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS) },
+        data: {
+          tenantId: user.tenantId,
+          userId: user.id,
+          tokenHash,
+          expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+        },
       });
 
       await sendMail({
@@ -288,13 +298,8 @@ router.post('/forgot-password', tokenFlowLimiter, async (req: Request, res: Resp
         userAgent: req.headers['user-agent'],
       });
     }
-
-    return res.status(200).json(GENERIC_FORGOT_RESPONSE);
-  } catch (error: any) {
-    console.error('Error in POST /api/v1/auth/forgot-password:', error);
-    return res.status(500).json({ error: 'Failed to process password reset request' });
   }
-});
+}
 
 /**
  * POST /api/v1/auth/reset-password
@@ -307,38 +312,51 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
       return res.status(400).json({ error: 'Validation failed', details: parsed.error.format() });
     }
 
+    // Token tables are outside RLS (looked up by secret hash); the token carries the tenant.
     const record = await prisma.passwordResetToken.findUnique({
       where: { tokenHash: hashOneTimeToken(parsed.data.token) },
-      include: { user: { select: { id: true, tenantId: true, status: true } } },
     });
 
-    if (!record || record.usedAt || record.expiresAt < new Date() || record.user.status !== 'ACTIVE') {
+    if (!record || record.usedAt || record.expiresAt < new Date()) {
       return res.status(400).json({ error: 'This reset link is invalid or has expired' });
     }
 
     const passwordHash = await hashPassword(parsed.data.password);
     const now = new Date();
 
-    await prisma.$transaction([
-      prisma.user.update({
+    const changed = await runInTenantTransaction(record.tenantId, async (tx) => {
+      const user = await tx.user.findFirst({
+        where: { id: record.userId },
+        select: { status: true },
+      });
+      if (!user || user.status !== 'ACTIVE') return false;
+
+      await tx.user.update({
         where: { id: record.userId },
         data: { passwordHash, failedLoginCount: 0, lockedUntil: null, emailVerified: true },
-      }),
-      prisma.passwordResetToken.updateMany({
+      });
+      await tx.passwordResetToken.updateMany({
         where: { userId: record.userId, usedAt: null },
         data: { usedAt: now },
-      }),
-    ]);
-
-    await logAuditEvent({
-      tenantId: record.user.tenantId,
-      userId: record.userId,
-      action: 'PASSWORD_RESET_COMPLETED',
-      resourceType: 'USER',
-      resourceId: record.userId,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
+      });
+      return true;
     });
+
+    if (!changed) {
+      return res.status(400).json({ error: 'This reset link is invalid or has expired' });
+    }
+
+    await runWithTenant(record.tenantId, () =>
+      logAuditEvent({
+        tenantId: record.tenantId,
+        userId: record.userId,
+        action: 'PASSWORD_RESET_COMPLETED',
+        resourceType: 'USER',
+        resourceId: record.userId,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      })
+    );
 
     return res.status(200).json({ message: 'Password updated. You can now sign in.' });
   } catch (error: any) {
@@ -360,30 +378,31 @@ router.post('/verify-email', tokenFlowLimiter, async (req: Request, res: Respons
 
     const record = await prisma.emailVerificationToken.findUnique({
       where: { tokenHash: hashOneTimeToken(parsed.data.token) },
-      include: { user: { select: { id: true, tenantId: true } } },
     });
 
     if (!record || record.usedAt || record.expiresAt < new Date()) {
       return res.status(400).json({ error: 'This verification link is invalid or has expired' });
     }
 
-    await prisma.$transaction([
-      prisma.user.update({ where: { id: record.userId }, data: { emailVerified: true } }),
-      prisma.emailVerificationToken.updateMany({
+    await runInTenantTransaction(record.tenantId, async (tx) => {
+      await tx.user.update({ where: { id: record.userId }, data: { emailVerified: true } });
+      await tx.emailVerificationToken.updateMany({
         where: { userId: record.userId, usedAt: null },
         data: { usedAt: new Date() },
-      }),
-    ]);
-
-    await logAuditEvent({
-      tenantId: record.user.tenantId,
-      userId: record.userId,
-      action: 'EMAIL_VERIFIED',
-      resourceType: 'USER',
-      resourceId: record.userId,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
+      });
     });
+
+    await runWithTenant(record.tenantId, () =>
+      logAuditEvent({
+        tenantId: record.tenantId,
+        userId: record.userId,
+        action: 'EMAIL_VERIFIED',
+        resourceType: 'USER',
+        resourceId: record.userId,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      })
+    );
 
     return res.status(200).json({ message: 'Email verified' });
   } catch (error: any) {
@@ -412,7 +431,12 @@ router.post('/resend-verification', authenticateJWT, tokenFlowLimiter, async (re
       data: { usedAt: new Date() },
     });
     await prisma.emailVerificationToken.create({
-      data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + VERIFY_TOKEN_TTL_MS) },
+      data: {
+        tenantId: req.user!.tenantId,
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + VERIFY_TOKEN_TTL_MS),
+      },
     });
 
     await sendMail({

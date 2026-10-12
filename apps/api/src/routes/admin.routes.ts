@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
-import { authenticateJWT, requireRole } from '../middleware/auth';
+import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { EnrollmentStatus } from '@enterprise-lms/database';
 
 const router = Router();
@@ -27,12 +27,10 @@ const updateTenantSchema = z.object({
  */
 router.get('/tenant', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.tenantId || req.user?.tenantId || 'default-tenant';
+    const tenantId = tenantIdOf(req);
 
-    const tenant = await prisma.tenant.findFirst({
-      where: {
-        OR: [{ id: tenantId }, { slug: tenantId }],
-      },
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
       include: {
         _count: {
           select: {
@@ -70,7 +68,7 @@ router.get('/tenant', async (req: Request, res: Response) => {
  */
 router.patch('/tenant', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.tenantId || req.user?.tenantId || 'default-tenant';
+    const tenantId = tenantIdOf(req);
     const currentUserId = req.user!.id;
 
     const parseResult = updateTenantSchema.safeParse(req.body);
@@ -81,11 +79,7 @@ router.patch('/tenant', async (req: Request, res: Response) => {
       });
     }
 
-    const existingTenant = await prisma.tenant.findFirst({
-      where: {
-        OR: [{ id: tenantId }, { slug: tenantId }],
-      },
-    });
+    const existingTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
 
     if (!existingTenant) {
       return res.status(404).json({ error: 'Tenant not found' });
@@ -131,7 +125,7 @@ router.patch('/tenant', async (req: Request, res: Response) => {
  */
 router.get('/audit-logs', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.tenantId || req.user?.tenantId || 'default-tenant';
+    const tenantId = tenantIdOf(req);
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
     const skip = (page - 1) * limit;
@@ -201,7 +195,7 @@ router.get('/audit-logs', async (req: Request, res: Response) => {
  */
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    const tenantId = req.tenantId || req.user?.tenantId || 'default-tenant';
+    const tenantId = tenantIdOf(req);
 
     const [
       totalUsers,

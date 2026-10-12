@@ -3,7 +3,10 @@
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Runtime connection: a NON-owner role without BYPASSRLS so row-level security is enforced.
+  url       = env("DATABASE_URL")
+  // Migrations / seed: a privileged role. Defaults to DATABASE_URL via scripts/prisma.js in dev.
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -51,6 +54,9 @@ model Tenant {
   campuses         Campus[]
   users            User[]
   courses          Course[]
+  enrollments      Enrollment[]
+  quizzes          Quiz[]
+  assignments      Assignment[]
   ltiDeployments   LtiDeployment[]
   auditLogs        AuditLog[]
   
@@ -165,6 +171,7 @@ model User {
 // Only the SHA-256 hash of the emailed token is stored.
 model PasswordResetToken {
   id         String    @id @default(uuid())
+  tenantId   String    // lets the token be consumed before the tenant is otherwise known
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash  String    @unique
@@ -177,6 +184,7 @@ model PasswordResetToken {
 
 model EmailVerificationToken {
   id         String    @id @default(uuid())
+  tenantId   String    // lets the token be consumed before the tenant is otherwise known
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   tokenHash  String    @unique
@@ -314,6 +322,7 @@ enum EnrollmentStatus {
 model Enrollment {
   id             String           @id @default(uuid())
   tenantId       String
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   courseId       String
   course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   userId         String
@@ -330,6 +339,8 @@ model Enrollment {
 
   @@unique([courseId, userId])
   @@index([userId, status])
+  @@index([tenantId, status])
+  @@index([courseId])
 }
 
 model Certificate {
@@ -359,6 +370,8 @@ enum QuestionType {
 
 model Quiz {
   id             String          @id @default(uuid())
+  tenantId       String
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   courseId       String
   course         Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
   title          String
@@ -373,6 +386,9 @@ model Quiz {
   
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+
+  @@index([tenantId])
+  @@index([courseId])
 }
 
 model QuizQuestion {
@@ -428,6 +444,8 @@ model ProctoringLog {
 
 model Assignment {
   id             String       @id @default(uuid())
+  tenantId       String
+  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   courseId       String
   course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   title          String
@@ -439,6 +457,9 @@ model Assignment {
   
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  @@index([tenantId])
+  @@index([courseId])
 }
 
 model AssignmentSubmission {

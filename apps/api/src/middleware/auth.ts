@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction, CookieOptions } from 'express';
 import jwt from 'jsonwebtoken';
+import { runWithTenant } from '@enterprise-lms/database';
 import { UserRole } from '@enterprise-lms/security';
 import { config } from '../config';
 
@@ -17,8 +18,8 @@ declare global {
     interface Request {
       /** Authoritative tenant id; only set after authentication, taken from the verified token. */
       tenantId?: string;
-      /** Unauthenticated tenant hint (header / subdomain); must be resolved against the DB before use. */
-      tenantHint?: string;
+      /** Unauthenticated tenant hints in priority order; must be resolved against the DB before use. */
+      tenantHints?: string[];
       user?: AuthUser;
     }
   }
@@ -88,7 +89,8 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
 
   req.user = user;
   req.tenantId = user.tenantId;
-  return next();
+  // Everything downstream (handlers, audit logging) runs scoped to this tenant at the database.
+  return runWithTenant(user.tenantId, () => next());
 };
 
 /** Attaches req.user when a valid token is present but never rejects the request. */
@@ -98,9 +100,17 @@ export const optionalAuth = (req: Request, _res: Response, next: NextFunction) =
   if (user) {
     req.user = user;
     req.tenantId = user.tenantId;
+    return runWithTenant(user.tenantId, () => next());
   }
   next();
 };
+
+/** Tenant of an authenticated request. Never read the tenant from headers or the body. */
+export function tenantIdOf(req: Request): string {
+  const tenantId = req.user?.tenantId;
+  if (!tenantId) throw new Error('tenantIdOf() called on a request that is not authenticated');
+  return tenantId;
+}
 
 /** Role-Based Access Control Middleware Factory */
 export function requireRole(...roles: UserRole[]) {

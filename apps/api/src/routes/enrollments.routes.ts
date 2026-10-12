@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { EnrollmentStatus } from '@enterprise-lms/database';
 
 const router = Router();
@@ -23,7 +23,7 @@ const updateProgressSchema = z.object({
  */
 router.get('/stats', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;
 
@@ -101,7 +101,7 @@ router.get('/stats', authenticateJWT, async (req: Request, res: Response) => {
  */
 router.get('/', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;
 
@@ -181,7 +181,7 @@ router.get('/', authenticateJWT, async (req: Request, res: Response) => {
  */
 router.post('/', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;
 
@@ -285,7 +285,7 @@ router.post('/', authenticateJWT, async (req: Request, res: Response) => {
  */
 router.patch('/:id/progress', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const tenantId = String(req.tenantId || req.user?.tenantId || 'default-tenant');
+    const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;

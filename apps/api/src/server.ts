@@ -4,6 +4,9 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config';
 import { AuditSanitizer } from '@enterprise-lms/security';
+import { findRlsBypassReason } from '@enterprise-lms/database';
+import { prisma, basePrisma } from './lib/prisma';
+import { resolveTenant } from './lib/tenant';
 import { XApiStatement, Lti13Claims } from '@enterprise-lms/standards';
 
 // Import route modules
@@ -61,19 +64,26 @@ app.use(cookieParser());
 // =========================================================
 // 2. TENANT HINT RESOLVER
 // =========================================================
-// Pre-authentication only. The subdomain / x-tenant-id header is a *hint* used by routes such
-// as login to look up the tenant. Once a request is authenticated, the tenant comes from the
-// verified token (see middleware/auth.ts), never from client-supplied headers.
+// Pre-authentication only. The x-tenant-id header and the request host are *hints* used by
+// public routes (login, tenant branding) to look up a tenant in the database. Once a request is
+// authenticated the tenant comes from the verified token (middleware/auth.ts), never from here.
+const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+
 const tenantResolver = (req: Request, _res: Response, next: NextFunction) => {
   const headerTenant = req.headers['x-tenant-id'];
-  const host = (req.headers.host || '').split(':')[0];
-  const subdomain = host.split('.')[0];
-  const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+  // Behind the Next.js proxy / a load balancer the original host arrives in X-Forwarded-Host.
+  // It is only believed when a trusted proxy is configured, otherwise clients could spoof it.
+  const forwarded = config.TRUST_PROXY > 0 ? req.headers['x-forwarded-host'] : undefined;
+  const rawHost = String(Array.isArray(forwarded) ? forwarded[0] : forwarded || req.headers.host || '');
+  const host = rawHost.split(',')[0].trim().split(':')[0].toLowerCase();
+  const hasDomain = host.includes('.') && !IPV4.test(host);
 
-  req.tenantHint =
-    (typeof headerTenant === 'string' && headerTenant.trim()) ||
-    (!isIp && host.includes('.') && subdomain !== 'www' ? subdomain : '') ||
-    config.DEFAULT_TENANT_SLUG;
+  req.tenantHints = [
+    typeof headerTenant === 'string' ? headerTenant.trim() : '',
+    hasDomain ? host : '', // custom domain, e.g. learn.university.edu
+    hasDomain && host.split('.')[0] !== 'www' ? host.split('.')[0] : '', // subdomain slug
+    config.DEFAULT_TENANT_SLUG,
+  ].filter(Boolean);
 
   next();
 };
@@ -127,23 +137,42 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Tenant Metadata & Branding Endpoint (Publicly accessible for portal branding)
-app.get('/api/v1/tenant/config', (req: Request, res: Response) => {
-  res.json({
-    tenantId: req.tenantHint,
-    name: `${req.tenantHint?.toUpperCase()} University Portal`,
-    theme: {
-      primaryColor: '#1e3a8a',
-      secondaryColor: '#3b82f6',
-      logoUrl: '/static/branding/logo.svg',
-    },
-    features: {
-      scorm: true,
-      xapi: true,
-      lti13: true,
-      aiProctoring: true,
-    },
-  });
+// Tenant Metadata & Branding Endpoint (public; used to brand the login page)
+app.get('/api/v1/tenant/config', async (req: Request, res: Response) => {
+  try {
+    const resolved = await resolveTenant(req.tenantHints);
+    if (!resolved) return res.status(404).json({ error: 'Tenant not found' });
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: resolved.id },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        logoUrl: true,
+        faviconUrl: true,
+        primaryColor: true,
+        secondaryColor: true,
+      },
+    });
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
+
+    return res.json({
+      tenantId: tenant.id,
+      slug: tenant.slug,
+      name: tenant.name,
+      theme: {
+        primaryColor: tenant.primaryColor,
+        secondaryColor: tenant.secondaryColor,
+        logoUrl: tenant.logoUrl,
+        faviconUrl: tenant.faviconUrl,
+      },
+      features: { scorm: true, xapi: true, lti13: true, aiProctoring: true },
+    });
+  } catch (error) {
+    console.error('Error in GET /api/v1/tenant/config:', error);
+    return res.status(500).json({ error: 'Failed to load tenant configuration' });
+  }
 });
 
 // xAPI Learning Record Store (LRS) Statement Ingestion
@@ -231,10 +260,28 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 // =========================================================
 // 7. SERVER START
 // =========================================================
+async function verifyTenantIsolation(): Promise<void> {
+  try {
+    const reason = await findRlsBypassReason(basePrisma);
+    if (!reason) return;
+    const message = `Row-level security is NOT enforced: ${reason}. Connect the API (DATABASE_URL) as the non-privileged lms_app role.`;
+    if (config.NODE_ENV === 'production') {
+      console.error(`[SECURITY] ${message}`);
+      process.exit(1);
+    }
+    console.warn(`[SECURITY] ${message} Tenant isolation currently relies on application queries only.`);
+  } catch (error) {
+    console.warn('[SECURITY] Could not verify row-level security (is the database reachable?):', (error as Error).message);
+    if (config.NODE_ENV === 'production') process.exit(1);
+  }
+}
+
 if (config.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`[Enterprise LMS API] Running on port ${PORT}`);
-    console.log(`[Enterprise LMS API] Security: TLS/CSP Active | Multi-Tenancy: Enabled`);
+  verifyTenantIsolation().then(() => {
+    app.listen(PORT, () => {
+      console.log(`[Enterprise LMS API] Running on port ${PORT}`);
+      console.log(`[Enterprise LMS API] Security: TLS/CSP Active | Multi-Tenancy: Enabled`);
+    });
   });
 }
 

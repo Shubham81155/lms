@@ -6,7 +6,11 @@ import { PrismaClient } from '@prisma/client';
 // Single .env at the monorepo root
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
-const prisma = new PrismaClient();
+// The seed writes across tenants, so it needs the privileged connection (DIRECT_URL, a role that
+// bypasses row-level security). The runtime role (DATABASE_URL = lms_app) is deliberately unable to.
+const prisma = new PrismaClient({
+  datasourceUrl: process.env.DIRECT_URL || process.env.DATABASE_URL,
+});
 
 async function main() {
   if (process.env.NODE_ENV === 'production') {
