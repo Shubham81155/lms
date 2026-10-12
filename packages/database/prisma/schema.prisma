@@ -350,7 +350,7 @@ model Certificate {
   certificateNumber String  @unique // e.g. "CERT-2026-X89J"
   issuedAt       DateTime   @default(now())
   expiresAt      DateTime?
-  pdfUrl         String
+  pdfUrl         String?    // PDF rendering is not implemented yet
   verificationQr String     // URL for public verification
 }
 
@@ -426,6 +426,7 @@ model QuizSubmission {
   
   answersJson    Json         // User's response state
 
+  @@unique([quizId, userId, attemptNumber])
   @@index([quizId, userId])
 }
 
@@ -480,6 +481,7 @@ model AssignmentSubmission {
   submittedAt    DateTime   @default(now())
   gradedAt       DateTime?
 
+  @@unique([assignmentId, userId])
   @@index([assignmentId, userId])
 }
 

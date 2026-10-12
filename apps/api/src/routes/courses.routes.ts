@@ -1,328 +1,244 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request } from 'express';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma';
-import { logAuditEvent } from '../lib/audit';
+import { prisma, runInTenantTransaction } from '../lib/prisma';
+import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
-import { AccessControlEngine } from '@enterprise-lms/security';
-import { CourseStatus } from '@enterprise-lms/database';
+import { CourseStatus, ContentType } from '@enterprise-lms/database';
+import { HttpError, route } from '../lib/http';
+import { httpUrl, idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
+import { canSeeAllCourses, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
 
 const router = Router();
 
-const createCourseSchema = z.object({
-  code: z.string().min(2).max(50),
-  title: z.string().min(3).max(255),
-  description: z.string().optional(),
-  syllabus: z.string().optional(),
-  thumbnailUrl: z.string().url().optional().or(z.literal('')),
-  departmentId: z.string().uuid().optional(),
-  passingGradePercent: z.number().min(0).max(100).optional(),
-  enableProctoring: z.boolean().optional(),
-  allowSelfEnroll: z.boolean().optional(),
-  status: z.nativeEnum(CourseStatus).optional(),
-});
+const COURSE_AUDIT_FIELDS = [
+  'code', 'title', 'status', 'departmentId', 'passingGradePercent', 'enableProctoring', 'allowSelfEnroll',
+] as const;
 
-const updateCourseSchema = z.object({
-  code: z.string().min(2).max(50).optional(),
-  title: z.string().min(3).max(255).optional(),
-  description: z.string().optional(),
-  syllabus: z.string().optional(),
-  thumbnailUrl: z.string().url().optional().or(z.literal('')),
-  departmentId: z.string().uuid().optional().nullable(),
+const emptyToNull = (v: string | undefined | null) => (v === '' ? null : v);
+
+const courseFields = {
+  code: z.string().trim().min(2).max(50),
+  title: z.string().trim().min(3).max(255),
+  description: z.string().max(20_000).optional(),
+  syllabus: z.string().max(50_000).optional(),
+  thumbnailUrl: httpUrl.or(z.literal('')).optional(),
   passingGradePercent: z.number().min(0).max(100).optional(),
   enableProctoring: z.boolean().optional(),
   allowSelfEnroll: z.boolean().optional(),
   status: z.nativeEnum(CourseStatus).optional(),
-});
+};
+
+const createCourseSchema = z.object({ ...courseFields, departmentId: idSchema.optional() });
+const updateCourseSchema = z.object(courseFields).partial().extend({ departmentId: idSchema.nullable().optional() });
 
 const createModuleSchema = z.object({
-  title: z.string().min(1).max(255),
-  orderIndex: z.number().int().min(0).optional(),
+  title: z.string().trim().min(1).max(255),
+  orderIndex: z.number().int().min(0).max(10_000).optional(),
   isLocked: z.boolean().optional(),
 });
+const updateModuleSchema = createModuleSchema.partial();
+
+const lessonFields = {
+  title: z.string().trim().min(1).max(255),
+  orderIndex: z.number().int().min(0).max(10_000).optional(),
+  contentType: z.nativeEnum(ContentType).optional(),
+  bodyContent: z.string().max(200_000).nullable().optional(),
+  mediaUrl: httpUrl.nullable().optional(),
+  scormPackageId: idSchema.nullable().optional(),
+  ltiToolLaunchUrl: httpUrl.nullable().optional(),
+  estimatedMinutes: z.number().int().min(1).max(1440).optional(),
+};
+const createLessonSchema = z.object(lessonFields);
+const updateLessonSchema = z.object(lessonFields).partial();
+
+const listQuery = z.object({
+  ...paginationShape,
+  status: z.nativeEnum(CourseStatus).optional(),
+  search: z.string().trim().max(100).optional(),
+});
+
+/** A department must exist inside the caller's tenant (row-level security scopes this lookup). */
+async function assertDepartmentInTenant(departmentId: string | null | undefined) {
+  if (!departmentId) return;
+  const department = await prisma.department.findFirst({ where: { id: departmentId }, select: { id: true } });
+  if (!department) throw new HttpError(400, 'Department not found');
+}
+
+/** Instructor contact details are for staff, not for learners browsing the catalogue. */
+function instructorSelect(req: Request) {
+  const staffView = canSeeAllCourses(req.user!.role) || ['INSTRUCTOR', 'TEACHING_ASSISTANT'].includes(req.user!.role);
+  return {
+    id: true,
+    firstName: true,
+    lastName: true,
+    avatarUrl: true,
+    ...(staffView ? { email: true } : {}),
+  };
+}
 
 /**
  * GET /api/v1/courses
- * List all courses for tenant with pagination, search, and enrollment/instructor counts
+ * Learners see published courses; instructors see published courses plus their own drafts;
+ * admins and auditors see everything in the tenant.
  */
-router.get('/', authenticateJWT, async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/',
+  authenticateJWT,
+  route('Failed to retrieve courses', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 10));
-    const skip = (page - 1) * limit;
+    const { page, limit, status, search } = parseQuery(req, listQuery);
+    const user = req.user!;
 
-    const status = req.query.status as CourseStatus | undefined;
-    const search = req.query.search as string | undefined;
-
-    const where: any = { tenantId };
-
-    if (status) {
-      where.status = status;
-    }
-
+    const and: any[] = [];
+    if (status) and.push({ status });
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { code: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
+      and.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { code: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ],
+      });
     }
+    if (!canSeeAllCourses(user.role)) {
+      and.push(
+        ['INSTRUCTOR', 'TEACHING_ASSISTANT'].includes(user.role)
+          ? { OR: [{ status: 'PUBLISHED' }, { instructors: { some: { userId: user.id } } }] }
+          : { status: 'PUBLISHED' }
+      );
+    }
+    const where = { tenantId, ...(and.length ? { AND: and } : {}) };
 
     const [total, courses] = await Promise.all([
       prisma.course.count({ where }),
       prisma.course.findMany({
         where,
-        skip,
+        skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          _count: {
-            select: {
-              instructors: true,
-              enrollments: true,
-              modules: true,
-            },
-          },
-          instructors: {
-            select: {
-              isPrimary: true,
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  avatarUrl: true,
-                },
-              },
-            },
-          },
+          _count: { select: { instructors: true, enrollments: true, modules: true } },
+          instructors: { select: { isPrimary: true, user: { select: instructorSelect(req) } } },
         },
       }),
     ]);
 
-    const formattedCourses = courses.map((course) => ({
-      ...course,
-      instructorCount: course._count.instructors,
-      enrollmentCount: course._count.enrollments,
-      moduleCount: course._count.modules,
-    }));
-
     return res.status(200).json({
-      data: formattedCourses,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      data: courses.map((course) => ({
+        ...course,
+        instructorCount: course._count.instructors,
+        enrollmentCount: course._count.enrollments,
+        moduleCount: course._count.modules,
+      })),
+      pagination: pageMeta(page, limit, total),
     });
-  } catch (error: any) {
-    console.error('Error in GET /api/v1/courses:', error);
-    return res.status(500).json({ error: 'Failed to retrieve courses' });
-  }
-});
+  })
+);
 
 /**
  * GET /api/v1/courses/:id
- * Get single course with modules, lessons, and assigned instructors
+ * Metadata for anyone who can see the course; modules and lessons only for enrolled learners,
+ * assigned staff, admins and auditors.
  */
-router.get('/:id', authenticateJWT, async (req: Request, res: Response) => {
-  try {
-    const tenantId = tenantIdOf(req);
-    const id = String(req.params.id);
+router.get(
+  '/:id',
+  authenticateJWT,
+  route('Failed to retrieve course details', async (req, res) => {
+    const access = await requireCourseAccess(req, String(req.params.id));
 
     const course = await prisma.course.findFirst({
-      where: {
-        id,
-        tenantId,
-      },
+      where: { id: access.course.id, tenantId: tenantIdOf(req) },
       include: {
         department: true,
-        instructors: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                avatarUrl: true,
-              },
-            },
-          },
-        },
-        modules: {
-          orderBy: { orderIndex: 'asc' },
-          include: {
-            lessons: {
-              orderBy: { orderIndex: 'asc' },
-            },
-          },
-        },
-        _count: {
-          select: {
-            enrollments: true,
-            quizzes: true,
-            assignments: true,
-          },
-        },
+        instructors: { select: { isPrimary: true, user: { select: instructorSelect(req) } } },
+        modules: access.canAccessContent
+          ? { orderBy: { orderIndex: 'asc' }, include: { lessons: { orderBy: { orderIndex: 'asc' } } } }
+          : false,
+        _count: { select: { enrollments: true, quizzes: true, assignments: true } },
       },
     });
-
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
+    if (!course) throw new HttpError(404, 'Course not found');
 
     return res.status(200).json({
       data: {
         ...course,
+        modules: course.modules ?? [],
+        contentLocked: !access.canAccessContent,
+        isEnrolled: access.isEnrolled,
         enrollmentCount: course._count.enrollments,
         quizCount: course._count.quizzes,
         assignmentCount: course._count.assignments,
       },
     });
-  } catch (error: any) {
-    console.error(`Error in GET /api/v1/courses/${req.params.id}:`, error);
-    return res.status(500).json({ error: 'Failed to retrieve course details' });
-  }
-});
+  })
+);
 
-/**
- * POST /api/v1/courses
- * Create course (INSTRUCTOR, TENANT_ADMIN, SUPER_ADMIN)
- */
+/** POST /api/v1/courses - create a course (INSTRUCTOR, TENANT_ADMIN, SUPER_ADMIN) */
 router.post(
   '/',
   authenticateJWT,
   requireRole('INSTRUCTOR', 'TENANT_ADMIN', 'SUPER_ADMIN'),
-  async (req: Request, res: Response) => {
-    try {
-      const tenantId = tenantIdOf(req);
-      const parseResult = createCourseSchema.safeParse(req.body);
-
-      if (!parseResult.success) {
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: parseResult.error.format(),
-        });
-      }
-
-      const input = parseResult.data;
-
-      // Check if course code already exists in tenant
-      const existing = await prisma.course.findFirst({
-        where: { tenantId, code: input.code },
-      });
-
-      if (existing) {
-        return res.status(409).json({ error: `Course with code '${input.code}' already exists` });
-      }
-
-      const course = await prisma.course.create({
-        data: {
-          tenantId,
-          code: input.code,
-          title: input.title,
-          description: input.description,
-          syllabus: input.syllabus,
-          thumbnailUrl: input.thumbnailUrl || null,
-          departmentId: input.departmentId,
-          passingGradePercent: input.passingGradePercent ?? 70.0,
-          enableProctoring: input.enableProctoring ?? false,
-          allowSelfEnroll: input.allowSelfEnroll ?? false,
-          status: input.status ?? CourseStatus.DRAFT,
-          // If created by an instructor, automatically assign them as primary instructor
-          instructors:
-            req.user?.role === 'INSTRUCTOR' && req.user.id
-              ? {
-                  create: {
-                    userId: req.user.id,
-                    isPrimary: true,
-                  },
-                }
-              : undefined,
-        },
-        include: {
-          instructors: {
-            include: {
-              user: {
-                select: { id: true, firstName: true, lastName: true, email: true },
-              },
-            },
-          },
-        },
-      });
-
-      await logAuditEvent({
-        tenantId,
-        userId: req.user?.id,
-        action: 'COURSE_CREATED',
-        resourceType: 'COURSE',
-        resourceId: course.id,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent'],
-        diffJson: { code: course.code, title: course.title },
-      });
-
-      return res.status(201).json({ data: course });
-    } catch (error: any) {
-      console.error('Error in POST /api/v1/courses:', error);
-      return res.status(500).json({ error: 'Failed to create course' });
-    }
-  }
-);
-
-/**
- * PUT /api/v1/courses/:id
- * Update course with ABAC: user must be assigned instructor or tenant admin
- */
-router.put('/:id', authenticateJWT, async (req: Request, res: Response) => {
-  try {
+  route('Failed to create course', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const id = String(req.params.id);
+    const input = parseBody(req, createCourseSchema);
+    await assertDepartmentInTenant(input.departmentId);
 
-    const parseResult = updateCourseSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: parseResult.error.format(),
-      });
-    }
-
-    const course = await prisma.course.findFirst({
-      where: { id, tenantId },
-      include: { instructors: true },
+    const course = await prisma.course.create({
+      data: {
+        tenantId,
+        code: input.code,
+        title: input.title,
+        description: input.description,
+        syllabus: input.syllabus,
+        thumbnailUrl: emptyToNull(input.thumbnailUrl) ?? null,
+        departmentId: input.departmentId,
+        passingGradePercent: input.passingGradePercent ?? 70.0,
+        enableProctoring: input.enableProctoring ?? false,
+        allowSelfEnroll: input.allowSelfEnroll ?? false,
+        status: input.status ?? CourseStatus.DRAFT,
+        // An instructor who creates a course becomes its primary instructor.
+        instructors:
+          req.user!.role === 'INSTRUCTOR' ? { create: { userId: req.user!.id, isPrimary: true } } : undefined,
+      },
+      include: { instructors: { include: { user: { select: { id: true, firstName: true, lastName: true } } } } },
     });
 
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
+    await logAuditEvent({
+      tenantId,
+      userId: req.user!.id,
+      action: 'COURSE_CREATED',
+      resourceType: 'COURSE',
+      resourceId: course.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: pick(course, COURSE_AUDIT_FIELDS),
+    });
 
-    const instructorUserIds = course.instructors.map((ins: { userId: string }) => ins.userId);
-    const canEdit = AccessControlEngine.canEditCourse(
-      req.user!.role,
-      req.user!.id,
-      instructorUserIds
-    );
+    return res.status(201).json({ data: course });
+  })
+);
 
-    if (!canEdit) {
-      return res.status(403).json({
-        error: 'Forbidden: You must be an assigned instructor or administrator to update this course',
-      });
-    }
+/** PUT /api/v1/courses/:id - update (assigned instructor or admin) */
+router.put(
+  '/:id',
+  authenticateJWT,
+  route('Failed to update course', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const id = String(req.params.id);
+    const input = parseBody(req, updateCourseSchema);
+    await requireCourseEditor(req, id);
+    await assertDepartmentInTenant(input.departmentId);
 
-    const input = parseResult.data;
-
-    const updatedCourse = await prisma.course.update({
+    const before = await prisma.course.findFirstOrThrow({ where: { id, tenantId } });
+    const updated = await prisma.course.update({
       where: { id },
       data: {
         code: input.code,
         title: input.title,
         description: input.description,
         syllabus: input.syllabus,
-        thumbnailUrl: input.thumbnailUrl !== undefined ? input.thumbnailUrl || null : undefined,
-        departmentId: input.departmentId !== undefined ? input.departmentId : undefined,
+        thumbnailUrl: input.thumbnailUrl !== undefined ? emptyToNull(input.thumbnailUrl) : undefined,
+        departmentId: input.departmentId,
         passingGradePercent: input.passingGradePercent,
         enableProctoring: input.enableProctoring,
         allowSelfEnroll: input.allowSelfEnroll,
@@ -332,173 +248,93 @@ router.put('/:id', authenticateJWT, async (req: Request, res: Response) => {
 
     await logAuditEvent({
       tenantId,
-      userId: req.user?.id,
+      userId: req.user!.id,
       action: 'COURSE_UPDATED',
       resourceType: 'COURSE',
-      resourceId: updatedCourse.id,
+      resourceId: id,
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
-      diffJson: { before: course, after: updatedCourse },
+      diffJson: { before: pick(before, COURSE_AUDIT_FIELDS), after: pick(updated, COURSE_AUDIT_FIELDS) },
     });
 
-    return res.status(200).json({ data: updatedCourse });
-  } catch (error: any) {
-    console.error(`Error in PUT /api/v1/courses/${req.params.id}:`, error);
-    return res.status(500).json({ error: 'Failed to update course' });
-  }
-});
+    return res.status(200).json({ data: updated });
+  })
+);
 
-/**
- * DELETE /api/v1/courses/:id
- * Soft delete (set status=ARCHIVED), admin only
- */
+/** DELETE /api/v1/courses/:id - archive (soft delete), admins only */
 router.delete(
   '/:id',
   authenticateJWT,
   requireRole('SUPER_ADMIN', 'TENANT_ADMIN'),
-  async (req: Request, res: Response) => {
-    try {
-      const tenantId = tenantIdOf(req);
-      const id = String(req.params.id);
-
-      const course = await prisma.course.findFirst({
-        where: { id, tenantId },
-      });
-
-      if (!course) {
-        return res.status(404).json({ error: 'Course not found' });
-      }
-
-      const archivedCourse = await prisma.course.update({
-        where: { id },
-        data: { status: CourseStatus.ARCHIVED },
-      });
-
-      await logAuditEvent({
-        tenantId,
-        userId: req.user?.id,
-        action: 'COURSE_DELETED',
-        resourceType: 'COURSE',
-        resourceId: id,
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent'],
-        diffJson: { previousStatus: course.status, newStatus: CourseStatus.ARCHIVED },
-      });
-
-      return res.status(200).json({
-        message: 'Course archived successfully',
-        id: archivedCourse.id,
-        status: archivedCourse.status,
-      });
-    } catch (error: any) {
-      console.error(`Error in DELETE /api/v1/courses/${req.params.id}:`, error);
-      return res.status(500).json({ error: 'Failed to archive course' });
-    }
-  }
-);
-
-/**
- * GET /api/v1/courses/:id/modules
- * Get all modules with lessons for a course
- */
-router.get('/:id/modules', authenticateJWT, async (req: Request, res: Response) => {
-  try {
+  route('Failed to archive course', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
 
-    // Verify course exists under this tenant
-    const course = await prisma.course.findFirst({
-      where: { id, tenantId },
-      select: { id: true },
+    const course = await prisma.course.findFirst({ where: { id, tenantId } });
+    if (!course) throw new HttpError(404, 'Course not found');
+
+    const archived = await prisma.course.update({ where: { id }, data: { status: CourseStatus.ARCHIVED } });
+
+    await logAuditEvent({
+      tenantId,
+      userId: req.user!.id,
+      action: 'COURSE_DELETED',
+      resourceType: 'COURSE',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { previousStatus: course.status, newStatus: CourseStatus.ARCHIVED },
     });
 
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
+    return res.status(200).json({ message: 'Course archived successfully', id: archived.id, status: archived.status });
+  })
+);
+
+// ---------------------------------------------------------------------------
+// Modules
+// ---------------------------------------------------------------------------
+
+/** GET /api/v1/courses/:id/modules */
+router.get(
+  '/:id/modules',
+  authenticateJWT,
+  route('Failed to retrieve course modules', async (req, res) => {
+    const id = String(req.params.id);
+    await requireContentAccess(req, id);
 
     const modules = await prisma.module.findMany({
       where: { courseId: id },
       orderBy: { orderIndex: 'asc' },
-      include: {
-        lessons: {
-          orderBy: { orderIndex: 'asc' },
-        },
-      },
+      include: { lessons: { orderBy: { orderIndex: 'asc' } } },
     });
-
     return res.status(200).json({ data: modules });
-  } catch (error: any) {
-    console.error(`Error in GET /api/v1/courses/${req.params.id}/modules:`, error);
-    return res.status(500).json({ error: 'Failed to retrieve course modules' });
-  }
-});
+  })
+);
 
-/**
- * POST /api/v1/courses/:id/modules
- * Create a new module within a course (with ABAC instructor / admin validation)
- */
-router.post('/:id/modules', authenticateJWT, async (req: Request, res: Response) => {
-  try {
+/** POST /api/v1/courses/:id/modules */
+router.post(
+  '/:id/modules',
+  authenticateJWT,
+  route('Failed to create module', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
+    await requireCourseEditor(req, id);
+    const input = parseBody(req, createModuleSchema);
 
-    const course = await prisma.course.findFirst({
-      where: { id, tenantId },
-      include: { instructors: true },
-    });
-
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
-
-    const instructorUserIds = course.instructors.map((ins: { userId: string }) => ins.userId);
-    const canEdit = AccessControlEngine.canEditCourse(
-      req.user!.role,
-      req.user!.id,
-      instructorUserIds
-    );
-
-    if (!canEdit) {
-      return res.status(403).json({
-        error: 'Forbidden: You must be an assigned instructor or administrator to create modules',
-      });
-    }
-
-    const parseResult = createModuleSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: parseResult.error.format(),
-      });
-    }
-
-    const input = parseResult.data;
-
-    // Calculate default order index if not provided
     let orderIndex = input.orderIndex;
     if (orderIndex === undefined) {
-      const maxOrder = await prisma.module.aggregate({
-        where: { courseId: id },
-        _max: { orderIndex: true },
-      });
-      orderIndex = (maxOrder._max?.orderIndex ?? -1) + 1;
+      const max = await prisma.module.aggregate({ where: { courseId: id }, _max: { orderIndex: true } });
+      orderIndex = (max._max?.orderIndex ?? -1) + 1;
     }
 
     const moduleRecord = await prisma.module.create({
-      data: {
-        courseId: id,
-        title: input.title,
-        orderIndex,
-        isLocked: input.isLocked ?? false,
-      },
-      include: {
-        lessons: true,
-      },
+      data: { courseId: id, title: input.title, orderIndex, isLocked: input.isLocked ?? false },
+      include: { lessons: true },
     });
 
     await logAuditEvent({
       tenantId,
-      userId: req.user?.id,
+      userId: req.user!.id,
       action: 'MODULE_CREATED',
       resourceType: 'MODULE',
       resourceId: moduleRecord.id,
@@ -508,10 +344,167 @@ router.post('/:id/modules', authenticateJWT, async (req: Request, res: Response)
     });
 
     return res.status(201).json({ data: moduleRecord });
-  } catch (error: any) {
-    console.error(`Error in POST /api/v1/courses/${req.params.id}/modules:`, error);
-    return res.status(500).json({ error: 'Failed to create module' });
-  }
-});
+  })
+);
+
+const orderSchema = z.object({ moduleIds: z.array(idSchema).min(1).max(500) });
+
+/** PUT /api/v1/courses/:id/modules-order - reorder; the list must contain every module exactly once */
+router.put(
+  '/:id/modules-order',
+  authenticateJWT,
+  route('Failed to reorder modules', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const id = String(req.params.id);
+    await requireCourseEditor(req, id);
+    const { moduleIds } = parseBody(req, orderSchema);
+
+    const existing = await prisma.module.findMany({ where: { courseId: id }, select: { id: true } });
+    const existingIds = new Set(existing.map((m) => m.id));
+    if (
+      new Set(moduleIds).size !== moduleIds.length ||
+      moduleIds.length !== existingIds.size ||
+      !moduleIds.every((m) => existingIds.has(m))
+    ) {
+      throw new HttpError(400, 'moduleIds must list every module of this course exactly once');
+    }
+
+    await runInTenantTransaction(tenantId, async (tx) => {
+      for (const [index, moduleId] of moduleIds.entries()) {
+        await tx.module.update({ where: { id: moduleId }, data: { orderIndex: index } });
+      }
+    });
+
+    const modules = await prisma.module.findMany({ where: { courseId: id }, orderBy: { orderIndex: 'asc' } });
+    return res.status(200).json({ data: modules });
+  })
+);
+
+/** PATCH /api/v1/courses/:id/modules/:moduleId */
+router.patch(
+  '/:id/modules/:moduleId',
+  authenticateJWT,
+  route('Failed to update module', async (req, res) => {
+    const id = String(req.params.id);
+    await requireCourseEditor(req, id);
+    const input = parseBody(req, updateModuleSchema);
+
+    const existing = await prisma.module.findFirst({ where: { id: String(req.params.moduleId), courseId: id } });
+    if (!existing) throw new HttpError(404, 'Module not found');
+
+    const updated = await prisma.module.update({ where: { id: existing.id }, data: input, include: { lessons: true } });
+    return res.status(200).json({ data: updated });
+  })
+);
+
+/** DELETE /api/v1/courses/:id/modules/:moduleId - also removes its lessons */
+router.delete(
+  '/:id/modules/:moduleId',
+  authenticateJWT,
+  route('Failed to delete module', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const id = String(req.params.id);
+    await requireCourseEditor(req, id);
+
+    const existing = await prisma.module.findFirst({ where: { id: String(req.params.moduleId), courseId: id } });
+    if (!existing) throw new HttpError(404, 'Module not found');
+
+    await prisma.module.delete({ where: { id: existing.id } });
+    await logAuditEvent({
+      tenantId,
+      userId: req.user!.id,
+      action: 'MODULE_DELETED',
+      resourceType: 'MODULE',
+      resourceId: existing.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { courseId: id, title: existing.title },
+    });
+    return res.status(200).json({ message: 'Module deleted', id: existing.id });
+  })
+);
+
+// ---------------------------------------------------------------------------
+// Lessons
+// ---------------------------------------------------------------------------
+
+/** POST /api/v1/courses/:id/modules/:moduleId/lessons */
+router.post(
+  '/:id/modules/:moduleId/lessons',
+  authenticateJWT,
+  route('Failed to create lesson', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const id = String(req.params.id);
+    await requireCourseEditor(req, id);
+    const input = parseBody(req, createLessonSchema);
+
+    const moduleRecord = await prisma.module.findFirst({ where: { id: String(req.params.moduleId), courseId: id } });
+    if (!moduleRecord) throw new HttpError(404, 'Module not found');
+
+    let orderIndex = input.orderIndex;
+    if (orderIndex === undefined) {
+      const max = await prisma.lesson.aggregate({ where: { moduleId: moduleRecord.id }, _max: { orderIndex: true } });
+      orderIndex = (max._max?.orderIndex ?? -1) + 1;
+    }
+
+    const lesson = await prisma.lesson.create({ data: { ...input, orderIndex, moduleId: moduleRecord.id } });
+
+    await logAuditEvent({
+      tenantId,
+      userId: req.user!.id,
+      action: 'LESSON_CREATED',
+      resourceType: 'LESSON',
+      resourceId: lesson.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { courseId: id, moduleId: moduleRecord.id, title: lesson.title, contentType: lesson.contentType },
+    });
+    return res.status(201).json({ data: lesson });
+  })
+);
+
+/** PATCH /api/v1/courses/:id/lessons/:lessonId */
+router.patch(
+  '/:id/lessons/:lessonId',
+  authenticateJWT,
+  route('Failed to update lesson', async (req, res) => {
+    const id = String(req.params.id);
+    await requireCourseEditor(req, id);
+    const input = parseBody(req, updateLessonSchema);
+
+    const lesson = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } } });
+    if (!lesson) throw new HttpError(404, 'Lesson not found');
+
+    const updated = await prisma.lesson.update({ where: { id: lesson.id }, data: input });
+    return res.status(200).json({ data: updated });
+  })
+);
+
+/** DELETE /api/v1/courses/:id/lessons/:lessonId */
+router.delete(
+  '/:id/lessons/:lessonId',
+  authenticateJWT,
+  route('Failed to delete lesson', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const id = String(req.params.id);
+    await requireCourseEditor(req, id);
+
+    const lesson = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } } });
+    if (!lesson) throw new HttpError(404, 'Lesson not found');
+
+    await prisma.lesson.delete({ where: { id: lesson.id } });
+    await logAuditEvent({
+      tenantId,
+      userId: req.user!.id,
+      action: 'LESSON_DELETED',
+      resourceType: 'LESSON',
+      resourceId: lesson.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { courseId: id, title: lesson.title },
+    });
+    return res.status(200).json({ message: 'Lesson deleted', id: lesson.id });
+  })
+);
 
 export default router;

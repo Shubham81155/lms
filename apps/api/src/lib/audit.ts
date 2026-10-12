@@ -36,3 +36,19 @@ export async function logAuditEvent(options: AuditLogOptions) {
     return null;
   }
 }
+
+/**
+ * Whitelists the fields recorded in an audit diff, so the log never stores whole records
+ * (which can hold PII, large free-text fields, or secrets added to a table later).
+ */
+export function pick<T extends Record<string, any>, K extends keyof T>(
+  source: T | null | undefined,
+  keys: readonly K[]
+): Partial<Pick<T, K>> {
+  const out: Partial<Pick<T, K>> = {};
+  if (!source) return out;
+  for (const key of keys) {
+    if (key in source) out[key] = source[key];
+  }
+  return out;
+}

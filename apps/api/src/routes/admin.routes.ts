@@ -1,51 +1,60 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { logAuditEvent } from '../lib/audit';
+import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { EnrollmentStatus } from '@enterprise-lms/database';
+import { HttpError, route } from '../lib/http';
+import { httpUrl, idSchema, pageMeta, parseBody, parseQuery } from '../lib/validate';
 
 const router = Router();
 
-// Restrict all routes in this module to Tenant and Super Admins
-router.use(authenticateJWT, requireRole('SUPER_ADMIN', 'TENANT_ADMIN'));
+router.use(authenticateJWT);
+
+const adminOnly = requireRole('SUPER_ADMIN', 'TENANT_ADMIN');
+
+const color = z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/);
 
 const updateTenantSchema = z.object({
-  name: z.string().min(2).max(100).optional(),
-  logoUrl: z.string().url().optional().or(z.literal('')).nullable(),
-  primaryColor: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
-  secondaryColor: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/).optional(),
-  faviconUrl: z.string().url().optional().or(z.literal('')).nullable(),
-  customCss: z.string().optional().nullable(),
+  name: z.string().trim().min(2).max(100).optional(),
+  logoUrl: httpUrl.or(z.literal('')).nullable().optional(),
+  primaryColor: color.optional(),
+  secondaryColor: color.optional(),
+  faviconUrl: httpUrl.or(z.literal('')).nullable().optional(),
+  // Rendered into tenant pages, so it is bounded; sanitising it is tracked for the frontend phase.
+  customCss: z.string().max(20_000).nullable().optional(),
   ferpaCompliant: z.boolean().optional(),
   coppaCompliant: z.boolean().optional(),
 });
 
-/**
- * GET /api/v1/admin/tenant
- * Retrieve tenant configuration, branding, and high-level entity counts
- */
-router.get('/tenant', async (req: Request, res: Response) => {
-  try {
-    const tenantId = tenantIdOf(req);
+const auditQuery = z
+  .object({
+    page: z.coerce.number().int().min(1).max(100_000).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    action: z.string().trim().min(1).max(100).optional(),
+    resourceType: z.string().trim().min(1).max(100).optional(),
+    userId: idSchema.optional(),
+    startDate: z.coerce.date().optional(),
+    endDate: z.coerce.date().optional(),
+  })
+  .refine((q) => !q.startDate || !q.endDate || q.startDate <= q.endDate, {
+    message: 'startDate must not be after endDate',
+  });
 
+const TENANT_AUDIT_FIELDS = [
+  'name', 'logoUrl', 'primaryColor', 'secondaryColor', 'faviconUrl', 'ferpaCompliant', 'coppaCompliant',
+] as const;
+
+/** GET /api/v1/admin/tenant */
+router.get(
+  '/tenant',
+  adminOnly,
+  route('Failed to retrieve tenant settings', async (req, res) => {
     const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      include: {
-        _count: {
-          select: {
-            users: true,
-            courses: true,
-            campuses: true,
-            ltiDeployments: true,
-          },
-        },
-      },
+      where: { id: tenantIdOf(req) },
+      include: { _count: { select: { users: true, courses: true, campuses: true, ltiDeployments: true } } },
     });
-
-    if (!tenant) {
-      return res.status(404).json({ error: 'Tenant configuration not found' });
-    }
+    if (!tenant) throw new HttpError(404, 'Tenant configuration not found');
 
     return res.status(200).json({
       data: {
@@ -56,183 +65,107 @@ router.get('/tenant', async (req: Request, res: Response) => {
         ltiDeploymentCount: tenant._count.ltiDeployments,
       },
     });
-  } catch (error: any) {
-    console.error('Error in GET /api/v1/admin/tenant:', error);
-    return res.status(500).json({ error: 'Failed to retrieve tenant settings' });
-  }
-});
+  })
+);
 
-/**
- * PATCH /api/v1/admin/tenant
- * Update tenant branding and compliance settings
- */
-router.patch('/tenant', async (req: Request, res: Response) => {
-  try {
+/** PATCH /api/v1/admin/tenant */
+router.patch(
+  '/tenant',
+  adminOnly,
+  route('Failed to update tenant settings', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const currentUserId = req.user!.id;
+    const input = parseBody(req, updateTenantSchema);
 
-    const parseResult = updateTenantSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: parseResult.error.format(),
-      });
-    }
-
-    const existingTenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-
-    if (!existingTenant) {
-      return res.status(404).json({ error: 'Tenant not found' });
-    }
-
-    const input = parseResult.data;
+    const existing = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!existing) throw new HttpError(404, 'Tenant not found');
 
     const updated = await prisma.tenant.update({
-      where: { id: existingTenant.id },
+      where: { id: tenantId },
       data: {
         name: input.name,
-        logoUrl: input.logoUrl !== undefined ? input.logoUrl : undefined,
+        logoUrl: input.logoUrl !== undefined ? input.logoUrl || null : undefined,
         primaryColor: input.primaryColor,
         secondaryColor: input.secondaryColor,
-        faviconUrl: input.faviconUrl !== undefined ? input.faviconUrl : undefined,
-        customCss: input.customCss !== undefined ? input.customCss : undefined,
+        faviconUrl: input.faviconUrl !== undefined ? input.faviconUrl || null : undefined,
+        customCss: input.customCss,
         ferpaCompliant: input.ferpaCompliant,
         coppaCompliant: input.coppaCompliant,
       },
     });
 
     await logAuditEvent({
-      tenantId: existingTenant.id,
-      userId: currentUserId,
+      tenantId,
+      userId: req.user!.id,
       action: 'TENANT_SETTINGS_UPDATED',
       resourceType: 'TENANT',
-      resourceId: existingTenant.id,
+      resourceId: tenantId,
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
-      diffJson: { before: existingTenant, after: updated },
+      diffJson: {
+        before: pick(existing, TENANT_AUDIT_FIELDS),
+        after: pick(updated, TENANT_AUDIT_FIELDS),
+        customCssChanged: input.customCss !== undefined,
+      },
     });
 
     return res.status(200).json({ data: updated });
-  } catch (error: any) {
-    console.error('Error in PATCH /api/v1/admin/tenant:', error);
-    return res.status(500).json({ error: 'Failed to update tenant settings' });
-  }
-});
+  })
+);
 
-/**
- * GET /api/v1/admin/audit-logs
- * List tamper-evident audit logs with filters (action, resourceType, date range) & pagination
- */
-router.get('/audit-logs', async (req: Request, res: Response) => {
-  try {
+/** GET /api/v1/admin/audit-logs - administrators and auditors */
+router.get(
+  '/audit-logs',
+  requireRole('SUPER_ADMIN', 'TENANT_ADMIN', 'AUDITOR'),
+  route('Failed to retrieve audit logs', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
-    const skip = (page - 1) * limit;
+    const { page, limit, action, resourceType, userId, startDate, endDate } = parseQuery(req, auditQuery);
 
-    const action = req.query.action as string | undefined;
-    const resourceType = req.query.resourceType as string | undefined;
-    const startDate = req.query.startDate as string | undefined;
-    const endDate = req.query.endDate as string | undefined;
-
-    const where: any = {
-      tenantId,
-    };
-
-    if (action) {
-      where.action = action;
-    }
-
-    if (resourceType) {
-      where.resourceType = resourceType;
-    }
-
+    const where: any = { tenantId };
+    if (action) where.action = action;
+    if (resourceType) where.resourceType = resourceType;
+    if (userId) where.userId = userId;
     if (startDate || endDate) {
-      where.createdAt = {};
-      if (startDate) where.createdAt.gte = new Date(startDate);
-      if (endDate) where.createdAt.lte = new Date(endDate);
+      where.createdAt = { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) };
     }
 
     const [total, logs] = await Promise.all([
       prisma.auditLog.count({ where }),
       prisma.auditLog.findMany({
         where,
-        skip,
+        skip: (page - 1) * limit,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              role: true,
-            },
-          },
-        },
+        include: { user: { select: { id: true, email: true, firstName: true, lastName: true, role: true } } },
       }),
     ]);
 
-    return res.status(200).json({
-      data: logs,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error: any) {
-    console.error('Error in GET /api/v1/admin/audit-logs:', error);
-    return res.status(500).json({ error: 'Failed to retrieve audit logs' });
-  }
-});
+    return res.status(200).json({ data: logs, pagination: pageMeta(page, limit, total) });
+  })
+);
 
-/**
- * GET /api/v1/admin/stats
- * Dashboard overview metrics (total users, courses, enrollments, completions, and breakdown)
- */
-router.get('/stats', async (req: Request, res: Response) => {
-  try {
+/** GET /api/v1/admin/stats */
+router.get(
+  '/stats',
+  adminOnly,
+  route('Failed to retrieve admin stats', async (req, res) => {
     const tenantId = tenantIdOf(req);
 
-    const [
-      totalUsers,
-      totalCourses,
-      totalEnrollments,
-      completedEnrollments,
-      activeEnrollments,
-      roleDistribution,
-    ] = await Promise.all([
-      prisma.user.count({ where: { tenantId } }),
-      prisma.course.count({ where: { tenantId } }),
-      prisma.enrollment.count({ where: { tenantId } }),
-      prisma.enrollment.count({
-        where: { tenantId, status: EnrollmentStatus.COMPLETED },
-      }),
-      prisma.enrollment.count({
-        where: {
-          tenantId,
-          status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS] },
-        },
-      }),
-      prisma.user.groupBy({
-        by: ['role'],
-        where: { tenantId },
-        _count: { role: true },
-      }),
-    ]);
+    const [totalUsers, totalCourses, totalEnrollments, completedEnrollments, activeEnrollments, roleDistribution] =
+      await Promise.all([
+        prisma.user.count({ where: { tenantId } }),
+        prisma.course.count({ where: { tenantId } }),
+        prisma.enrollment.count({ where: { tenantId } }),
+        prisma.enrollment.count({ where: { tenantId, status: EnrollmentStatus.COMPLETED } }),
+        prisma.enrollment.count({
+          where: { tenantId, status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS] } },
+        }),
+        prisma.user.groupBy({ by: ['role'], where: { tenantId }, _count: { role: true } }),
+      ]);
 
     const roleCounts = roleDistribution.reduce((acc, curr) => {
       acc[curr.role] = curr._count.role;
       return acc;
     }, {} as Record<string, number>);
-
-    const completionRate =
-      totalEnrollments > 0
-        ? parseFloat(((completedEnrollments / totalEnrollments) * 100).toFixed(2))
-        : 0;
 
     return res.status(200).json({
       data: {
@@ -241,14 +174,12 @@ router.get('/stats', async (req: Request, res: Response) => {
         totalEnrollments,
         completedEnrollments,
         activeEnrollments,
-        completionRate,
+        completionRate:
+          totalEnrollments > 0 ? parseFloat(((completedEnrollments / totalEnrollments) * 100).toFixed(2)) : 0,
         roleCounts,
       },
     });
-  } catch (error: any) {
-    console.error('Error in GET /api/v1/admin/stats:', error);
-    return res.status(500).json({ error: 'Failed to retrieve admin stats' });
-  }
-});
+  })
+);
 
 export default router;

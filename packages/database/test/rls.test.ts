@@ -169,6 +169,14 @@ describe('row-level security', () => {
     }
   });
 
+  it('applies the tenant to a lazy query returned straight out of the scope', async () => {
+    // Prisma queries only run when awaited; they must still run inside the tenant scope.
+    const courses = await runWithTenant(A, () => app.prisma.course.findMany());
+    expect(courses.map((c) => c.id)).toEqual(['c-a']);
+    const counted = await runWithTenant(B, () => app.prisma.user.count());
+    expect(counted).toBe(1);
+  });
+
   it('does not keep the tenant after a request finishes', async () => {
     await asTenant(A, () => app.prisma.course.count());
     expect(await app.prisma.course.count()).toBe(0);

@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { handleError } from '../lib/http';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { AiCurriculumGenerator } from '@enterprise-lms/security';
 
@@ -97,7 +98,7 @@ router.get('/cohort', authenticateJWT, requireRole('INSTRUCTOR', 'TENANT_ADMIN',
       bloomsMastery,
     });
   } catch (error: any) {
-    return res.status(500).json({ error: 'Failed to retrieve cohort analytics: ' + error.message });
+    return handleError(req, res, error, 'Failed to retrieve cohort analytics');
   }
 });
 
@@ -107,7 +108,7 @@ router.get('/cohort', authenticateJWT, requireRole('INSTRUCTOR', 'TENANT_ADMIN',
  */
 router.get('/xapi/stream', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
 
     // Mock high-throughput LRS statement stream compliant with IEEE/ADL xAPI spec
     const statements = [
@@ -186,7 +187,7 @@ router.get('/xapi/stream', authenticateJWT, async (req: Request, res: Response) 
       statements: statements.slice(0, limit),
     });
   } catch (error: any) {
-    return res.status(500).json({ error: 'Failed to retrieve xAPI stream: ' + error.message });
+    return handleError(req, res, error, 'Failed to retrieve xAPI stream');
   }
 });
 
@@ -196,10 +197,10 @@ router.get('/xapi/stream', authenticateJWT, async (req: Request, res: Response) 
  */
 router.post('/ai/tutor', authenticateJWT, async (req: Request, res: Response) => {
   try {
-    const { topic, message } = req.body;
+    const { topic } = req.body ?? {};
 
-    if (!topic) {
-      return res.status(400).json({ error: 'Topic is required for AI Tutor assistance' });
+    if (typeof topic !== 'string' || !topic.trim() || topic.length > 200) {
+      return res.status(400).json({ error: 'A topic of up to 200 characters is required for AI Tutor assistance' });
     }
 
     const curriculum = AiCurriculumGenerator.generateAssessmentFromTopic(topic);
@@ -212,7 +213,7 @@ router.post('/ai/tutor', authenticateJWT, async (req: Request, res: Response) =>
       readinessBoostPercent: 18,
     });
   } catch (error: any) {
-    return res.status(500).json({ error: 'Failed to generate AI tutor assistance: ' + error.message });
+    return handleError(req, res, error, 'Failed to generate AI tutor assistance');
   }
 });
 

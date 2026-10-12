@@ -4,12 +4,16 @@ import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { EnrollmentStatus } from '@enterprise-lms/database';
+import { HttpError, route } from '../lib/http';
+import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
+import { COURSE_STAFF_ROLES, isAdminRole, canSeeAllCourses } from '../lib/access';
+import { issueCertificate } from '../lib/certificates';
 
 const router = Router();
 
 const enrollSchema = z.object({
-  courseId: z.string().uuid(),
-  userId: z.string().uuid().optional(),
+  courseId: idSchema,
+  userId: idSchema.optional(),
 });
 
 const updateProgressSchema = z.object({
@@ -17,340 +21,281 @@ const updateProgressSchema = z.object({
   finalGrade: z.number().min(0).max(100).optional(),
 });
 
+const statsQuery = z.object({ userId: idSchema.optional() });
+
+const listQuery = z.object({
+  ...paginationShape,
+  userId: idSchema.optional(),
+  courseId: idSchema.optional(),
+  status: z.nativeEnum(EnrollmentStatus).optional(),
+});
+
+/** Highest progress a learner can report themselves; finishing a course is recorded by staff. */
+const LEARNER_MAX_PROGRESS = 99;
+
+const courseSummary = {
+  id: true,
+  code: true,
+  title: true,
+  description: true,
+  thumbnailUrl: true,
+  status: true,
+  passingGradePercent: true,
+} as const;
+
+const isCourseStaff = (user: NonNullable<Request['user']>, instructorIds: string[]) =>
+  isAdminRole(user.role) ||
+  ((COURSE_STAFF_ROLES as readonly string[]).includes(user.role) && instructorIds.includes(user.id));
+
 /**
  * GET /api/v1/enrollments/stats
- * Aggregates enrollment statistics for the user (or specified user for admins)
+ * Aggregates for the caller; admins and auditors may pass ?userId=.
  */
-router.get('/stats', authenticateJWT, async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/stats',
+  authenticateJWT,
+  route('Failed to retrieve enrollment statistics', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const currentUserId = req.user!.id;
-    const currentUserRole = req.user!.role;
+    const { userId } = parseQuery(req, statsQuery);
+    const user = req.user!;
 
-    // Admins can query stats for another user if provided in query params
-    let targetUserId = currentUserId;
-    if (
-      (currentUserRole === 'TENANT_ADMIN' || currentUserRole === 'SUPER_ADMIN') &&
-      typeof req.query.userId === 'string'
-    ) {
-      targetUserId = req.query.userId;
+    if (userId && userId !== user.id && !canSeeAllCourses(user.role)) {
+      throw new HttpError(403, 'Forbidden: you can only view your own statistics');
     }
 
     const enrollments = await prisma.enrollment.findMany({
-      where: {
-        tenantId,
-        userId: targetUserId,
-      },
-      select: {
-        status: true,
-        progressPercent: true,
-      },
+      where: { tenantId, userId: userId ?? user.id },
+      select: { status: true, progressPercent: true },
     });
 
+    const count = (s: EnrollmentStatus) => enrollments.filter((e) => e.status === s).length;
     const total = enrollments.length;
-    let completed = 0;
-    let inProgress = 0;
-    let dropped = 0;
-    let failed = 0;
-    let enrolled = 0;
-    let totalProgress = 0;
-
-    for (const e of enrollments) {
-      totalProgress += e.progressPercent;
-      switch (e.status) {
-        case EnrollmentStatus.COMPLETED:
-          completed++;
-          break;
-        case EnrollmentStatus.IN_PROGRESS:
-          inProgress++;
-          break;
-        case EnrollmentStatus.DROPPED:
-          dropped++;
-          break;
-        case EnrollmentStatus.FAILED:
-          failed++;
-          break;
-        case EnrollmentStatus.ENROLLED:
-          enrolled++;
-          break;
-      }
-    }
-
-    const averageProgress = total > 0 ? parseFloat((totalProgress / total).toFixed(2)) : 0;
+    const totalProgress = enrollments.reduce((sum, e) => sum + e.progressPercent, 0);
 
     return res.status(200).json({
       data: {
         total,
-        completed,
-        inProgress,
-        enrolled,
-        dropped,
-        failed,
-        averageProgress,
+        completed: count(EnrollmentStatus.COMPLETED),
+        inProgress: count(EnrollmentStatus.IN_PROGRESS),
+        enrolled: count(EnrollmentStatus.ENROLLED),
+        dropped: count(EnrollmentStatus.DROPPED),
+        failed: count(EnrollmentStatus.FAILED),
+        averageProgress: total > 0 ? parseFloat((totalProgress / total).toFixed(2)) : 0,
       },
     });
-  } catch (error: any) {
-    console.error('Error in GET /api/v1/enrollments/stats:', error);
-    return res.status(500).json({ error: 'Failed to retrieve enrollment statistics' });
-  }
-});
+  })
+);
 
 /**
- * GET /api/v1/enrollments
- * List user's enrollments with course details and pagination
+ * GET /api/v1/enrollments   (alias: GET /enrollments/my)
+ * Own enrollments by default. Passing another ?userId= or a ?courseId= lists a roster, which
+ * learners may not do, instructors may do only for courses they teach, and admins/auditors for any.
  */
-router.get('/', authenticateJWT, async (req: Request, res: Response) => {
-  try {
-    const tenantId = tenantIdOf(req);
-    const currentUserId = req.user!.id;
-    const currentUserRole = req.user!.role;
+const listEnrollments = route('Failed to retrieve enrollments', async (req: Request, res: Response) => {
+  const tenantId = tenantIdOf(req);
+  const user = req.user!;
+  const { page, limit, userId, courseId, status } = parseQuery(req, listQuery);
 
-    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 10));
-    const skip = (page - 1) * limit;
+  const rosterMode = (!!userId && userId !== user.id) || (!userId && !!courseId);
+  const where: any = { tenantId };
 
-    const where: any = { tenantId };
-
-    // Standard learners only view their own enrollments
-    if (currentUserRole === 'STUDENT' || currentUserRole === 'PARENT_GUARDIAN') {
-      where.userId = currentUserId;
-    } else if (typeof req.query.userId === 'string') {
-      where.userId = req.query.userId;
+  if (!rosterMode) {
+    where.userId = user.id;
+  } else {
+    if (userId) where.userId = userId;
+    if (canSeeAllCourses(user.role)) {
+      // unrestricted within the tenant
+    } else if ((COURSE_STAFF_ROLES as readonly string[]).includes(user.role)) {
+      where.course = { instructors: { some: { userId: user.id } } };
     } else {
-      where.userId = currentUserId;
+      throw new HttpError(403, 'Forbidden: you can only view your own enrollments');
     }
-
-    if (req.query.courseId) {
-      where.courseId = req.query.courseId as string;
-    }
-
-    if (req.query.status) {
-      where.status = req.query.status as EnrollmentStatus;
-    }
-
-    const [total, enrollments] = await Promise.all([
-      prisma.enrollment.count({ where }),
-      prisma.enrollment.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { enrolledAt: 'desc' },
-        include: {
-          course: {
-            select: {
-              id: true,
-              code: true,
-              title: true,
-              description: true,
-              thumbnailUrl: true,
-              status: true,
-              passingGradePercent: true,
-            },
-          },
-          certificate: {
-            select: {
-              id: true,
-              certificateNumber: true,
-              issuedAt: true,
-              pdfUrl: true,
-              verificationQr: true,
-            },
-          },
-        },
-      }),
-    ]);
-
-    return res.status(200).json({
-      data: enrollments,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    });
-  } catch (error: any) {
-    console.error('Error in GET /api/v1/enrollments:', error);
-    return res.status(500).json({ error: 'Failed to retrieve enrollments' });
   }
+  if (courseId) where.courseId = courseId;
+  if (status) where.status = status;
+
+  const [total, enrollments] = await Promise.all([
+    prisma.enrollment.count({ where }),
+    prisma.enrollment.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { enrolledAt: 'desc' },
+      include: {
+        course: { select: courseSummary },
+        certificate: {
+          select: { id: true, certificateNumber: true, issuedAt: true, pdfUrl: true, verificationQr: true },
+        },
+      },
+    }),
+  ]);
+
+  return res.status(200).json({ data: enrollments, pagination: pageMeta(page, limit, total) });
 });
+
+router.get('/', authenticateJWT, listEnrollments);
+router.get('/my', authenticateJWT, listEnrollments);
 
 /**
  * POST /api/v1/enrollments
- * Enroll in a course (with self-enrollment permission checks)
+ *  - yourself: students only, in a published course that allows self-enrolment
+ *  - someone else: administrators or the course's instructor
  */
-router.post('/', authenticateJWT, async (req: Request, res: Response) => {
-  try {
+router.post(
+  '/',
+  authenticateJWT,
+  route('Failed to enroll in course', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const currentUserId = req.user!.id;
-    const currentUserRole = req.user!.role;
+    const user = req.user!;
+    const { courseId, userId } = parseBody(req, enrollSchema);
+    const targetId = userId ?? user.id;
+    const selfEnroll = targetId === user.id;
 
-    const parseResult = enrollSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: parseResult.error.format(),
-      });
-    }
-
-    const { courseId, userId: targetUserId } = parseResult.data;
-    const enrollmentUserId = targetUserId || currentUserId;
-
-    // Check if target user belongs to the same tenant
-    const targetUser = await prisma.user.findFirst({
-      where: { id: enrollmentUserId, tenantId },
-    });
-
-    if (!targetUser) {
-      return res.status(404).json({ error: 'User not found in tenant' });
-    }
-
-    // Verify course exists under tenant and is published
     const course = await prisma.course.findFirst({
       where: { id: courseId, tenantId },
+      select: {
+        id: true,
+        status: true,
+        allowSelfEnroll: true,
+        instructors: { select: { userId: true } },
+      },
     });
+    const staff = !!course && isCourseStaff(user, course.instructors.map((i) => i.userId));
 
-    if (!course) {
-      return res.status(404).json({ error: 'Course not found' });
+    // Learners cannot tell a draft from a course that does not exist.
+    if (!course || (course.status !== 'PUBLISHED' && !staff && !canSeeAllCourses(user.role))) {
+      throw new HttpError(404, 'Course not found');
     }
+    if (course.status === 'ARCHIVED') throw new HttpError(400, 'Cannot enroll in an archived course');
 
-    if (course.status === 'ARCHIVED') {
-      return res.status(400).json({ error: 'Cannot enroll in an archived course' });
-    }
-
-    // Self-enrollment check: if student enrolling themselves, course must allow self-enroll
-    const isSelfEnrollment = enrollmentUserId === currentUserId;
-    if (isSelfEnrollment && (currentUserRole === 'STUDENT' || currentUserRole === 'PARENT_GUARDIAN')) {
-      if (!course.allowSelfEnroll) {
-        return res.status(403).json({
-          error: 'Self-enrollment is not permitted for this course. Please contact an instructor or administrator.',
-        });
+    if (selfEnroll) {
+      if (!isAdminRole(user.role)) {
+        if (user.role !== 'STUDENT' && !staff) {
+          throw new HttpError(403, 'Forbidden: your role cannot enroll in courses');
+        }
+        if (!course.allowSelfEnroll) {
+          throw new HttpError(
+            403,
+            'Self-enrollment is not permitted for this course. Please contact an instructor or administrator.'
+          );
+        }
+        if (course.status !== 'PUBLISHED') throw new HttpError(400, 'This course is not open for enrollment');
       }
+    } else if (!staff || (user.role === 'TEACHING_ASSISTANT')) {
+      // Only administrators and the assigned instructor may enroll other people.
+      throw new HttpError(403, 'Forbidden: only the course instructor or an administrator can enroll other users');
     }
 
-    // Check for existing enrollment
-    const existingEnrollment = await prisma.enrollment.findUnique({
-      where: {
-        courseId_userId: {
-          courseId,
-          userId: enrollmentUserId,
-        },
-      },
+    const target = await prisma.user.findFirst({
+      where: { id: targetId, tenantId },
+      select: { id: true, status: true },
     });
+    if (!target) throw new HttpError(404, 'User not found in tenant');
+    if (target.status !== 'ACTIVE') throw new HttpError(400, 'Only active users can be enrolled');
 
-    if (existingEnrollment) {
-      return res.status(409).json({ error: 'User is already enrolled in this course' });
+    const existing = await prisma.enrollment.findUnique({
+      where: { courseId_userId: { courseId, userId: targetId } },
+    });
+    if (existing && existing.status !== EnrollmentStatus.DROPPED) {
+      throw new HttpError(409, 'User is already enrolled in this course');
     }
 
-    const enrollment = await prisma.enrollment.create({
-      data: {
-        tenantId,
-        courseId,
-        userId: enrollmentUserId,
-        status: EnrollmentStatus.ENROLLED,
-        progressPercent: 0.0,
-      },
-      include: {
-        course: {
-          select: {
-            id: true,
-            code: true,
-            title: true,
-          },
-        },
-      },
-    });
+    const include = { course: { select: { id: true, code: true, title: true } } };
+    const enrollment = existing
+      ? await prisma.enrollment.update({
+          where: { id: existing.id },
+          data: { status: EnrollmentStatus.ENROLLED, progressPercent: 0, finalGrade: null, completedAt: null },
+          include,
+        })
+      : await prisma.enrollment.create({
+          data: { tenantId, courseId, userId: targetId, status: EnrollmentStatus.ENROLLED, progressPercent: 0 },
+          include,
+        });
 
     await logAuditEvent({
       tenantId,
-      userId: currentUserId,
+      userId: user.id,
       action: 'USER_ENROLLED',
       resourceType: 'ENROLLMENT',
       resourceId: enrollment.id,
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
-      diffJson: { courseId, enrolledUserId: enrollmentUserId },
+      diffJson: { courseId, enrolledUserId: targetId, reenrolled: !!existing },
     });
 
     return res.status(201).json({ data: enrollment });
-  } catch (error: any) {
-    console.error('Error in POST /api/v1/enrollments:', error);
-    return res.status(500).json({ error: 'Failed to enroll in course' });
-  }
-});
+  })
+);
 
 /**
  * PATCH /api/v1/enrollments/:id/progress
- * Update enrollment progress percentage and completion status
+ *  - the learner: may report their own progress, never backwards and never to 100%
+ *  - the course's staff / admins: may set progress and the final grade; reaching 100% completes
+ *    (or fails, against the course's passing grade) the enrollment and issues the certificate
  */
-router.patch('/:id/progress', authenticateJWT, async (req: Request, res: Response) => {
-  try {
+router.patch(
+  '/:id/progress',
+  authenticateJWT,
+  route('Failed to update enrollment progress', async (req, res) => {
     const tenantId = tenantIdOf(req);
+    const user = req.user!;
     const id = String(req.params.id);
-    const currentUserId = req.user!.id;
-    const currentUserRole = req.user!.role;
-
-    const parseResult = updateProgressSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: parseResult.error.format(),
-      });
-    }
+    const { progressPercent, finalGrade } = parseBody(req, updateProgressSchema);
 
     const enrollment = await prisma.enrollment.findFirst({
       where: { id, tenantId },
-      include: { course: true },
+      include: { course: { select: { passingGradePercent: true, instructors: { select: { userId: true } } } } },
     });
 
-    if (!enrollment) {
-      return res.status(404).json({ error: 'Enrollment record not found' });
+    const isOwner = !!enrollment && enrollment.userId === user.id;
+    // Staff powers apply to other people's enrollments only; nobody grades their own.
+    const staff = !!enrollment && !isOwner && isCourseStaff(user, enrollment.course.instructors.map((i) => i.userId));
+    if (!enrollment || (!isOwner && !staff)) throw new HttpError(404, 'Enrollment record not found');
+
+    if (enrollment.status === EnrollmentStatus.DROPPED) {
+      throw new HttpError(409, 'This enrollment was dropped and cannot be updated');
     }
 
-    // Access control: User can update their own progress, or instructors/admins
-    const isOwner = enrollment.userId === currentUserId;
-    const isStaff = ['INSTRUCTOR', 'TEACHING_ASSISTANT', 'TENANT_ADMIN', 'SUPER_ADMIN'].includes(
-      currentUserRole
-    );
-
-    if (!isOwner && !isStaff) {
-      return res.status(403).json({ error: 'Forbidden: Cannot update progress for another learner' });
+    if (!staff) {
+      if (finalGrade !== undefined) throw new HttpError(403, 'Forbidden: only course staff can record a final grade');
+      if (progressPercent > LEARNER_MAX_PROGRESS) {
+        throw new HttpError(403, 'Forbidden: course completion is recorded by your instructor');
+      }
+      if (progressPercent < enrollment.progressPercent) {
+        throw new HttpError(400, 'Progress cannot go backwards');
+      }
     }
 
-    const { progressPercent, finalGrade } = parseResult.data;
-
-    let newStatus = enrollment.status;
+    const grade = finalGrade ?? enrollment.finalGrade;
+    let status = enrollment.status;
     let completedAt = enrollment.completedAt;
 
     if (progressPercent >= 100) {
-      newStatus = EnrollmentStatus.COMPLETED;
-      completedAt = completedAt || new Date();
-    } else if (progressPercent > 0 && enrollment.status === EnrollmentStatus.ENROLLED) {
-      newStatus = EnrollmentStatus.IN_PROGRESS;
+      const failed = grade !== null && grade < enrollment.course.passingGradePercent;
+      status = failed ? EnrollmentStatus.FAILED : EnrollmentStatus.COMPLETED;
+      completedAt = completedAt ?? new Date();
+    } else if (status === EnrollmentStatus.COMPLETED || status === EnrollmentStatus.FAILED) {
+      status = EnrollmentStatus.IN_PROGRESS; // staff reopened it
+      completedAt = null;
+    } else if (progressPercent > 0 && status === EnrollmentStatus.ENROLLED) {
+      status = EnrollmentStatus.IN_PROGRESS;
     }
 
-    const updatedEnrollment = await prisma.enrollment.update({
+    const updated = await prisma.enrollment.update({
       where: { id },
-      data: {
-        progressPercent,
-        finalGrade: finalGrade !== undefined ? finalGrade : enrollment.finalGrade,
-        status: newStatus,
-        completedAt,
-      },
-      include: {
-        course: {
-          select: {
-            id: true,
-            code: true,
-            title: true,
-          },
-        },
-      },
+      data: { progressPercent, finalGrade: grade, status, completedAt },
+      include: { course: { select: { id: true, code: true, title: true } } },
     });
+
+    let certificate = null;
+    if (updated.status === EnrollmentStatus.COMPLETED) {
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } });
+      certificate = await issueCertificate(updated.id, tenant?.slug ?? tenantId);
+    }
 
     await logAuditEvent({
       tenantId,
-      userId: currentUserId,
+      userId: user.id,
       action: 'ENROLLMENT_PROGRESS_UPDATED',
       resourceType: 'ENROLLMENT',
       resourceId: id,
@@ -359,15 +304,15 @@ router.patch('/:id/progress', authenticateJWT, async (req: Request, res: Respons
       diffJson: {
         previousProgress: enrollment.progressPercent,
         newProgress: progressPercent,
-        status: newStatus,
+        previousStatus: enrollment.status,
+        status,
+        finalGrade: grade,
+        byStaff: staff,
       },
     });
 
-    return res.status(200).json({ data: updatedEnrollment });
-  } catch (error: any) {
-    console.error(`Error in PATCH /api/v1/enrollments/${req.params.id}/progress:`, error);
-    return res.status(500).json({ error: 'Failed to update enrollment progress' });
-  }
-});
+    return res.status(200).json({ data: { ...updated, certificate } });
+  })
+);
 
 export default router;

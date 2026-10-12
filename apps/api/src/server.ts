@@ -4,6 +4,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config';
 import { AuditSanitizer } from '@enterprise-lms/security';
+import { logger } from './lib/logger';
+import { requestId, sendError } from './lib/http';
 import { findRlsBypassReason } from '@enterprise-lms/database';
 import { prisma, basePrisma } from './lib/prisma';
 import { resolveTenant } from './lib/tenant';
@@ -17,9 +19,13 @@ import usersRoutes from './routes/users.routes';
 import assessmentsRoutes from './routes/assessments.routes';
 import adminRoutes from './routes/admin.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import certificatesRoutes from './routes/certificates.routes';
+import { authenticateJWT } from './middleware/auth';
 
 const app = express();
 const PORT = config.PORT;
+
+app.use(requestId);
 
 // Needed for correct client IPs (rate limiting, audit) when behind a reverse proxy.
 if (config.TRUST_PROXY > 0) app.set('trust proxy', config.TRUST_PROXY);
@@ -91,28 +97,27 @@ const tenantResolver = (req: Request, _res: Response, next: NextFunction) => {
 app.use(tenantResolver);
 
 // =========================================================
-// 3. AUDIT LOGGER MIDDLEWARE
+// 3. STRUCTURED REQUEST LOGGING
 // =========================================================
+// One JSON line per request. Bodies are never logged unless LOG_REQUEST_BODIES=true, and then
+// only after masking. The durable audit trail is the AuditLog table, written by the routes.
 app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   res.on('finish', () => {
-    const duration = Date.now() - start;
-    const sanitizedBody = AuditSanitizer.sanitize(req.body || {});
-    // Immutable Audit Log Stream
-    console.log(
-      JSON.stringify({
-        level: 'AUDIT',
+    logger.info(
+      {
+        requestId: req.id,
         tenantId: req.tenantId,
         userId: req.user?.id,
         method: req.method,
-        path: req.originalUrl,
+        path: req.originalUrl.split('?')[0],
         statusCode: res.statusCode,
-        durationMs: duration,
+        durationMs: Date.now() - start,
         ip: req.ip,
         userAgent: req.headers['user-agent'],
-        timestamp: new Date().toISOString(),
-        payload: sanitizedBody,
-      })
+        ...(config.LOG_REQUEST_BODIES ? { payload: AuditSanitizer.sanitize(req.body || {}) } : {}),
+      },
+      'request'
     );
   });
   next();
@@ -176,7 +181,7 @@ app.get('/api/v1/tenant/config', async (req: Request, res: Response) => {
 });
 
 // xAPI Learning Record Store (LRS) Statement Ingestion
-app.post('/api/v1/xapi/statements', (req: Request, res: Response) => {
+app.post('/api/v1/xapi/statements', authenticateJWT, (req: Request, res: Response) => {
   const statement: XApiStatement = req.body;
 
   if (!statement.actor || !statement.verb || !statement.object) {
@@ -194,7 +199,7 @@ app.post('/api/v1/xapi/statements', (req: Request, res: Response) => {
 });
 
 // AI Proctoring Telemetry Ingestion
-app.post('/api/v1/proctoring/events', (req: Request, res: Response) => {
+app.post('/api/v1/proctoring/events', authenticateJWT, (req: Request, res: Response) => {
   const { submissionId, eventType, severity, snapshotUrl } = req.body;
 
   // Evaluates violation thresholds
@@ -230,6 +235,7 @@ app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1', assessmentsRoutes); // Mounts /courses/:courseId/quizzes, /quizzes, /courses/:courseId/assignments, /assignments
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/certificates', certificatesRoutes);
 
 // =========================================================
 // 6. 404 & GLOBAL ERROR HANDLING
@@ -237,24 +243,19 @@ app.use('/api/v1/analytics', analyticsRoutes);
 
 // Catch-all 404 Handler
 app.use((req: Request, res: Response) => {
-  res.status(404).json({
-    error: 'Endpoint not found',
-    path: req.originalUrl,
-    method: req.method,
-  });
+  sendError(req, res, 404, 'Endpoint not found');
 });
 
-// Global Centralized Error Handler
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('[API_ERROR]', err);
+// Global Centralized Error Handler. Route handlers handle their own errors (lib/http.ts); this
+// catches what escapes middleware, such as malformed JSON bodies. Internals are never returned.
+app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+  if (err?.type === 'entity.parse.failed') return sendError(req, res, 400, 'Request body is not valid JSON');
+  if (err?.type === 'entity.too.large') return sendError(req, res, 413, 'Request body is too large');
 
-  const statusCode = err.status || err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
-
-  res.status(statusCode).json({
-    error: message,
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
-  });
+  logger.error({ err, requestId: req.id, method: req.method, path: req.originalUrl }, 'unhandled error');
+  const body: Record<string, unknown> = { error: 'Internal Server Error', requestId: req.id };
+  if (config.NODE_ENV === 'development') body.detail = err?.message;
+  res.status(500).json(body);
 });
 
 // =========================================================
@@ -266,12 +267,12 @@ async function verifyTenantIsolation(): Promise<void> {
     if (!reason) return;
     const message = `Row-level security is NOT enforced: ${reason}. Connect the API (DATABASE_URL) as the non-privileged lms_app role.`;
     if (config.NODE_ENV === 'production') {
-      console.error(`[SECURITY] ${message}`);
+      logger.fatal(message);
       process.exit(1);
     }
-    console.warn(`[SECURITY] ${message} Tenant isolation currently relies on application queries only.`);
+    logger.warn(`${message} Tenant isolation currently relies on application queries only.`);
   } catch (error) {
-    console.warn('[SECURITY] Could not verify row-level security (is the database reachable?):', (error as Error).message);
+    logger.warn({ err: error }, 'Could not verify row-level security (is the database reachable?)');
     if (config.NODE_ENV === 'production') process.exit(1);
   }
 }
@@ -279,8 +280,7 @@ async function verifyTenantIsolation(): Promise<void> {
 if (config.NODE_ENV !== 'test') {
   verifyTenantIsolation().then(() => {
     app.listen(PORT, () => {
-      console.log(`[Enterprise LMS API] Running on port ${PORT}`);
-      console.log(`[Enterprise LMS API] Security: TLS/CSP Active | Multi-Tenancy: Enabled`);
+      logger.info({ port: PORT }, 'Enterprise LMS API listening');
     });
   });
 }

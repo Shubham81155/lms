@@ -35,6 +35,11 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
   DEFAULT_TENANT_SLUG: z.string().min(1).default('default-tenant'),
   APP_URL: z.string().url().default('http://localhost:3000'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  LOG_REQUEST_BODIES: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   TOKEN_FLOW_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),

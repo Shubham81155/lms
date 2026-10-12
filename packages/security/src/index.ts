@@ -151,24 +151,37 @@ export class AccessControlEngine {
 // =========================================================
 
 export class AuditSanitizer {
-  private static SENSITIVE_KEYS = ['password', 'secret', 'ssn', 'token', 'authorization', 'creditcard'];
+  private static SENSITIVE_KEYS = [
+    'password', 'passwordhash', 'secret', 'ssn', 'token', 'authorization', 'cookie',
+    'creditcard', 'apikey', 'mfa', 'dateofbirth',
+  ];
+  private static MAX_DEPTH = 8;
+  private static REDACTED = '[REDACTED_FOR_SECURITY]';
 
   /**
-   * Strips or masks passwords/secrets before writing to immutable audit log
+   * Masks passwords/secrets before writing to the audit log. Walks nested objects and arrays,
+   * keeps Dates as ISO strings, and stops at a depth limit so cyclic data cannot recurse forever.
    */
   public static sanitize(data: Record<string, any>): Record<string, any> {
-    const sanitized: Record<string, any> = {};
-    for (const [key, value] of Object.entries(data)) {
+    return this.walk(data, 0) as Record<string, any>;
+  }
+
+  private static walk(value: unknown, depth: number): unknown {
+    if (value === null || value === undefined) return value;
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'bigint') return value.toString();
+    if (typeof value !== 'object') return value;
+    if (depth >= this.MAX_DEPTH) return '[TRUNCATED]';
+    if (Array.isArray(value)) return value.map((v) => this.walk(v, depth + 1));
+
+    const out: Record<string, unknown> = {};
+    for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
       const lowerKey = key.toLowerCase();
-      if (this.SENSITIVE_KEYS.some((s) => lowerKey.includes(s))) {
-        sanitized[key] = '[REDACTED_FOR_SECURITY]';
-      } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        sanitized[key] = this.sanitize(value);
-      } else {
-        sanitized[key] = value;
-      }
+      out[key] = this.SENSITIVE_KEYS.some((s) => lowerKey.includes(s))
+        ? this.REDACTED
+        : this.walk(v, depth + 1);
     }
-    return sanitized;
+    return out;
   }
 }
 

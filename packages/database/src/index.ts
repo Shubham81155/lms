@@ -14,7 +14,17 @@ export * from '@prisma/client';
 const tenantStorage = new AsyncLocalStorage<string>();
 
 export function runWithTenant<T>(tenantId: string, fn: () => T): T {
-  return tenantStorage.run(tenantId, fn);
+  return tenantStorage.run(tenantId, () => {
+    const result = fn();
+    // Prisma queries are lazy: they only run once something awaits them. A query returned
+    // straight out of this callback would therefore execute after the scope has ended, with no
+    // tenant set (and RLS would hide every row). Subscribing here, inside the scope, makes the
+    // query start with the tenant in place no matter how the caller consumes the result.
+    if (result && typeof (result as any).then === 'function') {
+      return new Promise((resolve, reject) => (result as any).then(resolve, reject)) as unknown as T;
+    }
+    return result;
+  });
 }
 
 export function currentTenantId(): string | undefined {

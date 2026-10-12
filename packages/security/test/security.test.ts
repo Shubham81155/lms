@@ -52,6 +52,38 @@ describe('AccessControlEngine', () => {
 });
 
 describe('AuditSanitizer', () => {
+  it('keeps Dates as ISO strings instead of flattening them to {}', () => {
+    const when = new Date('2026-01-02T03:04:05.000Z');
+    expect(AuditSanitizer.sanitize({ at: when, nested: { at: when } })).toEqual({
+      at: '2026-01-02T03:04:05.000Z',
+      nested: { at: '2026-01-02T03:04:05.000Z' },
+    });
+  });
+
+  it('masks secrets inside arrays', () => {
+    const out = AuditSanitizer.sanitize({ users: [{ name: 'a', password: 'p' }, { name: 'b', token: 't' }] });
+    expect(out.users).toEqual([
+      { name: 'a', password: '[REDACTED_FOR_SECURITY]' },
+      { name: 'b', token: '[REDACTED_FOR_SECURITY]' },
+    ]);
+  });
+
+  it('survives cyclic data', () => {
+    const a: Record<string, any> = { name: 'a' };
+    a.self = a;
+    expect(() => AuditSanitizer.sanitize(a)).not.toThrow();
+  });
+
+  it('masks hashes, cookies and api keys', () => {
+    const out = AuditSanitizer.sanitize({ passwordHash: 'x', cookie: 'y', apiKey: 'z', ok: 1 });
+    expect(out).toEqual({
+      passwordHash: '[REDACTED_FOR_SECURITY]',
+      cookie: '[REDACTED_FOR_SECURITY]',
+      apiKey: '[REDACTED_FOR_SECURITY]',
+      ok: 1,
+    });
+  });
+
   it('masks sensitive keys and keeps the rest', () => {
     const out = AuditSanitizer.sanitize({
       userId: 'usr_100',
