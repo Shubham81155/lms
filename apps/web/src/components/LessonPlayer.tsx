@@ -284,6 +284,12 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                     </button>
                   </div>
 
+                  {lessons.length > 0 && done.size === lessons.length && (
+                    <p role="status" className="rounded-xl border border-success/30 bg-success/10 px-4 py-2.5 text-xs font-semibold text-success">
+                      You have finished every lesson. Your instructor records course completion and issues your certificate.
+                    </p>
+                  )}
+
                   {saveError && (
                     <p role="alert" className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-2.5 text-xs font-semibold text-danger">
                       {saveError}

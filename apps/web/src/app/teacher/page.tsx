@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { AppShell } from "@/components/shell/AppShell";
 import { CourseBuilder } from "@/components/CourseBuilder";
+import { CourseContentEditor } from "@/components/CourseContentEditor";
+import { CourseRoster } from "@/components/CourseRoster";
 import { CourseGradebook } from "@/components/CourseGradebook";
 import { QuestionBank } from "@/components/QuestionBank";
 import { AssignmentGrading } from "@/components/AssignmentGrading";
@@ -39,6 +41,8 @@ import { plural } from "@/lib/plural";
 
 export default function TeacherDashboard() {
   const [showCourseBuilder, setShowCourseBuilder] = useState(false);
+  const [showContentEditor, setShowContentEditor] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
   const [showGradebook, setShowGradebook] = useState(false);
   const [showQuestionBank, setShowQuestionBank] = useState(false);
   const [showAssignmentGrading, setShowAssignmentGrading] = useState(false);
@@ -82,7 +86,8 @@ export default function TeacherDashboard() {
   const { courses, refetch: refetchCourses } = useCourses();
 
   const { user } = useAuth();
-  const { analytics } = useCohortAnalytics();
+  const canEditCourses = user?.role === "INSTRUCTOR";
+  const { analytics, refetch: analyticsReload } = useCohortAnalytics();
   const proctoring = useApiData<{
     openAttempts: number;
     data: { id: string; student: string; quiz: string; eventType: string; severity: string; timestamp: string }[];
@@ -127,12 +132,32 @@ export default function TeacherDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {canEditCourses && (
             <button
               onClick={() => setShowCourseBuilder(true)}
               className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-brand/20 transition-all"
             >
               <Plus className="h-4 w-4" />
               <span>Create Course (AI)</span>
+            </button>
+            )}
+
+            {canEditCourses && (
+            <button
+              onClick={() => setShowContentEditor(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
+            >
+              <BookOpen className="h-4 w-4 text-brand-fg" />
+              <span>Course Content</span>
+            </button>
+            )}
+
+            <button
+              onClick={() => setShowRoster(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
+            >
+              <Users className="h-4 w-4 text-success" />
+              <span>Learners</span>
             </button>
 
             <button
@@ -347,6 +372,17 @@ export default function TeacherDashboard() {
             } finally {
               refetchCourses();
             }
+          }}
+        />
+      )}
+
+      {showContentEditor && <CourseContentEditor onClose={() => setShowContentEditor(false)} />}
+
+      {showRoster && (
+        <CourseRoster
+          onClose={() => {
+            setShowRoster(false);
+            analyticsReload();
           }}
         />
       )}

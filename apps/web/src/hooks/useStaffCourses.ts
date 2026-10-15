@@ -8,20 +8,28 @@ export interface StaffCourse {
   id: string;
   code: string;
   title: string;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
 }
 
-/** Courses the signed-in staff member may manage: all of them for administrators, else those they teach. */
-export function useStaffCourses() {
+/**
+ * Courses the signed-in staff member may work with: all of them for administrators, else those they
+ * teach. With `editableOnly`, assistants get none: the API lets only administrators and the assigned
+ * instructor change course content, status and structure.
+ */
+export function useStaffCourses(options: { editableOnly?: boolean } = {}) {
   const { user } = useAuth();
-  const { data, isLoading, error } = useApiData<{ data: any[] }>("/api/v1/courses", { limit: 100 });
+  const { data, isLoading, error, reload } = useApiData<{ data: any[] }>("/api/v1/courses", { limit: 100 });
+  const editableOnly = !!options.editableOnly;
 
   const courses = useMemo<StaffCourse[]>(() => {
     const all = data?.data ?? [];
     const admin = user?.role === "TENANT_ADMIN" || user?.role === "SUPER_ADMIN";
+    const mayEdit = admin || user?.role === "INSTRUCTOR";
+    if (editableOnly && !mayEdit) return [];
     return all
       .filter((c) => admin || (c.instructors ?? []).some((i: any) => i.user?.id === user?.id))
-      .map((c) => ({ id: c.id, code: c.code, title: c.title }));
-  }, [data, user]);
+      .map((c) => ({ id: c.id, code: c.code, title: c.title, status: c.status }));
+  }, [data, user, editableOnly]);
 
-  return { courses, isLoading, error };
+  return { courses, isLoading, error, reload };
 }

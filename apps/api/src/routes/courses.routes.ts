@@ -7,6 +7,7 @@ import { CourseStatus, ContentType, EnrollmentStatus } from '@enterprise-lms/dat
 import { HttpError, route } from '../lib/http';
 import { httpUrl, idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { progressFromLessons } from '../lib/lesson-progress';
+import { recomputeCourseProgress } from '../lib/course-progress';
 import { canSeeAllCourses, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
 
 const router = Router();
@@ -496,6 +497,7 @@ router.delete(
       userAgent: req.headers['user-agent'],
       diffJson: { courseId: id, title: existing.title },
     });
+    await recomputeCourseProgress(id);
     return res.status(200).json({ message: 'Module deleted', id: existing.id });
   })
 );
@@ -535,6 +537,7 @@ router.post(
       userAgent: req.headers['user-agent'],
       diffJson: { courseId: id, moduleId: moduleRecord.id, title: lesson.title, contentType: lesson.contentType },
     });
+    await recomputeCourseProgress(id);
     return res.status(201).json({ data: lesson });
   })
 );
@@ -579,6 +582,7 @@ router.delete(
       userAgent: req.headers['user-agent'],
       diffJson: { courseId: id, title: lesson.title },
     });
+    await recomputeCourseProgress(id);
     return res.status(200).json({ message: 'Lesson deleted', id: lesson.id });
   })
 );

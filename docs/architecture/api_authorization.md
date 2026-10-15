@@ -340,6 +340,4 @@ who is not assigned, an admin or an auditor.
   bank screens, the teacher dashboard (metrics, proctoring feed, pending submissions) and the admin
   panels for usage, features, SSO, SCIM tokens, webhooks and data-subject requests, and the "Privacy & data"
   dialog in the header, use the live API. Still built-in sample
-  data: none that are known. Unused older mock components remain in the repo (`Gradebook.tsx`,
-  `ScormQuizPlayer.tsx`, `LiveClassroom.tsx`, `TenantOnboardingModal.tsx`,
-  `AuditSecurityScannerModal.tsx`) and can be deleted.
+  data: none that are known.

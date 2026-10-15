@@ -15,51 +15,9 @@ import {
   Eye,
 } from "lucide-react";
 import { AiCurriculumGenerator } from "@enterprise-lms/security";
+import { LessonFields, blankLesson, isHttpUrl, type LessonDraft } from "./LessonFields";
 
-export type LessonType = "RICHTEXT" | "VIDEO" | "INTERACTIVE_CODE" | "PDF_DOCUMENT" | "EXTERNAL_LTI_TOOL";
-
-export interface BuilderLesson {
-  id: string;
-  title: string;
-  type: LessonType;
-  minutes: number;
-  /** The lesson text; for a code lab, the exercise instructions. */
-  body: string;
-  /** Video or document address, or the external tool's launch address. */
-  url: string;
-}
-
-const LESSON_TYPES: { value: LessonType; label: string }[] = [
-  { value: "RICHTEXT", label: "Reading" },
-  { value: "VIDEO", label: "Video" },
-  { value: "INTERACTIVE_CODE", label: "Code lab" },
-  { value: "PDF_DOCUMENT", label: "Document" },
-  { value: "EXTERNAL_LTI_TOOL", label: "External tool" },
-];
-
-const URL_LABEL: Partial<Record<LessonType, string>> = {
-  VIDEO: "Video address (https)",
-  PDF_DOCUMENT: "Document address (https)",
-  EXTERNAL_LTI_TOOL: "Tool launch address (https)",
-};
-
-const isHttpUrl = (v: string) => {
-  try {
-    return ["http:", "https:"].includes(new URL(v).protocol);
-  } catch {
-    return false;
-  }
-};
-
-const blankLesson = (patch: Partial<BuilderLesson> = {}): BuilderLesson => ({
-  id: `les_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-  title: "",
-  type: "RICHTEXT",
-  minutes: 15,
-  body: "",
-  url: "",
-  ...patch,
-});
+export type BuilderLesson = LessonDraft;
 
 export interface BuilderModule {
   id: string;
@@ -241,6 +199,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                   type="text"
                   value={courseTitle}
                   placeholder="e.g. Introduction to Computer Science"
+                  maxLength={255}
                   onChange={(e) => setCourseTitle(e.target.value)}
                   className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                 />
@@ -252,6 +211,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                   type="text"
                   value={courseCode}
                   placeholder="e.g. CS-101"
+                  maxLength={50}
                   onChange={(e) => setCourseCode(e.target.value)}
                   className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-brand font-mono"
                 />
@@ -346,6 +306,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                       value={mod.title}
                       onChange={(e) => renameModule(mod.id, e.target.value)}
                       placeholder="Module title"
+                      maxLength={255}
                       aria-label={`Title of module ${modIdx + 1}`}
                       className="min-w-0 flex-1 bg-surface border border-line rounded-xl px-3 py-1.5 text-xs font-bold text-ink focus:outline-none focus:border-brand"
                     />
@@ -368,65 +329,13 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
 
                   <div className="space-y-2">
                     {mod.lessons.map((les, lesIdx) => (
-                      <div key={les.id} className="bg-surface border border-line/80 p-3 rounded-xl space-y-2 text-xs">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={les.title}
-                            onChange={(e) => updateLesson(mod.id, les.id, { title: e.target.value })}
-                            placeholder="Lesson title"
-                            aria-label={`Title of lesson ${lesIdx + 1} in module ${modIdx + 1}`}
-                            className="min-w-0 flex-1 bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
-                          />
-                          <select
-                            value={les.type}
-                            onChange={(e) => updateLesson(mod.id, les.id, { type: e.target.value as LessonType })}
-                            aria-label="Lesson type"
-                            className="bg-canvas border border-line rounded-lg px-2 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
-                          >
-                            {LESSON_TYPES.map((t) => (
-                              <option key={t.value} value={t.value}>
-                                {t.label}
-                              </option>
-                            ))}
-                          </select>
-                          <input
-                            type="number"
-                            min={1}
-                            max={1440}
-                            value={les.minutes}
-                            onChange={(e) => updateLesson(mod.id, les.id, { minutes: Math.min(1440, Math.max(1, Number(e.target.value) || 1)) })}
-                            aria-label="Minutes"
-                            className="w-16 bg-canvas border border-line rounded-lg px-2 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
-                          />
-                          <span className="text-[10px] text-ink-subtle">min</span>
-                          <button
-                            onClick={() => deleteLesson(mod.id, les.id)}
-                            aria-label={`Delete lesson ${lesIdx + 1} in module ${modIdx + 1}`}
-                            className="text-ink-subtle hover:text-danger transition-colors"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                        <textarea
-                          rows={3}
-                          value={les.body}
-                          onChange={(e) => updateLesson(mod.id, les.id, { body: e.target.value })}
-                          placeholder={les.type === "INTERACTIVE_CODE" ? "Exercise instructions, shown above the code editor" : "Lesson text. Leave a blank line between paragraphs."}
-                          aria-label="Lesson content"
-                          className="w-full bg-canvas border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
-                        />
-                        {URL_LABEL[les.type] && (
-                          <input
-                            type="url"
-                            value={les.url}
-                            onChange={(e) => updateLesson(mod.id, les.id, { url: e.target.value })}
-                            placeholder={URL_LABEL[les.type]}
-                            aria-label={URL_LABEL[les.type]}
-                            className="w-full bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
-                          />
-                        )}
-                      </div>
+                      <LessonFields
+                        key={les.id}
+                        lesson={les}
+                        label={`lesson ${lesIdx + 1} in module ${modIdx + 1}`}
+                        onChange={(patch) => updateLesson(mod.id, les.id, patch)}
+                        onDelete={() => deleteLesson(mod.id, les.id)}
+                      />
                     ))}
                   </div>
                 </div>

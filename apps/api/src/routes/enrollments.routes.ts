@@ -198,6 +198,8 @@ const listEnrollments = route('Failed to retrieve enrollments', async (req: Requ
         certificate: {
           select: { id: true, certificateNumber: true, issuedAt: true, pdfUrl: true, verificationQr: true },
         },
+        // A roster needs to say who each row is; a learner's own list does not.
+        ...(rosterMode ? { user: { select: { id: true, firstName: true, lastName: true, email: true } } } : {}),
       },
     }),
   ]);

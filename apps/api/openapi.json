@@ -15180,6 +15180,29 @@
                               "pdfUrl",
                               "verificationQr"
                             ]
+                          },
+                          "user": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "firstName": {
+                                "type": "string"
+                              },
+                              "lastName": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "firstName",
+                              "lastName",
+                              "email"
+                            ]
                           }
                         },
                         "required": [
@@ -15334,6 +15357,29 @@
                         "completedAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "firstName": {
+                              "type": "string"
+                            },
+                            "lastName": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "firstName",
+                            "lastName",
+                            "email"
+                          ]
                         },
                         "course": {
                           "type": "object",
@@ -15851,6 +15897,29 @@
                               "issuedAt",
                               "pdfUrl",
                               "verificationQr"
+                            ]
+                          },
+                          "user": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "firstName": {
+                                "type": "string"
+                              },
+                              "lastName": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "firstName",
+                              "lastName",
+                              "email"
                             ]
                           }
                         },

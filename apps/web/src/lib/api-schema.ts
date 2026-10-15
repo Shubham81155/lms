@@ -9642,6 +9642,12 @@ export interface operations {
                                 pdfUrl: string | null;
                                 verificationQr: string;
                             } | null;
+                            user?: {
+                                id: string;
+                                firstName: string;
+                                lastName: string;
+                                email: string;
+                            };
                         }[];
                         pagination: {
                             page: number;
@@ -9706,6 +9712,12 @@ export interface operations {
                             progressPercent: number;
                             enrolledAt: string;
                             completedAt: string | null;
+                            user?: {
+                                id: string;
+                                firstName: string;
+                                lastName: string;
+                                email: string;
+                            };
                             course: {
                                 id: string;
                                 code: string;
@@ -9913,6 +9925,12 @@ export interface operations {
                                 pdfUrl: string | null;
                                 verificationQr: string;
                             } | null;
+                            user?: {
+                                id: string;
+                                firstName: string;
+                                lastName: string;
+                                email: string;
+                            };
                         }[];
                         pagination: {
                             page: number;

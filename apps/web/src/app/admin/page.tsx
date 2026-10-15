@@ -8,6 +8,8 @@ import {
   Database,
   Terminal,
   Activity,
+  Plus,
+  BookOpen,
 } from "lucide-react";
 import { useAuditLogs } from "@/hooks/useAdmin";
 import { useAuth } from "@/context/AuthContext";
@@ -17,6 +19,10 @@ import { FeaturesPanel, UsagePanel, WebhooksPanel, type Usage } from "@/componen
 import { BrandingPanel, CampusPanel, CompliancePanel } from "@/components/admin/OrgPanels";
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
+import { CourseBuilder } from "@/components/CourseBuilder";
+import { CourseContentEditor } from "@/components/CourseContentEditor";
+import { CourseRoster } from "@/components/CourseRoster";
+import { createCourseWithCurriculum } from "@/hooks/useCourses";
 import { plural } from "@/lib/plural";
 
 const TABS = ["overview", "compliance", "sso", "platform", "audit"] as const;
@@ -26,6 +32,9 @@ const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showLrsStream, setShowLrsStream] = useState(false);
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [showContentEditor, setShowContentEditor] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
 
   const { logs } = useAuditLogs();
   const { user } = useAuth();
@@ -75,6 +84,30 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setShowBuilder(true)}
+              className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Course</span>
+            </button>
+
+            <button
+              onClick={() => setShowContentEditor(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
+            >
+              <BookOpen className="h-4 w-4 text-brand-fg" />
+              <span>Course Content</span>
+            </button>
+
+            <button
+              onClick={() => setShowRoster(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
+            >
+              <Users className="h-4 w-4 text-success" />
+              <span>Learners</span>
+            </button>
+
             <button
               onClick={() => setShowLrsStream(true)}
               className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
@@ -183,6 +216,23 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {showBuilder && (
+          <CourseBuilder
+            onClose={() => setShowBuilder(false)}
+            onSave={async (draft) => {
+              try {
+                await createCourseWithCurriculum(draft);
+              } finally {
+                usage.reload();
+              }
+            }}
+          />
+        )}
+
+        {showContentEditor && <CourseContentEditor onClose={() => setShowContentEditor(false)} />}
+
+        {showRoster && <CourseRoster onClose={() => setShowRoster(false)} />}
 
         {/* xAPI Learning Record Store (LRS) Statement Stream */}
         {showLrsStream && (

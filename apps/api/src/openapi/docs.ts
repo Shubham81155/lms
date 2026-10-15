@@ -128,6 +128,8 @@ export const EnrollmentItem = z.object({
     .object({ id: z.string(), certificateNumber: z.string(), issuedAt: z.string(), pdfUrl: z.string().nullable(), verificationQr: z.string() })
     .nullable()
     .optional(),
+  /** Present on rosters (a ?courseId= or another ?userId=), not on a learner's own list. */
+  user: z.object({ id: z.string(), firstName: z.string(), lastName: z.string(), email: z.string() }).optional(),
 });
 
 export const QuizAttempt = z.object({
