@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { typedPut } from "@/lib/typed-api";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
 
@@ -67,7 +67,7 @@ export const NotificationSettings: React.FC<{ onDone: () => void }> = ({ onDone 
 
   const save = () =>
     run(async () => {
-      await api.put("/api/v1/notifications/preferences", {
+      await typedPut("/api/v1/notifications/preferences", {
         inAppEnabled: inApp,
         emailEnabled: email,
         mutedCategories: muted,

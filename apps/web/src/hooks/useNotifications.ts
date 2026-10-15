@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
+import { typedGet } from "@/lib/typed-api";
 
 export interface ServerNotification {
   id: string;
@@ -69,9 +70,7 @@ export function useNotifications() {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await api.get<{ data: ServerNotification[]; unreadCount: number }>("/api/v1/notifications", {
-        params: { limit: 50 },
-      });
+      const res = await typedGet("/api/v1/notifications", { limit: 50 });
       if (!alive.current) return;
       setItems(res.data.map(toItem));
       setUnreadCount(res.unreadCount);

@@ -40,8 +40,8 @@ const quizFields = {
   requireProctoring: z.boolean().optional(),
   passingPercent: z.number().min(0).max(100).optional(),
 };
-const createQuizSchema = z.object(quizFields);
-const updateQuizSchema = z.object(quizFields).partial();
+export const createQuizSchema = z.object(quizFields);
+export const updateQuizSchema = z.object(quizFields).partial();
 
 const optionSchema = z.object({
   id: idSchema.optional(),
@@ -59,18 +59,18 @@ const questionFields = {
   explanation: z.string().max(10_000).nullable().optional(),
   bloomLevel: z.enum(['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE']).nullable().optional(),
 };
-const createQuestionSchema = z.object(questionFields);
-const updateQuestionSchema = z.object(questionFields).partial();
+export const createQuestionSchema = z.object(questionFields);
+export const updateQuestionSchema = z.object(questionFields).partial();
 
 const answerValue = z.union([z.string().max(20_000), z.array(z.string().max(2000)).max(50)]);
-const submitSchema = z.object({
+export const submitSchema = z.object({
   answers: z.union([
     z.record(z.string().max(64), answerValue),
     z.array(z.object({ questionId: idSchema, answer: answerValue.nullable() })).max(1000),
   ]),
 });
 
-const manualGradeSchema = z.object({
+export const manualGradeSchema = z.object({
   grades: z.record(z.string().max(64), z.number().min(0).max(1000)),
 });
 
@@ -80,17 +80,17 @@ const assignmentFields = {
   maxPoints: z.number().positive().max(10_000).optional(),
   dueDate: z.coerce.date().nullable().optional(),
 };
-const createAssignmentSchema = z.object(assignmentFields);
-const updateAssignmentSchema = z.object(assignmentFields).partial();
+export const createAssignmentSchema = z.object(assignmentFields);
+export const updateAssignmentSchema = z.object(assignmentFields).partial();
 
-const assignmentSubmissionSchema = z
+export const assignmentSubmissionSchema = z
   .object({
     fileUrl: httpUrl.or(z.literal('')).optional(),
     submissionText: z.string().max(100_000).optional(),
   })
   .refine((d) => d.fileUrl || d.submissionText, { message: 'Either fileUrl or submissionText must be provided' });
 
-const gradeSubmissionSchema = z
+export const gradeSubmissionSchema = z
   .object({
     grade: z.number().min(0).optional(),
     /** Points per rubric criterion, for assignments that have a rubric. */

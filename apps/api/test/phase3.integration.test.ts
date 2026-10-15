@@ -634,3 +634,27 @@ describe('validation, errors and logging', () => {
     expect((await m.get('/api/v1/admin/stats')).body.data.totalUsers).toBe(2);
   });
 });
+
+describe('quiz responses match the API description', () => {
+  it('start and submit have the documented shape', async () => {
+    const { QuizAttempt, QuizResult } = await import('../src/openapi/docs.js');
+    const t = await as('teacher');
+    const q = (await t.post('/api/v1/courses/c1/quizzes').send({ title: 'Contract', maxAttempts: 3 })).body.data.id;
+    const question = await t.post(`/api/v1/quizzes/${q}/questions`).send({
+      questionText: 'Capital of France?', questionType: 'MULTIPLE_CHOICE', points: 1,
+      optionsJson: [{ id: 'a', text: 'Paris', isCorrect: true }, { id: 'b', text: 'Rome', isCorrect: false }],
+    });
+    expect(question.status).toBe(201);
+    const mc = question.body.data.id;
+    const s4 = await as('s4');
+
+    const started = await s4.post(`/api/v1/quizzes/${q}/start`);
+    expect(started.status).toBe(201);
+    expect(QuizAttempt.safeParse(started.body.data).success, JSON.stringify(started.body)).toBe(true);
+    expect(started.body.data.expiresAt).toBeNull(); // untimed
+
+    const submitted = await s4.post(`/api/v1/quizzes/${q}/submit`).send({ answers: { [mc]: 'a' } });
+    expect(submitted.status).toBe(201);
+    expect(QuizResult.safeParse(submitted.body.data).success, JSON.stringify(submitted.body)).toBe(true);
+  });
+});

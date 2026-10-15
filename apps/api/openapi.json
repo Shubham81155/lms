@@ -1944,6 +1944,7 @@
       },
       "patch": {
         "operationId": "patchAssignmentsId",
+        "summary": "Update an assignment.",
         "tags": [
           "assignments"
         ],
@@ -1965,12 +1966,74 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "instructions": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50000
+                  },
+                  "maxPoints": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 10000
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2065,6 +2128,7 @@
       },
       "post": {
         "operationId": "postAssignmentsIdSubmissions",
+        "summary": "Submit work: a file URL, text, or both.",
         "tags": [
           "assignments"
         ],
@@ -2086,12 +2150,83 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      }
+                    ]
+                  },
+                  "submissionText": {
+                    "type": "string",
+                    "maxLength": 100000
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
             "content": {
               "application/json": {
                 "schema": {
@@ -2155,6 +2290,7 @@
     "/api/v1/assignments/{id}/submissions/{subId}/grade": {
       "patch": {
         "operationId": "patchAssignmentsIdSubmissionsSubIdGrade",
+        "summary": "Grade a submission with a total, or per rubric criterion (send one of grade / criteria).",
         "tags": [
           "assignments"
         ],
@@ -2184,12 +2320,70 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "grade": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "criteria": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 10000
+                    }
+                  },
+                  "feedback": {
+                    "type": "string",
+                    "maxLength": 10000
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2204,6 +2398,7 @@
     "/api/v1/assignments/{id}/submit": {
       "post": {
         "operationId": "postAssignmentsIdSubmit",
+        "summary": "Alias of POST /api/v1/assignments/:id/submissions.",
         "tags": [
           "assignments"
         ],
@@ -2225,12 +2420,83 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2048,
+                        "format": "uri"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      }
+                    ]
+                  },
+                  "submissionText": {
+                    "type": "string",
+                    "maxLength": 100000
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
             "content": {
               "application/json": {
                 "schema": {
@@ -3705,6 +3971,7 @@
       },
       "post": {
         "operationId": "postCoursesCourseIdAssignments",
+        "summary": "Create an assignment in a course.",
         "tags": [
           "courses"
         ],
@@ -3726,12 +3993,78 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "instructions": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50000
+                  },
+                  "maxPoints": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 10000
+                  },
+                  "dueDate": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "title",
+                  "instructions"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4316,6 +4649,7 @@
       },
       "post": {
         "operationId": "postCoursesCourseIdQuizzes",
+        "summary": "Create a quiz in a course (course editors).",
         "tags": [
           "courses"
         ],
@@ -4337,12 +4671,84 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "timeLimitMins": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 1,
+                    "maximum": 1440
+                  },
+                  "maxAttempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "randomizeQuestions": {
+                    "type": "boolean"
+                  },
+                  "requireProctoring": {
+                    "type": "boolean"
+                  },
+                  "passingPercent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -6456,6 +6862,7 @@
     "/api/v1/notifications": {
       "get": {
         "operationId": "getNotifications",
+        "summary": "The caller's own notifications, newest first. (Pagination is under `meta` here, unlike the lists above that use `pagination`.)",
         "tags": [
           "notifications"
         ],
@@ -6467,9 +6874,137 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000,
+              "default": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 10
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "required": false,
+            "name": "category",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "false"
+            },
+            "required": false,
+            "name": "unreadOnly",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Success (response body not yet described)"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "body": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "link": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "readAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "category",
+                          "title",
+                          "body",
+                          "link",
+                          "readAt",
+                          "createdAt"
+                        ]
+                      }
+                    },
+                    "unreadCount": {
+                      "type": "number"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "number"
+                        },
+                        "limit": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "totalPages": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "limit",
+                        "total",
+                        "totalPages"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "unreadCount",
+                    "meta"
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
@@ -6487,6 +7022,7 @@
     "/api/v1/notifications/{id}": {
       "delete": {
         "operationId": "deleteNotificationsId",
+        "summary": "Delete a notification.",
         "tags": [
           "notifications"
         ],
@@ -6509,11 +7045,21 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Success (response body not yet described)"
+          "204": {
+            "description": "Deleted"
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -6528,6 +7074,7 @@
     "/api/v1/notifications/{id}/read": {
       "post": {
         "operationId": "postNotificationsIdRead",
+        "summary": "Mark one notification read.",
         "tags": [
           "notifications"
         ],
@@ -6551,10 +7098,50 @@
         ],
         "responses": {
           "200": {
-            "description": "Success (response body not yet described)"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "read": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "read"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -6569,6 +7156,7 @@
     "/api/v1/notifications/preferences": {
       "get": {
         "operationId": "getNotificationsPreferences",
+        "summary": "Delivery channels, muted categories, quiet hours and time zone.",
         "tags": [
           "notifications"
         ],
@@ -6582,7 +7170,74 @@
         ],
         "responses": {
           "200": {
-            "description": "Success (response body not yet described)"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "inAppEnabled": {
+                          "type": "boolean"
+                        },
+                        "emailEnabled": {
+                          "type": "boolean"
+                        },
+                        "smsEnabled": {
+                          "type": "boolean"
+                        },
+                        "pushEnabled": {
+                          "type": "boolean"
+                        },
+                        "mutedCategories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "quietStartHour": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "quietEndHour": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "emailedCategories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "quietNow": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "inAppEnabled",
+                        "emailEnabled",
+                        "smsEnabled",
+                        "pushEnabled",
+                        "mutedCategories",
+                        "quietStartHour",
+                        "quietEndHour",
+                        "timezone",
+                        "emailedCategories",
+                        "quietNow"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
@@ -6598,6 +7253,7 @@
       },
       "put": {
         "operationId": "putNotificationsPreferences",
+        "summary": "Update notification preferences; quiet hours must be set together.",
         "tags": [
           "notifications"
         ],
@@ -6609,9 +7265,124 @@
             "bearerAuth": []
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "inAppEnabled": {
+                    "type": "boolean"
+                  },
+                  "emailEnabled": {
+                    "type": "boolean"
+                  },
+                  "smsEnabled": {
+                    "type": "boolean"
+                  },
+                  "pushEnabled": {
+                    "type": "boolean"
+                  },
+                  "mutedCategories": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "maxItems": 20
+                  },
+                  "quietStartHour": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 0,
+                    "maximum": 23
+                  },
+                  "quietEndHour": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 0,
+                    "maximum": 23
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "Success (response body not yet described)"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "inAppEnabled": {
+                          "type": "boolean"
+                        },
+                        "emailEnabled": {
+                          "type": "boolean"
+                        },
+                        "smsEnabled": {
+                          "type": "boolean"
+                        },
+                        "pushEnabled": {
+                          "type": "boolean"
+                        },
+                        "mutedCategories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "quietStartHour": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "quietEndHour": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "timezone": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "inAppEnabled",
+                        "emailEnabled",
+                        "smsEnabled",
+                        "pushEnabled",
+                        "mutedCategories",
+                        "quietStartHour",
+                        "quietEndHour",
+                        "timezone"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
@@ -6629,6 +7400,7 @@
     "/api/v1/notifications/read-all": {
       "post": {
         "operationId": "postNotificationsReadAll",
+        "summary": "Mark every notification read.",
         "tags": [
           "notifications"
         ],
@@ -6642,7 +7414,30 @@
         ],
         "responses": {
           "200": {
-            "description": "Success (response body not yet described)"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "updated": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "updated"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
@@ -7030,6 +7825,7 @@
       },
       "patch": {
         "operationId": "patchQuizzesId",
+        "summary": "Update quiz settings.",
         "tags": [
           "quizzes"
         ],
@@ -7051,12 +7847,81 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "timeLimitMins": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 1,
+                    "maximum": 1440
+                  },
+                  "maxAttempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "randomizeQuestions": {
+                    "type": "boolean"
+                  },
+                  "requireProctoring": {
+                    "type": "boolean"
+                  },
+                  "passingPercent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -7071,6 +7936,7 @@
     "/api/v1/quizzes/{id}/questions": {
       "post": {
         "operationId": "postQuizzesIdQuestions",
+        "summary": "Add a question to a quiz.",
         "tags": [
           "quizzes"
         ],
@@ -7092,12 +7958,135 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questionText": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 10000
+                  },
+                  "questionType": {
+                    "type": "string",
+                    "enum": [
+                      "MULTIPLE_CHOICE",
+                      "MULTI_SELECT",
+                      "TRUE_FALSE",
+                      "SHORT_ANSWER",
+                      "ESSAY",
+                      "CODE_SANDBOX",
+                      "FORMULA_CALCULATED"
+                    ]
+                  },
+                  "points": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 1000
+                  },
+                  "orderIndex": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "optionsJson": {
+                    "type": "array",
+                    "nullable": true,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "isCorrect": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isCorrect"
+                      ]
+                    },
+                    "maxItems": 20
+                  },
+                  "correctAnswer": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 5000
+                  },
+                  "explanation": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 10000
+                  },
+                  "bloomLevel": {
+                    "type": "string",
+                    "nullable": true,
+                    "enum": [
+                      "REMEMBER",
+                      "UNDERSTAND",
+                      "APPLY",
+                      "ANALYZE",
+                      "EVALUATE",
+                      "CREATE"
+                    ]
+                  }
+                },
+                "required": [
+                  "questionText",
+                  "questionType"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -7159,6 +8148,7 @@
       },
       "patch": {
         "operationId": "patchQuizzesIdQuestionsQuestionId",
+        "summary": "Update a question.",
         "tags": [
           "quizzes"
         ],
@@ -7188,12 +8178,131 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questionText": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 10000
+                  },
+                  "questionType": {
+                    "type": "string",
+                    "enum": [
+                      "MULTIPLE_CHOICE",
+                      "MULTI_SELECT",
+                      "TRUE_FALSE",
+                      "SHORT_ANSWER",
+                      "ESSAY",
+                      "CODE_SANDBOX",
+                      "FORMULA_CALCULATED"
+                    ]
+                  },
+                  "points": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 1000
+                  },
+                  "orderIndex": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "optionsJson": {
+                    "type": "array",
+                    "nullable": true,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "isCorrect": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "text",
+                        "isCorrect"
+                      ]
+                    },
+                    "maxItems": 20
+                  },
+                  "correctAnswer": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 5000
+                  },
+                  "explanation": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 10000
+                  },
+                  "bloomLevel": {
+                    "type": "string",
+                    "nullable": true,
+                    "enum": [
+                      "REMEMBER",
+                      "UNDERSTAND",
+                      "APPLY",
+                      "ANALYZE",
+                      "EVALUATE",
+                      "CREATE"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -7208,6 +8317,7 @@
     "/api/v1/quizzes/{id}/start": {
       "post": {
         "operationId": "postQuizzesIdStart",
+        "summary": "Start a timed attempt, or resume the open one. 201 for a new attempt, 200 when resuming.",
         "tags": [
           "quizzes"
         ],
@@ -7230,11 +8340,91 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Success (response body not yet described)"
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "submissionId": {
+                          "type": "string"
+                        },
+                        "attemptNumber": {
+                          "type": "number"
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "resumed": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "submissionId",
+                        "attemptNumber",
+                        "startedAt",
+                        "expiresAt",
+                        "resumed"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
             "content": {
               "application/json": {
                 "schema": {
@@ -7288,6 +8478,7 @@
       },
       "post": {
         "operationId": "postQuizzesIdSubmissions",
+        "summary": "Alias of POST /api/v1/quizzes/:id/submit.",
         "tags": [
           "quizzes"
         ],
@@ -7309,12 +8500,178 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answers": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 20000
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "maxLength": 2000
+                              },
+                              "maxItems": 50
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "questionId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "answer": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 20000
+                                },
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "maxLength": 2000
+                                  },
+                                  "maxItems": 50
+                                },
+                                {
+                                  "nullable": true
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "questionId",
+                            "answer"
+                          ]
+                        },
+                        "maxItems": 1000
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "answers"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
-          "200": {
-            "description": "Success (response body not yet described)"
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "submissionId": {
+                          "type": "string"
+                        },
+                        "score": {
+                          "type": "number"
+                        },
+                        "maxScore": {
+                          "type": "number"
+                        },
+                        "percentage": {
+                          "type": "number"
+                        },
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "attemptNumber": {
+                          "type": "number"
+                        },
+                        "attemptsRemaining": {
+                          "type": "number"
+                        },
+                        "pendingManualGrading": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "submissionId",
+                        "score",
+                        "maxScore",
+                        "percentage",
+                        "passed",
+                        "attemptNumber",
+                        "attemptsRemaining",
+                        "pendingManualGrading"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
             "content": {
               "application/json": {
                 "schema": {
@@ -7329,6 +8686,7 @@
     "/api/v1/quizzes/{id}/submissions/{subId}/grade": {
       "patch": {
         "operationId": "patchQuizzesIdSubmissionsSubIdGrade",
+        "summary": "Manually grade the essay/code questions of a submission (points per question id).",
         "tags": [
           "quizzes"
         ],
@@ -7358,12 +8716,65 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "grades": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000
+                    }
+                  }
+                },
+                "required": [
+                  "grades"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success (response body not yet described)"
           },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -7378,6 +8789,7 @@
     "/api/v1/quizzes/{id}/submit": {
       "post": {
         "operationId": "postQuizzesIdSubmit",
+        "summary": "Submit answers. Objective questions are graded immediately; essay and code questions wait for a grader.",
         "tags": [
           "quizzes"
         ],
@@ -7399,12 +8811,178 @@
             "in": "path"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answers": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 20000
+                            },
+                            {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "maxLength": 2000
+                              },
+                              "maxItems": 50
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "questionId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "answer": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 20000
+                                },
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "maxLength": 2000
+                                  },
+                                  "maxItems": 50
+                                },
+                                {
+                                  "nullable": true
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "questionId",
+                            "answer"
+                          ]
+                        },
+                        "maxItems": 1000
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "answers"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
-          "200": {
-            "description": "Success (response body not yet described)"
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "submissionId": {
+                          "type": "string"
+                        },
+                        "score": {
+                          "type": "number"
+                        },
+                        "maxScore": {
+                          "type": "number"
+                        },
+                        "percentage": {
+                          "type": "number"
+                        },
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "attemptNumber": {
+                          "type": "number"
+                        },
+                        "attemptsRemaining": {
+                          "type": "number"
+                        },
+                        "pendingManualGrading": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "submissionId",
+                        "score",
+                        "maxScore",
+                        "percentage",
+                        "passed",
+                        "attemptNumber",
+                        "attemptsRemaining",
+                        "pendingManualGrading"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
             "content": {
               "application/json": {
                 "schema": {

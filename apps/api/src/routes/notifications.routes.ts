@@ -9,7 +9,7 @@ import { EMAIL_CATEGORIES, hourInZone, inQuietHours } from '../lib/notify';
 const router = Router();
 router.use(authenticateJWT);
 
-const listQuery = z.object({
+export const listQuery = z.object({
   ...paginationShape,
   category: z.string().trim().min(1).max(40).optional(),
   unreadOnly: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
@@ -25,7 +25,7 @@ const timeZone = z.string().max(64).refine((tz) => {
   }
 }, 'Unknown time zone');
 
-const prefsSchema = z
+export const prefsSchema = z
   .object({
     inAppEnabled: z.boolean(),
     emailEnabled: z.boolean(),

@@ -998,3 +998,31 @@ describe('forum replies are paged', () => {
     expect((await s1.get(`/api/v1/threads/${id}`)).body.data.nextCursor).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+describe('notification responses match the API description', () => {
+  it('list, preferences and bulk actions have the documented shape', async () => {
+    const { NotificationItem, NotificationPreferences, NotificationPreferencesDetail, Pagination } = await import('../src/openapi/docs.js');
+    const { z } = await import('zod');
+    const s1 = await as('s1');
+
+    const list = await s1.get('/api/v1/notifications');
+    expect(list.status).toBe(200);
+    const shape = z.object({ data: z.array(NotificationItem), unreadCount: z.number(), meta: Pagination });
+    expect(shape.safeParse(list.body).success, JSON.stringify(shape.safeParse(list.body))).toBe(true);
+    expect(list.body.data.length).toBeGreaterThan(0);
+    expect(Object.keys(list.body.data[0]).sort()).toEqual(Object.keys(NotificationItem.shape).sort()); // nothing internal leaks
+
+    const prefs = await s1.get('/api/v1/notifications/preferences');
+    expect(NotificationPreferencesDetail.safeParse(prefs.body.data).success, JSON.stringify(prefs.body)).toBe(true);
+    const saved = await s1.put('/api/v1/notifications/preferences').send({ mutedCategories: ['GRADE'], timezone: 'Asia/Kolkata' });
+    expect(saved.status).toBe(200);
+    expect(NotificationPreferences.safeParse(saved.body.data).success, JSON.stringify(saved.body)).toBe(true);
+
+    const first = list.body.data[0].id;
+    const one = await s1.post(`/api/v1/notifications/${first}/read`);
+    expect(z.object({ id: z.string(), read: z.literal(true) }).safeParse(one.body.data).success).toBe(true);
+    const all = await s1.post('/api/v1/notifications/read-all');
+    expect(z.object({ updated: z.number() }).safeParse(all.body.data).success).toBe(true);
+  });
+});

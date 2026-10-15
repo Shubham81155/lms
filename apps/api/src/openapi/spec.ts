@@ -75,7 +75,7 @@ export function buildOpenApi() {
     if (doc?.response) {
       responses[doc.response.status] = {
         description: doc.response.description ?? 'Success',
-        content: { 'application/json': { schema: doc.response.schema } },
+        ...(doc.response.schema ? { content: { 'application/json': { schema: doc.response.schema } } } : {}),
       };
     } else {
       responses['200'] = { description: 'Success (response body not yet described)' };
