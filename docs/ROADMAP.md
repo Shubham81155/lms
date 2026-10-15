@@ -85,7 +85,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **Append-only audit trail** (database role cannot update or delete audit rows) | Done | enforced and tested at the database |
 | OneRoster / SIS-ERP connectors (Banner, PowerSchool, Workday, SAP, Salesforce) | Open | adapter library only |
 | Open Badges 3.0 issuance, PDF certificates | Partial | credential engine exists; certificate PDF not rendered |
-| GDPR access, erasure and FERPA directory opt-out | Partial | self-serve JSON export, account erasure (anonymises the person, keeps grades; audit trail is append-only so it keeps ids/IPs) and directory opt-out are API endpoints under `/api/v1/privacy`, admin versions included; the web modal `DsarComplianceModal` still runs on sample data |
+| GDPR access, erasure and FERPA directory opt-out | Done | self-serve JSON export, account erasure (anonymises the person, keeps grades; audit trail is append-only so it keeps ids/IPs) and directory opt-out under `/api/v1/privacy`; every user has a "Privacy & data" dialog in the header, administrators answer requests for others from the Security & Compliance tab. No request queue or retention scheduler yet |
 | Penetration test, SOC 2 / FERPA audit | Open | process, not code |
 | Load test (100k exam takers), multi-region HA / DR | Open | targets in `load_testing_sla.md` |
 | Redis cache, read replicas, PgBouncer | Open | |
@@ -94,4 +94,4 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 
 1. Webcam/audio proctoring; Turnitin/Copyleaks adapter.
 2. Daily digest e-mails and SMS/push channels.
-3. Wire `DsarComplianceModal` to `/api/v1/privacy`, then add a DSAR request queue and retention scheduler.
+3. DSAR request queue (log, deadline tracking) and a data-retention scheduler.

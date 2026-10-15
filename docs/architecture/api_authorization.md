@@ -338,7 +338,8 @@ who is not assigned, an admin or an auditor.
 * Web client: the student dashboard (courses, to-do list, real quiz taking with browser-side proctoring
   events, assignments, certificates), notifications, forum, calendar, gamification, the LRS viewer, the gradebook and question
   bank screens, the teacher dashboard (metrics, proctoring feed, pending submissions) and the admin
-  panels for usage, features, SSO, SCIM tokens and webhooks use the live API. Still built-in sample
+  panels for usage, features, SSO, SCIM tokens, webhooks and data-subject requests, and the "Privacy & data"
+  dialog in the header, use the live API. Still built-in sample
   data: none that are known. Unused older mock components remain in the repo (`Gradebook.tsx`,
-  `ScormQuizPlayer.tsx`, `LiveClassroom.tsx`, `DsarComplianceModal.tsx`, `TenantOnboardingModal.tsx`,
+  `ScormQuizPlayer.tsx`, `LiveClassroom.tsx`, `TenantOnboardingModal.tsx`,
   `AuditSecurityScannerModal.tsx`) and can be deleted.

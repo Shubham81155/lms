@@ -17,10 +17,12 @@ import {
   Terminal,
   Building,
   Calendar,
+  UserCog,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { PrivacySettings } from "@/components/PrivacySettings";
 import { useNotifications } from "@/hooks/useNotifications";
 
 interface NavigationProps {
@@ -36,7 +38,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 }) => {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifications = useNotifications();
 
@@ -181,6 +183,15 @@ export const Navigation: React.FC<NavigationProps> = ({
               <span className="text-[10px] text-slate-400">{displayInfo.roleTitle}</span>
             </div>
 
+            <button
+              onClick={() => setShowPrivacy(true)}
+              title="Privacy & your data"
+              aria-label="Privacy and your data"
+              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 hover:text-white text-slate-400 border border-slate-800 transition-colors ml-1"
+            >
+              <UserCog className="h-4 w-4" />
+            </button>
+
             {/* Production Sign Out Button */}
             <button
               onClick={() => logout()}
@@ -192,6 +203,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
         </div>
       </div>
+      {showPrivacy && <PrivacySettings onClose={() => setShowPrivacy(false)} />}
     </header>
   );
 };

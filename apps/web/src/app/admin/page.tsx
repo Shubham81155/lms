@@ -26,6 +26,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { SamlPanel, ScimPanel, SsoPanel } from "@/components/admin/IdentityPanels";
 import { FeaturesPanel, UsagePanel, WebhooksPanel, type Usage } from "@/components/admin/PlatformPanels";
 import { BrandingPanel, CampusPanel, CompliancePanel } from "@/components/admin/OrgPanels";
+import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 
 export default function AdminDashboard() {
@@ -160,8 +161,13 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === "compliance" && (
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-            <CompliancePanel />
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+              <CompliancePanel />
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+              <PrivacyPanel />
+            </div>
           </div>
         )}
 
