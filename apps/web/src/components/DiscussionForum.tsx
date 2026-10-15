@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useCourseByCode, useForum } from "@/hooks/useEngagement";
 import {
@@ -73,8 +73,18 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
     setNewContent("");
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (showNewThreadModal) setShowNewThreadModal(false);
+      else onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, showNewThreadModal]);
+
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="forum-h">
       <div className="bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Top Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
@@ -84,7 +94,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-ink">Course Collaboration & Q&A Forum</h3>
+                <h3 id="forum-h" className="font-bold text-base text-ink">Course Collaboration & Q&A Forum</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand-fg border border-brand/50">
                   {course?.code ?? courseCode} Community
                 </span>
@@ -107,6 +117,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
             )}
             <button
               onClick={onClose}
+              aria-label="Close"
               className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />

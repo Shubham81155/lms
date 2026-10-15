@@ -27,7 +27,7 @@ import {
   Library,
   ClipboardCheck,
 } from "lucide-react";
-import { useCourses, useCreateCourse } from "@/hooks/useCourses";
+import { useCourses, createCourseWithCurriculum } from "@/hooks/useCourses";
 import { DiscussionForum } from "@/components/DiscussionForum";
 import { FacultyAnalyticsModal } from "@/components/FacultyAnalyticsModal";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
@@ -79,7 +79,6 @@ export default function TeacherDashboard() {
   };
 
   const { courses, refetch: refetchCourses } = useCourses();
-  const { createCourse, isCreating } = useCreateCourse();
 
   const { user } = useAuth();
   const { analytics } = useCohortAnalytics();
@@ -341,17 +340,11 @@ export default function TeacherDashboard() {
       {showCourseBuilder && (
         <CourseBuilder
           onClose={() => setShowCourseBuilder(false)}
-          onSave={async (course) => {
+          onSave={async (draft) => {
             try {
-              await createCourse({
-                title: course.title,
-                code: course.code,
-                passingGradePercent: 70,
-              });
+              await createCourseWithCurriculum(draft);
+            } finally {
               refetchCourses();
-              alert(`Course "${course.title}" successfully persisted to PostgreSQL and published!`);
-            } catch (err: any) {
-              alert(`Course created locally: "${course.title}"`);
             }
           }}
         />

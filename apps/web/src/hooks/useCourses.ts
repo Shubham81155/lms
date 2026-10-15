@@ -154,3 +154,45 @@ export function useUpdateCourse() {
     error,
   };
 }
+
+const LESSON_CONTENT_TYPE: Record<string, string> = {
+  VIDEO: 'VIDEO',
+  CODE: 'INTERACTIVE_CODE',
+  SCORM: 'SCORM_PACKAGE',
+  RICHTEXT: 'RICHTEXT',
+};
+
+/**
+ * Creates a course and then its modules and lessons, in order. Throws with a message that says
+ * what was and was not saved, so a half-built course is never reported as a success.
+ */
+export async function createCourseWithCurriculum(draft: import('@/components/CourseBuilder').CourseDraft): Promise<Course> {
+  const res = await api.post<any>('/api/v1/courses', {
+    title: draft.title,
+    code: draft.code,
+    status: draft.status,
+    passingGradePercent: draft.passingGradePercent,
+    allowSelfEnroll: draft.allowSelfEnroll,
+    enableProctoring: draft.enableProctoring,
+  });
+  const course: Course = res.data ?? res.course ?? res;
+
+  for (const [m, mod] of draft.modules.entries()) {
+    try {
+      const created = await api.post<any>(`/api/v1/courses/${course.id}/modules`, { title: mod.title, orderIndex: m });
+      const moduleId = (created.data ?? created).id;
+      for (const [l, lesson] of mod.lessons.entries()) {
+        await api.post(`/api/v1/courses/${course.id}/modules/${moduleId}/lessons`, {
+          title: lesson.title,
+          orderIndex: l,
+          contentType: LESSON_CONTENT_TYPE[lesson.type] ?? 'RICHTEXT',
+          estimatedMinutes: Math.max(1, parseInt(lesson.duration, 10) || 15),
+        });
+      }
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'unknown error';
+      throw new Error(`The course "${draft.code}" was created, but "${mod.title}" could not be saved (${reason}). Add the missing content from the course page.`);
+    }
+  }
+  return course;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   X,
   Plus,
@@ -20,30 +20,47 @@ import {
 } from "lucide-react";
 import { AiCurriculumGenerator } from "@enterprise-lms/security";
 
+export interface BuilderLesson {
+  id: string;
+  title: string;
+  type: string;
+  duration: string;
+}
+
+export interface BuilderModule {
+  id: string;
+  title: string;
+  lessons: BuilderLesson[];
+}
+
+export interface CourseDraft {
+  title: string;
+  code: string;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  passingGradePercent: number;
+  allowSelfEnroll: boolean;
+  enableProctoring: boolean;
+  modules: BuilderModule[];
+}
+
 interface CourseBuilderProps {
   onClose: () => void;
-  onSave: (courseData: any) => void;
+  /** Resolves once the course is saved; rejects with the reason it was not. The builder stays open on rejection. */
+  onSave: (course: CourseDraft) => Promise<void>;
 }
 
 export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave }) => {
-  const [courseTitle, setCourseTitle] = useState("CS-401: Cloud Native Microservices & Kubernetes");
-  const [courseCode, setCourseCode] = useState("CS-401");
-  const [courseStatus, setCourseStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("PUBLISHED");
+  const [courseTitle, setCourseTitle] = useState("");
+  const [courseCode, setCourseCode] = useState("");
+  const [courseStatus, setCourseStatus] = useState<CourseDraft["status"]>("DRAFT");
   const [passingGradePercent, setPassingGradePercent] = useState(70);
   const [allowSelfEnroll, setAllowSelfEnroll] = useState(true);
   const [enableProctoring, setEnableProctoring] = useState(true);
 
-  const [modules, setModules] = useState([
-    {
-      id: "mod_1",
-      title: "Module 1: Distributed Architectures & Service Mesh",
-      lessons: [
-        { id: "les_1", title: "1.1 Introduction to Envoy & Istio mTLS", type: "VIDEO", duration: "25 min" },
-        { id: "les_2", title: "1.2 Interactive Lab: Configuring Zero-Trust Ingress", type: "CODE", duration: "45 min" },
-        { id: "les_3", title: "1.3 SCORM 2004 Module: Microservices Resiliency", type: "SCORM", duration: "30 min" },
-      ],
-    },
-  ]);
+  const [modules, setModules] = useState<BuilderModule[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
   const [aiTopic, setAiTopic] = useState("");
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [aiGeneratedItems, setAiGeneratedItems] = useState<any | null>(null);
@@ -89,7 +106,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
     };
 
     setModules([...modules, newModule]);
-    alert(`Successfully generated and attached Module ${modules.length + 1} with ${newLessons.length} lessons!`);
+    setAiNotice(`Added Module ${modules.length + 1} with ${newLessons.length} lessons.`);
   };
 
   const addModule = () => {
@@ -104,7 +121,6 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
   };
 
   const deleteModule = (modId: string) => {
-    if (modules.length <= 1) return;
     setModules(modules.filter((m) => m.id !== modId));
   };
 
@@ -129,8 +145,36 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
     );
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !isSaving && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose, isSaving]);
+
+  const canSave = courseTitle.trim().length >= 3 && courseCode.trim().length >= 2 && !isSaving;
+
+  const save = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSave({
+        title: courseTitle.trim(),
+        code: courseCode.trim(),
+        status: courseStatus,
+        passingGradePercent,
+        allowSelfEnroll,
+        enableProctoring,
+        modules,
+      });
+      onClose();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Could not save the course.");
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="course-builder-h">
       <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
@@ -139,7 +183,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
               <Layers className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-ink">Course & Curriculum Designer</h3>
+              <h3 id="course-builder-h" className="font-bold text-sm text-ink">Course & Curriculum Designer</h3>
               <p className="text-[11px] text-ink-muted">
                 Full Lifecycle Management • SCORM / LTI / AI Bloom's Taxonomy
               </p>
@@ -148,31 +192,29 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                onSave({
-                  title: courseTitle,
-                  code: courseCode,
-                  status: courseStatus,
-                  passingGradePercent,
-                  allowSelfEnroll,
-                  enableProctoring,
-                  modules,
-                });
-                onClose();
-              }}
-              className="px-5 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-brand/20 transition-all"
+              onClick={save}
+              disabled={!canSave}
+              className="px-5 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-brand/20 transition-all disabled:opacity-50"
             >
               <Save className="h-4 w-4" />
-              <span>Save & Publish</span>
+              <span>{isSaving ? "Saving…" : "Create Course"}</span>
             </button>
             <button
               onClick={onClose}
+              disabled={isSaving}
+              aria-label="Close"
               className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
+
+        {saveError && (
+          <div role="alert" className="border-b border-danger/30 bg-danger/10 px-6 py-2.5 text-xs font-semibold text-danger">
+            {saveError}
+          </div>
+        )}
 
         {/* Content Area */}
         <div className="flex-1 p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -185,6 +227,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                 <input
                   type="text"
                   value={courseTitle}
+                  placeholder="e.g. Introduction to Computer Science"
                   onChange={(e) => setCourseTitle(e.target.value)}
                   className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-brand"
                 />
@@ -195,6 +238,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                 <input
                   type="text"
                   value={courseCode}
+                  placeholder="e.g. CS-101"
                   onChange={(e) => setCourseCode(e.target.value)}
                   className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-brand font-mono"
                 />
@@ -268,6 +312,12 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                 </button>
               </div>
 
+              {modules.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-xs text-ink-muted">
+                  No modules yet. Add one, or generate a module from a topic with the AI synthesizer.
+                </p>
+              )}
+
               {modules.map((mod, modIdx) => (
                 <div key={mod.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -281,14 +331,13 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                       >
                         + Add Lesson
                       </button>
-                      {modules.length > 1 && (
-                        <button
-                          onClick={() => deleteModule(mod.id)}
-                          className="text-ink-subtle hover:text-danger transition-colors"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => deleteModule(mod.id)}
+                        aria-label={`Delete module ${modIdx + 1}`}
+                        className="text-ink-subtle hover:text-danger transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
 
@@ -341,6 +390,12 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                 {isGeneratingAi ? "Synthesizing with AI..." : "Generate Syllabus & Quizzes"}
               </button>
             </div>
+
+            {aiNotice && (
+              <p role="status" className="text-[11px] font-semibold text-success">
+                {aiNotice}
+              </p>
+            )}
 
             {aiGeneratedItems && (
               <div className="bg-canvas border border-line rounded-xl p-3.5 text-xs space-y-3 max-h-80 overflow-y-auto">
