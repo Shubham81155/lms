@@ -35,13 +35,13 @@ html:not(.dark) {
   --background: #f8fafc;
   --foreground: #0f172a;
 
-  --canvas: 246 247 252;
+  --canvas: 236 238 252;      /* soft lavender, so white cards stand out */
   --surface: 255 255 255;
-  --raised: 240 242 250;
-  --line: 223 227 239;
+  --raised: 230 233 250;
+  --line: 210 215 242;
   --ink: 15 19 38;
   --ink-muted: 72 81 108;
-  --ink-subtle: 100 109 136;
+  --ink-subtle: 88 97 128;
   --brand: 79 70 229;
   --brand-hover: 67 56 202;
   --brand-fg: 67 56 202;

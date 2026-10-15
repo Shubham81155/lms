@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -28,18 +28,21 @@ const ROLES = [
     title: "Students",
     body: "Pick up lessons where you left off, take quizzes, submit assignments, join live classes and earn certificates.",
     accent: "text-brand-fg bg-brand/10 border-brand/20",
+    tint: "from-brand/15",
   },
   {
     icon: ClipboardCheck,
     title: "Faculty",
     body: "Build courses, grade with rubrics, see plagiarism check status on every text submission and follow each cohort's progress.",
     accent: "text-success bg-success/10 border-success/20",
+    tint: "from-success/15",
   },
   {
     icon: Building2,
     title: "Administrators",
     body: "Onboard tenants, manage users and roles, review audit trails and answer data-subject requests from one console.",
     accent: "text-accent bg-accent/10 border-accent/20",
+    tint: "from-accent/15",
   },
 ];
 
@@ -83,8 +86,18 @@ const PRIVACY = [
   "Field-level encryption at rest",
 ];
 
+function greetingFor(hour: number) {
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
+  if (hour >= 17 && hour < 22) return "Good evening";
+  return "Welcome back";
+}
+
 // Decorative product preview for the hero; not interactive.
 function PortalPreview() {
+  // Set after mount from the visitor's clock; the server's time zone would be wrong and would not hydrate.
+  const [greeting, setGreeting] = useState("Welcome back");
+  useEffect(() => setGreeting(greetingFor(new Date().getHours())), []);
   const courses = [
     { name: "Organic Chemistry II", progress: 72, bar: "bg-brand-hover" },
     { name: "Data Structures", progress: 45, bar: "bg-success" },
@@ -103,7 +116,7 @@ function PortalPreview() {
         <div className="p-5 space-y-5">
           <div>
             <p className="text-[11px] uppercase tracking-wider text-ink-subtle font-semibold">Continue learning</p>
-            <p className="text-sm font-bold text-ink mt-1">Good morning — 3 courses in progress</p>
+            <p className="text-sm font-bold text-ink mt-1">{greeting} — 3 courses in progress</p>
           </div>
           <div className="space-y-3">
             {courses.map((c) => (
@@ -213,7 +226,7 @@ export default function Home() {
         </section>
 
         {/* Standards strip */}
-        <section aria-label="Supported standards" className="border-y border-line bg-surface/60">
+        <section aria-label="Supported standards" className="border-y border-line bg-brand/[0.07]">
           <div className="max-w-6xl mx-auto px-6 py-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
             <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-subtle">Built on open standards</span>
             {STANDARDS.map((s) => (
@@ -234,8 +247,8 @@ export default function Home() {
             </p>
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {ROLES.map(({ icon: Icon, title, body, accent }) => (
-              <div key={title} className="bg-surface border border-line rounded-3xl p-7 space-y-4 hover:border-brand/40 transition-colors">
+            {ROLES.map(({ icon: Icon, title, body, accent, tint }) => (
+              <div key={title} className={`bg-surface bg-gradient-to-br ${tint} via-surface to-surface border border-line rounded-3xl p-7 space-y-4 shadow-sm hover:shadow-lg hover:border-brand/40 transition-all`}>
                 <div className={`h-11 w-11 rounded-xl border flex items-center justify-center ${accent}`}>
                   <Icon className="h-5 w-5" />
                 </div>
@@ -247,15 +260,15 @@ export default function Home() {
         </section>
 
         {/* Platform features */}
-        <section id="platform" className="border-t border-line bg-surface/50 scroll-mt-20">
+        <section id="platform" className="border-y border-line bg-gradient-to-b from-brand/[0.08] to-transparent scroll-mt-20">
           <div className="max-w-6xl mx-auto px-6 py-20 md:py-24">
             <div className="max-w-2xl space-y-3">
               <p className="text-xs uppercase tracking-wider font-bold text-brand-fg">Platform</p>
               <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-ink text-balance">Everything teaching needs, nothing it doesn&apos;t</h2>
             </div>
-            <div className="mt-10 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map(({ icon: Icon, title, body }) => (
-                <div key={title} className="space-y-3">
+                <div key={title} className="bg-surface border border-line rounded-2xl p-6 space-y-3 shadow-sm hover:border-brand/40 hover:shadow-md transition-all">
                   <div className="h-10 w-10 rounded-xl bg-brand/10 text-brand-fg flex items-center justify-center">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -269,7 +282,7 @@ export default function Home() {
 
         {/* Privacy */}
         <section id="privacy" className="max-w-6xl mx-auto px-6 py-20 md:py-24 scroll-mt-20">
-          <div className="bg-surface border border-line rounded-3xl p-8 md:p-12 grid gap-10 md:grid-cols-2 items-center">
+          <div className="bg-surface bg-gradient-to-br from-success/15 via-surface to-surface border border-line rounded-3xl p-8 md:p-12 grid gap-10 md:grid-cols-2 items-center shadow-sm">
             <div className="space-y-4">
               <div className="h-11 w-11 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center">
                 <ShieldCheck className="h-5 w-5" />
