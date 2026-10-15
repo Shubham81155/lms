@@ -31,7 +31,7 @@ const audit = (req: any, action: string, resourceType: string, resourceId?: stri
 
 // --------------------------------------------------------------------------- feature flags
 
-const featuresSchema = z
+export const featuresSchema = z
   .object(Object.fromEntries(FEATURE_KEYS.map((k) => [k, z.boolean().optional()])) as Record<(typeof FEATURE_KEYS)[number], z.ZodOptional<z.ZodBoolean>>)
   .strict()
   .refine((v) => Object.keys(v).length > 0, 'Nothing to change');
@@ -58,7 +58,7 @@ router.put(
 
 // --------------------------------------------------------------------------- usage metering
 
-const quotaSchema = z.object({ seatQuota: z.number().int().min(1).max(10_000_000).nullable() });
+export const quotaSchema = z.object({ seatQuota: z.number().int().min(1).max(10_000_000).nullable() });
 
 /** GET /api/v1/admin/usage: seats, activity and volume for billing and capacity planning. */
 router.get(
@@ -141,8 +141,9 @@ router.get(
         prisma.course.findMany({ where: { tenantId }, include: { modules: { include: { lessons: true } }, instructors: { select: { userId: true, isPrimary: true } } }, ...pageArgs(c) }), EXPORT_PAGE);
       await out.array('enrollments', (c) => prisma.enrollment.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
       await out.array('certificates', (c) => prisma.certificate.findMany({ where: { enrollment: { tenantId } }, ...pageArgs(c) }), EXPORT_PAGE);
-      await out.end();
+      // Recorded before the response ends, so a client that has the whole file can already find the audit entry.
       await audit(req, 'TENANT_DATA_EXPORTED', 'TENANT', tenantId, { users, courses });
+      await out.end();
     } catch (err) {
       // Headers are already sent, so a status code can no longer be changed: cut the connection so the
       // client sees a truncated (invalid) download instead of a file that looks complete.
@@ -155,7 +156,7 @@ router.get(
 
 // --------------------------------------------------------------------------- webhooks
 
-const endpointSchema = z.object({
+export const endpointSchema = z.object({
   url: z.string().url().max(2048),
   events: z.array(z.enum(WEBHOOK_EVENTS)).min(1).max(WEBHOOK_EVENTS.length),
   isActive: z.boolean().optional(),
@@ -223,7 +224,13 @@ router.get(
     const id = idSchema.parse(req.params.id);
     const ep = await prisma.webhookEndpoint.findFirst({ where: { id, tenantId: tenantIdOf(req) }, select: { id: true } });
     if (!ep) throw new HttpError(404, 'Webhook not found');
-    const rows = await prisma.webhookDelivery.findMany({ where: { endpointId: id }, orderBy: { createdAt: 'desc' }, take: 50 });
+    // Explicit fields: `payload` is the queued request body of a pending retry and stays internal.
+    const rows = await prisma.webhookDelivery.findMany({
+      where: { endpointId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, tenantId: true, endpointId: true, event: true, statusCode: true, success: true, error: true, createdAt: true, attempt: true, nextAttemptAt: true },
+    });
     return res.json({ data: rows });
   })
 );
@@ -244,7 +251,7 @@ router.post(
 
 // --------------------------------------------------------------------------- SCIM tokens
 
-const tokenSchema = z.object({ label: z.string().trim().min(1).max(100) });
+export const tokenSchema = z.object({ label: z.string().trim().min(1).max(100) });
 
 router.get(
   '/scim-tokens',
@@ -282,7 +289,7 @@ router.delete(
 // --------------------------------------------------------------------------- OIDC single sign-on
 
 const domain = z.string().trim().toLowerCase().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/, 'Invalid domain');
-const ssoSchema = z.object({
+export const ssoSchema = z.object({
   issuer: z.string().url().max(2048),
   clientId: z.string().trim().min(1).max(256),
   /** Required the first time; omit it later to keep the stored secret. */
@@ -358,7 +365,7 @@ router.delete(
 
 // --------------------------------------------------------------------------- SAML 2.0 single sign-on
 
-const samlSchema = z.object({
+export const samlSchema = z.object({
   entryPoint: z.string().url().max(2048),
   idpIssuer: z.string().trim().min(1).max(1024),
   /** Required the first time; omit it later to keep the pinned key. */

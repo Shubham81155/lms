@@ -18,7 +18,7 @@ import { requireFeature } from '../lib/features';
 const router = Router();
 
 const CLAIM = 'https://purl.imsglobal.org/spec/lti/claim';
-const launchSchema = z.object({ id_token: z.string().min(20).max(20_000) });
+export const launchSchema = z.object({ id_token: z.string().min(20).max(20_000) });
 
 type Jwk = crypto.JsonWebKey & { kid?: string };
 

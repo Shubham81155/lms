@@ -79,6 +79,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** administrators and auditors */
         get: operations["getAdminAuditLogs"];
         put?: never;
         post?: never;
@@ -95,8 +96,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** the hierarchy, with how many courses each department runs. */
         get: operations["getAdminCampuses"];
         put?: never;
+        /** POST /api/v1/admin/campuses */
         post: operations["postAdminCampuses"];
         delete?: never;
         options?: never;
@@ -114,9 +117,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** DELETE: refused while the campus still has departments, so nothing is removed by surprise. */
         delete: operations["deleteAdminCampusesId"];
         options?: never;
         head?: never;
+        /** PATCH /api/v1/admin/campuses/:id */
         patch: operations["patchAdminCampusesId"];
         trace?: never;
     };
@@ -129,6 +134,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** POST /api/v1/admin/campuses/:id/departments */
         post: operations["postAdminCampusesIdDepartments"];
         delete?: never;
         options?: never;
@@ -143,6 +149,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** What this deployment can actually verify about itself right now. It reports measured facts (database isolation, audit-trail protection, administrator MFA, ...), not certifications: SOC 2, FERPA and COPPA compliance are organisational and are only... */
         get: operations["getAdminCompliance"];
         put?: never;
         post?: never;
@@ -162,9 +169,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** DELETE: refused while courses are assigned, because they would silently lose their department. */
         delete: operations["deleteAdminDepartmentsId"];
         options?: never;
         head?: never;
+        /** PATCH /api/v1/admin/departments/:id */
         patch: operations["patchAdminDepartmentsId"];
         trace?: never;
     };
@@ -175,6 +184,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/export */
         get: operations["getAdminExport"];
         put?: never;
         post?: never;
@@ -191,7 +201,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/features */
         get: operations["getAdminFeatures"];
+        /** toggles features for this tenant (overrides the plan's defaults). */
         put: operations["putAdminFeatures"];
         post?: never;
         delete?: never;
@@ -207,9 +219,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/saml */
         get: operations["getAdminSaml"];
+        /** configures the tenant's SAML identity provider. The IdP's signing certificate (or public key) is validated and pinned; a private key is refused. Only public material is stored. */
         put: operations["putAdminSaml"];
         post?: never;
+        /** DELETE /api/v1/admin/saml */
         delete: operations["deleteAdminSaml"];
         options?: never;
         head?: never;
@@ -223,8 +238,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/scim-tokens */
         get: operations["getAdminScimTokens"];
         put?: never;
+        /** the bearer token is shown once; only its hash is stored. */
         post: operations["postAdminScimTokens"];
         delete?: never;
         options?: never;
@@ -242,6 +259,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** DELETE /api/v1/admin/scim-tokens/:id */
         delete: operations["deleteAdminScimTokensId"];
         options?: never;
         head?: never;
@@ -255,9 +273,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/sso */
         get: operations["getAdminSso"];
+        /** configures the tenant's OpenID Connect provider. Enabling it first reads the provider's discovery document, so a typo is reported here rather than at the first sign-in. The secret is stored encrypted and is never returned. */
         put: operations["putAdminSso"];
         post?: never;
+        /** DELETE /api/v1/admin/sso */
         delete: operations["deleteAdminSso"];
         options?: never;
         head?: never;
@@ -271,6 +292,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/stats */
         get: operations["getAdminStats"];
         put?: never;
         post?: never;
@@ -287,12 +309,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/tenant */
         get: operations["getAdminTenant"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
+        /** PATCH /api/v1/admin/tenant */
         patch: operations["patchAdminTenant"];
         trace?: never;
     };
@@ -303,6 +327,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** seats, activity and volume for billing and capacity planning. */
         get: operations["getAdminUsage"];
         put?: never;
         post?: never;
@@ -320,6 +345,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /** PUT /api/v1/admin/usage/quota */
         put: operations["putAdminUsageQuota"];
         post?: never;
         delete?: never;
@@ -335,8 +361,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/webhooks */
         get: operations["getAdminWebhooks"];
         put?: never;
+        /** the signing secret is returned once, here only. */
         post: operations["postAdminWebhooks"];
         delete?: never;
         options?: never;
@@ -354,9 +382,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** DELETE /api/v1/admin/webhooks/:id */
         delete: operations["deleteAdminWebhooksId"];
         options?: never;
         head?: never;
+        /** PATCH /api/v1/admin/webhooks/:id */
         patch: operations["patchAdminWebhooksId"];
         trace?: never;
     };
@@ -367,6 +397,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/admin/webhooks/:id/deliveries */
         get: operations["getAdminWebhooksIdDeliveries"];
         put?: never;
         post?: never;
@@ -385,6 +416,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** sends a signed `webhook.test` event and reports the result. */
         post: operations["postAdminWebhooksIdTest"];
         delete?: never;
         options?: never;
@@ -401,6 +433,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Ask the study tutor for an explanation and practice drill on a topic. Template-based today: no AI model is behind it. */
         post: operations["postAnalyticsAiTutor"];
         delete?: never;
         options?: never;
@@ -415,6 +448,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** staff only; learners at MEDIUM or HIGH risk. */
         get: operations["getAnalyticsAtRisk"];
         put?: never;
         post?: never;
@@ -433,6 +467,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** course staff send an enrolled learner a nudge. */
         post: operations["postAnalyticsAtRiskNudge"];
         delete?: never;
         options?: never;
@@ -447,6 +482,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Faculty analytics computed from live data: enrolment / completion metrics, assessment item analysis and early-warning learners. Instructors see only the courses they are assigned to; admins see the whole tenant. */
         get: operations["getAnalyticsCohort"];
         put?: never;
         post?: never;
@@ -463,6 +499,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Assignment submissions still waiting for a grade, oldest first, in the caller's courses (or the whole tenant for administrators), with the plagiarism score when a provider has reported one. */
         get: operations["getAnalyticsPendingGrading"];
         put?: never;
         post?: never;
@@ -479,6 +516,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Recent integrity events across the caller's courses (instructors, TAs) or the whole tenant (administrators), plus how many proctored attempts are open right now. */
         get: operations["getAnalyticsProctoring"];
         put?: never;
         post?: never;
@@ -495,6 +533,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Staff, admins and auditors browse the tenant's statements; everyone else sees only their own. */
         get: operations["getAnalyticsXapiStream"];
         put?: never;
         post?: never;
@@ -513,6 +552,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** A course editor (instructor or administrator, not a TA) decides. UPHELD must carry the corrected grade; DENIED must not. The new grade is validated before the appeal is closed, and closing is a conditional update so two reviewers cannot both resolve it. */
         post: operations["postAppealsIdResolve"];
         delete?: never;
         options?: never;
@@ -530,6 +570,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** refused once learners have submitted */
         delete: operations["deleteAssignmentsId"];
         options?: never;
         head?: never;
@@ -545,6 +586,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /** {criteria} Sets the rubric (the assignment's max points become the sum of the criteria) or removes it with `criteria: null`. Refused once any submission has been graded, because that would change the meaning of grades already given. */
         put: operations["putAssignmentsIdRubric"];
         post?: never;
         delete?: never;
@@ -560,6 +602,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** staff/auditors: all; learners: their own */
         get: operations["getAssignmentsIdSubmissions"];
         put?: never;
         /** Submit work: a file URL, text, or both. */
@@ -579,6 +622,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** the owner asks for a review. */
         post: operations["postAssignmentsIdSubmissionsSubIdAppeal"];
         delete?: never;
         options?: never;
@@ -697,6 +741,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** {password, code}: needs both factors. */
         post: operations["postAuthMfaDisable"];
         delete?: never;
         options?: never;
@@ -713,6 +758,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** {code}: confirms the authenticator and returns recovery codes once. */
         post: operations["postAuthMfaEnable"];
         delete?: never;
         options?: never;
@@ -729,6 +775,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** begins enrolment; returns the secret and otpauth:// URL once. */
         post: operations["postAuthMfaSetup"];
         delete?: never;
         options?: never;
@@ -743,6 +790,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/auth/mfa/status */
         get: operations["getAuthMfaStatus"];
         put?: never;
         post?: never;
@@ -761,6 +809,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Sends a fresh verification link to the signed-in user. */
         post: operations["postAuthResendVerification"];
         delete?: never;
         options?: never;
@@ -794,6 +843,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** the assertion consumer service. */
         post: operations["postAuthSamlAcs"];
         delete?: never;
         options?: never;
@@ -808,6 +858,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** what the administrator gives the IdP (public information). */
         get: operations["getAuthSamlMetadataSlug"];
         put?: never;
         post?: never;
@@ -824,6 +875,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** redirects the browser to the identity provider with an AuthnRequest. */
         get: operations["getAuthSamlStart"];
         put?: never;
         post?: never;
@@ -840,6 +892,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/auth/sso/callback */
         get: operations["getAuthSsoCallback"];
         put?: never;
         post?: never;
@@ -856,6 +909,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** redirects to the identity provider. */
         get: operations["getAuthSsoStart"];
         put?: never;
         post?: never;
@@ -872,6 +926,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** lets the login page decide whether to show the SSO button. */
         get: operations["getAuthSsoStatus"];
         put?: never;
         post?: never;
@@ -905,8 +960,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/calendar/events */
         get: operations["getCalendarEvents"];
         put?: never;
+        /** course editors for their course; admins for any / tenant-wide. */
         post: operations["postCalendarEvents"];
         delete?: never;
         options?: never;
@@ -924,9 +981,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** DELETE /api/v1/calendar/events/:id */
         delete: operations["deleteCalendarEventsId"];
         options?: never;
         head?: never;
+        /** PATCH /api/v1/calendar/events/:id */
         patch: operations["patchCalendarEventsId"];
         trace?: never;
     };
@@ -937,6 +996,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** iCalendar feed of the same events (Google/Outlook/Apple). */
         get: operations["getCalendarExportIcs"];
         put?: never;
         post?: never;
@@ -953,6 +1013,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Public. Confirms that a certificate exists and who it was issued to, revealing nothing else. The tenant comes from the link (?tenant=) or the usual tenant hints. */
         get: operations["getCertificatesVerifyNumber"];
         put?: never;
         post?: never;
@@ -987,6 +1048,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** staff see every appeal in the course; learners their own. */
         get: operations["getCoursesCourseIdAppeals"];
         put?: never;
         post?: never;
@@ -1003,6 +1065,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/courses/:courseId/assignments */
         get: operations["getCoursesCourseIdAssignments"];
         put?: never;
         /** Create an assignment in a course. */
@@ -1020,6 +1083,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** moderation queue for course staff. */
         get: operations["getCoursesCourseIdFlags"];
         put?: never;
         post?: never;
@@ -1036,6 +1100,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Staff, auditors and admins get every learner; a learner gets only their own grade, and only once it is approved. */
         get: operations["getCoursesCourseIdGradebook"];
         put?: never;
         post?: never;
@@ -1054,6 +1119,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Approve submitted grades (administrators; not the person who submitted them). Approved grades become the final grade and are published to learners. */
         post: operations["postCoursesCourseIdGradebookApprove"];
         delete?: never;
         options?: never;
@@ -1070,6 +1136,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Compute draft grades for all active learners. Approved grades are left alone. */
         post: operations["postCoursesCourseIdGradebookCalculate"];
         delete?: never;
         options?: never;
@@ -1085,6 +1152,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /** Replace the weighted categories; weights must total 100. Items keep their category when re-saved by name. */
         put: operations["putCoursesCourseIdGradebookCategories"];
         post?: never;
         delete?: never;
@@ -1100,6 +1168,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Categories, curve and which quizzes/assignments belong to which category (course staff). */
         get: operations["getCoursesCourseIdGradebookConfig"];
         put?: never;
         post?: never;
@@ -1117,6 +1186,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /** Set the curve applied to every learner. */
         put: operations["putCoursesCourseIdGradebookCurve"];
         post?: never;
         delete?: never;
@@ -1133,6 +1203,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /** Assign quizzes and assignments of this course to categories. */
         put: operations["putCoursesCourseIdGradebookItems"];
         post?: never;
         delete?: never;
@@ -1150,6 +1221,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Return submitted grades to draft with a note (administrators). */
         post: operations["postCoursesCourseIdGradebookReject"];
         delete?: never;
         options?: never;
@@ -1166,6 +1238,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Reopen approved grades for correction (administrators). */
         post: operations["postCoursesCourseIdGradebookReopen"];
         delete?: never;
         options?: never;
@@ -1182,6 +1255,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Submit draft grades for approval. Refused while graded work is still waiting for a grader unless allowIncomplete. */
         post: operations["postCoursesCourseIdGradebookSubmit"];
         delete?: never;
         options?: never;
@@ -1196,8 +1270,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/courses/:courseId/live-sessions */
         get: operations["getCoursesCourseIdLiveSessions"];
         put?: never;
+        /** schedules a class and tells the enrolled learners. */
         post: operations["postCoursesCourseIdLiveSessions"];
         delete?: never;
         options?: never;
@@ -1212,6 +1288,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/courses/:courseId/quizzes */
         get: operations["getCoursesCourseIdQuizzes"];
         put?: never;
         /** Create a quiz in a course (course editors). */
@@ -1229,8 +1306,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** A course's discussion threads, pinned first. */
         get: operations["getCoursesCourseIdThreads"];
         put?: never;
+        /** Start a thread. Auditors are read-only. */
         post: operations["postCoursesCourseIdThreads"];
         delete?: never;
         options?: never;
@@ -1245,10 +1324,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Metadata for anyone who can see the course; modules and lessons only for enrolled learners, assigned staff, admins and auditors. */
         get: operations["getCoursesId"];
         /** Update a course. */
         put: operations["putCoursesId"];
         post?: never;
+        /** archive (soft delete), admins only */
         delete: operations["deleteCoursesId"];
         options?: never;
         head?: never;
@@ -1265,9 +1346,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** DELETE /api/v1/courses/:id/lessons/:lessonId */
         delete: operations["deleteCoursesIdLessonsLessonId"];
         options?: never;
         head?: never;
+        /** PATCH /api/v1/courses/:id/lessons/:lessonId */
         patch: operations["patchCoursesIdLessonsLessonId"];
         trace?: never;
     };
@@ -1278,8 +1361,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/courses/:id/modules */
         get: operations["getCoursesIdModules"];
         put?: never;
+        /** POST /api/v1/courses/:id/modules */
         post: operations["postCoursesIdModules"];
         delete?: never;
         options?: never;
@@ -1295,6 +1380,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /** reorder; the list must contain every module exactly once */
         put: operations["putCoursesIdModulesOrder"];
         post?: never;
         delete?: never;
@@ -1313,9 +1399,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** also removes its lessons */
         delete: operations["deleteCoursesIdModulesModuleId"];
         options?: never;
         head?: never;
+        /** PATCH /api/v1/courses/:id/modules/:moduleId */
         patch: operations["patchCoursesIdModulesModuleId"];
         trace?: never;
     };
@@ -1328,6 +1416,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** POST /api/v1/courses/:id/modules/:moduleId/lessons */
         post: operations["postCoursesIdModulesModuleIdLessons"];
         delete?: never;
         options?: never;
@@ -1394,6 +1483,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Aggregates for the caller; admins and auditors may pass ?userId=. */
         get: operations["getEnrollmentsStats"];
         put?: never;
         post?: never;
@@ -1410,6 +1500,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** The caller's own upcoming work from the courses they are actively enrolled in (published courses only): assignments not yet submitted or still ungraded, and quizzes with attempts left (or an attempt in progress). Dated assignments come first, soonest due... */
         get: operations["getEnrollmentsTodo"];
         put?: never;
         post?: never;
@@ -1428,6 +1519,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Report a thread or reply to the moderators. */
         post: operations["postFlags"];
         delete?: never;
         options?: never;
@@ -1444,6 +1536,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** POST /api/v1/flags/:id/resolve */
         post: operations["postFlagsIdResolve"];
         delete?: never;
         options?: never;
@@ -1460,6 +1553,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** claims today's streak. The first check-in of a UTC day extends (or restarts) the streak and awards the daily bonus once; repeating it is a no-op. */
         post: operations["postGamificationCheckin"];
         delete?: never;
         options?: never;
@@ -1474,6 +1568,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Cohort standings for one course, visible to people with access to that course. Names are abbreviated ("Alex C.") and only enrolled learners appear. */
         get: operations["getGamificationLeaderboard"];
         put?: never;
         post?: never;
@@ -1490,6 +1585,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** The caller's own Bloom's-taxonomy profile, from their graded answers to tagged quiz questions. */
         get: operations["getGamificationMastery"];
         put?: never;
         post?: never;
@@ -1506,6 +1602,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/gamification/me */
         get: operations["getGamificationMe"];
         put?: never;
         post?: never;
@@ -1524,6 +1621,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Webhooks from the LiveKit media server. The Authorization header is a JWT signed with our API secret that commits to the exact body (see verifyWebhook), so only the media server can call this. Participant identities are our user ids (set when the join... */
         post: operations["postIntegrationsLivekit"];
         delete?: never;
         options?: never;
@@ -1540,6 +1638,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Headers: x-lms-timestamp (unix seconds), x-lms-signature: sha256=HMAC_SHA256(secret, ts + "." + body). Records the score and report link on the assignment submission and alerts the course staff when the similarity is high. Answers 404 for anything it... */
         post: operations["postIntegrationsPlagiarismTenantSlug"];
         delete?: never;
         options?: never;
@@ -1560,6 +1659,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** reschedule or retitle a class that has not started. */
         patch: operations["patchLiveSessionsId"];
         trace?: never;
     };
@@ -1570,6 +1670,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** course staff see who attended and for how long. */
         get: operations["getLiveSessionsIdAttendance"];
         put?: never;
         post?: never;
@@ -1588,6 +1689,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** POST /api/v1/live-sessions/:id/cancel */
         post: operations["postLiveSessionsIdCancel"];
         delete?: never;
         options?: never;
@@ -1604,6 +1706,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** POST /api/v1/live-sessions/:id/end */
         post: operations["postLiveSessionsIdEnd"];
         delete?: never;
         options?: never;
@@ -1620,6 +1723,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Returns the media server URL and a token for this person. Course staff may publish; learners may only watch and chat unless the instructor allowed student video. Only while the class is live. */
         post: operations["postLiveSessionsIdJoin"];
         delete?: never;
         options?: never;
@@ -1636,6 +1740,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** opens the room to learners and tells them it is live. */
         post: operations["postLiveSessionsIdStart"];
         delete?: never;
         options?: never;
@@ -1650,6 +1755,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** what is live now or coming up in the caller's courses. */
         get: operations["getLiveSessionsMine"];
         put?: never;
         post?: never;
@@ -1668,6 +1774,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** {id_token} */
         post: operations["postLtiLaunch"];
         delete?: never;
         options?: never;
@@ -1682,7 +1789,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The caller's own notifications, newest first. (Pagination is under `meta` here, unlike the lists above that use `pagination`.) */
+        /** The caller's own notifications, newest first. */
         get: operations["getNotifications"];
         put?: never;
         post?: never;
@@ -1770,6 +1877,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** course staff mark a reply as a verified answer (toggle). */
         post: operations["postPostsIdEndorse"];
         delete?: never;
         options?: never;
@@ -1790,6 +1898,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Hide or restore a reply (course staff). */
         patch: operations["patchPostsIdModerate"];
         trace?: never;
     };
@@ -1802,6 +1911,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** The test taker's browser reports integrity events for their own, still-open attempt. When the running total crosses the threshold the course staff are notified once. */
         post: operations["postProctoringEvents"];
         delete?: never;
         options?: never;
@@ -1816,8 +1926,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/question-bank */
         get: operations["getQuestionBank"];
         put?: never;
+        /** POST /api/v1/question-bank */
         post: operations["postQuestionBank"];
         delete?: never;
         options?: never;
@@ -1832,12 +1944,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/question-bank/:id */
         get: operations["getQuestionBankId"];
         put?: never;
         post?: never;
+        /** DELETE /api/v1/question-bank/:id */
         delete: operations["deleteQuestionBankId"];
         options?: never;
         head?: never;
+        /** owner or administrator. */
         patch: operations["patchQuestionBankId"];
         trace?: never;
     };
@@ -1848,9 +1963,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** answer keys are only included for staff and auditors */
         get: operations["getQuizzesId"];
         put?: never;
         post?: never;
+        /** refused once learners have submitted, so grades are never lost */
         delete: operations["deleteQuizzesId"];
         options?: never;
         head?: never;
@@ -1885,6 +2002,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** DELETE /api/v1/quizzes/:id/questions/:questionId */
         delete: operations["deleteQuizzesIdQuestionsQuestionId"];
         options?: never;
         head?: never;
@@ -1916,6 +2034,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Staff and auditors see every submission; learners see only their own. */
         get: operations["getQuizzesIdSubmissions"];
         put?: never;
         /** Alias of POST /api/v1/quizzes/:id/submit. */
@@ -1967,6 +2086,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** per-attempt integrity summary for course staff. */
         get: operations["getQuizzesQuizIdProctoring"];
         put?: never;
         post?: never;
@@ -1985,6 +2105,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** {itemIds}: copies items into the quiz. */
         post: operations["postQuizzesQuizIdQuestionsFromBank"];
         delete?: never;
         options?: never;
@@ -1999,6 +2120,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/scim/v2/ServiceProviderConfig */
         get: operations["getScimV2ServiceProviderConfig"];
         put?: never;
         post?: never;
@@ -2015,8 +2137,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Supports the filter IdPs actually use: `userName eq "x"` (and externalId eq). */
         get: operations["getScimV2Users"];
         put?: never;
+        /** SCIM 2.0: provision a user (learner role; promote in the admin UI). */
         post: operations["postScimV2Users"];
         delete?: never;
         options?: never;
@@ -2031,12 +2155,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** GET /api/v1/scim/v2/Users/:id */
         get: operations["getScimV2UsersId"];
+        /** SCIM 2.0: replace a user (userName cannot change). */
         put: operations["putScimV2UsersId"];
         post?: never;
+        /** the account is suspended and keeps its history (grades, certificates, audit). */
         delete: operations["deleteScimV2UsersId"];
         options?: never;
         head?: never;
+        /** SCIM 2.0 PatchOp: name, externalId, active (activating or suspending signs the user out). */
         patch: operations["patchScimV2UsersId"];
         trace?: never;
     };
@@ -2047,6 +2175,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** A thread with its visible replies, oldest first, one page at a time (`nextCursor`). */
         get: operations["getThreadsId"];
         put?: never;
         post?: never;
@@ -2069,6 +2198,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Pin, lock or hide a thread (course staff). */
         patch: operations["patchThreadsIdModerate"];
         trace?: never;
     };
@@ -2081,6 +2211,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Reply to a thread, optionally to another reply (`parentId`). Locked threads accept staff replies only. */
         post: operations["postThreadsIdPosts"];
         delete?: never;
         options?: never;
@@ -2095,6 +2226,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** users of the tenant (admins only) */
         get: operations["getUsers"];
         put?: never;
         post?: never;
@@ -2111,12 +2243,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** own profile, or any profile for admins */
         get: operations["getUsersId"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
+        /** Anyone may edit their own name and avatar. Roles and status are administrator-only, and: - only a SUPER_ADMIN may grant the SUPER_ADMIN role or change a SUPER_ADMIN's account - nobody may change their own role or status (no self-promotion, no locking... */
         patch: operations["patchUsersId"];
         trace?: never;
     };
@@ -2127,6 +2261,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Yourself; admins and auditors for anyone; instructors only the enrollments in courses they teach. */
         get: operations["getUsersIdEnrollments"];
         put?: never;
         post?: never;
@@ -2145,6 +2280,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Toggle the caller's upvote on a thread or reply. */
         post: operations["postVotes"];
         delete?: never;
         options?: never;
@@ -2161,6 +2297,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Record one xAPI statement, or a batch of up to 50 (send an array). 201 for a single statement, 200 for a batch. */
         post: operations["postXapiStatements"];
         delete?: never;
         options?: never;
@@ -2195,12 +2332,19 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description The process is up. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "healthy";
+                        timestamp: string;
+                        service: string;
+                    };
+                };
             };
         };
     };
@@ -2213,12 +2357,30 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description The database answers; the instance can take traffic. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "ready";
+                        timestamp: string;
+                    };
+                };
+            };
+            /** @description The database does not answer. Load balancers should stop routing here. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "unavailable";
+                    };
+                };
             };
         };
     };
@@ -2231,12 +2393,51 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Branding and feature flags of the tenant found from the host or x-tenant-id header. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        tenantId: string;
+                        slug: string;
+                        name: string;
+                        theme: {
+                            primaryColor: string | null;
+                            secondaryColor: string | null;
+                            logoUrl: string | null;
+                            faviconUrl: string | null;
+                        };
+                        features: {
+                            scorm: boolean;
+                            xapi: boolean;
+                            lti13: boolean;
+                            aiProctoring: boolean;
+                            sso: boolean;
+                            webhooks: boolean;
+                            scim: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -2249,12 +2450,16 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description This OpenAPI 3 document. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
             };
         };
     };
@@ -2267,12 +2472,50 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            userId: string | null;
+                            action: string;
+                            resourceType: string;
+                            resourceId: string | null;
+                            ipAddress: string | null;
+                            userAgent: string | null;
+                            diffJson?: unknown;
+                            createdAt: string;
+                            user: {
+                                id: string;
+                                email: string;
+                                firstName: string;
+                                lastName: string;
+                                /** @enum {string} */
+                                role: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                            } | null;
+                        }[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2303,12 +2546,27 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            code: string;
+                            departments: {
+                                id: string;
+                                name: string;
+                                code: string;
+                                courseCount: number;
+                            }[];
+                            courseCount: number;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2337,14 +2595,41 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    code: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            name: string;
+                            code: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2357,6 +2642,15 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2377,8 +2671,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Deleted */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2395,6 +2689,24 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2413,14 +2725,41 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    code: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            name: string;
+                            code: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2433,6 +2772,24 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2451,14 +2808,41 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    code: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            campusId: string;
+                            name: string;
+                            code: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2478,6 +2862,24 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getAdminCompliance: {
@@ -2489,12 +2891,30 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            checks: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                status: "PASS" | "WARN" | "FAIL" | "INFO";
+                                detail: string;
+                            }[];
+                            declarations: {
+                                ferpa: boolean;
+                                coppa: boolean;
+                                dataRegion: string | null;
+                            };
+                            note: string;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2527,8 +2947,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Deleted */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2545,6 +2965,24 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2563,14 +3001,41 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    code: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            campusId: string;
+                            name: string;
+                            code: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2590,6 +3055,24 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getAdminExport: {
@@ -2601,12 +3084,121 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Tenant data as a JSON download (Content-Disposition: attachment). No credentials or secrets. Streamed; if it fails midway the connection is cut and the file is truncated. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        exportedAt: string;
+                        tenant: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            customDomain: string | null;
+                            dataRegion: string;
+                            createdAt: string;
+                        };
+                        users: {
+                            id: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            /** @enum {string} */
+                            role: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                            createdAt: string;
+                            lastLoginAt: string | null;
+                        }[];
+                        campuses: {
+                            id: string;
+                            tenantId: string;
+                            name: string;
+                            code: string;
+                            createdAt: string;
+                            updatedAt: string;
+                            departments: {
+                                id: string;
+                                campusId: string;
+                                name: string;
+                                code: string;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[];
+                        }[];
+                        courses: {
+                            id: string;
+                            tenantId: string;
+                            departmentId: string | null;
+                            code: string;
+                            title: string;
+                            description: string | null;
+                            syllabus: string | null;
+                            thumbnailUrl: string | null;
+                            /** @enum {string} */
+                            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                            passingGradePercent: number;
+                            enableProctoring: boolean;
+                            allowSelfEnroll: boolean;
+                            gradeCurveMethod: string;
+                            gradeCurveValue: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            modules: {
+                                id: string;
+                                courseId: string;
+                                title: string;
+                                orderIndex: number;
+                                isLocked: boolean;
+                                createdAt: string;
+                                updatedAt: string;
+                                lessons: {
+                                    id: string;
+                                    moduleId: string;
+                                    title: string;
+                                    orderIndex: number;
+                                    contentType: string;
+                                    bodyContent: string | null;
+                                    mediaUrl: string | null;
+                                    scormPackageId: string | null;
+                                    ltiToolLaunchUrl: string | null;
+                                    estimatedMinutes: number;
+                                    createdAt: string;
+                                    updatedAt: string;
+                                }[];
+                            }[];
+                            instructors: {
+                                userId: string;
+                                isPrimary: boolean;
+                            }[];
+                        }[];
+                        enrollments: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            userId: string;
+                            /** @enum {string} */
+                            status: "ENROLLED" | "IN_PROGRESS" | "COMPLETED" | "DROPPED" | "FAILED";
+                            finalGrade: number | null;
+                            progressPercent: number;
+                            enrolledAt: string;
+                            completedAt: string | null;
+                        }[];
+                        certificates: {
+                            id: string;
+                            enrollmentId: string;
+                            certificateNumber: string;
+                            issuedAt: string;
+                            expiresAt: string | null;
+                            pdfUrl: string | null;
+                            verificationQr: string;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2637,12 +3229,24 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            scorm: boolean;
+                            xapi: boolean;
+                            lti13: boolean;
+                            aiProctoring: boolean;
+                            sso: boolean;
+                            webhooks: boolean;
+                            scim: boolean;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2671,14 +3275,47 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    scorm?: boolean;
+                    xapi?: boolean;
+                    lti13?: boolean;
+                    aiProctoring?: boolean;
+                    sso?: boolean;
+                    webhooks?: boolean;
+                    scim?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            scorm: boolean;
+                            xapi: boolean;
+                            lti13: boolean;
+                            aiProctoring: boolean;
+                            sso: boolean;
+                            webhooks: boolean;
+                            scim: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2698,6 +3335,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getAdminSaml: {
@@ -2709,12 +3355,31 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            entryPoint: string;
+                            idpIssuer: string;
+                            emailAttribute: string;
+                            enabled: boolean;
+                            allowedDomains: string[];
+                            /** @enum {string|null} */
+                            keyKind: "CERTIFICATE" | "PUBLIC KEY" | null;
+                            keyFingerprint: string | null;
+                            keyExpires: string | null;
+                        } | null;
+                        sp: {
+                            entityIds: string[];
+                            acsUrls: string[];
+                            metadataUrls: string[];
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2743,14 +3408,51 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    entryPoint: string;
+                    idpIssuer: string;
+                    idpCert?: string;
+                    /** @default email */
+                    emailAttribute?: string;
+                    enabled: boolean;
+                    /** @default [] */
+                    allowedDomains?: string[];
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            entryPoint: string;
+                            idpIssuer: string;
+                            emailAttribute: string;
+                            enabled: boolean;
+                            allowedDomains: string[];
+                            /** @enum {string|null} */
+                            keyKind: "CERTIFICATE" | "PUBLIC KEY" | null;
+                            keyFingerprint: string | null;
+                            keyExpires: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2781,8 +3483,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Removed */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2806,6 +3508,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getAdminScimTokens: {
@@ -2817,12 +3528,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            label: string;
+                            createdAt: string;
+                            revokedAt: string | null;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2851,14 +3571,37 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    label: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description The bearer token is returned here once; only its hash is stored. */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            label: string;
+                            token: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2891,8 +3634,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Revoked */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2916,6 +3659,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getAdminSso: {
@@ -2927,12 +3679,25 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            issuer: string;
+                            clientId: string;
+                            enabled: boolean;
+                            allowedDomains: string[];
+                            /** @enum {boolean} */
+                            hasSecret: true;
+                            redirectUris: string[];
+                        } | null;
+                        redirectUris: string[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2961,14 +3726,47 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    issuer: string;
+                    clientId: string;
+                    clientSecret?: string;
+                    enabled: boolean;
+                    /** @default [] */
+                    allowedDomains?: string[];
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            issuer: string;
+                            clientId: string;
+                            enabled: boolean;
+                            allowedDomains: string[];
+                            /** @enum {boolean} */
+                            hasSecret: true;
+                            redirectUris: string[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -2999,8 +3797,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Removed */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3024,6 +3822,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getAdminStats: {
@@ -3035,12 +3842,26 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            totalUsers: number;
+                            totalCourses: number;
+                            totalEnrollments: number;
+                            completedEnrollments: number;
+                            activeEnrollments: number;
+                            completionRate: number;
+                            roleCounts: {
+                                [key: string]: number;
+                            };
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3071,12 +3892,41 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "SUSPENDED" | "TRIAL" | "ARCHIVED";
+                            logoUrl: string | null;
+                            primaryColor: string | null;
+                            secondaryColor: string | null;
+                            faviconUrl: string | null;
+                            customCss: string | null;
+                            dataRegion: string;
+                            ferpaCompliant: boolean;
+                            coppaCompliant: boolean;
+                            featureFlags?: unknown;
+                            seatQuota: number | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            userCount: number;
+                            courseCount: number;
+                            campusCount: number;
+                            ltiDeploymentCount: number;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3089,6 +3939,15 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3105,14 +3964,61 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    logoUrl?: string | "" | unknown;
+                    primaryColor?: string;
+                    secondaryColor?: string;
+                    faviconUrl?: string | "" | unknown;
+                    customCss?: string | null;
+                    ferpaCompliant?: boolean;
+                    coppaCompliant?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "SUSPENDED" | "TRIAL" | "ARCHIVED";
+                            logoUrl: string | null;
+                            primaryColor: string | null;
+                            secondaryColor: string | null;
+                            faviconUrl: string | null;
+                            customCss: string | null;
+                            dataRegion: string;
+                            ferpaCompliant: boolean;
+                            coppaCompliant: boolean;
+                            featureFlags?: unknown;
+                            seatQuota: number | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3125,6 +4031,15 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3143,12 +4058,40 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            tier?: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            seats: {
+                                used: number;
+                                quota: number | null;
+                                remaining: number | null;
+                                byRole: {
+                                    [key: string]: number;
+                                };
+                                byStatus: {
+                                    [key: string]: number;
+                                };
+                            };
+                            last30Days: {
+                                activeUsers: number;
+                                xapiStatements: number;
+                                assignmentSubmissions: number;
+                            };
+                            totals: {
+                                courses: number;
+                                enrollments: number;
+                                certificates: number;
+                            };
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3177,14 +4120,35 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    seatQuota: number | null;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            seatQuota: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3204,6 +4168,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getAdminWebhooks: {
@@ -3215,12 +4188,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            url: string;
+                            events: string[];
+                            isActive: boolean;
+                            createdAt: string;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3249,14 +4232,43 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    url: string;
+                    events: ("enrollment.completed" | "certificate.issued" | "quiz.submitted" | "user.provisioned" | "webhook.test")[];
+                    isActive?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description The signing secret is returned here once and never again. */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            url: string;
+                            events: string[];
+                            isActive: boolean;
+                            createdAt: string;
+                            secret: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3289,8 +4301,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Deleted */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3307,6 +4319,15 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3325,14 +4346,42 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    url: string;
+                    events: ("enrollment.completed" | "certificate.issued" | "quiz.submitted" | "user.provisioned" | "webhook.test")[];
+                    isActive?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            url: string;
+                            events: string[];
+                            isActive: boolean;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3345,6 +4394,15 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3365,12 +4423,27 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description The 50 most recent delivery attempts, newest first. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            endpointId: string;
+                            event: string;
+                            statusCode: number | null;
+                            success: boolean;
+                            error: string | null;
+                            createdAt: string;
+                            attempt: number;
+                            nextAttemptAt: string | null;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3383,6 +4456,15 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3403,12 +4485,29 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Result of sending a signed webhook.test event. A failing receiver is reported here, not as an HTTP error. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            success: boolean;
+                            statusCode: number | null;
+                            error: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3428,6 +4527,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     postAnalyticsAiTutor: {
@@ -3437,14 +4545,46 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    topic: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        topic: string;
+                        explanation: string;
+                        keyTakeaways: string[];
+                        recommendedDrill: {
+                            questionText: string;
+                            taxonomyLevel: string;
+                            points: number;
+                            options: {
+                                text: string;
+                                isCorrect: boolean;
+                            }[];
+                            explanation: string;
+                        }[];
+                        readinessBoostPercent: number;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3459,22 +4599,68 @@ export interface operations {
     };
     getAnalyticsAtRisk: {
         parameters: {
-            query?: never;
+            query: {
+                courseId: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            email: string;
+                            courseId: string;
+                            course: string;
+                            progressPercent: number;
+                            /** @enum {string} */
+                            riskFactor: "MEDIUM" | "HIGH";
+                            riskScore: number;
+                            reasons: string[];
+                            suggestedAction: string;
+                        }[];
+                        total: number;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3491,17 +4677,59 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    courseId: string;
+                    userId: string;
+                    message?: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {boolean} */
+                            sent: true;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3520,12 +4748,53 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        tenantId: string;
+                        metrics: {
+                            totalEnrolled: number;
+                            activeThisWeek: number;
+                            averageProgress: number;
+                            completionRate: number;
+                            averageGrade: number;
+                            averageGpa: number;
+                        };
+                        atRiskLearners: {
+                            id: string;
+                            name: string;
+                            email: string;
+                            courseId: string;
+                            course: string;
+                            progressPercent: number;
+                            /** @enum {string} */
+                            riskFactor: "MEDIUM" | "HIGH";
+                            riskScore: number;
+                            reasons: string[];
+                            suggestedAction: string;
+                        }[];
+                        itemAnalysis: {
+                            questionId: string;
+                            concept: string;
+                            /** @enum {string} */
+                            questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                            attempts: number;
+                            averageScorePercent: number;
+                            /** @enum {string} */
+                            status: "FLAGGED_HIGH_DIFFICULTY" | "ATTENTION_NEEDED" | "NORMAL";
+                            recommendation: string;
+                        }[];
+                        bloomsMastery: {
+                            /** @enum {string} */
+                            level: "REMEMBER" | "UNDERSTAND" | "APPLY" | "ANALYZE" | "EVALUATE" | "CREATE";
+                            score: number;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3556,15 +4825,37 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        total: number;
+                        data: {
+                            id: string;
+                            student: string;
+                            assignmentId: string;
+                            assignment: string;
+                            course: string;
+                            submittedAt: string;
+                            plagiarismScore: number | null;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3583,15 +4874,37 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        openAttempts: number;
+                        data: {
+                            id: string;
+                            submissionId: string;
+                            student: string;
+                            quiz: string;
+                            eventType: string;
+                            severity: string;
+                            timestamp: string;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3603,19 +4916,46 @@ export interface operations {
     };
     getAnalyticsXapiStream: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                verb?: string;
+                actorEmail?: string;
+                since?: string | null;
+                until?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description xAPI statements, newest first (each is the stored statement JSON). Staff, administrators and auditors see the tenant; others only their own. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        total: number;
+                        statements: unknown[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -3637,17 +4977,74 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "UPHELD" | "DENIED";
+                    response: string;
+                    grade?: number;
+                    criteria?: {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            status: "UPHELD" | "DENIED";
+                            courseGradeReopened: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3666,17 +5063,56 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileUrl?: string | "";
+                    submissionText?: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Assignment deleted */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        message: string;
+                        id: string;
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3706,12 +5142,28 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            title: string;
+                            instructions: string;
+                            maxPoints: number;
+                            dueDate: string | null;
+                            gradeCategoryId: string | null;
+                            rubricJson?: unknown;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -3760,17 +5212,71 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    criteria: {
+                        id?: string;
+                        name: string;
+                        description?: string;
+                        maxPoints: number;
+                    }[] | null;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            rubric?: unknown;
+                            maxPoints: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3782,7 +5288,11 @@ export interface operations {
     };
     getAssignmentsIdSubmissions: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                userId?: string;
+            };
             header?: never;
             path: {
                 id: string;
@@ -3791,15 +5301,71 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Staff and auditors: all submissions (with the learner). Learners: their own. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assignmentId: string;
+                            userId: string;
+                            fileUrl: string | null;
+                            submissionText: string | null;
+                            grade: number | null;
+                            feedback: string | null;
+                            plagiarismScore: number | null;
+                            plagiarismReportUrl: string | null;
+                            rubricScoresJson?: unknown;
+                            submittedAt: string;
+                            gradedAt: string | null;
+                            user?: {
+                                id: string;
+                                firstName: string;
+                                lastName: string;
+                                email: string;
+                            };
+                        }[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3827,12 +5393,30 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assignmentId: string;
+                            userId: string;
+                            fileUrl: string | null;
+                            submissionText: string | null;
+                            grade: number | null;
+                            feedback: string | null;
+                            plagiarismScore: number | null;
+                            plagiarismReportUrl: string | null;
+                            rubricScoresJson?: unknown;
+                            submittedAt: string;
+                            gradedAt: string | null;
+                            isLate: boolean;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -3891,17 +5475,76 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            submissionId: string;
+                            courseId: string;
+                            userId: string;
+                            reason: string;
+                            /** @enum {string} */
+                            status: "OPEN" | "UPHELD" | "DENIED";
+                            response: string | null;
+                            respondedById: string | null;
+                            respondedAt: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3933,12 +5576,30 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assignmentId: string;
+                            userId: string;
+                            fileUrl: string | null;
+                            submissionText: string | null;
+                            grade: number | null;
+                            feedback: string | null;
+                            plagiarismScore: number | null;
+                            plagiarismReportUrl: string | null;
+                            rubricScoresJson?: unknown;
+                            submittedAt: string;
+                            gradedAt: string | null;
+                        };
+                        courseGradeReopened: boolean;
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -3996,12 +5657,30 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            assignmentId: string;
+                            userId: string;
+                            fileUrl: string | null;
+                            submissionText: string | null;
+                            grade: number | null;
+                            feedback: string | null;
+                            plagiarismScore: number | null;
+                            plagiarismReportUrl: string | null;
+                            rubricScoresJson?: unknown;
+                            submittedAt: string;
+                            gradedAt: string | null;
+                            isLate: boolean;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -4258,17 +5937,58 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    password: string;
+                    code: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {boolean} */
+                            enabled: false;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4285,17 +6005,58 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Two-factor authentication is on. The single-use recovery codes are returned here once. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {boolean} */
+                            enabled: true;
+                            recoveryCodes: string[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4314,15 +6075,40 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Begins enrolment. The authenticator secret is returned here and nowhere else; calling again replaces it. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            secret: string;
+                            otpauthUrl: string;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4341,12 +6127,19 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            enabled: boolean;
+                            recoveryCodesRemaining: number;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -4368,15 +6161,46 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description "Verification email sent", or "Email is already verified" when there is nothing to send. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4442,8 +6266,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Assertion consumer service: the identity provider posts a form-encoded SAMLResponse here. On success sets the session cookie and redirects (303) to the app root (/); otherwise to /login?error=sso_failed. Browser redirect with a Location header. Failures never show a reason to the browser: they redirect to the login page with ?error=sso_failed (or sso_unavailable when single sign-on is not set up). */
+            303: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4462,12 +6286,23 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description SAML 2.0 service provider metadata (entity id, assertion consumer URL) to give the identity provider. Public. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/samlmetadata+xml": string;
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -4480,8 +6315,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Redirects to the identity provider with an AuthnRequest (sets the signed lms_saml flow cookie). Browser redirect with a Location header. Failures never show a reason to the browser: they redirect to the login page with ?error=sso_failed (or sso_unavailable when single sign-on is not set up). */
+            302: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4498,8 +6333,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Where the identity provider sends the browser back. On success sets the session cookie and redirects to the app root (/); otherwise to /login?error=sso_failed. Browser redirect with a Location header. Failures never show a reason to the browser: they redirect to the login page with ?error=sso_failed (or sso_unavailable when single sign-on is not set up). */
+            302: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4516,8 +6351,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Redirects to the identity provider's authorization endpoint (PKCE, state and nonce; sets the signed lms_sso flow cookie). Browser redirect with a Location header. Failures never show a reason to the browser: they redirect to the login page with ?error=sso_failed (or sso_unavailable when single sign-on is not set up). */
+            302: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4534,12 +6369,21 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Whether to show the single sign-on button. Only { enabled: false } when the tenant cannot be resolved. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        enabled: false;
+                    } | {
+                        enabled: boolean;
+                        oidc: boolean;
+                        saml: boolean;
+                    };
+                };
             };
         };
     };
@@ -4598,12 +6442,52 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string | null;
+                            createdById: string;
+                            title: string;
+                            description: string | null;
+                            /** @enum {string} */
+                            category: "EXAM" | "LAB" | "LECTURE" | "OFFICE_HOURS" | "DEADLINE";
+                            startsAt: string;
+                            endsAt: string;
+                            timezone: string;
+                            createdAt: string;
+                        }[];
+                        nextDeadline: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string | null;
+                            createdById: string;
+                            title: string;
+                            description: string | null;
+                            /** @enum {string} */
+                            category: "EXAM" | "LAB" | "LECTURE" | "OFFICE_HOURS" | "DEADLINE";
+                            startsAt: string;
+                            endsAt: string;
+                            timezone: string;
+                            createdAt: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -4623,17 +6507,75 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    description?: string | null;
+                    /** @enum {string} */
+                    category: "EXAM" | "LAB" | "LECTURE" | "OFFICE_HOURS" | "DEADLINE";
+                    startsAt: string | null;
+                    endsAt: string | null;
+                    /** @default UTC */
+                    timezone?: string;
+                    courseId?: string | null;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string | null;
+                            createdById: string;
+                            title: string;
+                            description: string | null;
+                            /** @enum {string} */
+                            category: "EXAM" | "LAB" | "LECTURE" | "OFFICE_HOURS" | "DEADLINE";
+                            startsAt: string;
+                            endsAt: string;
+                            timezone: string;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4654,15 +6596,42 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Deleted */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4681,17 +6650,75 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    description?: string | null;
+                    /** @enum {string} */
+                    category?: "EXAM" | "LAB" | "LECTURE" | "OFFICE_HOURS" | "DEADLINE";
+                    startsAt?: string | null;
+                    endsAt?: string | null;
+                    /** @default UTC */
+                    timezone?: string;
+                    courseId?: unknown;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string | null;
+                            createdById: string;
+                            title: string;
+                            description: string | null;
+                            /** @enum {string} */
+                            category: "EXAM" | "LAB" | "LECTURE" | "OFFICE_HOURS" | "DEADLINE";
+                            startsAt: string;
+                            endsAt: string;
+                            timezone: string;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4710,12 +6737,23 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description iCalendar feed of the same events as GET /calendar/events (sent as an attachment). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "text/calendar": string;
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -4730,7 +6768,9 @@ export interface operations {
     };
     getCertificatesVerifyNumber: {
         parameters: {
-            query?: never;
+            query?: {
+                tenant?: string;
+            };
             header?: never;
             path: {
                 number: string;
@@ -4739,12 +6779,52 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Public. Answers 404 for an unknown number or tenant, and 429 when rate limited. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        valid: boolean;
+                        certificateNumber: string;
+                        issuedAt: string;
+                        expiresAt: string | null;
+                        issuedTo: string;
+                        course: {
+                            title: string;
+                            code: string;
+                        };
+                        institution: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -4844,12 +6924,45 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            departmentId: string | null;
+                            code: string;
+                            title: string;
+                            description: string | null;
+                            syllabus: string | null;
+                            thumbnailUrl: string | null;
+                            /** @enum {string} */
+                            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                            passingGradePercent: number;
+                            enableProctoring: boolean;
+                            allowSelfEnroll: boolean;
+                            gradeCurveMethod: string;
+                            gradeCurveValue: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            instructors: {
+                                id: string;
+                                courseId: string;
+                                userId: string;
+                                isPrimary: boolean;
+                                user: {
+                                    id: string;
+                                    firstName: string;
+                                    lastName: string;
+                                };
+                            }[];
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -4900,15 +7013,68 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Staff, auditors and administrators: every appeal in the course. Learners: their own. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            status: "OPEN" | "UPHELD" | "DENIED";
+                            reason: string;
+                            response: string | null;
+                            createdAt: string;
+                            respondedAt: string | null;
+                            student?: string;
+                            submission: {
+                                id: string;
+                                grade: number | null;
+                                feedback: string | null;
+                                rubricScores?: unknown;
+                                text?: string | null;
+                            };
+                            assignment: {
+                                id: string;
+                                title: string;
+                                maxPoints: number;
+                                rubricJson?: unknown;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4929,15 +7095,52 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            title: string;
+                            instructions: string;
+                            maxPoints: number;
+                            dueDate: string | null;
+                            gradeCategoryId: string | null;
+                            rubricJson?: unknown;
+                            createdAt: string;
+                            updatedAt: string;
+                            _count?: {
+                                submissions: number;
+                            };
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4967,12 +7170,28 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            title: string;
+                            instructions: string;
+                            maxPoints: number;
+                            dueDate: string | null;
+                            gradeCategoryId: string | null;
+                            rubricJson?: unknown;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -5023,15 +7242,56 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            reporterId: string;
+                            /** @enum {string} */
+                            targetType: "THREAD" | "POST";
+                            targetId: string;
+                            reason: string;
+                            resolved: boolean;
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5052,15 +7312,71 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Staff view, or the learner view */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            userId: string;
+                            name: string;
+                            email: string;
+                            rawPercent: number;
+                            curvedPercent: number;
+                            letter: string;
+                            incomplete: boolean;
+                            /** @enum {string} */
+                            status: "DRAFT" | "SUBMITTED" | "APPROVED";
+                            breakdown?: unknown;
+                            decisionNote: string | null;
+                        }[];
+                        summary: {
+                            total: number;
+                            draft: number;
+                            submitted: number;
+                            approved: number;
+                            incomplete: number;
+                            average: number | null;
+                        };
+                    } | {
+                        /** @enum {boolean} */
+                        published: false;
+                        data: unknown;
+                    } | {
+                        /** @enum {boolean} */
+                        published: true;
+                        data: {
+                            rawPercent: number;
+                            curvedPercent: number;
+                            letter: string;
+                            breakdown?: unknown;
+                            approvedAt: string | null;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5081,15 +7397,48 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            approved: number;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5110,15 +7459,50 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            learners: number;
+                            calculated: number;
+                            skippedApproved: number;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5137,17 +7521,64 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    categories: {
+                        name: string;
+                        weightPercent: number;
+                    }[];
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            name: string;
+                            weightPercent: number;
+                            orderIndex: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5168,15 +7599,58 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            curve: {
+                                /** @enum {string} */
+                                method?: "NONE" | "ADD_POINTS" | "SCALE_TO_MAX";
+                                value?: number;
+                            };
+                            categories: {
+                                id: string;
+                                tenantId: string;
+                                courseId: string;
+                                name: string;
+                                weightPercent: number;
+                                orderIndex: number;
+                            }[];
+                            items: {
+                                /** @enum {string} */
+                                type: "QUIZ" | "ASSIGNMENT";
+                                id: string;
+                                title: string;
+                                gradeCategoryId: string | null;
+                            }[];
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5195,17 +7669,60 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    method: "NONE" | "ADD_POINTS" | "SCALE_TO_MAX";
+                    /** @default 0 */
+                    value?: number;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            method: string;
+                            value: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5224,17 +7741,61 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    items: {
+                        /** @enum {string} */
+                        type: "QUIZ" | "ASSIGNMENT";
+                        id: string;
+                        categoryId: string | null;
+                    }[];
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            updated: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5253,17 +7814,65 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    note: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            returned: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5284,15 +7893,48 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            reopened: number;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5311,17 +7953,58 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default false */
+                    allowIncomplete?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            submitted: number;
+                            incomplete: number;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5342,15 +8025,52 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        configured: boolean;
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            description: string | null;
+                            scheduledAt: string;
+                            durationMins: number;
+                            /** @enum {string} */
+                            status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+                            allowStudentVideo: boolean;
+                            startedAt: string | null;
+                            endedAt: string | null;
+                            attendeeCount?: number;
+                            attended?: boolean;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5369,17 +8089,72 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    description?: string;
+                    scheduledAt: string | null;
+                    /** @default 60 */
+                    durationMins?: number;
+                    /** @default false */
+                    allowStudentVideo?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            description: string | null;
+                            scheduledAt: string;
+                            durationMins: number;
+                            /** @enum {string} */
+                            status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+                            allowStudentVideo: boolean;
+                            startedAt: string | null;
+                            endedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5400,15 +8175,48 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            timeLimitMins: number | null;
+                            maxAttempts: number;
+                            passingPercent: number;
+                            requireProctoring: boolean;
+                            questionCount: number;
+                            submissionCount: number;
+                            createdAt: string;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5440,12 +8248,29 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            title: string;
+                            timeLimitMins: number | null;
+                            maxAttempts: number;
+                            randomizeQuestions: boolean;
+                            requireProctoring: boolean;
+                            passingPercent: number;
+                            gradeCategoryId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -5487,7 +8312,12 @@ export interface operations {
     };
     getCoursesCourseIdThreads: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                category?: "General" | "Assignments" | "Consensus" | "Cryptography" | "Exams" | "Logistics";
+                includeHidden?: "true" | "false";
+            };
             header?: never;
             path: {
                 courseId: string;
@@ -5496,15 +8326,60 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            body: string;
+                            category: string;
+                            pinned: boolean;
+                            locked: boolean;
+                            hidden: boolean;
+                            createdAt: string;
+                            author: {
+                                id: string;
+                                name: string;
+                                role: string;
+                            };
+                            replyCount: number;
+                            upvotes: number;
+                            votedByMe: boolean;
+                        }[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5523,17 +8398,73 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    body: string;
+                    /**
+                     * @default General
+                     * @enum {string}
+                     */
+                    category?: "General" | "Assignments" | "Consensus" | "Cryptography" | "Exams" | "Logistics";
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            authorId: string;
+                            title: string;
+                            body: string;
+                            category: string;
+                            pinned: boolean;
+                            locked: boolean;
+                            hidden: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5554,15 +8485,98 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Metadata for anyone who can see the course; modules only when content is not locked. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            departmentId: string | null;
+                            code: string;
+                            title: string;
+                            description: string | null;
+                            syllabus: string | null;
+                            thumbnailUrl: string | null;
+                            /** @enum {string} */
+                            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                            passingGradePercent: number;
+                            enableProctoring: boolean;
+                            allowSelfEnroll: boolean;
+                            gradeCurveMethod: string;
+                            gradeCurveValue: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            department: {
+                                id: string;
+                                campusId: string;
+                                name: string;
+                                code: string;
+                                createdAt: string;
+                                updatedAt: string;
+                            } | null;
+                            instructors: {
+                                isPrimary: boolean;
+                                user: {
+                                    id: string;
+                                    firstName: string;
+                                    lastName: string;
+                                    avatarUrl: string | null;
+                                    email?: string;
+                                };
+                            }[];
+                            modules: {
+                                id: string;
+                                courseId: string;
+                                title: string;
+                                orderIndex: number;
+                                isLocked: boolean;
+                                createdAt: string;
+                                updatedAt: string;
+                                lessons: {
+                                    id: string;
+                                    moduleId: string;
+                                    title: string;
+                                    orderIndex: number;
+                                    /** @enum {string} */
+                                    contentType: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
+                                    bodyContent: string | null;
+                                    mediaUrl: string | null;
+                                    scormPackageId: string | null;
+                                    ltiToolLaunchUrl: string | null;
+                                    estimatedMinutes: number;
+                                    createdAt: string;
+                                    updatedAt: string;
+                                }[];
+                            }[];
+                            contentLocked: boolean;
+                            isEnrolled: boolean;
+                            enrollmentCount: number;
+                            quizCount: number;
+                            assignmentCount: number;
+                            _count: {
+                                enrollments: number;
+                                quizzes: number;
+                                assignments: number;
+                            };
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5599,12 +8613,34 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            departmentId: string | null;
+                            code: string;
+                            title: string;
+                            description: string | null;
+                            syllabus: string | null;
+                            thumbnailUrl: string | null;
+                            /** @enum {string} */
+                            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                            passingGradePercent: number;
+                            enableProctoring: boolean;
+                            allowSelfEnroll: boolean;
+                            gradeCurveMethod: string;
+                            gradeCurveValue: number;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -5646,12 +8682,19 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        message: string;
+                        id: string;
+                        /** @enum {string} */
+                        status: "ARCHIVED";
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -5664,6 +8707,15 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5685,15 +8737,38 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        message: string;
+                        id: string;
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5713,17 +8788,78 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    orderIndex?: number;
+                    /** @enum {string} */
+                    contentType?: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
+                    bodyContent?: string | null;
+                    /** Format: uri */
+                    mediaUrl?: string | null;
+                    scormPackageId?: string | null;
+                    /** Format: uri */
+                    ltiToolLaunchUrl?: string | null;
+                    estimatedMinutes?: number;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            moduleId: string;
+                            title: string;
+                            orderIndex: number;
+                            /** @enum {string} */
+                            contentType: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
+                            bodyContent: string | null;
+                            mediaUrl: string | null;
+                            scormPackageId: string | null;
+                            ltiToolLaunchUrl: string | null;
+                            estimatedMinutes: number;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5744,15 +8880,60 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            orderIndex: number;
+                            isLocked: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            lessons: {
+                                id: string;
+                                moduleId: string;
+                                title: string;
+                                orderIndex: number;
+                                /** @enum {string} */
+                                contentType: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
+                                bodyContent: string | null;
+                                mediaUrl: string | null;
+                                scormPackageId: string | null;
+                                ltiToolLaunchUrl: string | null;
+                                estimatedMinutes: number;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[];
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5771,17 +8952,79 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    orderIndex?: number;
+                    isLocked?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            orderIndex: number;
+                            isLocked: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            lessons: {
+                                id: string;
+                                moduleId: string;
+                                title: string;
+                                orderIndex: number;
+                                /** @enum {string} */
+                                contentType: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
+                                bodyContent: string | null;
+                                mediaUrl: string | null;
+                                scormPackageId: string | null;
+                                ltiToolLaunchUrl: string | null;
+                                estimatedMinutes: number;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5800,17 +9043,62 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    moduleIds: string[];
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            orderIndex: number;
+                            isLocked: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5832,15 +9120,38 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        message: string;
+                        id: string;
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5860,17 +9171,79 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    orderIndex?: number;
+                    isLocked?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            orderIndex: number;
+                            isLocked: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            lessons: {
+                                id: string;
+                                moduleId: string;
+                                title: string;
+                                orderIndex: number;
+                                /** @enum {string} */
+                                contentType: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
+                                bodyContent: string | null;
+                                mediaUrl: string | null;
+                                scormPackageId: string | null;
+                                ltiToolLaunchUrl: string | null;
+                                estimatedMinutes: number;
+                                createdAt: string;
+                                updatedAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5890,17 +9263,78 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    orderIndex?: number;
+                    /** @enum {string} */
+                    contentType?: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
+                    bodyContent?: string | null;
+                    /** Format: uri */
+                    mediaUrl?: string | null;
+                    scormPackageId?: string | null;
+                    /** Format: uri */
+                    ltiToolLaunchUrl?: string | null;
+                    estimatedMinutes?: number;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            moduleId: string;
+                            title: string;
+                            orderIndex: number;
+                            /** @enum {string} */
+                            contentType: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
+                            bodyContent: string | null;
+                            mediaUrl: string | null;
+                            scormPackageId: string | null;
+                            ltiToolLaunchUrl: string | null;
+                            estimatedMinutes: number;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5958,7 +9392,7 @@ export interface operations {
                                 certificateNumber: string;
                                 issuedAt: string;
                                 pdfUrl: string | null;
-                                verificationQr: string | null;
+                                verificationQr: string;
                             } | null;
                         }[];
                         pagination: {
@@ -6024,23 +9458,11 @@ export interface operations {
                             progressPercent: number;
                             enrolledAt: string;
                             completedAt: string | null;
-                            course?: {
+                            course: {
                                 id: string;
                                 code: string;
                                 title: string;
-                                description: string | null;
-                                thumbnailUrl: string | null;
-                                /** @enum {string} */
-                                status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
-                                passingGradePercent: number;
                             };
-                            certificate?: {
-                                id: string;
-                                certificateNumber: string;
-                                issuedAt: string;
-                                pdfUrl: string | null;
-                                verificationQr: string | null;
-                            } | null;
                         };
                     };
                 };
@@ -6110,12 +9532,41 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            userId: string;
+                            /** @enum {string} */
+                            status: "ENROLLED" | "IN_PROGRESS" | "COMPLETED" | "DROPPED" | "FAILED";
+                            finalGrade: number | null;
+                            progressPercent: number;
+                            enrolledAt: string;
+                            completedAt: string | null;
+                            course: {
+                                id: string;
+                                code: string;
+                                title: string;
+                            };
+                            certificate: {
+                                id: string;
+                                enrollmentId: string;
+                                certificateNumber: string;
+                                issuedAt: string;
+                                expiresAt: string | null;
+                                pdfUrl: string | null;
+                                verificationQr: string;
+                            } | null;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -6146,6 +9597,15 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6203,7 +9663,7 @@ export interface operations {
                                 certificateNumber: string;
                                 issuedAt: string;
                                 pdfUrl: string | null;
-                                verificationQr: string | null;
+                                verificationQr: string;
                             } | null;
                         }[];
                         pagination: {
@@ -6228,22 +9688,54 @@ export interface operations {
     };
     getEnrollmentsStats: {
         parameters: {
-            query?: never;
+            query?: {
+                userId?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            total: number;
+                            completed: number;
+                            inProgress: number;
+                            enrolled: number;
+                            dropped: number;
+                            failed: number;
+                            averageProgress: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6262,12 +9754,44 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Up to 20 items: assignments (soonest due first), then quizzes. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: ({
+                            /** @enum {string} */
+                            type: "ASSIGNMENT";
+                            id: string;
+                            title: string;
+                            course: {
+                                id: string;
+                                code: string;
+                                title: string;
+                            };
+                            dueAt: string | null;
+                            overdue: boolean;
+                            submitted: boolean;
+                        } | {
+                            /** @enum {string} */
+                            type: "QUIZ";
+                            id: string;
+                            title: string;
+                            course: {
+                                id: string;
+                                code: string;
+                                title: string;
+                            };
+                            dueAt: unknown;
+                            timeLimitMins: number | null;
+                            requireProctoring: boolean;
+                            attemptsRemaining: number;
+                            hasOpenAttempt: boolean;
+                        })[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -6287,17 +9811,60 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    targetType: "THREAD" | "POST";
+                    targetId: string;
+                    reason: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {boolean} */
+                            reported: true;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6318,15 +9885,50 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {boolean} */
+                            resolved: true;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6345,12 +9947,26 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            xp: number;
+                            level: number;
+                            xpIntoLevel: number;
+                            xpPerLevel: number;
+                            streakDays: number;
+                            longestStreak: number;
+                            lastActiveDate: string | null;
+                            awarded: number;
+                            alreadyClaimed: boolean;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -6365,22 +9981,64 @@ export interface operations {
     };
     getGamificationLeaderboard: {
         parameters: {
-            query?: never;
+            query: {
+                courseId: string;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            rank: number;
+                            userId: string;
+                            name: string;
+                            xp: number;
+                            level: number;
+                            streakDays: number;
+                            isMe: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6399,12 +10057,20 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Average score (percent) per Bloom's level; levels without graded answers are omitted. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            level: "REMEMBER" | "UNDERSTAND" | "APPLY" | "ANALYZE" | "EVALUATE" | "CREATE";
+                            score: number;
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -6426,12 +10092,29 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            xp: number;
+                            level: number;
+                            xpIntoLevel: number;
+                            xpPerLevel: number;
+                            streakDays: number;
+                            longestStreak: number;
+                            lastActiveDate: string | null;
+                            recent: {
+                                source: string;
+                                points: number;
+                                createdAt: string;
+                            }[];
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -6453,12 +10136,54 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Signed LiveKit webhook (Authorization is a JWT committing to the body). `ignored` explains an event for a room or session that is not ours; it is still acknowledged. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        ok: true;
+                        ignored?: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -6473,12 +10198,63 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Signed provider callback (headers x-lms-timestamp and x-lms-signature: sha256=HMAC). `alerted` is how many course staff were notified of high similarity (30% or more). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "recorded";
+                        alerted: number;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -6491,17 +10267,81 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    description?: string;
+                    scheduledAt?: string | null;
+                    /** @default 60 */
+                    durationMins?: number;
+                    /** @default false */
+                    allowStudentVideo?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            description: string | null;
+                            scheduledAt: string;
+                            durationMins: number;
+                            /** @enum {string} */
+                            status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+                            allowStudentVideo: boolean;
+                            startedAt: string | null;
+                            endedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6522,15 +10362,50 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            userId: string;
+                            name: string;
+                            email: string;
+                            joinCount: number;
+                            firstJoinedAt: string | null;
+                            minutes: number;
+                            present: boolean;
+                            inRoomNow: boolean;
+                        }[];
+                        summary: {
+                            enrolled: number;
+                            present: number;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6551,15 +10426,50 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            status: "CANCELLED";
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6580,15 +10490,58 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            description: string | null;
+                            scheduledAt: string;
+                            durationMins: number;
+                            /** @enum {string} */
+                            status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+                            allowStudentVideo: boolean;
+                            startedAt: string | null;
+                            endedAt: string | null;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6609,15 +10562,62 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description A signed token for the media server. Only while the class is live. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            url: string;
+                            token: string;
+                            roomName: string;
+                            /** @enum {string} */
+                            role: "HOST" | "ASSISTANT" | "LEARNER";
+                            canPublish: boolean;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6638,15 +10638,67 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description The session is live. Also the answer when it already was (idempotent). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            description: string | null;
+                            scheduledAt: string;
+                            durationMins: number;
+                            /** @enum {string} */
+                            status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+                            allowStudentVideo: boolean;
+                            startedAt: string | null;
+                            endedAt: string | null;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6665,12 +10717,34 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        configured: boolean;
+                        data: {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            description: string | null;
+                            scheduledAt: string;
+                            durationMins: number;
+                            /** @enum {string} */
+                            status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+                            allowStudentVideo: boolean;
+                            startedAt: string | null;
+                            endedAt: string | null;
+                            course: {
+                                id: string;
+                                code: string;
+                                title: string;
+                            };
+                        }[];
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -6690,14 +10764,86 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    id_token: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description The platform id_token was verified against its key set and the matching user signed in (session cookie set). Does not redirect. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "authenticated";
+                        /** @enum {string} */
+                        ltiVersion: "1.3.0";
+                        targetLinkUri: string | null;
+                        user: {
+                            id: string;
+                            role: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -6732,7 +10878,7 @@ export interface operations {
                             createdAt: string;
                         }[];
                         unreadCount: number;
-                        meta: {
+                        pagination: {
                             page: number;
                             limit: number;
                             total: number;
@@ -6984,15 +11130,49 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            endorsed: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7011,17 +11191,64 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    hidden: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            threadId: string;
+                            authorId: string;
+                            parentId: string | null;
+                            body: string;
+                            hidden: boolean;
+                            endorsed: boolean;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7038,17 +11265,68 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    submissionId: string;
+                    /** @enum {string} */
+                    eventType: "TAB_SWITCH" | "FACE_NOT_DETECTED" | "MULTIPLE_FACES" | "AUDIO_SPIKE" | "COPY_PASTE" | "FULLSCREEN_EXIT";
+                    /** @enum {string} */
+                    severity: "LOW" | "MEDIUM" | "HIGH";
+                    /** Format: uri */
+                    snapshotUrl?: string;
+                    metadata?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "recorded";
+                        flagged: boolean;
+                        riskScore: number;
+                        eventType: string;
+                        timestamp: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7060,19 +11338,62 @@ export interface operations {
     };
     getQuestionBank: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                q?: string;
+                tag?: string;
+                type?: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                bloomLevel?: "REMEMBER" | "UNDERSTAND" | "APPLY" | "ANALYZE" | "EVALUATE" | "CREATE";
+                courseId?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string | null;
+                            ownerId: string;
+                            questionText: string;
+                            /** @enum {string} */
+                            questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                            points: number;
+                            optionsJson?: unknown;
+                            correctAnswer: string | null;
+                            explanation: string | null;
+                            tags: string[];
+                            bloomLevel: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -7092,17 +11413,84 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    questionText: string;
+                    /** @enum {string} */
+                    questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                    points?: number;
+                    optionsJson?: {
+                        id?: string;
+                        text: string;
+                        isCorrect: boolean;
+                    }[] | null;
+                    correctAnswer?: string | null;
+                    explanation?: string | null;
+                    tags?: string[];
+                    /** @enum {string|null} */
+                    bloomLevel?: "REMEMBER" | "UNDERSTAND" | "APPLY" | "ANALYZE" | "EVALUATE" | "CREATE" | null;
+                    courseId?: string | null;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string | null;
+                            ownerId: string;
+                            questionText: string;
+                            /** @enum {string} */
+                            questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                            points: number;
+                            optionsJson?: unknown;
+                            correctAnswer: string | null;
+                            explanation: string | null;
+                            tags: string[];
+                            bloomLevel: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7123,15 +11511,44 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string | null;
+                            ownerId: string;
+                            questionText: string;
+                            /** @enum {string} */
+                            questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                            points: number;
+                            optionsJson?: unknown;
+                            correctAnswer: string | null;
+                            explanation: string | null;
+                            tags: string[];
+                            bloomLevel: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7152,8 +11569,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Deleted */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7161,6 +11578,24 @@ export interface operations {
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7179,17 +11614,84 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    questionText?: string;
+                    /** @enum {string} */
+                    questionType?: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                    points?: number;
+                    optionsJson?: {
+                        id?: string;
+                        text: string;
+                        isCorrect: boolean;
+                    }[] | null;
+                    correctAnswer?: string | null;
+                    explanation?: string | null;
+                    tags?: string[];
+                    /** @enum {string|null} */
+                    bloomLevel?: "REMEMBER" | "UNDERSTAND" | "APPLY" | "ANALYZE" | "EVALUATE" | "CREATE" | null;
+                    courseId?: string | null;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string | null;
+                            ownerId: string;
+                            questionText: string;
+                            /** @enum {string} */
+                            questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                            points: number;
+                            optionsJson?: unknown;
+                            correctAnswer: string | null;
+                            explanation: string | null;
+                            tags: string[];
+                            bloomLevel: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7210,15 +11712,96 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Staff, administrators and auditors get every question with its answer key; learners get questions without correct answers (options carry only id and text). */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            title: string;
+                            timeLimitMins: number | null;
+                            maxAttempts: number;
+                            randomizeQuestions: boolean;
+                            requireProctoring: boolean;
+                            passingPercent: number;
+                            gradeCategoryId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            questions: {
+                                id: string;
+                                quizId: string;
+                                questionText: string;
+                                /** @enum {string} */
+                                questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                                points: number;
+                                orderIndex: number;
+                                optionsJson?: unknown;
+                                correctAnswer: string | null;
+                                explanation: string | null;
+                                bloomLevel: string | null;
+                            }[];
+                            course: {
+                                id: string;
+                                title: string;
+                                code: string;
+                            } | null;
+                        } | {
+                            id: string;
+                            courseId: string;
+                            title: string;
+                            timeLimitMins: number | null;
+                            maxAttempts: number;
+                            passingPercent: number;
+                            requireProctoring: boolean;
+                            randomizeQuestions: boolean;
+                            course: {
+                                id: string;
+                                title: string;
+                                code: string;
+                            } | null;
+                            attemptsUsed: number;
+                            attemptsRemaining: number;
+                            questions: {
+                                id: string;
+                                questionText: string;
+                                /** @enum {string} */
+                                questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                                points: number;
+                                orderIndex: number;
+                                options: {
+                                    id?: string;
+                                    text?: string;
+                                }[] | null;
+                            }[];
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7239,15 +11822,47 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Quiz deleted */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        message: string;
+                        id: string;
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7279,12 +11894,29 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            title: string;
+                            timeLimitMins: number | null;
+                            maxAttempts: number;
+                            randomizeQuestions: boolean;
+                            requireProctoring: boolean;
+                            passingPercent: number;
+                            gradeCategoryId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -7354,12 +11986,28 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            quizId: string;
+                            questionText: string;
+                            /** @enum {string} */
+                            questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                            points: number;
+                            orderIndex: number;
+                            optionsJson?: unknown;
+                            correctAnswer: string | null;
+                            explanation: string | null;
+                            bloomLevel: string | null;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -7411,15 +12059,47 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Question deleted */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        message: string;
+                        id: string;
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7460,12 +12140,28 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            quizId: string;
+                            questionText: string;
+                            /** @enum {string} */
+                            questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                            points: number;
+                            orderIndex: number;
+                            optionsJson?: unknown;
+                            correctAnswer: string | null;
+                            explanation: string | null;
+                            bloomLevel: string | null;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -7514,7 +12210,18 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    answers: {
+                        [key: string]: string | string[];
+                    } | {
+                        questionId: string;
+                        answer: string | string[] | unknown;
+                    }[];
+                };
+            };
+        };
         responses: {
             /** @description Success */
             201: {
@@ -7582,7 +12289,11 @@ export interface operations {
     };
     getQuizzesIdSubmissions: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                userId?: string;
+            };
             header?: never;
             path: {
                 id: string;
@@ -7591,15 +12302,70 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Staff and auditors: every attempt, with stored answers and the learner. Learners: their own attempts only, without stored answers. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            quizId: string;
+                            userId: string;
+                            score: number | null;
+                            maxScore: number;
+                            passed: boolean;
+                            attemptNumber: number;
+                            startedAt: string;
+                            submittedAt: string | null;
+                            answersJson?: unknown;
+                            user?: {
+                                id: string;
+                                firstName: string;
+                                lastName: string;
+                                email: string;
+                            };
+                            pendingManualGrading?: boolean;
+                        }[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7718,12 +12484,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            score: number;
+                            maxScore: number;
+                            passed: boolean;
+                            pendingManualGrading: boolean;
+                        };
+                    };
+                };
             };
             /** @description Invalid request */
             400: {
@@ -7863,15 +12639,62 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            submissionId: string;
+                            userId: string;
+                            attemptNumber: number;
+                            high: number;
+                            score: number;
+                            flagged: boolean;
+                            events: {
+                                id: string;
+                                submissionId: string;
+                                eventType: string;
+                                severity: string;
+                                timestamp: string;
+                                snapshotUrl: string | null;
+                                metadataJson?: unknown;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7890,17 +12713,66 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    itemIds: string[];
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Independent copies of the chosen items, in the order requested. */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            quizId: string;
+                            questionText: string;
+                            /** @enum {string} */
+                            questionType: "MULTIPLE_CHOICE" | "MULTI_SELECT" | "TRUE_FALSE" | "SHORT_ANSWER" | "ESSAY" | "CODE_SANDBOX" | "FORMULA_CALCULATED";
+                            points: number;
+                            orderIndex: number;
+                            optionsJson?: unknown;
+                            correctAnswer: string | null;
+                            explanation: string | null;
+                            bloomLevel: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7919,12 +12791,58 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Capabilities of this SCIM service. Authenticated with a per-tenant SCIM bearer token, not a session. Errors (401 bad or missing token, 403 SCIM not enabled or an administrator account, 404, 409, 400) use the SCIM error body (status, detail, scimType) with content type application/scim+json, not the LMS { error } envelope. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/scim+json": {
+                        schemas: string[];
+                        patch: {
+                            supported: boolean;
+                        };
+                        bulk: {
+                            supported: boolean;
+                        };
+                        filter: {
+                            supported: boolean;
+                            maxResults: number;
+                        };
+                        changePassword: {
+                            supported: boolean;
+                        };
+                        sort: {
+                            supported: boolean;
+                        };
+                        etag: {
+                            supported: boolean;
+                        };
+                        authenticationSchemes: {
+                            type: string;
+                            name: string;
+                            description: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -7937,12 +12855,69 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description SCIM ListResponse. Supports startIndex, count (max 100) and the filters userName eq "x" and externalId eq "x". Authenticated with a per-tenant SCIM bearer token, not a session. Errors (401 bad or missing token, 403 SCIM not enabled or an administrator account, 404, 409, 400) use the SCIM error body (status, detail, scimType) with content type application/scim+json, not the LMS { error } envelope. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/scim+json": {
+                        schemas: string[];
+                        totalResults: number;
+                        startIndex: number;
+                        itemsPerPage: number;
+                        Resources: {
+                            schemas: string[];
+                            id: string;
+                            externalId?: string;
+                            userName: string;
+                            name: {
+                                givenName: string;
+                                familyName: string;
+                                formatted: string;
+                            };
+                            emails: {
+                                value: string;
+                                primary: boolean;
+                            }[];
+                            active: boolean;
+                            meta: {
+                                /** @enum {string} */
+                                resourceType: "User";
+                                created: string;
+                                lastModified: string;
+                                location: string;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -7953,14 +12928,92 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    userName: string;
+                    externalId?: string;
+                    name?: {
+                        givenName?: string;
+                        familyName?: string;
+                    };
+                    emails?: {
+                        /** Format: email */
+                        value: string;
+                        primary?: boolean;
+                    }[];
+                    active?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description The provisioned user (learner role). Authenticated with a per-tenant SCIM bearer token, not a session. Errors (401 bad or missing token, 403 SCIM not enabled or an administrator account, 404, 409, 400) use the SCIM error body (status, detail, scimType) with content type application/scim+json, not the LMS { error } envelope. */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/scim+json": {
+                        schemas: string[];
+                        id: string;
+                        externalId?: string;
+                        userName: string;
+                        name: {
+                            givenName: string;
+                            familyName: string;
+                            formatted: string;
+                        };
+                        emails: {
+                            value: string;
+                            primary: boolean;
+                        }[];
+                        active: boolean;
+                        meta: {
+                            /** @enum {string} */
+                            resourceType: "User";
+                            created: string;
+                            lastModified: string;
+                            location: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -7975,12 +13028,63 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description A user of the token's tenant. Authenticated with a per-tenant SCIM bearer token, not a session. Errors (401 bad or missing token, 403 SCIM not enabled or an administrator account, 404, 409, 400) use the SCIM error body (status, detail, scimType) with content type application/scim+json, not the LMS { error } envelope. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/scim+json": {
+                        schemas: string[];
+                        id: string;
+                        externalId?: string;
+                        userName: string;
+                        name: {
+                            givenName: string;
+                            familyName: string;
+                            formatted: string;
+                        };
+                        emails: {
+                            value: string;
+                            primary: boolean;
+                        }[];
+                        active: boolean;
+                        meta: {
+                            /** @enum {string} */
+                            resourceType: "User";
+                            created: string;
+                            lastModified: string;
+                            location: string;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -7993,14 +13097,92 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    userName: string;
+                    externalId?: string;
+                    name?: {
+                        givenName?: string;
+                        familyName?: string;
+                    };
+                    emails?: {
+                        /** Format: email */
+                        value: string;
+                        primary?: boolean;
+                    }[];
+                    active?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description The updated user. Authenticated with a per-tenant SCIM bearer token, not a session. Errors (401 bad or missing token, 403 SCIM not enabled or an administrator account, 404, 409, 400) use the SCIM error body (status, detail, scimType) with content type application/scim+json, not the LMS { error } envelope. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/scim+json": {
+                        schemas: string[];
+                        id: string;
+                        externalId?: string;
+                        userName: string;
+                        name: {
+                            givenName: string;
+                            familyName: string;
+                            formatted: string;
+                        };
+                        emails: {
+                            value: string;
+                            primary: boolean;
+                        }[];
+                        active: boolean;
+                        meta: {
+                            /** @enum {string} */
+                            resourceType: "User";
+                            created: string;
+                            lastModified: string;
+                            location: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -8015,12 +13197,39 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Deprovisioned: the account is suspended and keeps its history; no body. Authenticated with a per-tenant SCIM bearer token, not a session. Errors (401 bad or missing token, 403 SCIM not enabled or an administrator account, 404, 409, 400) use the SCIM error body (status, detail, scimType) with content type application/scim+json, not the LMS { error } envelope. */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -8033,20 +13242,94 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    schemas?: string[];
+                    Operations: {
+                        op: string;
+                        path?: string;
+                        value?: unknown;
+                    }[];
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description The updated user. Authenticated with a per-tenant SCIM bearer token, not a session. Errors (401 bad or missing token, 403 SCIM not enabled or an administrator account, 404, 409, 400) use the SCIM error body (status, detail, scimType) with content type application/scim+json, not the LMS { error } envelope. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/scim+json": {
+                        schemas: string[];
+                        id: string;
+                        externalId?: string;
+                        userName: string;
+                        name: {
+                            givenName: string;
+                            familyName: string;
+                            formatted: string;
+                        };
+                        emails: {
+                            value: string;
+                            primary: boolean;
+                        }[];
+                        active: boolean;
+                        meta: {
+                            /** @enum {string} */
+                            resourceType: "User";
+                            created: string;
+                            lastModified: string;
+                            location: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
     getThreadsId: {
         parameters: {
-            query?: never;
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
             header?: never;
             path: {
                 id: string;
@@ -8055,15 +13338,73 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            authorId: string;
+                            title: string;
+                            body: string;
+                            category: string;
+                            pinned: boolean;
+                            locked: boolean;
+                            hidden: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            author: {
+                                id: string;
+                                name: string;
+                                role: string;
+                            } | null;
+                            nextCursor: string | null;
+                            upvotes: number;
+                            votedByMe: boolean;
+                            posts: {
+                                id: string;
+                                parentId: string | null;
+                                body: string;
+                                hidden: boolean;
+                                endorsed: boolean;
+                                createdAt: string;
+                                author: {
+                                    id: string;
+                                    name: string;
+                                    role: string;
+                                };
+                                upvotes: number;
+                                votedByMe: boolean;
+                            }[];
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8082,17 +13423,69 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    pinned?: boolean;
+                    locked?: boolean;
+                    hidden?: boolean;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            authorId: string;
+                            title: string;
+                            body: string;
+                            category: string;
+                            pinned: boolean;
+                            locked: boolean;
+                            hidden: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8111,17 +13504,74 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    body: string;
+                    parentId?: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
-            200: {
+            /** @description Success */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            threadId: string;
+                            authorId: string;
+                            parentId: string | null;
+                            body: string;
+                            hidden: boolean;
+                            endorsed: boolean;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8133,19 +13583,67 @@ export interface operations {
     };
     getUsers: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                role?: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                status?: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                search?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            avatarUrl: string | null;
+                            /** @enum {string} */
+                            role: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                            emailVerified: boolean;
+                            idpProvider: string | null;
+                            mfaEnabled: boolean;
+                            lastLoginAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            _count: {
+                                enrollments: number;
+                                teachingCourses: number;
+                            };
+                            enrollmentCount: number;
+                            teachingCourseCount: number;
+                        }[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
@@ -8178,15 +13676,58 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            avatarUrl: string | null;
+                            /** @enum {string} */
+                            role: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                            emailVerified: boolean;
+                            idpProvider: string | null;
+                            mfaEnabled: boolean;
+                            lastLoginAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            _count: {
+                                enrollments: number;
+                                teachingCourses: number;
+                            };
+                        };
+                    };
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8205,17 +13746,77 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    firstName?: string;
+                    lastName?: string;
+                    avatarUrl?: string | "" | unknown;
+                    /** @enum {string} */
+                    role?: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                    /** @enum {string} */
+                    status?: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            avatarUrl: string | null;
+                            /** @enum {string} */
+                            role: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                            emailVerified: boolean;
+                            idpProvider: string | null;
+                            mfaEnabled: boolean;
+                            lastLoginAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8236,15 +13837,79 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        user: {
+                            id: string;
+                            firstName: string;
+                            lastName: string;
+                            email: string;
+                        };
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            courseId: string;
+                            userId: string;
+                            /** @enum {string} */
+                            status: "ENROLLED" | "IN_PROGRESS" | "COMPLETED" | "DROPPED" | "FAILED";
+                            finalGrade: number | null;
+                            progressPercent: number;
+                            enrolledAt: string;
+                            completedAt: string | null;
+                            course: {
+                                id: string;
+                                code: string;
+                                title: string;
+                                description: string | null;
+                                thumbnailUrl: string | null;
+                                /** @enum {string} */
+                                status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+                                passingGradePercent: number;
+                            };
+                            certificate: {
+                                id: string;
+                                certificateNumber: string;
+                                issuedAt: string;
+                                pdfUrl: string | null;
+                            } | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8261,17 +13926,62 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    targetType: "THREAD" | "POST";
+                    targetId: string;
+                };
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description Success */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            targetType: "THREAD" | "POST";
+                            targetId: string;
+                            voted: boolean;
+                            upvotes: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8288,17 +13998,117 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    id?: string;
+                    actor: {
+                        mbox: string;
+                        name?: string;
+                    };
+                    verb: {
+                        /** Format: uri */
+                        id: string;
+                        display?: {
+                            [key: string]: string;
+                        };
+                    };
+                    object: {
+                        /** Format: uri */
+                        id: string;
+                    };
+                    result?: {
+                        [key: string]: unknown;
+                    };
+                    context?: {
+                        [key: string]: unknown;
+                    };
+                    timestamp?: string | null;
+                } | {
+                    id?: string;
+                    actor: {
+                        mbox: string;
+                        name?: string;
+                    };
+                    verb: {
+                        /** Format: uri */
+                        id: string;
+                        display?: {
+                            [key: string]: string;
+                        };
+                    };
+                    object: {
+                        /** Format: uri */
+                        id: string;
+                    };
+                    result?: {
+                        [key: string]: unknown;
+                    };
+                    context?: {
+                        [key: string]: unknown;
+                    };
+                    timestamp?: string | null;
+                }[];
+            };
+        };
         responses: {
-            /** @description Success (response body not yet described) */
+            /** @description A batch (array) was sent */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        message: string;
+                        statementIds: string[];
+                        statementId?: string;
+                        stored: number;
+                    };
+                };
+            };
+            /** @description A single statement was sent */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        statementIds: string[];
+                        statementId?: string;
+                        stored: number;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

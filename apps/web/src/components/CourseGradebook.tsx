@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Plus, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { typedPut } from "@/lib/typed-api";
 import { useAuth } from "@/context/AuthContext";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { useStaffCourses } from "@/hooks/useStaffCourses";
@@ -10,7 +11,8 @@ import { Banner } from "@/components/admin/IdentityPanels";
 
 interface Category { id: string; name: string; weightPercent: number }
 interface Item { type: "QUIZ" | "ASSIGNMENT"; id: string; title: string; gradeCategoryId: string | null }
-interface Config { curve: { method: string; value: number }; categories: Category[]; items: Item[] }
+type CurveMethod = "NONE" | "ADD_POINTS" | "SCALE_TO_MAX";
+interface Config { curve: { method: CurveMethod; value: number }; categories: Category[]; items: Item[] }
 interface Row {
   userId: string; name: string; email: string; rawPercent: number; curvedPercent: number; letter: string;
   incomplete: boolean; status: "DRAFT" | "SUBMITTED" | "APPROVED"; decisionNote: string | null;
@@ -38,7 +40,7 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
   const { busy, error: actionError, run, clearError } = useAction();
   const [cats, setCats] = useState<{ name: string; weight: string }[]>([]);
   const [assign, setAssign] = useState<Record<string, string>>({});
-  const [method, setMethod] = useState("NONE");
+  const [method, setMethod] = useState<CurveMethod>("NONE");
   const [curveValue, setCurveValue] = useState("0");
   const [saved, setSaved] = useState<string | null>(null);
 
@@ -57,9 +59,9 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
 
   const saveCategories = () =>
     run(async () => {
-      await api.put(`/api/v1/courses/${courseId}/gradebook/categories`, {
+      await typedPut("/api/v1/courses/{courseId}/gradebook/categories", {
         categories: cats.map((c) => ({ name: c.name.trim(), weightPercent: Number(c.weight) })),
-      });
+      }, { courseId });
       await reload();
       done("Categories saved.");
     });
@@ -68,19 +70,19 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
     run(async () => {
       if (!cfg) return;
       const byName = new Map(cfg.categories.map((c) => [c.id, c.id]));
-      await api.put(`/api/v1/courses/${courseId}/gradebook/items`, {
+      await typedPut("/api/v1/courses/{courseId}/gradebook/items", {
         items: cfg.items.map((i) => {
           const v = assign[`${i.type}:${i.id}`] ?? "";
           return { type: i.type, id: i.id, categoryId: v && byName.has(v) ? v : null };
         }),
-      });
+      }, { courseId });
       await reload();
       done("Assignments saved.");
     });
 
   const saveCurve = () =>
     run(async () => {
-      await api.put(`/api/v1/courses/${courseId}/gradebook/curve`, { method, value: method === "NONE" ? 0 : Number(curveValue) });
+      await typedPut("/api/v1/courses/{courseId}/gradebook/curve", { method, value: method === "NONE" ? 0 : Number(curveValue) }, { courseId });
       await reload();
       done("Curve saved.");
     });
@@ -135,7 +137,7 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
       <section className="space-y-3" aria-labelledby="curve-h">
         <h4 id="curve-h" className="text-xs font-bold uppercase tracking-wider text-slate-300">Curve</h4>
         <div className="flex items-center gap-2">
-          <select className={input} aria-label="Curve method" disabled={!canEdit} value={method} onChange={(e) => setMethod(e.target.value)}>
+          <select className={input} aria-label="Curve method" disabled={!canEdit} value={method} onChange={(e) => setMethod(e.target.value as CurveMethod)}>
             <option value="NONE">No curve</option>
             <option value="ADD_POINTS">Add points to everyone</option>
             <option value="SCALE_TO_MAX">Scale so the best score is 100</option>

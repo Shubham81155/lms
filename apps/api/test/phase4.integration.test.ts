@@ -1008,7 +1008,7 @@ describe('notification responses match the API description', () => {
 
     const list = await s1.get('/api/v1/notifications');
     expect(list.status).toBe(200);
-    const shape = z.object({ data: z.array(NotificationItem), unreadCount: z.number(), meta: Pagination });
+    const shape = z.object({ data: z.array(NotificationItem), unreadCount: z.number(), pagination: Pagination });
     expect(shape.safeParse(list.body).success, JSON.stringify(shape.safeParse(list.body))).toBe(true);
     expect(list.body.data.length).toBeGreaterThan(0);
     expect(Object.keys(list.body.data[0]).sort()).toEqual(Object.keys(NotificationItem.shape).sort()); // nothing internal leaks
@@ -1024,5 +1024,38 @@ describe('notification responses match the API description', () => {
     expect(z.object({ id: z.string(), read: z.literal(true) }).safeParse(one.body.data).success).toBe(true);
     const all = await s1.post('/api/v1/notifications/read-all');
     expect(z.object({ updated: z.number() }).safeParse(all.body.data).success).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('forum responses match the API description', () => {
+  it('list, create, detail, reply, vote and report have the documented shapes', async () => {
+    const docs = await import('../src/openapi/docs.js');
+    const { z } = await import('zod');
+    const s1 = await as('s1');
+
+    const created = await s1.post('/api/v1/courses/c1/threads').send({ title: 'Contract thread', body: 'checking the shapes' });
+    expect(created.status).toBe(201);
+    expect(z.object({ data: docs.ForumThreadRecord }).safeParse(created.body).success, JSON.stringify(created.body)).toBe(true);
+    const id = created.body.data.id;
+
+    const list = await s1.get('/api/v1/courses/c1/threads');
+    const parsedList = z.object({ data: z.array(docs.ForumThreadItem), pagination: docs.Pagination }).safeParse(list.body);
+    expect(parsedList.success, JSON.stringify(parsedList)).toBe(true);
+
+    const teacher = await as('teacher');
+    const reply = await teacher.post(`/api/v1/threads/${id}/posts`).send({ body: 'a reply' });
+    expect(reply.status).toBe(201);
+    expect(z.object({ data: docs.ForumPostRecord }).safeParse(reply.body).success, JSON.stringify(reply.body)).toBe(true);
+
+    const detail = await s1.get(`/api/v1/threads/${id}`);
+    const parsedDetail = z.object({ data: docs.ForumThreadDetail }).safeParse(detail.body);
+    expect(parsedDetail.success, JSON.stringify(parsedDetail)).toBe(true);
+    expect(detail.body.data.posts).toHaveLength(1);
+
+    const vote = await s1.post('/api/v1/votes').send({ targetType: 'THREAD', targetId: id });
+    expect(z.object({ data: z.object({ targetType: z.enum(['THREAD', 'POST']), targetId: z.string(), voted: z.boolean(), upvotes: z.number() }) }).safeParse(vote.body).success, JSON.stringify(vote.body)).toBe(true);
+    const flag = await (await as('s2')).post('/api/v1/flags').send({ targetType: 'THREAD', targetId: id, reason: 'testing' });
+    expect(flag.status === 201 || flag.status === 403, JSON.stringify(flag.body)).toBe(true);
   });
 });

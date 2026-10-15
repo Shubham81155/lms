@@ -305,6 +305,16 @@ describe('responses match the API description', () => {
     expect(enrollments.body.data.length).toBeGreaterThan(0);
   });
 
+  it('enrolling returns the documented shape', async () => {
+    const { EnrollmentCreated } = await import('../src/openapi/docs.js');
+    await admin.enrollment.deleteMany({ where: { userId: 'harvard-student', courseId: COURSE_ID.harvard } });
+    const { agent } = await signIn('harvard', 'student');
+    const res = await agent.post('/api/v1/enrollments').send({ courseId: COURSE_ID.harvard });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const parsed = EnrollmentCreated.safeParse(res.body.data);
+    expect(parsed.success, JSON.stringify(parsed)).toBe(true);
+  });
+
   it('errors have the documented { error, requestId } shape', async () => {
     const { ErrorResponse } = await import('../src/openapi/docs.js');
     const res = await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'nope' });

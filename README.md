@@ -96,7 +96,7 @@ npm test
 
 ## API description (OpenAPI)
 
-The API describes itself: `GET /api/v1/openapi.json` (committed copy: `apps/api/openapi.json`). It is generated from the routes the server actually mounts, so every route is listed with its authentication and required roles; request and response schemas are filled in for the documented endpoints (`apps/api/src/openapi/docs.ts`, starting with auth, courses and enrollments) and extended as endpoints are documented. Request schemas are the same Zod schemas the handlers validate with.
+The API describes itself: `GET /api/v1/openapi.json` (committed copy: `apps/api/openapi.json`). It is generated from the routes the server actually mounts, so every route is listed with its authentication and required roles; every route has a summary and, where the handler validates a body or query, its request schema (generated once into `apps/api/src/openapi/docs-auto.ts`); response schemas are hand-written (`docs.ts` and `responses/*.ts`) and verified against real responses by the contract tests. `npm run api:sync` regenerates everything; a test fails when a route has no described response. Request schemas are the same Zod schemas the handlers validate with.
 
 - After changing routes or schemas: `npm run api:sync` (rewrites `apps/api/openapi.json` and the web's generated `apps/web/src/lib/api-schema.ts`). A test fails if either is stale.
 - The web app calls documented endpoints through `typedGet()` (`apps/web/src/lib/typed-api.ts`): a changed response shape or query parameter is a compile error.

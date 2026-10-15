@@ -31,12 +31,12 @@ const courseFields = {
 export const createCourseSchema = z.object({ ...courseFields, departmentId: idSchema.optional() });
 export const updateCourseSchema = z.object(courseFields).partial().extend({ departmentId: idSchema.nullable().optional() });
 
-const createModuleSchema = z.object({
+export const createModuleSchema = z.object({
   title: z.string().trim().min(1).max(255),
   orderIndex: z.number().int().min(0).max(10_000).optional(),
   isLocked: z.boolean().optional(),
 });
-const updateModuleSchema = createModuleSchema.partial();
+export const updateModuleSchema = createModuleSchema.partial();
 
 const lessonFields = {
   title: z.string().trim().min(1).max(255),
@@ -48,8 +48,8 @@ const lessonFields = {
   ltiToolLaunchUrl: httpUrl.nullable().optional(),
   estimatedMinutes: z.number().int().min(1).max(1440).optional(),
 };
-const createLessonSchema = z.object(lessonFields);
-const updateLessonSchema = z.object(lessonFields).partial();
+export const createLessonSchema = z.object(lessonFields);
+export const updateLessonSchema = z.object(lessonFields).partial();
 
 export const listQuery = z.object({
   ...paginationShape,
@@ -347,7 +347,7 @@ router.post(
   })
 );
 
-const orderSchema = z.object({ moduleIds: z.array(idSchema).min(1).max(500) });
+export const orderSchema = z.object({ moduleIds: z.array(idSchema).min(1).max(500) });
 
 /** PUT /api/v1/courses/:id/modules-order - reorder; the list must contain every module exactly once */
 router.put(

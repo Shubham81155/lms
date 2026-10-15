@@ -33,9 +33,9 @@ const itemFields = {
   bloomLevel: z.enum(BLOOM_LEVELS).nullable().optional(),
   courseId: idSchema.nullable().optional(),
 };
-const createSchema = z.object(itemFields);
-const updateSchema = z.object(itemFields).partial();
-const listQuery = z.object({
+export const createSchema = z.object(itemFields);
+export const updateSchema = z.object(itemFields).partial();
+export const listQuery = z.object({
   ...paginationShape,
   q: z.string().trim().max(200).optional(),
   tag: tag.optional(),
@@ -43,7 +43,7 @@ const listQuery = z.object({
   bloomLevel: z.enum(BLOOM_LEVELS).optional(),
   courseId: idSchema.optional(),
 });
-const fromBankSchema = z.object({ itemIds: z.array(idSchema).min(1).max(50) });
+export const fromBankSchema = z.object({ itemIds: z.array(idSchema).min(1).max(50) });
 
 /** Only instructors and administrators author questions; TAs and learners never see the bank. */
 function assertAuthor(req: Request) {
@@ -97,7 +97,7 @@ router.get(
       prisma.questionBankItem.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
       prisma.questionBankItem.count({ where }),
     ]);
-    return res.json({ data: rows, meta: pageMeta(page, limit, total) });
+    return res.json({ data: rows, pagination: pageMeta(page, limit, total) });
   })
 );
 

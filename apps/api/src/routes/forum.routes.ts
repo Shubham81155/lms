@@ -18,23 +18,23 @@ router.use(['/threads', '/votes', '/flags', '/posts', '/courses/:courseId/thread
 
 const CATEGORIES = ['General', 'Assignments', 'Consensus', 'Cryptography', 'Exams', 'Logistics'] as const;
 
-const threadSchema = z.object({
+export const threadSchema = z.object({
   title: z.string().trim().min(3).max(200),
   body: z.string().trim().min(1).max(10_000),
   category: z.enum(CATEGORIES).default('General'),
 });
-const postSchema = z.object({
+export const postSchema = z.object({
   body: z.string().trim().min(1).max(10_000),
   parentId: idSchema.optional(),
 });
-const voteSchema = z.object({ targetType: z.enum(['THREAD', 'POST']), targetId: idSchema });
-const flagSchema = voteSchema.extend({ reason: z.string().trim().min(3).max(500) });
-const moderateThreadSchema = z
+export const voteSchema = z.object({ targetType: z.enum(['THREAD', 'POST']), targetId: idSchema });
+export const flagSchema = voteSchema.extend({ reason: z.string().trim().min(3).max(500) });
+export const moderateThreadSchema = z
   .object({ pinned: z.boolean(), locked: z.boolean(), hidden: z.boolean() })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'Nothing to change');
-const moderatePostSchema = z.object({ hidden: z.boolean() });
-const listQuery = z.object({
+export const moderatePostSchema = z.object({ hidden: z.boolean() });
+export const listQuery = z.object({
   ...paginationShape,
   category: z.enum(CATEGORIES).optional(),
   includeHidden: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
@@ -119,7 +119,7 @@ router.get(
         upvotes: counts.get(t.id) ?? 0,
         votedByMe: mine.has(t.id),
       })),
-      meta: pageMeta(page, limit, total),
+      pagination: pageMeta(page, limit, total),
     });
   })
 );
@@ -138,7 +138,7 @@ router.post(
   })
 );
 
-const postsPageQuery = z.object({
+export const postsPageQuery = z.object({
   cursor: z.string().min(1).max(64).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(200),
 });

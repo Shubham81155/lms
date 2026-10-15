@@ -75,7 +75,7 @@ router.get(
       prisma.notification.count({ where }),
       prisma.notification.count({ where: { tenantId: tenantIdOf(req), userId: req.user!.id, readAt: null } }),
     ]);
-    return res.json({ data: rows, unreadCount, meta: pageMeta(page, limit, total) });
+    return res.json({ data: rows, unreadCount, pagination: pageMeta(page, limit, total) });
   })
 );
 

@@ -21,7 +21,7 @@ const verifyLimiter = rateLimit({
   message: { error: 'Too many verification requests. Try again later.' },
 });
 
-const verifyQuery = z.object({ tenant: z.string().trim().min(1).max(100).optional() });
+export const verifyQuery = z.object({ tenant: z.string().trim().min(1).max(100).optional() });
 
 /**
  * GET /api/v1/certificates/verify/:number?tenant=<slug>

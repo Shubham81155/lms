@@ -24,7 +24,7 @@ export default tseslint.config(
   },
   {
     // Tests, seed scripts and the mail dev transport may print.
-    files: ['**/test/**', '**/seed.ts', '**/scripts/**', 'apps/api/src/lib/mailer.ts', 'apps/api/src/openapi/build.ts'],
-    rules: { 'no-console': 'off' },
+    files: ['**/test/**', '**/seed.ts', '**/scripts/**', 'apps/api/src/lib/mailer.ts', 'apps/api/src/openapi/build.ts', 'apps/api/src/openapi/missing.ts'],
+    rules: { 'no-console': 'off', '@typescript-eslint/no-require-imports': 'off' },
   }
 );

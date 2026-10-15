@@ -18,7 +18,7 @@ const router = Router();
 // xAPI LRS
 // ---------------------------------------------------------------------------
 
-const statementSchema = z.object({
+export const statementSchema = z.object({
   id: z.string().refine(isUuid, 'Statement id must be a UUID').optional(),
   actor: z
     .object({ mbox: z.string().regex(/^mailto:[^\s@]+@[^\s@]+$/, 'actor.mbox must be a mailto: IRI'), name: z.string().max(200).optional() })
@@ -83,7 +83,7 @@ router.post(
   })
 );
 
-const streamQuery = z.object({
+export const streamQuery = z.object({
   ...paginationShape,
   limit: z.coerce.number().int().min(1).max(100).default(20),
   verb: z.string().max(2048).optional(),
@@ -116,7 +116,7 @@ router.get(
       prisma.xapiStatement.findMany({ where, orderBy: { timestamp: 'desc' }, skip: (q.page - 1) * q.limit, take: q.limit }),
       prisma.xapiStatement.count({ where }),
     ]);
-    return res.json({ total, statements: rows.map((r) => r.statementJson), meta: pageMeta(q.page, q.limit, total) });
+    return res.json({ total, statements: rows.map((r) => r.statementJson), pagination: pageMeta(q.page, q.limit, total) });
   })
 );
 
@@ -126,7 +126,7 @@ router.get(
 
 const EVENT_TYPES = ['TAB_SWITCH', 'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'AUDIO_SPIKE', 'COPY_PASTE', 'FULLSCREEN_EXIT'] as const;
 const SEVERITIES = ['LOW', 'MEDIUM', 'HIGH'] as const;
-const proctorEventSchema = z.object({
+export const proctorEventSchema = z.object({
   submissionId: idSchema,
   eventType: z.enum(EVENT_TYPES),
   severity: z.enum(SEVERITIES),
@@ -297,7 +297,7 @@ router.get(
 // Early-warning analytics
 // ---------------------------------------------------------------------------
 
-const atRiskQuery = z.object({ courseId: idSchema });
+export const atRiskQuery = z.object({ courseId: idSchema });
 
 /** GET /api/v1/analytics/at-risk?courseId= : staff only; learners at MEDIUM or HIGH risk. */
 router.get(
@@ -311,7 +311,7 @@ router.get(
   })
 );
 
-const nudgeSchema = z.object({ courseId: idSchema, userId: idSchema, message: z.string().trim().max(500).optional() });
+export const nudgeSchema = z.object({ courseId: idSchema, userId: idSchema, message: z.string().trim().max(500).optional() });
 
 /** POST /api/v1/analytics/at-risk/nudge: course staff send an enrolled learner a nudge. */
 router.post(

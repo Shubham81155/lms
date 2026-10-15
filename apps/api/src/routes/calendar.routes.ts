@@ -32,9 +32,13 @@ const eventShape = {
   timezone: tz.default('UTC'),
   courseId: idSchema.nullable().optional(),
 };
-const createSchema = z.object(eventShape).refine((e) => e.endsAt >= e.startsAt, { message: 'endsAt must not be before startsAt' });
-const updateSchema = z
-  .object({ ...eventShape, courseId: z.never().optional() })
+export const createSchema = z.object(eventShape).refine((e) => e.endsAt >= e.startsAt, { message: 'endsAt must not be before startsAt' });
+export const updateSchema = z
+  .object({
+    ...eventShape,
+    // An event cannot be moved between courses: any value is rejected.
+    courseId: z.any().refine((v) => v === undefined, 'courseId cannot be changed').optional(),
+  })
   .partial()
   .refine((e) => !e.startsAt || !e.endsAt || e.endsAt >= e.startsAt, { message: 'endsAt must not be before startsAt' });
 

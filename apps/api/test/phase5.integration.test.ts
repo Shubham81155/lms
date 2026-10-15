@@ -485,3 +485,35 @@ describe('row-level security on gradebook tables', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+describe('gradebook responses match the API description', () => {
+  it('config, calculate and both views of the gradebook have the documented shapes', async () => {
+    const docs = await import('../src/openapi/docs.js');
+    const { z } = await import('zod');
+    const G = '/api/v1/courses/c1/gradebook';
+    const teacher = await as('teacher');
+
+    // Make sure there is something to read: categories exist from the workflow tests, but set them
+    // here too so this test stands on its own.
+    const cats = await teacher.put(`${G}/categories`).send({ categories: [{ name: 'Quizzes', weightPercent: 40 }, { name: 'Assignments', weightPercent: 60 }] });
+    expect(z.object({ data: z.array(docs.GradebookCategory) }).safeParse(cats.body).success, JSON.stringify(cats.body)).toBe(true);
+
+    const config = await teacher.get(`${G}/config`);
+    expect(z.object({ data: docs.GradebookConfig }).safeParse(config.body).success, JSON.stringify(config.body)).toBe(true);
+
+    const calc = await teacher.post(`${G}/calculate`);
+    expect(calc.status).toBe(200);
+    expect(z.object({ data: z.object({ learners: z.number(), calculated: z.number(), skippedApproved: z.number() }) }).safeParse(calc.body).success).toBe(true);
+
+    const staff = await teacher.get(G);
+    const parsedStaff = docs.GradebookStaffView.safeParse(staff.body);
+    expect(parsedStaff.success, JSON.stringify(parsedStaff)).toBe(true);
+    expect(staff.body.data.length).toBeGreaterThan(0);
+
+    // A learner never sees a grade that has not been approved.
+    const learner = await (await as('s1')).get(G);
+    const parsedLearner = docs.GradebookLearnerView.safeParse(learner.body);
+    expect(parsedLearner.success, JSON.stringify(learner.body)).toBe(true);
+  });
+});

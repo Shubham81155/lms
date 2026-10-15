@@ -2,7 +2,10 @@ import { z } from 'zod';
 import { extendZodWithOpenApi, OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { apiMounts, rawBodyMounts } from '../mounts';
 import { inventory, Operation } from './inventory';
-import { DOCS, ErrorResponse } from './docs';
+import { DOCS, ErrorResponse, OperationDoc } from './docs';
+import { AUTO_DOCS } from './docs-auto';
+import { RESPONSE_DOCS } from './responses';
+import type { ResponseDoc } from './responses/types';
 
 // Adds `.openapi()` to Zod schemas (only the API description uses it).
 extendZodWithOpenApi(z);
@@ -50,6 +53,21 @@ const ERROR_TEXT: Record<number, string> = {
   429: 'Rate limit exceeded',
 };
 
+/** Schemas that cannot be expressed in OpenAPI (e.g. z.never()), by operation: they are left out of the description. */
+export const UNDESCRIBABLE: string[] = [];
+
+/** True when the schema can be turned into OpenAPI. */
+function describable(schema: z.ZodTypeAny): boolean {
+  try {
+    const probe = new OpenAPIRegistry();
+    probe.registerPath({ method: 'post', path: '/probe', request: { body: { content: { 'application/json': { schema } } } }, responses: {} });
+    new OpenApiGeneratorV3(probe.definitions).generateDocument({ openapi: '3.0.3', info: { title: 'probe', version: '0' } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function allOperations(): Operation[] {
   return [...SERVER_OPERATIONS, ...inventory([...rawBodyMounts, ...apiMounts])];
 }
@@ -62,21 +80,34 @@ export function buildOpenApi() {
   const errorSchema = registry.register('ErrorResponse', ErrorResponse);
 
   const ops = allOperations();
-  const unknownKeys = Object.keys(DOCS).filter((k) => !ops.some((o) => `${o.method.toUpperCase()} ${o.path}` === k));
+  const unknownKeys = [...Object.keys(DOCS), ...Object.keys(AUTO_DOCS), ...Object.keys(RESPONSE_DOCS)].filter((k) => !ops.some((o) => `${o.method.toUpperCase()} ${o.path}` === k));
   if (unknownKeys.length) throw new Error(`openapi/docs.ts documents routes that do not exist: ${unknownKeys.join(', ')}`);
 
   for (const op of ops) {
     const key = `${op.method.toUpperCase()} ${op.path}`;
-    const doc = DOCS[key];
+    // Hand-written entries (docs.ts) refine the ones generated from the route sources (docs-auto.ts).
+    const auto = AUTO_DOCS[key];
+    const hand = DOCS[key];
+    const described = RESPONSE_DOCS[key];
+    const doc: OperationDoc | undefined =
+      auto || hand || described
+        ? ({ ...auto, ...described, ...hand, errors: [...new Set([...(described?.errors ?? []), ...(hand?.errors ?? [])])] } as OperationDoc)
+        : undefined;
     const extra = EXTRA_DOCS[key];
     const params = pathParams(op.path);
+    if (doc?.body && !describable(doc.body)) {
+      UNDESCRIBABLE.push(key);
+      doc.body = undefined;
+    }
 
     const responses: Record<string, any> = {};
+    const asResponse = (r: ResponseDoc) => ({
+      description: r.description ?? 'Success',
+      ...(r.schema ? { content: { [r.contentType ?? 'application/json']: { schema: r.schema } } } : {}),
+    });
     if (doc?.response) {
-      responses[doc.response.status] = {
-        description: doc.response.description ?? 'Success',
-        ...(doc.response.schema ? { content: { 'application/json': { schema: doc.response.schema } } } : {}),
-      };
+      responses[doc.response.status] = asResponse(doc.response);
+      for (const other of doc.otherResponses ?? []) responses[other.status] = asResponse(other);
     } else {
       responses['200'] = { description: 'Success (response body not yet described)' };
     }
@@ -94,7 +125,7 @@ export function buildOpenApi() {
       security: SECURITY[op.security],
       request: {
         ...(params.length ? { params: z.object(Object.fromEntries(params.map((p) => [p, z.string()]))) } : {}),
-        ...(doc?.query ? { query: doc.query } : {}),
+        ...(doc?.query instanceof z.ZodObject ? { query: doc.query } : {}),
         ...(doc?.body ? { body: { required: true, content: { 'application/json': { schema: doc.body } } } } : {}),
       },
       responses,

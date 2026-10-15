@@ -77,7 +77,7 @@ function toScim(u: any, req: Request) {
   };
 }
 
-const userBody = z.object({
+export const userBody = z.object({
   userName: z.string().email().max(254),
   externalId: z.string().max(255).optional(),
   name: z.object({ givenName: z.string().max(100).optional(), familyName: z.string().max(100).optional() }).optional(),
@@ -184,7 +184,7 @@ router.put('/Users/:id', handle(async (req, res) => {
   return sendScim(res, 200, toScim(updated, req));
 }));
 
-const patchBody = z.object({
+export const patchBody = z.object({
   schemas: z.array(z.string()).optional(),
   Operations: z.array(z.object({ op: z.string(), path: z.string().optional(), value: z.any().optional() })).min(1).max(20),
 });

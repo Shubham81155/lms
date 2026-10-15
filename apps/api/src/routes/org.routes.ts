@@ -22,8 +22,8 @@ const audit = (req: any, action: string, resourceType: string, resourceId: strin
 
 const code = z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9-]{1,19}$/, 'Use 2-20 letters, digits or dashes');
 const name = z.string().trim().min(2).max(120);
-const campusSchema = z.object({ name, code });
-const departmentSchema = z.object({ name, code });
+export const campusSchema = z.object({ name, code });
+export const departmentSchema = z.object({ name, code });
 
 // --------------------------------------------------------------------------- campuses
 

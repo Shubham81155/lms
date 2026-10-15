@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ResponseDoc } from './responses/types';
 import { forgotSchema, loginSchema, resetSchema, verifySchema } from '../routes/auth.routes';
 import { createCourseSchema, listQuery as courseListQuery, updateCourseSchema } from '../routes/courses.routes';
 import {
@@ -13,6 +14,25 @@ import {
   updateQuestionSchema,
   updateQuizSchema,
 } from '../routes/assessments.routes';
+import {
+  categoriesSchema,
+  curveSchema,
+  itemsSchema,
+  rejectSchema,
+  submitSchema as gradebookSubmitSchema,
+} from '../routes/gradebook.routes';
+import {
+  flagSchema,
+  listQuery as threadListQuery,
+  moderatePostSchema,
+  moderateThreadSchema,
+  postSchema,
+  postsPageQuery,
+  threadSchema,
+  voteSchema,
+} from '../routes/forum.routes';
+import { statementSchema } from '../routes/intelligence.routes';
+import { patchBody as scimPatchBody, userBody as scimUserBody } from '../routes/scim.routes';
 import { listQuery as notificationListQuery, prefsSchema } from '../routes/notifications.routes';
 import { enrollSchema, listQuery as enrollmentListQuery, updateProgressSchema } from '../routes/enrollments.routes';
 
@@ -105,7 +125,7 @@ export const EnrollmentItem = z.object({
     })
     .optional(),
   certificate: z
-    .object({ id: z.string(), certificateNumber: z.string(), issuedAt: z.string(), pdfUrl: z.string().nullable(), verificationQr: z.string().nullable() })
+    .object({ id: z.string(), certificateNumber: z.string(), issuedAt: z.string(), pdfUrl: z.string().nullable(), verificationQr: z.string() })
     .nullable()
     .optional(),
 });
@@ -157,15 +177,142 @@ export const NotificationPreferencesDetail = NotificationPreferences.extend({
   quietNow: z.boolean(),
 });
 
+export const GradebookCategory = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  courseId: z.string(),
+  name: z.string(),
+  weightPercent: z.number(),
+  orderIndex: z.number(),
+});
+
+export const GradebookConfig = z.object({
+  curve: z.object({ method: z.enum(['NONE', 'ADD_POINTS', 'SCALE_TO_MAX']).optional(), value: z.number().optional() }),
+  categories: z.array(GradebookCategory),
+  items: z.array(z.object({ type: z.enum(['QUIZ', 'ASSIGNMENT']), id: z.string(), title: z.string(), gradeCategoryId: z.string().nullable() })),
+});
+
+const GradeStatus = z.enum(['DRAFT', 'SUBMITTED', 'APPROVED']);
+
+/** Staff view of one learner's computed course grade. `breakdown` is the per-category working (JSON). */
+export const GradebookRow = z.object({
+  userId: z.string(),
+  name: z.string(),
+  email: z.string(),
+  rawPercent: z.number(),
+  curvedPercent: z.number(),
+  letter: z.string(),
+  incomplete: z.boolean(),
+  status: GradeStatus,
+  breakdown: z.unknown(),
+  decisionNote: z.string().nullable(),
+});
+
+export const GradebookStaffView = z.object({
+  data: z.array(GradebookRow),
+  summary: z.object({
+    total: z.number(),
+    draft: z.number(),
+    submitted: z.number(),
+    approved: z.number(),
+    incomplete: z.number(),
+    /** Null when there are no grades yet. */
+    average: z.number().nullable(),
+  }),
+});
+
+/** What a learner sees: nothing until their grade is approved. */
+export const GradebookLearnerView = z.union([
+  z.object({ published: z.literal(false), data: z.null() }),
+  z.object({
+    published: z.literal(true),
+    data: z.object({ rawPercent: z.number(), curvedPercent: z.number(), letter: z.string(), breakdown: z.unknown(), approvedAt: z.string().nullable() }),
+  }),
+]);
+
+const ForumAuthor = z.object({ id: z.string(), name: z.string(), role: z.string() });
+
+/** One thread in a course's list. Learners see classmates as "First L.". */
+export const ForumThreadItem = z.object({
+  id: z.string(),
+  title: z.string(),
+  body: z.string(),
+  category: z.string(),
+  pinned: z.boolean(),
+  locked: z.boolean(),
+  hidden: z.boolean(),
+  createdAt: z.string(),
+  author: ForumAuthor,
+  replyCount: z.number(),
+  upvotes: z.number(),
+  votedByMe: z.boolean(),
+});
+
+/** A thread or reply as stored (returned by the create endpoints). */
+export const ForumThreadRecord = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  courseId: z.string(),
+  authorId: z.string(),
+  title: z.string(),
+  body: z.string(),
+  category: z.string(),
+  pinned: z.boolean(),
+  locked: z.boolean(),
+  hidden: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const ForumPostRecord = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  threadId: z.string(),
+  authorId: z.string(),
+  parentId: z.string().nullable(),
+  body: z.string(),
+  hidden: z.boolean(),
+  endorsed: z.boolean(),
+  createdAt: z.string(),
+});
+
+export const ForumReply = z.object({
+  id: z.string(),
+  parentId: z.string().nullable(),
+  body: z.string(),
+  hidden: z.boolean(),
+  endorsed: z.boolean(),
+  createdAt: z.string(),
+  author: ForumAuthor,
+  upvotes: z.number(),
+  votedByMe: z.boolean(),
+});
+
+export const ForumThreadDetail = ForumThreadRecord.extend({
+  author: ForumAuthor.nullable(),
+  /** Pass as ?cursor= for the next page of replies; null on the last page. */
+  nextCursor: z.string().nullable(),
+  upvotes: z.number(),
+  votedByMe: z.boolean(),
+  posts: z.array(ForumReply),
+});
+
 export interface OperationDoc {
   summary: string;
   query?: z.ZodObject<any>;
   body?: z.ZodTypeAny;
-  /** Success status and JSON body. Omit for endpoints whose response is not yet described. */
-  response?: { status: number; schema?: z.ZodTypeAny; description?: string };
+  /** Success status and body. Omit for endpoints whose response is not yet described. */
+  response?: ResponseDoc;
+  /** Other successful statuses the endpoint can answer with (e.g. 200 when resuming, 201 when creating). */
+  otherResponses?: ResponseDoc[];
   /** Extra statuses this endpoint answers with, e.g. 409. */
   errors?: number[];
 }
+
+/** What POST /enrollments returns: the bare enrollment with a short course summary and no certificate. */
+export const EnrollmentCreated = EnrollmentItem.omit({ course: true, certificate: true }).extend({
+  course: z.object({ id: z.string(), code: z.string(), title: z.string() }),
+});
 
 const ok = (schema: z.ZodTypeAny, status = 200) => ({ status, schema });
 const message = z.object({ message: z.string() });
@@ -199,7 +346,7 @@ export const DOCS: Record<string, OperationDoc> = {
     errors: [403],
   },
   'GET /api/v1/enrollments/my': { summary: 'Alias of GET /api/v1/enrollments.', query: enrollmentListQuery, response: ok(z.object({ data: z.array(EnrollmentItem), pagination: Pagination })) },
-  'POST /api/v1/enrollments': { summary: 'Enrol the caller (self-enrol) or, for staff, another user.', body: enrollSchema, response: ok(z.object({ data: EnrollmentItem }), 201), errors: [400, 403, 404, 409] },
+  'POST /api/v1/enrollments': { summary: 'Enrol the caller (self-enrol) or, for staff, another user.', body: enrollSchema, response: ok(z.object({ data: EnrollmentCreated }), 201), errors: [400, 403, 404, 409] },
   'PATCH /api/v1/enrollments/:id/progress': { summary: 'Report progress. Learners are capped below 100; staff may complete the course and set a final grade.', body: updateProgressSchema, errors: [400, 403, 404] },
 
   // ---- quizzes and assignments (request bodies; responses not yet described)
@@ -228,13 +375,78 @@ export const DOCS: Record<string, OperationDoc> = {
 
   // ---- notifications
   'GET /api/v1/notifications': {
-    summary: "The caller's own notifications, newest first. (Pagination is under `meta` here, unlike the lists above that use `pagination`.)",
+    summary: "The caller's own notifications, newest first.",
     query: notificationListQuery,
-    response: ok(z.object({ data: z.array(NotificationItem), unreadCount: z.number(), meta: Pagination })),
+    response: ok(z.object({ data: z.array(NotificationItem), unreadCount: z.number(), pagination: Pagination })),
   },
   'GET /api/v1/notifications/preferences': { summary: 'Delivery channels, muted categories, quiet hours and time zone.', response: ok(z.object({ data: NotificationPreferencesDetail })) },
   'PUT /api/v1/notifications/preferences': { summary: 'Update notification preferences; quiet hours must be set together.', body: prefsSchema, response: ok(z.object({ data: NotificationPreferences })), errors: [400] },
   'POST /api/v1/notifications/read-all': { summary: 'Mark every notification read.', response: ok(z.object({ data: z.object({ updated: z.number() }) })) },
   'POST /api/v1/notifications/:id/read': { summary: 'Mark one notification read.', response: ok(z.object({ data: z.object({ id: z.string(), read: z.literal(true) }) })), errors: [404] },
   'DELETE /api/v1/notifications/:id': { summary: 'Delete a notification.', response: { status: 204, description: 'Deleted' }, errors: [404] },
+
+  // ---- gradebook (weighted categories, curve, draft -> submitted -> approved)
+  'GET /api/v1/courses/:courseId/gradebook/config': { summary: 'Categories, curve and which quizzes/assignments belong to which category (course staff).', response: ok(z.object({ data: GradebookConfig })), errors: [403, 404] },
+  'PUT /api/v1/courses/:courseId/gradebook/categories': { summary: 'Replace the weighted categories; weights must total 100. Items keep their category when re-saved by name.', body: categoriesSchema, response: ok(z.object({ data: z.array(GradebookCategory) })), errors: [400, 403, 404] },
+  'PUT /api/v1/courses/:courseId/gradebook/items': { summary: 'Assign quizzes and assignments of this course to categories.', body: itemsSchema, response: ok(z.object({ data: z.object({ updated: z.number() }) })), errors: [400, 403, 404] },
+  'PUT /api/v1/courses/:courseId/gradebook/curve': { summary: 'Set the curve applied to every learner.', body: curveSchema, response: ok(z.object({ data: z.object({ method: z.string(), value: z.number() }) })), errors: [400, 403, 404] },
+  'POST /api/v1/courses/:courseId/gradebook/calculate': {
+    summary: 'Compute draft grades for all active learners. Approved grades are left alone.',
+    response: ok(z.object({ data: z.object({ learners: z.number(), calculated: z.number(), skippedApproved: z.number() }) })),
+    errors: [403, 404, 409],
+  },
+  'GET /api/v1/courses/:courseId/gradebook': {
+    summary: 'Staff, auditors and admins get every learner; a learner gets only their own grade, and only once it is approved.',
+    response: { status: 200, schema: z.union([GradebookStaffView, GradebookLearnerView]), description: 'Staff view, or the learner view' },
+    errors: [403, 404],
+  },
+  'POST /api/v1/courses/:courseId/gradebook/submit': {
+    summary: 'Submit draft grades for approval. Refused while graded work is still waiting for a grader unless allowIncomplete.',
+    body: gradebookSubmitSchema,
+    response: ok(z.object({ data: z.object({ submitted: z.number(), incomplete: z.number() }) })),
+    errors: [403, 404, 409],
+  },
+  'POST /api/v1/courses/:courseId/gradebook/approve': { summary: 'Approve submitted grades (administrators; not the person who submitted them). Approved grades become the final grade and are published to learners.', response: ok(z.object({ data: z.object({ approved: z.number() }) })), errors: [403, 404, 409] },
+  'POST /api/v1/courses/:courseId/gradebook/reject': { summary: 'Return submitted grades to draft with a note (administrators).', body: rejectSchema, response: ok(z.object({ data: z.object({ returned: z.number() }) })), errors: [400, 403, 404, 409] },
+  'POST /api/v1/courses/:courseId/gradebook/reopen': { summary: 'Reopen approved grades for correction (administrators).', response: ok(z.object({ data: z.object({ reopened: z.number() }) })), errors: [403, 404, 409] },
+
+  // ---- discussion forums
+  'GET /api/v1/courses/:courseId/threads': {
+    summary: "A course's discussion threads, pinned first.",
+    query: threadListQuery,
+    response: ok(z.object({ data: z.array(ForumThreadItem), pagination: Pagination })),
+    errors: [403, 404],
+  },
+  'POST /api/v1/courses/:courseId/threads': { summary: 'Start a thread. Auditors are read-only.', body: threadSchema, response: ok(z.object({ data: ForumThreadRecord }), 201), errors: [400, 403, 404] },
+  'GET /api/v1/threads/:id': {
+    summary: 'A thread with its visible replies, oldest first, one page at a time (`nextCursor`).',
+    query: postsPageQuery,
+    response: ok(z.object({ data: ForumThreadDetail })),
+    errors: [403, 404],
+  },
+  'POST /api/v1/threads/:id/posts': { summary: 'Reply to a thread, optionally to another reply (`parentId`). Locked threads accept staff replies only.', body: postSchema, response: ok(z.object({ data: ForumPostRecord }), 201), errors: [400, 403, 404, 409] },
+  'POST /api/v1/votes': {
+    summary: "Toggle the caller's upvote on a thread or reply.",
+    body: voteSchema,
+    response: ok(z.object({ data: z.object({ targetType: z.enum(['THREAD', 'POST']), targetId: z.string(), voted: z.boolean(), upvotes: z.number() }) })),
+    errors: [400, 403, 404],
+  },
+  'POST /api/v1/flags': { summary: 'Report a thread or reply to the moderators.', body: flagSchema, response: ok(z.object({ data: z.object({ reported: z.literal(true) }) }), 201), errors: [400, 403, 404] },
+  'PATCH /api/v1/threads/:id/moderate': { summary: 'Pin, lock or hide a thread (course staff).', body: moderateThreadSchema, errors: [400, 403, 404] },
+  'PATCH /api/v1/posts/:id/moderate': { summary: 'Hide or restore a reply (course staff).', body: moderatePostSchema, errors: [400, 403, 404] },
+
+  // ---- bodies the handlers read without parseBody
+  'POST /api/v1/analytics/ai/tutor': {
+    summary: 'Ask the study tutor for an explanation and practice drill on a topic. Template-based today: no AI model is behind it.',
+    body: z.object({ topic: z.string().trim().min(1).max(200) }),
+    errors: [400],
+  },
+  'POST /api/v1/xapi/statements': {
+    summary: 'Record one xAPI statement, or a batch of up to 50 (send an array). 201 for a single statement, 200 for a batch.',
+    body: z.union([statementSchema, z.array(statementSchema).min(1).max(50)]),
+    errors: [400],
+  },
+  'POST /api/v1/scim/v2/Users': { summary: 'SCIM 2.0: provision a user (learner role; promote in the admin UI).', body: scimUserBody, errors: [400, 401, 409] },
+  'PUT /api/v1/scim/v2/Users/:id': { summary: 'SCIM 2.0: replace a user (userName cannot change).', body: scimUserBody, errors: [400, 401, 404] },
+  'PATCH /api/v1/scim/v2/Users/:id': { summary: 'SCIM 2.0 PatchOp: name, externalId, active (activating or suspending signs the user out).', body: scimPatchBody, errors: [400, 401, 404] },
 };

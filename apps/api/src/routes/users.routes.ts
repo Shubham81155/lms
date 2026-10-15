@@ -11,7 +11,7 @@ import { COURSE_STAFF_ROLES, canSeeAllCourses, isAdminRole } from '../lib/access
 
 const router = Router();
 
-const updateUserSchema = z.object({
+export const updateUserSchema = z.object({
   firstName: z.string().trim().min(1).max(100).optional(),
   lastName: z.string().trim().min(1).max(100).optional(),
   avatarUrl: httpUrl.or(z.literal('')).nullable().optional(),
@@ -19,7 +19,7 @@ const updateUserSchema = z.object({
   status: z.nativeEnum(UserStatus).optional(),
 });
 
-const listQuery = z.object({
+export const listQuery = z.object({
   ...paginationShape,
   role: z.nativeEnum(GlobalRole).optional(),
   status: z.nativeEnum(UserStatus).optional(),

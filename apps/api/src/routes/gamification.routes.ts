@@ -84,7 +84,7 @@ router.get(
   })
 );
 
-const boardQuery = z.object({ courseId: idSchema, limit: z.coerce.number().int().min(1).max(50).default(10) });
+export const boardQuery = z.object({ courseId: idSchema, limit: z.coerce.number().int().min(1).max(50).default(10) });
 
 /**
  * GET /api/v1/gamification/leaderboard?courseId=

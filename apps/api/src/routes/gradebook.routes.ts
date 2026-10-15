@@ -25,23 +25,23 @@ router.use(['/courses/:courseId/gradebook'], authenticateJWT);
 
 const ACTIVE = ['ENROLLED', 'IN_PROGRESS', 'COMPLETED'] as const;
 
-const categoriesSchema = z.object({
+export const categoriesSchema = z.object({
   categories: z
     .array(z.object({ name: z.string().trim().min(1).max(80), weightPercent: z.number().min(0.01).max(100) }))
     .min(1)
     .max(20),
 });
-const itemsSchema = z.object({
+export const itemsSchema = z.object({
   items: z
     .array(z.object({ type: z.enum(['QUIZ', 'ASSIGNMENT']), id: idSchema, categoryId: idSchema.nullable() }))
     .min(1)
     .max(500),
 });
-const curveSchema = z
+export const curveSchema = z
   .object({ method: z.enum(['NONE', 'ADD_POINTS', 'SCALE_TO_MAX']), value: z.number().min(0).max(50).default(0) })
   .refine((c) => c.method !== 'ADD_POINTS' || c.value > 0, { message: 'ADD_POINTS needs a positive value' });
-const submitSchema = z.object({ allowIncomplete: z.boolean().default(false) });
-const rejectSchema = z.object({ note: z.string().trim().min(3).max(1000) });
+export const submitSchema = z.object({ allowIncomplete: z.boolean().default(false) });
+export const rejectSchema = z.object({ note: z.string().trim().min(3).max(1000) });
 
 const audit = (req: Request, action: string, courseId: string, diffJson?: unknown) =>
   logAuditEvent({

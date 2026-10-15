@@ -17,7 +17,7 @@ vi.mock('../src/lib/prisma', async () => {
 });
 
 import { app } from '../src/server';
-import { allOperations, buildOpenApi } from '../src/openapi/spec';
+import { allOperations, buildOpenApi, UNDESCRIBABLE } from '../src/openapi/spec';
 import { stringifyOpenApi } from '../src/openapi/serialize';
 
 const ops = allOperations();
@@ -35,6 +35,25 @@ describe('API description', () => {
     execFileSync(process.execPath, [path.join(root, 'node_modules/openapi-typescript/bin/cli.js'), path.join(root, 'apps/api/openapi.json'), '-o', out], { stdio: 'pipe' });
     const norm = (f: string) => fs.readFileSync(f, 'utf8').split(String.fromCharCode(13)).join('');
     expect(norm(path.join(root, 'apps/web/src/lib/api-schema.ts'))).toBe(norm(out));
+  });
+
+  it('describes every operation, with a summary and every request schema expressible', () => {
+    const doc: any = buildOpenApi();
+    const missing = Object.entries(doc.paths).flatMap(([p, item]: [string, any]) =>
+      Object.entries(item).filter(([, op]: [string, any]) => !op.summary).map(([m]) => `${m.toUpperCase()} ${p}`)
+    );
+    expect(missing).toEqual([]);
+    expect(UNDESCRIBABLE).toEqual([]);
+  });
+
+  it('describes a success response for every operation', () => {
+    const doc: any = buildOpenApi();
+    const undescribed = Object.entries(doc.paths).flatMap(([p, item]: [string, any]) =>
+      Object.entries(item)
+        .filter(([, op]: [string, any]) => JSON.stringify(op.responses).includes('not yet described'))
+        .map(([m]) => `${m.toUpperCase()} ${p}`)
+    );
+    expect(undescribed).toEqual([]);
   });
 
   it('is served by the API', async () => {

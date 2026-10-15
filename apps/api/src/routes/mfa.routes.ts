@@ -17,8 +17,8 @@ const router = Router();
 router.use(authenticateJWT);
 
 const ISSUER = 'Enterprise LMS';
-const codeSchema = z.object({ code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code') });
-const disableSchema = z.object({ password: z.string().min(1).max(128), code: z.string().trim().min(6).max(32) });
+export const codeSchema = z.object({ code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code') });
+export const disableSchema = z.object({ password: z.string().min(1).max(128), code: z.string().trim().min(6).max(32) });
 
 const me = (req: any) =>
   prisma.user.findFirst({

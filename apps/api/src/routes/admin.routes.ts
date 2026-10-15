@@ -15,7 +15,7 @@ const adminOnly = requireRole('SUPER_ADMIN', 'TENANT_ADMIN');
 
 const color = z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/);
 
-const updateTenantSchema = z.object({
+export const updateTenantSchema = z.object({
   name: z.string().trim().min(2).max(100).optional(),
   logoUrl: httpUrl.or(z.literal('')).nullable().optional(),
   primaryColor: color.optional(),
@@ -27,7 +27,7 @@ const updateTenantSchema = z.object({
   coppaCompliant: z.boolean().optional(),
 });
 
-const auditQuery = z
+export const auditQuery = z
   .object({
     page: z.coerce.number().int().min(1).max(100_000).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),

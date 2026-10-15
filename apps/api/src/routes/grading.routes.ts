@@ -20,7 +20,7 @@ router.use(['/assignments/:id/rubric', '/assignments/:id/submissions/:subId/appe
 
 export const APPEAL_WINDOW_DAYS = 14;
 
-const rubricSchema = z.object({
+export const rubricSchema = z.object({
   criteria: z
     .array(
       z.object({
@@ -33,8 +33,8 @@ const rubricSchema = z.object({
     .max(30)
     .nullable(),
 });
-const appealSchema = z.object({ reason: z.string().trim().min(10).max(2000) });
-const resolveSchema = z
+export const appealSchema = z.object({ reason: z.string().trim().min(10).max(2000) });
+export const resolveSchema = z
   .object({
     decision: z.enum(['UPHELD', 'DENIED']),
     response: z.string().trim().min(3).max(2000),

@@ -99,7 +99,7 @@ export const gradeSubmissionSchema = z
   })
   .refine((d) => (d.grade === undefined) !== (d.criteria === undefined), { message: 'Send either grade or criteria' });
 
-const submissionListQuery = z.object({ ...paginationShape, userId: idSchema.optional() });
+export const submissionListQuery = z.object({ ...paginationShape, userId: idSchema.optional() });
 
 // ---------------------------------------------------------------------------
 // Helpers

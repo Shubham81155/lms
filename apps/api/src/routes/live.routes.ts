@@ -23,14 +23,14 @@ const PAST_GRACE_MS = 5 * 60_000;
 /** Tokens outlive the scheduled end a little, for a session that overruns. */
 const TOKEN_GRACE_SECONDS = 30 * 60;
 
-const createSchema = z.object({
+export const createSchema = z.object({
   title: z.string().trim().min(2).max(200),
   description: z.string().trim().max(5000).optional(),
   scheduledAt: z.coerce.date(),
   durationMins: z.number().int().min(5).max(480).default(60),
   allowStudentVideo: z.boolean().default(false),
 });
-const updateSchema = createSchema.partial().refine((v) => Object.keys(v).length > 0, 'Nothing to change');
+export const updateSchema = createSchema.partial().refine((v) => Object.keys(v).length > 0, 'Nothing to change');
 
 const audit = (req: Request, action: string, id: string, diffJson?: unknown) =>
   logAuditEvent({

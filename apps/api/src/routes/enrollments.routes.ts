@@ -26,7 +26,7 @@ export const updateProgressSchema = z.object({
   finalGrade: z.number().min(0).max(100).optional(),
 });
 
-const statsQuery = z.object({ userId: idSchema.optional() });
+export const statsQuery = z.object({ userId: idSchema.optional() });
 
 export const listQuery = z.object({
   ...paginationShape,
