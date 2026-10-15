@@ -29,6 +29,7 @@ interface NotificationCenterProps {
   error?: string | null;
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
+  onDismiss?: (id: string) => void;
 }
 
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({
@@ -40,6 +41,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   error = null,
   onMarkRead,
   onMarkAllRead,
+  onDismiss,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "UNREAD" | "ACADEMIC" | "SECURITY">("ALL");
   const [showSettings, setShowSettings] = useState(false);
@@ -156,7 +158,21 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     {notif.title}
                   </strong>
                 </div>
-                <span className="text-[10px] text-ink-subtle shrink-0">{notif.timestamp}</span>
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <span className="text-[10px] text-ink-subtle">{notif.timestamp}</span>
+                  {onDismiss && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDismiss(notif.id);
+                      }}
+                      aria-label={`Dismiss "${notif.title}"`}
+                      className="rounded p-0.5 text-ink-subtle transition-colors hover:bg-raised hover:text-ink"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
               </div>
 
               <p className="text-[11px] text-ink-muted mt-1 leading-relaxed">

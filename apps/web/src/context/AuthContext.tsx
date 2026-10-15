@@ -80,8 +80,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (isLoading) return;
 
-    const publicPaths = ["/", "/login", "/forgot-password", "/reset-password", "/verify-email"];
-    if (publicPaths.includes(pathname)) return;
+    const publicPaths = ["/", "/login", "/forgot-password", "/reset-password", "/verify-email", "/verify"];
+    // Links from notifications and emails sign people in themselves (see DeepLink), keeping the destination.
+    if (publicPaths.includes(pathname) || ["/courses/", "/quizzes/", "/assignments/"].some((p) => pathname.startsWith(p))) return;
 
     if (!user) {
       router.replace("/login");

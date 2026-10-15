@@ -237,14 +237,14 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
 
 // ---------------------------------------------------------------------------
 
-export const CourseGradebook: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const CourseGradebook: React.FC<{ onClose: () => void; /** Open on this course when the person may use it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
   const { user } = useAuth();
   const { courses, isLoading } = useStaffCourses();
   const [courseId, setCourseId] = useState<string>("");
   const [tab, setTab] = useState<"grades" | "setup">("grades");
 
   useEffect(() => {
-    if (!courseId && courses.length > 0) setCourseId(courses[0].id);
+    if (!courseId && courses.length > 0) setCourseId(initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0].id);
   }, [courses, courseId]);
 
   const isAdmin = user?.role === "TENANT_ADMIN" || user?.role === "SUPER_ADMIN";

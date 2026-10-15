@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, ChevronRight, Menu, Search } from "lucide-react";
 import clsx from "clsx";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -30,6 +31,7 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
   const [showNotifications, setShowNotifications] = useState(false);
   const [query, setQuery] = useState("");
   const notifications = useNotifications();
+  const router = useRouter();
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b border-line bg-canvas/85 px-4 backdrop-blur-md sm:px-6">
@@ -105,6 +107,9 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
             error={notifications.error}
             onMarkRead={notifications.markRead}
             onMarkAllRead={notifications.markAllRead}
+            onDismiss={notifications.dismiss}
+            // The link is a path like /courses/:id/live; DeepLink turns it into the right dashboard panel.
+            onActionClick={(url) => router.push(url)}
           />
         </div>
 

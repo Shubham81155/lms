@@ -117,5 +117,21 @@ export function useNotifications() {
     }
   }, [refresh]);
 
-  return { items, unreadCount, isLoading, error, refresh, markRead, markAllRead };
+  /** Removes a notification for good. Optimistic, and restored from the server if the request fails. */
+  const dismiss = useCallback(
+    async (id: string) => {
+      const target = items.find((n) => n.id === id);
+      if (!target) return;
+      setItems((prev) => prev.filter((n) => n.id !== id));
+      if (!target.isRead) setUnreadCount((c) => Math.max(0, c - 1));
+      try {
+        await api.delete(`/api/v1/notifications/${id}`);
+      } catch {
+        refresh();
+      }
+    },
+    [items, refresh]
+  );
+
+  return { items, unreadCount, isLoading, error, refresh, markRead, markAllRead, dismiss };
 }

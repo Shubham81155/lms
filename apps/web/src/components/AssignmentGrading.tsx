@@ -283,14 +283,14 @@ const Resolve: React.FC<{ appeal: Appeal; onDone: () => void }> = ({ appeal, onD
 
 // ---------------------------------------------------------------------------
 
-export const AssignmentGrading: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const AssignmentGrading: React.FC<{ onClose: () => void; /** Open on this course when the person may use it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
   const { user } = useAuth();
   const { courses, isLoading } = useStaffCourses();
   const [courseId, setCourseId] = useState("");
   const [assignmentId, setAssignmentId] = useState("");
   const [tab, setTab] = useState<"submissions" | "rubric" | "appeals">("submissions");
 
-  useEffect(() => { if (!courseId && courses.length) setCourseId(courses[0].id); }, [courses, courseId]);
+  useEffect(() => { if (!courseId && courses.length) setCourseId(initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0].id); }, [courses, courseId]);
   const assignments = useApiData<{ data: Assignment[] }>(courseId ? `/api/v1/courses/${courseId}/assignments` : null);
   const list = useMemo(() => assignments.data?.data ?? [], [assignments.data]);
   useEffect(() => { setAssignmentId((cur) => (list.some((a) => a.id === cur) ? cur : list[0]?.id ?? "")); }, [list]);
