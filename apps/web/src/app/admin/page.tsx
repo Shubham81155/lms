@@ -10,6 +10,10 @@ import {
   Activity,
   Plus,
   BookOpen,
+  ClipboardList,
+  FileCheck,
+  CalendarDays,
+  UserCog,
 } from "lucide-react";
 import { useAuditLogs } from "@/hooks/useAdmin";
 import { useAuth } from "@/context/AuthContext";
@@ -22,6 +26,11 @@ import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 import { CourseBuilder } from "@/components/CourseBuilder";
 import { CourseContentEditor } from "@/components/CourseContentEditor";
 import { CourseRoster } from "@/components/CourseRoster";
+import { CourseGradebook } from "@/components/CourseGradebook";
+import { useOpenIntent } from "@/hooks/useOpenIntent";
+import { AssessmentManager } from "@/components/AssessmentManager";
+import { CalendarManager } from "@/components/CalendarManager";
+import { UserManager } from "@/components/UserManager";
 import { createCourseWithCurriculum } from "@/hooks/useCourses";
 import { plural } from "@/lib/plural";
 
@@ -35,9 +44,21 @@ export default function AdminDashboard() {
   const [showBuilder, setShowBuilder] = useState(false);
   const [showContentEditor, setShowContentEditor] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
+  const [showGradebook, setShowGradebook] = useState(false);
+  const [focusCourse, setFocusCourse] = useState<string | null>(null);
+  const [showAssessments, setShowAssessments] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showPeople, setShowPeople] = useState(false);
 
   const { logs } = useAuditLogs();
   const { user } = useAuth();
+
+  // A link from a notification or email can ask for a tool, on a particular course (see lib/deeplink).
+  useOpenIntent(!!user, {
+    gradebook: (id) => { setFocusCourse(id); setShowGradebook(true); },
+    learners: (id) => { setFocusCourse(id); setShowRoster(true); },
+    assessments: (id) => { setFocusCourse(id); setShowAssessments(true); },
+  });
   const usage = useApiData<{ data: Usage }>("/api/v1/admin/usage");
   const features = useApiData<{ data: Record<string, boolean> }>("/api/v1/admin/features");
   const flags = features.data?.data ?? {};
@@ -85,6 +106,14 @@ export default function AdminDashboard() {
 
           <div className="flex flex-wrap items-center gap-3">
             <button
+              onClick={() => setShowPeople(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
+            >
+              <UserCog className="h-4 w-4 text-accent" />
+              <span>People</span>
+            </button>
+
+            <button
               onClick={() => setShowBuilder(true)}
               className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
             >
@@ -98,6 +127,30 @@ export default function AdminDashboard() {
             >
               <BookOpen className="h-4 w-4 text-brand-fg" />
               <span>Course Content</span>
+            </button>
+
+            <button
+              onClick={() => setShowAssessments(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
+            >
+              <ClipboardList className="h-4 w-4 text-accent" />
+              <span>Quizzes &amp; Assignments</span>
+            </button>
+
+            <button
+              onClick={() => setShowCalendar(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
+            >
+              <CalendarDays className="h-4 w-4 text-orchid" />
+              <span>Calendar Events</span>
+            </button>
+
+            <button
+              onClick={() => setShowGradebook(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
+            >
+              <FileCheck className="h-4 w-4 text-success" />
+              <span>Gradebook</span>
             </button>
 
             <button
@@ -232,7 +285,15 @@ export default function AdminDashboard() {
 
         {showContentEditor && <CourseContentEditor onClose={() => setShowContentEditor(false)} />}
 
-        {showRoster && <CourseRoster onClose={() => setShowRoster(false)} />}
+        {showRoster && <CourseRoster initialCourseId={focusCourse} onClose={() => setShowRoster(false)} />}
+
+        {showGradebook && <CourseGradebook initialCourseId={focusCourse} onClose={() => setShowGradebook(false)} />}
+
+        {showAssessments && <AssessmentManager initialCourseId={focusCourse} onClose={() => setShowAssessments(false)} />}
+
+        {showCalendar && <CalendarManager onClose={() => setShowCalendar(false)} />}
+
+        {showPeople && <UserManager onClose={() => { setShowPeople(false); usage.reload(); }} />}
 
         {/* xAPI Learning Record Store (LRS) Statement Stream */}
         {showLrsStream && (

@@ -38,6 +38,7 @@ import {
 import { useMyEnrollments, useEnrollmentStats } from "@/hooks/useEnrollments";
 import { useGamification } from "@/hooks/useEngagement";
 import { api } from "@/lib/api";
+import { useOpenIntent } from "@/hooks/useOpenIntent";
 import { useApiData } from "@/hooks/useApiData";
 import { plural } from "@/lib/plural";
 
@@ -63,6 +64,7 @@ export default function StudentDashboard() {
   const [catalogQuery, setCatalogQuery] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
   const [showForum, setShowForum] = useState(false);
+  const [forumCourseId, setForumCourseId] = useState<string | null>(null);
   const [showGamificationHub, setShowGamificationHub] = useState(false);
   const [showAssignments, setShowAssignments] = useState(false);
   const { user } = useAuth();
@@ -73,6 +75,8 @@ export default function StudentDashboard() {
     title: string;
   } | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState<string | null>(null);
+  const [leaveBusy, setLeaveBusy] = useState(false);
   const [activeNavTab, setActiveNavTab] = useState<string>("courses");
 
   // Sync tab with URL hash if provided
@@ -150,10 +154,27 @@ export default function StudentDashboard() {
     }
   };
 
+  const leaveCourse = async (enrollmentId: string, title: string) => {
+    setLeaveBusy(true);
+    try {
+      await api.delete(`/api/v1/enrollments/${enrollmentId}`);
+      setNotification(`You left ${title}. Your progress is kept if you rejoin.`);
+      setLeaving(null);
+      await refetchEnrollments();
+    } catch (e) {
+      setNotification(e instanceof Error ? e.message : "Could not leave the course.");
+    } finally {
+      setLeaveBusy(false);
+      setTimeout(() => setNotification(null), 6000);
+    }
+  };
+
   const displayCourses = (enrollments ?? [])
     .filter((e) => e.status !== "DROPPED")
     .map((e) => ({
       id: e.courseId,
+      enrollmentId: e.id,
+      open: e.status === "ENROLLED" || e.status === "IN_PROGRESS",
       code: e.course?.code ?? "",
       title: e.course?.title ?? "Course",
       progress: Math.round(e.progressPercent || 0),
@@ -161,6 +182,22 @@ export default function StudentDashboard() {
       finalGrade: e.finalGrade ?? null,
       certificateNumber: (e as any).certificate?.certificateNumber as string | undefined,
     }));
+
+  // A link from a notification or email can ask for a panel (see lib/deeplink).
+  useOpenIntent(!isLoadingEnrollments, {
+    course: (id) => {
+      const c = displayCourses.find((x) => x.id === id && x.open);
+      if (c) setActiveLessonCourse({ id: c.id, code: c.code, title: c.title });
+    },
+    forum: (id) => {
+      setForumCourseId(id);
+      setShowForum(true);
+    },
+    assignments: (id) => {
+      if (id && displayCourses.some((x) => x.id === id)) setAssignmentsCourse(id);
+      else setShowAssignments(true);
+    },
+  });
 
   return (
     <AppShell
@@ -361,6 +398,26 @@ export default function StudentDashboard() {
                         <span>Assignments</span>
                       </button>
                     </div>
+                    {course.open &&
+                      (leaving === course.enrollmentId ? (
+                        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs">
+                          <span className="text-ink">Leave {course.code}? You lose access to it, and your progress is kept if you rejoin.</span>
+                          <button
+                            onClick={() => leaveCourse(course.enrollmentId, course.title)}
+                            disabled={leaveBusy}
+                            className="rounded-lg bg-danger px-3 py-1 text-[11px] font-bold text-on-brand disabled:opacity-50"
+                          >
+                            {leaveBusy ? "Leaving…" : "Leave course"}
+                          </button>
+                          <button onClick={() => setLeaving(null)} className="rounded-lg border border-line bg-surface px-3 py-1 text-[11px] font-semibold text-ink">
+                            Stay
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setLeaving(course.enrollmentId)} className="text-[11px] font-semibold text-ink-subtle underline-offset-2 hover:text-danger hover:underline" aria-label={`Leave ${course.code}`}>
+                          Leave course
+                        </button>
+                      ))}
                     {course.certificateNumber && (
                       <button
                         onClick={() => setCertificate({ studentName: user?.name ?? "", courseTitle: course.title, certificateId: course.certificateNumber! })}
@@ -510,7 +567,11 @@ export default function StudentDashboard() {
       {showForum && (
         <DiscussionForum
           courseCode={displayCourses[0]?.code}
-          onClose={() => setShowForum(false)}
+          courseId={forumCourseId}
+          onClose={() => {
+            setShowForum(false);
+            setForumCourseId(null);
+          }}
         />
       )}
 

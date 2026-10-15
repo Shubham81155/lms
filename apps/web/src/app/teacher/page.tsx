@@ -5,6 +5,9 @@ import { AppShell } from "@/components/shell/AppShell";
 import { CourseBuilder } from "@/components/CourseBuilder";
 import { CourseContentEditor } from "@/components/CourseContentEditor";
 import { CourseRoster } from "@/components/CourseRoster";
+import { useOpenIntent } from "@/hooks/useOpenIntent";
+import { AssessmentManager } from "@/components/AssessmentManager";
+import { CalendarManager } from "@/components/CalendarManager";
 import { CourseGradebook } from "@/components/CourseGradebook";
 import { QuestionBank } from "@/components/QuestionBank";
 import { AssignmentGrading } from "@/components/AssignmentGrading";
@@ -28,8 +31,11 @@ import {
   Activity,
   Library,
   ClipboardCheck,
+  ClipboardList,
+  CalendarDays,
 } from "lucide-react";
-import { useCourses, createCourseWithCurriculum } from "@/hooks/useCourses";
+import { createCourseWithCurriculum } from "@/hooks/useCourses";
+import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { DiscussionForum } from "@/components/DiscussionForum";
 import { FacultyAnalyticsModal } from "@/components/FacultyAnalyticsModal";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
@@ -43,11 +49,14 @@ export default function TeacherDashboard() {
   const [showCourseBuilder, setShowCourseBuilder] = useState(false);
   const [showContentEditor, setShowContentEditor] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
+  const [showAssessments, setShowAssessments] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [showGradebook, setShowGradebook] = useState(false);
   const [showQuestionBank, setShowQuestionBank] = useState(false);
   const [showAssignmentGrading, setShowAssignmentGrading] = useState(false);
   const [showLiveClasses, setShowLiveClasses] = useState(false);
   const [showForum, setShowForum] = useState(false);
+  const [focusCourse, setFocusCourse] = useState<string | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showLrsStream, setShowLrsStream] = useState(false);
   const [activeNavTab, setActiveNavTab] = useState<string>("courses");
@@ -83,9 +92,20 @@ export default function TeacherDashboard() {
     }
   };
 
-  const { courses, refetch: refetchCourses } = useCourses();
+  // The courses this person teaches (every course, for an administrator), not everything they can see.
+  const { courses, reload: refetchCourses } = useStaffCourses();
 
   const { user } = useAuth();
+
+  // A link from a notification or email can ask for a tool, on a particular course (see lib/deeplink).
+  useOpenIntent(!!user, {
+    forum: (id) => { setFocusCourse(id); setShowForum(true); },
+    live: (id) => { setFocusCourse(id); setShowLiveClasses(true); },
+    grading: (id) => { setFocusCourse(id); setShowAssignmentGrading(true); },
+    assessments: (id) => { setFocusCourse(id); setShowAssessments(true); },
+    learners: (id) => { setFocusCourse(id); setShowRoster(true); },
+    gradebook: (id) => { setFocusCourse(id); setShowGradebook(true); },
+  });
   const canEditCourses = user?.role === "INSTRUCTOR";
   const { analytics, refetch: analyticsReload } = useCohortAnalytics();
   const proctoring = useApiData<{
@@ -151,6 +171,22 @@ export default function TeacherDashboard() {
               <span>Course Content</span>
             </button>
             )}
+
+            <button
+              onClick={() => setShowAssessments(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
+            >
+              <ClipboardList className="h-4 w-4 text-accent" />
+              <span>Quizzes &amp; Assignments</span>
+            </button>
+
+            <button
+              onClick={() => setShowCalendar(true)}
+              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
+            >
+              <CalendarDays className="h-4 w-4 text-orchid" />
+              <span>Calendar Events</span>
+            </button>
 
             <button
               onClick={() => setShowRoster(true)}
@@ -378,8 +414,13 @@ export default function TeacherDashboard() {
 
       {showContentEditor && <CourseContentEditor onClose={() => setShowContentEditor(false)} />}
 
+      {showAssessments && <AssessmentManager initialCourseId={focusCourse} onClose={() => { setShowAssessments(false); pending.reload(); }} />}
+
+      {showCalendar && <CalendarManager onClose={() => setShowCalendar(false)} />}
+
       {showRoster && (
         <CourseRoster
+          initialCourseId={focusCourse}
           onClose={() => {
             setShowRoster(false);
             analyticsReload();
@@ -388,18 +429,18 @@ export default function TeacherDashboard() {
       )}
 
       {showGradebook && (
-        <CourseGradebook onClose={() => setShowGradebook(false)} />
+        <CourseGradebook initialCourseId={focusCourse} onClose={() => setShowGradebook(false)} />
       )}
 
       {showQuestionBank && <QuestionBank onClose={() => setShowQuestionBank(false)} />}
 
-      {showAssignmentGrading && <AssignmentGrading onClose={() => { setShowAssignmentGrading(false); pending.reload(); }} />}
+      {showAssignmentGrading && <AssignmentGrading initialCourseId={focusCourse} onClose={() => { setShowAssignmentGrading(false); pending.reload(); }} />}
 
-      {showLiveClasses && <LiveClasses onClose={() => setShowLiveClasses(false)} />}
+      {showLiveClasses && <LiveClasses initialCourseId={focusCourse} onClose={() => setShowLiveClasses(false)} />}
 
       {showForum && (
         <DiscussionForum
-          courseCode="CS-101"
+          courseId={focusCourse}
           onClose={() => setShowForum(false)}
         />
       )}
