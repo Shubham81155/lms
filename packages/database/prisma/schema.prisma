@@ -79,6 +79,7 @@ model Tenant {
   samlConnection    SamlConnection?
   liveSessions      LiveSession[]
   liveAttendance    LiveAttendance[]
+  lessonProgress    LessonProgress[]
   gradeAppeals      GradeAppeal[]
 
   // Per-tenant feature toggles (scorm, xapi, lti13, aiProctoring, sso). Null = tier defaults.
@@ -197,6 +198,7 @@ model User {
   xpEvents                XpEvent[]
   courseGrades            CourseGrade[]
   liveAttendance          LiveAttendance[]
+  lessonProgress          LessonProgress[]
 
   // Guardian Relations
   guardians UserGuardian[] @relation("StudentRelation")
@@ -269,6 +271,7 @@ enum ContentType {
 
 model Course {
   liveSessions    LiveSession[]
+  lessonProgress  LessonProgress[]
   gradeCategories GradeCategory[]
   courseGrades    CourseGrade[]
   gradeCurveMethod String @default("NONE") // NONE | ADD_POINTS | SCALE_TO_MAX
@@ -350,10 +353,29 @@ model Lesson {
 
   estimatedMinutes Int @default(15)
 
+  progress LessonProgress[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([moduleId, orderIndex])
+}
+
+// A learner finishing a lesson. A course's progress percentage is derived from these rows.
+model LessonProgress {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([userId, lessonId])
+  @@index([tenantId, courseId, userId])
 }
 
 // ---------------------------------------------------------
