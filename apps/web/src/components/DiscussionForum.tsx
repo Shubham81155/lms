@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useCourseByCode, useForum } from "@/hooks/useEngagement";
+import { useCourseByCode, useForum, useModerationQueue } from "@/hooks/useEngagement";
+import { ReportControl, ReportsPanel, ThreadModerationBar } from "@/components/forum/Moderation";
 import {
   X,
   MessageSquare,
@@ -15,11 +16,16 @@ import {
   ShieldCheck,
   User,
   Filter,
+  Flag,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface DiscussionForumProps {
   /** Used to find the course; falls back to the first course the user can see. */
   courseCode?: string;
+  /** Open on this course (from a link); falls back to the usual choice if it is not available. */
+  courseId?: string | null;
   onClose: () => void;
 }
 
@@ -37,13 +43,16 @@ const STAFF_ROLES = ["INSTRUCTOR", "TEACHING_ASSISTANT", "TENANT_ADMIN", "SUPER_
 
 export const DiscussionForum: React.FC<DiscussionForumProps> = ({
   courseCode,
+  courseId,
   onClose,
 }) => {
   const { user } = useAuth();
-  const { course, courses, selectCourse, isLoading: courseLoading } = useCourseByCode(courseCode);
-  const forum = useForum(course?.id);
-  const { threads, activeId, setActiveId } = forum;
+  const { course, courses, selectCourse, isLoading: courseLoading } = useCourseByCode(courseCode, user, courseId);
   const isStaff = !!user && STAFF_ROLES.includes(user.role);
+  const forum = useForum(course?.id, isStaff);
+  const queue = useModerationQueue(isStaff ? course?.id : null);
+  const [showReports, setShowReports] = useState(false);
+  const { threads, activeId, setActiveId } = forum;
   const readOnly = user?.role === "AUDITOR";
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,7 +112,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="forum-h">
-      <div className="bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+      <div className="relative bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Top Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -139,6 +148,18 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {isStaff && (
+              <button
+                onClick={() => {
+                  queue.reload();
+                  setShowReports(true);
+                }}
+                className="px-3 py-2 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+              >
+                <Flag className="h-3.5 w-3.5 text-danger" />
+                <span>Reports ({queue.flags.length})</span>
+              </button>
+            )}
             {!readOnly && (
             <button
               onClick={() => setShowNewThreadModal(true)}
@@ -231,6 +252,11 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                           Pinned
                         </span>
                       )}
+                      {thread.hidden && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-danger/10 text-danger border border-danger/30">
+                          Hidden
+                        </span>
+                      )}
                       {thread.hasVerifiedAnswer && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-success/10 text-success border border-success/30 flex items-center gap-1">
                           <CheckCircle2 className="h-2.5 w-2.5" />
@@ -304,6 +330,11 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                       {activeThread.content}
                     </p>
                   </div>
+
+                  <div className="space-y-2">
+                    {isStaff && <ThreadModerationBar thread={activeThread} busy={forum.busy} onModerate={(patch) => forum.moderateThread(activeThread.id, patch)} />}
+                    {!readOnly && <ReportControl targetType="THREAD" targetId={activeThread.id} subject="this thread" />}
+                  </div>
                 </div>
 
                 {/* Replies Stream */}
@@ -321,7 +352,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                         reply.isVerifiedAnswer
                           ? "bg-success/10 border-success/30 shadow-md shadow-success/10"
                           : "bg-canvas border-line"
-                      }`}
+                      } ${reply.hidden ? "opacity-60" : ""}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -349,6 +380,17 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2">
+                          {reply.hidden && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/30">Hidden</span>}
+                          {isStaff && (
+                            <button
+                              onClick={() => forum.moderatePost(reply.id, !reply.hidden, activeThread.id)}
+                              disabled={forum.busy}
+                              className="px-2.5 py-1 bg-surface border border-line text-ink-muted hover:text-ink rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
+                            >
+                              {reply.hidden ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                              <span>{reply.hidden ? "Restore" : "Hide"}</span>
+                            </button>
+                          )}
                           {isStaff && (
                             <button
                               onClick={() => forum.endorse(reply.id, activeThread.id)}
@@ -373,6 +415,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                       <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap">
                         {reply.content}
                       </p>
+                      {!readOnly && !reply.hidden && <ReportControl targetType="POST" targetId={reply.id} subject={`the reply by ${reply.author}`} />}
                     </div>
                   ))}
                 </div>
@@ -407,6 +450,27 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
           )}
         </div>
       </div>
+
+      {showReports && (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
+          <div className="relative h-[88vh] w-full max-w-3xl overflow-hidden rounded-3xl border border-line shadow-2xl">
+            <ReportsPanel
+              flags={queue.flags}
+              error={queue.error}
+              onClose={() => setShowReports(false)}
+              onOpenThread={(id) => {
+                setActiveId(id);
+                setShowReports(false);
+              }}
+              onChanged={() => {
+                queue.reload();
+                forum.refresh();
+                if (activeThread) forum.refreshReplies(activeThread.id);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* New Question Modal */}
       {showNewThreadModal && (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import { timeAgo } from "@/hooks/useNotifications";
 
@@ -23,10 +22,14 @@ export interface CourseRef {
  * Resolves a course for screens that were written around a course code. Prefers the exact code,
  * otherwise the first course the caller can see. `null` when there is none (or while loading).
  */
-export function useCourseByCode(code?: string) {
-  const { user } = useAuth();
+/**
+ * `viewer` is the signed-in user; it decides which courses are offered, so the hook itself needs no
+ * access to the auth context.
+ */
+export function useCourseByCode(code?: string, viewer?: { id: string; role: string } | null, preferredId?: string | null) {
+  const user = viewer;
   const [allCourses, setAllCourses] = useState<CourseRef[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(preferredId ?? null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -252,6 +255,8 @@ export interface ForumThreadView {
   replyCount: number;
   pinned: boolean;
   locked: boolean;
+  /** Only staff are sent hidden threads. */
+  hidden: boolean;
   hasVerifiedAnswer: boolean;
   replies: ForumReplyView[];
 }
@@ -282,12 +287,13 @@ const toThread = (t: any, replies: ForumReplyView[] = []): ForumThreadView => ({
   replyCount: t.replyCount ?? replies.length,
   pinned: !!t.pinned,
   locked: !!t.locked,
+  hidden: !!t.hidden,
   hasVerifiedAnswer: replies.some((r) => r.isVerifiedAnswer),
   replies,
 });
 
 /** Threads of one course, with the active thread's replies loaded on demand. */
-export function useForum(courseId?: string | null) {
+export function useForum(courseId?: string | null, isStaff = false) {
   const [threads, setThreads] = useState<ForumThreadView[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [replies, setReplies] = useState<Record<string, ForumReplyView[]>>({});
@@ -310,7 +316,8 @@ export function useForum(courseId?: string | null) {
       return;
     }
     try {
-      const r = await api.get<{ data: any[] }>(`/api/v1/courses/${courseId}/threads`, { params: { limit: 50 } });
+      // Staff also see hidden threads, so they can restore them.
+      const r = await api.get<{ data: any[] }>(`/api/v1/courses/${courseId}/threads`, { params: { limit: 50, includeHidden: isStaff ? "true" : "false" } });
       if (!alive.current) return;
       setThreads(r.data.map((t) => toThread(t)));
       setActiveId((cur) => cur ?? r.data[0]?.id ?? null);
@@ -320,7 +327,7 @@ export function useForum(courseId?: string | null) {
     } finally {
       if (alive.current) setIsLoading(false);
     }
-  }, [courseId]);
+  }, [courseId, isStaff]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -410,6 +417,26 @@ export function useForum(courseId?: string | null) {
     [act, loadReplies]
   );
 
+  /** Course staff: pin, lock or hide a thread. */
+  const moderateThread = useCallback(
+    (threadId: string, patch: { pinned?: boolean; locked?: boolean; hidden?: boolean }) =>
+      act(async () => {
+        await api.patch(`/api/v1/threads/${threadId}/moderate`, patch);
+        await loadThreads();
+      }, "Could not update the thread"),
+    [act, loadThreads]
+  );
+
+  /** Course staff: hide or restore a reply. */
+  const moderatePost = useCallback(
+    (postId: string, hidden: boolean, threadId: string) =>
+      act(async () => {
+        await api.patch(`/api/v1/posts/${postId}/moderate`, { hidden });
+        await loadReplies(threadId);
+      }, "Could not update the reply"),
+    [act, loadReplies]
+  );
+
   const report = useCallback(
     (targetType: "THREAD" | "POST", targetId: string, reason: string) =>
       act(async () => {
@@ -423,5 +450,38 @@ export function useForum(courseId?: string | null) {
     return list ? { ...t, replies: list, hasVerifiedAnswer: list.some((r) => r.isVerifiedAnswer) } : t;
   });
 
-  return { threads: withReplies, activeId, setActiveId, isLoading, busy, error, createThread, postReply, vote, endorse, report, refresh: loadThreads };
+  return { threads: withReplies, activeId, setActiveId, isLoading, busy, error, createThread, postReply, vote, endorse, report, moderateThread, moderatePost, refresh: loadThreads, refreshReplies: loadReplies };
+}
+
+export interface ForumFlagView {
+  id: string;
+  targetType: "THREAD" | "POST";
+  targetId: string;
+  reason: string;
+  createdAt: string;
+  reporterName: string;
+  target: { threadId: string; threadTitle: string; excerpt: string; hidden: boolean } | null;
+}
+
+/** Open reports on a course's discussion, for its staff. Pass `null` to skip loading. */
+export function useModerationQueue(courseId: string | null | undefined) {
+  const [flags, setFlags] = useState<ForumFlagView[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    if (!courseId) {
+      setFlags([]);
+      return;
+    }
+    try {
+      const r = await api.get<{ data: ForumFlagView[] }>(`/api/v1/courses/${courseId}/flags`);
+      setFlags(r.data);
+      setError(null);
+    } catch (e) {
+      setError(messageOf(e, "Could not load the reports"));
+    }
+  }, [courseId]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  return { flags, error, reload: load };
 }
