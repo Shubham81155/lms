@@ -35,6 +35,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useApiData } from "@/hooks/useApiData";
 import { useCohortAnalytics } from "@/hooks/useAnalytics";
 import { timeAgo } from "@/hooks/useNotifications";
+import { plural } from "@/lib/plural";
 
 export default function TeacherDashboard() {
   const [showCourseBuilder, setShowCourseBuilder] = useState(false);
@@ -121,7 +122,7 @@ export default function TeacherDashboard() {
               Faculty Command Center
             </h1>
             <p className="text-sm text-ink-muted">
-              Welcome{user ? `, ${user.name}` : ""} • {courses.length} {courses.length === 1 ? "Course" : "Courses"}{analytics ? ` • ${analytics.metrics.totalEnrolled} Enrolments` : ""}
+              Welcome{user ? `, ${user.name}` : ""} • {courses.length} {courses.length === 1 ? "Course" : "Courses"}{analytics ? ` • ${plural(analytics.metrics.totalEnrolled, "Enrolment")}` : ""}
             </p>
           </div>
 
@@ -221,7 +222,7 @@ export default function TeacherDashboard() {
             {
               label: "Completion Rate",
               value: analytics ? `${analytics.metrics.completionRate}%` : "…",
-              sub: analytics ? `${analytics.atRiskLearners.length} learners at risk` : "",
+              sub: analytics ? `${plural(analytics.atRiskLearners.length, "learner")} at risk` : "",
               icon: TrendingUp,
               color: "text-orchid",
             },

@@ -17,6 +17,7 @@ import { FeaturesPanel, UsagePanel, WebhooksPanel, type Usage } from "@/componen
 import { BrandingPanel, CampusPanel, CompliancePanel } from "@/components/admin/OrgPanels";
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
+import { plural } from "@/lib/plural";
 
 const TABS = ["overview", "compliance", "sso", "platform", "audit"] as const;
 type Tab = (typeof TABS)[number];
@@ -89,7 +90,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {[
             { label: "Seats in use", value: seats ? (seats.quota ? `${seats.used} / ${seats.quota}` : String(seats.used)) : "…", sub: seats ? `${usage.data?.data.last30Days.activeUsers ?? 0} active in 30 days` : "", icon: Users, color: "text-brand-fg" },
-            { label: "Courses", value: usage.data ? String(usage.data.data.totals.courses) : "…", sub: `${usage.data?.data.totals.enrollments ?? 0} enrolments`, icon: Database, color: "text-success" },
+            { label: "Courses", value: usage.data ? String(usage.data.data.totals.courses) : "…", sub: plural(usage.data?.data.totals.enrollments ?? 0, "enrolment"), icon: Database, color: "text-success" },
             { label: "Single sign-on", value: flags.sso ? "Available" : "Not in plan", sub: flags.scim ? "SCIM provisioning on" : "SCIM off", icon: Key, color: "text-accent" },
             { label: "Integrations", value: flags.webhooks ? "Webhooks on" : "Webhooks off", sub: flags.lti13 ? "LTI 1.3 on" : "LTI 1.3 off", icon: Terminal, color: "text-orchid" },
           ].map((stat, idx) => {
@@ -167,7 +168,7 @@ export default function AdminDashboard() {
                 <h3 className="font-bold text-base text-ink">Audit log</h3>
                 <p className="text-xs text-ink-muted">Append-only for the application: it can add entries but not change or delete them.</p>
               </div>
-                          </div>
+            </div>
 
             <div className="bg-canvas rounded-2xl p-4 font-mono text-[11px] text-ink space-y-2 overflow-x-auto">
               {logs && logs.length > 0 ? (

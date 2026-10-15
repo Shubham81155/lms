@@ -17,6 +17,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { plural } from "@/lib/plural";
 
 export interface CalendarEvent {
   id: string;
@@ -162,7 +163,7 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-ink">Upcoming Academic Itinerary</span>
-              <span className="text-xs text-ink-muted">({events.length} Events)</span>
+              <span className="text-xs text-ink-muted">({plural(events.length, "Event")})</span>
             </div>
 
             <div className="flex items-center gap-2 text-xs">

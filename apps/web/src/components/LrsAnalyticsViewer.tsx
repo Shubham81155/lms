@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useXApiStream, XApiStatementItem } from "@/hooks/useAnalytics";
+import { plural } from "@/lib/plural";
 
 interface LrsAnalyticsViewerProps {
   onClose: () => void;
@@ -104,7 +105,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
           </div>
 
           <span className="text-ink-muted text-xs font-mono hidden sm:inline">
-            Total Captured: {total || statements.length} Statements
+            Total Captured: {plural(total || statements.length, "Statement")}
           </span>
         </div>
 

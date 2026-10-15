@@ -36,7 +36,7 @@ const CATEGORY_LABELS: Record<(typeof CATEGORIES)[number], string> = {
 const STAFF_ROLES = ["INSTRUCTOR", "TEACHING_ASSISTANT", "TENANT_ADMIN", "SUPER_ADMIN"];
 
 export const DiscussionForum: React.FC<DiscussionForumProps> = ({
-  courseCode = "CS-101",
+  courseCode,
   onClose,
 }) => {
   const { user } = useAuth();

@@ -234,7 +234,7 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/85 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="cohort-h">
-      <div className="flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl">
+      <div className="relative flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-line bg-canvas px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-orchid/30 bg-orchid/20 text-orchid">
@@ -266,8 +266,8 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
         {notice && (
           <div
             role={notice.kind === "error" ? "alert" : "status"}
-            className={`flex animate-fadeIn items-center gap-2 border-b px-6 py-2.5 text-xs ${
-              notice.kind === "ok" ? "border-success/30 bg-success/10 text-success" : "border-danger/30 bg-danger/10 text-danger"
+            className={`absolute bottom-6 left-1/2 z-10 flex max-w-[90%] -translate-x-1/2 animate-fadeIn items-center gap-2 rounded-xl border bg-surface px-4 py-2.5 text-xs shadow-xl ${
+              notice.kind === "ok" ? "border-success/40 text-success" : "border-danger/40 text-danger"
             }`}
           >
             {notice.kind === "ok" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}

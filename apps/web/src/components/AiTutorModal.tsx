@@ -38,7 +38,7 @@ interface ChatMessage {
 }
 
 export const AiTutorModal: React.FC<AiTutorModalProps> = ({
-  courseTitle = "Advanced Distributed Systems (CS-101)",
+  courseTitle = "your courses",
   initialTopic = "Raft Consensus & Split-Brain Quorum",
   onClose,
   onDrillCompleted,

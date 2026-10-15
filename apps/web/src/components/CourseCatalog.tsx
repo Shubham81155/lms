@@ -17,6 +17,7 @@ import {
 import { useCourses } from "@/hooks/useCourses";
 import { useEnroll, useMyEnrollments } from "@/hooks/useEnrollments";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { plural } from "@/lib/plural";
 
 interface CourseCatalogProps {
   onClose: () => void;
@@ -101,7 +102,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-base text-ink">Institutional Course Catalog</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand-fg border border-brand/30">
-                  {allCourses.length} Courses Available
+                  {plural(allCourses.length, "Course")} Available
                 </span>
               </div>
               <p className="text-xs text-ink-muted">
