@@ -137,7 +137,29 @@ async function main() {
       emailVerified: true,
     },
   });
-  console.log(`✓ Users created: Student (${student.email}), Instructor (${instructor.email}), Admin (${admin.email})`);
+
+  // Teaching assistant: Marcus Brody, assigned to CS-101 below. Assistants can grade and review but
+  // cannot create or change courses, so they are the account to test those limits with.
+  const assistant = await prisma.user.upsert({
+    where: {
+      tenantId_email: {
+        tenantId: harvard.id,
+        email: 'marcus.brody@harvard.edu',
+      },
+    },
+    update: { passwordHash },
+    create: {
+      passwordHash,
+      id: 'usr_assistant_01',
+      tenantId: harvard.id,
+      email: 'marcus.brody@harvard.edu',
+      firstName: 'Marcus',
+      lastName: 'Brody',
+      role: 'TEACHING_ASSISTANT',
+      emailVerified: true,
+    },
+  });
+  console.log(`✓ Users created: Student (${student.email}), Instructor (${instructor.email}), Assistant (${assistant.email}), Admin (${admin.email})`);
 
   // 5. Create Courses
   const course1 = await prisma.course.upsert({
@@ -194,6 +216,21 @@ async function main() {
       courseId: course1.id,
       userId: instructor.id,
       isPrimary: true,
+    },
+  });
+
+  await prisma.courseInstructor.upsert({
+    where: {
+      courseId_userId: {
+        courseId: course1.id,
+        userId: assistant.id,
+      },
+    },
+    update: {},
+    create: {
+      courseId: course1.id,
+      userId: assistant.id,
+      isPrimary: false,
     },
   });
 

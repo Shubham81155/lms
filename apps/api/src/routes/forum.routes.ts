@@ -296,7 +296,39 @@ router.get(
       where: { tenantId: tenantIdOf(req), resolved: false, targetId: { in: ids } },
       orderBy: { createdAt: 'asc' },
     });
-    return res.json({ data: flags });
+
+    // Say what was reported and by whom, so moderators can act without opening each thread.
+    const [flaggedThreads, flaggedPosts, reporters] = await Promise.all([
+      prisma.forumThread.findMany({
+        where: { id: { in: flags.filter((f) => f.targetType === 'THREAD').map((f) => f.targetId) } },
+        select: { id: true, title: true, body: true, hidden: true },
+      }),
+      prisma.forumPost.findMany({
+        where: { id: { in: flags.filter((f) => f.targetType === 'POST').map((f) => f.targetId) } },
+        select: { id: true, body: true, hidden: true, threadId: true, thread: { select: { title: true } } },
+      }),
+      prisma.user.findMany({ where: { id: { in: [...new Set(flags.map((f) => f.reporterId))] } }, select: { id: true, firstName: true, lastName: true } }),
+    ]);
+    const threadById = new Map(flaggedThreads.map((t) => [t.id, t]));
+    const postById = new Map(flaggedPosts.map((p) => [p.id, p]));
+    const reporterName = new Map(reporters.map((u) => [u.id, `${u.firstName} ${u.lastName}`]));
+    const excerpt = (s: string) => (s.length > 240 ? `${s.slice(0, 240)}…` : s);
+
+    return res.json({
+      data: flags.map((f) => {
+        const t = f.targetType === 'THREAD' ? threadById.get(f.targetId) : undefined;
+        const p = f.targetType === 'POST' ? postById.get(f.targetId) : undefined;
+        return {
+          ...f,
+          reporterName: reporterName.get(f.reporterId) ?? 'Unknown',
+          target: t
+            ? { threadId: t.id, threadTitle: t.title, excerpt: excerpt(t.body), hidden: t.hidden }
+            : p
+              ? { threadId: p.threadId, threadTitle: p.thread.title, excerpt: excerpt(p.body), hidden: p.hidden }
+              : null,
+        };
+      }),
+    });
   })
 );
 

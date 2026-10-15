@@ -358,6 +358,15 @@ describe('question bank', () => {
     expect((await (await as('teacher')).get(`/api/v1/question-bank/${itemId}`)).status).toBe(404);
   });
 
+  it('shows an assistant the cohort analytics of their own course only', async () => {
+    const ta = await as('ta');
+    const res = await ta.get('/api/v1/analytics/cohort');
+    expect(res.status).toBe(200);
+    expect(res.body.metrics.totalEnrolled).toBe(3); // c1's learners; the assistant is not on c2
+    expect((await (await as('teacher2')).get('/api/v1/analytics/cohort')).body.metrics.totalEnrolled).toBe(0);
+    expect((await (await as('s1')).get('/api/v1/analytics/cohort')).status).toBe(403);
+  });
+
   it('tags questions on quizzes and reports Bloom mastery from graded answers', async () => {
     const res = await (await as('teacher')).get('/api/v1/analytics/cohort');
     const apply = res.body.bloomsMastery.find((b: any) => b.level === 'APPLY');

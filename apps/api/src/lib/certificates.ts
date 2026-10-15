@@ -24,7 +24,8 @@ export async function issueCertificate(enrollmentId: string, tenantSlug: string)
         data: {
           enrollmentId,
           certificateNumber,
-          verificationQr: `${config.APP_URL}/api/v1/certificates/verify/${certificateNumber}?tenant=${encodeURIComponent(tenantSlug)}`,
+          // A page a person can read; it checks the number through the public verification API.
+          verificationQr: `${config.APP_URL}/verify?number=${encodeURIComponent(certificateNumber)}&tenant=${encodeURIComponent(tenantSlug)}`,
         },
       });
     } catch (err: any) {

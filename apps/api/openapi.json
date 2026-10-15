@@ -5043,6 +5043,7 @@
         ],
         "x-required-roles": [
           "INSTRUCTOR",
+          "TEACHING_ASSISTANT",
           "TENANT_ADMIN",
           "SUPER_ADMIN"
         ],
@@ -10277,6 +10278,33 @@
                           },
                           "createdAt": {
                             "type": "string"
+                          },
+                          "reporterName": {
+                            "type": "string"
+                          },
+                          "target": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "threadId": {
+                                "type": "string"
+                              },
+                              "threadTitle": {
+                                "type": "string"
+                              },
+                              "excerpt": {
+                                "type": "string"
+                              },
+                              "hidden": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "threadId",
+                              "threadTitle",
+                              "excerpt",
+                              "hidden"
+                            ]
                           }
                         },
                         "required": [
@@ -10287,7 +10315,9 @@
                           "targetId",
                           "reason",
                           "resolved",
-                          "createdAt"
+                          "createdAt",
+                          "reporterName",
+                          "target"
                         ]
                       }
                     }
@@ -15302,6 +15332,11 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 64
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email"
                   }
                 },
                 "required": [
@@ -15444,6 +15479,98 @@
           },
           "403": {
             "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/enrollments/{id}": {
+      "delete": {
+        "operationId": "deleteEnrollmentsId",
+        "summary": "Withdraw from a course. A learner may leave their own in-progress course; administrators and the course's instructor may remove a learner. The record is kept (status DROPPED) with its progress, and enrolling the person again picks up where they left off; a finished or failed enrollment cannot be withdrawn.",
+        "tags": [
+          "enrollments"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DROPPED"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
             "content": {
               "application/json": {
                 "schema": {
@@ -25437,6 +25564,216 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "postUsers",
+        "summary": "Invite a person (administrators only). Creates an INVITED account and emails a link to choose a password; using the link activates it. Counts against the seat quota.",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email"
+                  },
+                  "firstName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "lastName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "SUPER_ADMIN",
+                      "TENANT_ADMIN",
+                      "INSTRUCTOR",
+                      "TEACHING_ASSISTANT",
+                      "STUDENT",
+                      "PARENT_GUARDIAN",
+                      "AUDITOR"
+                    ],
+                    "default": "STUDENT"
+                  }
+                },
+                "required": [
+                  "email",
+                  "firstName",
+                  "lastName"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        },
+                        "avatarUrl": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "SUPER_ADMIN",
+                            "TENANT_ADMIN",
+                            "INSTRUCTOR",
+                            "TEACHING_ASSISTANT",
+                            "STUDENT",
+                            "PARENT_GUARDIAN",
+                            "AUDITOR"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ACTIVE",
+                            "INVITED",
+                            "LOCKED",
+                            "SUSPENDED"
+                          ]
+                        },
+                        "emailVerified": {
+                          "type": "boolean"
+                        },
+                        "idpProvider": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "mfaEnabled": {
+                          "type": "boolean"
+                        },
+                        "lastLoginAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tenantId",
+                        "email",
+                        "firstName",
+                        "lastName",
+                        "avatarUrl",
+                        "role",
+                        "status",
+                        "emailVerified",
+                        "idpProvider",
+                        "mfaEnabled",
+                        "lastLoginAt",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    },
+                    "invitationSent": {
+                      "type": "boolean"
+                    },
+                    "emailConfigured": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "invitationSent",
+                    "emailConfigured"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/users/{id}": {
@@ -26055,6 +26392,113 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{id}/invite": {
+      "post": {
+        "operationId": "postUsersIdInvite",
+        "summary": "Send a fresh invitation link to someone who has not accepted yet.",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "invitationSent": {
+                          "type": "boolean"
+                        },
+                        "emailConfigured": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "invitationSent",
+                        "emailConfigured"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
             "content": {
               "application/json": {
                 "schema": {

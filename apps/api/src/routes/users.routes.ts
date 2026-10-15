@@ -8,6 +8,9 @@ import { GlobalRole, UserStatus } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
 import { httpUrl, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { COURSE_STAFF_ROLES, canSeeAllCourses, isAdminRole } from '../lib/access';
+import { assertSeatAvailable } from '../lib/features';
+import { sendInvitation } from '../lib/invitations';
+import { dispatchWebhook } from '../lib/webhooks';
 
 const router = Router();
 
@@ -17,6 +20,13 @@ export const updateUserSchema = z.object({
   avatarUrl: httpUrl.or(z.literal('')).nullable().optional(),
   role: z.nativeEnum(GlobalRole).optional(),
   status: z.nativeEnum(UserStatus).optional(),
+});
+
+export const inviteSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  firstName: z.string().trim().min(1).max(100),
+  lastName: z.string().trim().min(1).max(100),
+  role: z.nativeEnum(GlobalRole).default('STUDENT'),
 });
 
 export const listQuery = z.object({
@@ -84,6 +94,84 @@ router.get(
       })),
       pagination: pageMeta(page, limit, total),
     });
+  })
+);
+
+/**
+ * POST /api/v1/users - invite a person (administrators only)
+ * Creates an INVITED account and emails a link to choose a password; using the link activates it.
+ * Counts against the seat quota. Only a SUPER_ADMIN may invite another SUPER_ADMIN.
+ */
+router.post(
+  '/',
+  authenticateJWT,
+  requireRole('SUPER_ADMIN', 'TENANT_ADMIN'),
+  route('Failed to invite user', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const actor = req.user!;
+    const input = parseBody(req, inviteSchema);
+
+    if (input.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') {
+      throw new HttpError(403, 'Only a super administrator can grant the super administrator role');
+    }
+    if (await prisma.user.findFirst({ where: { tenantId, email: input.email }, select: { id: true } })) {
+      throw new HttpError(409, 'A person with this e-mail address already exists');
+    }
+    await assertSeatAvailable(tenantId);
+
+    let created;
+    try {
+      created = await prisma.user.create({
+        data: { tenantId, email: input.email, firstName: input.firstName, lastName: input.lastName, role: input.role, status: 'INVITED', passwordHash: null, emailVerified: false },
+        select: safeUserSelect,
+      });
+    } catch (err: any) {
+      if (err?.code === 'P2002') throw new HttpError(409, 'A person with this e-mail address already exists');
+      throw err;
+    }
+
+    const result = await sendInvitation({ id: created.id, tenantId, email: created.email, firstName: created.firstName });
+    const invitationSent = result === 'sent';
+    await logAuditEvent({
+      tenantId,
+      userId: actor.id,
+      action: 'USER_INVITED',
+      resourceType: 'USER',
+      resourceId: created.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { email: created.email, role: created.role, invitationSent },
+    });
+    void dispatchWebhook(tenantId, 'user.provisioned', { userId: created.id, email: created.email });
+
+    return res.status(201).json({ data: created, invitationSent, emailConfigured: result !== 'not_configured' });
+  })
+);
+
+/** POST /api/v1/users/:id/invite - send a fresh invitation link to someone who has not accepted yet */
+router.post(
+  '/:id/invite',
+  authenticateJWT,
+  requireRole('SUPER_ADMIN', 'TENANT_ADMIN'),
+  route('Failed to resend invitation', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const target = await prisma.user.findFirst({ where: { id: String(req.params.id), tenantId }, select: { id: true, email: true, firstName: true, status: true } });
+    if (!target) throw new HttpError(404, 'User not found');
+    if (target.status !== 'INVITED') throw new HttpError(409, 'Only people who have not yet accepted their invitation can be sent one');
+
+    const result = await sendInvitation({ id: target.id, tenantId, email: target.email, firstName: target.firstName });
+    const invitationSent = result === 'sent';
+    await logAuditEvent({
+      tenantId,
+      userId: req.user!.id,
+      action: 'USER_INVITATION_RESENT',
+      resourceType: 'USER',
+      resourceId: target.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { invitationSent },
+    });
+    return res.status(200).json({ data: { id: target.id, invitationSent, emailConfigured: result !== 'not_configured' } });
   })
 );
 

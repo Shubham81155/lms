@@ -268,6 +268,9 @@ describe('progress, completion and certificates', () => {
     const cert = done.body.data.certificate;
     expect(cert.certificateNumber).toMatch(/^CERT-\d{4}-[0-9A-F]{10}$/);
 
+    // The link on the certificate opens a readable page that checks the number through the public API.
+    expect(cert.verificationQr.endsWith(`/verify?number=${cert.certificateNumber}&tenant=harvard`)).toBe(true);
+
     const again = await t.patch('/api/v1/enrollments/e-s1/progress').send({ progressPercent: 100 });
     expect(again.body.data.certificate.certificateNumber).toBe(cert.certificateNumber);
     expect(await admin.certificate.count({ where: { enrollmentId: 'e-s1' } })).toBe(1);

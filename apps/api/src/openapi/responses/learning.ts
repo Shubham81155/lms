@@ -246,6 +246,12 @@ const ForumFlagRecord = z.object({
   createdAt: z.string(),
 });
 
+/** What the moderation queue shows: the report plus the reported text and its thread. */
+const ForumFlagView = ForumFlagRecord.extend({
+  reporterName: z.string(),
+  target: z.object({ threadId: z.string(), threadTitle: z.string(), excerpt: z.string(), hidden: z.boolean() }).nullable(),
+});
+
 
 export const RESPONSES: ResponseTable = {
   // ---- courses
@@ -277,6 +283,7 @@ export const RESPONSES: ResponseTable = {
   'DELETE /api/v1/courses/:id/lessons/:lessonId': { response: body(z.object({ message: z.string(), id: z.string() })), errors: [403, 404] },
 
   // ---- enrollments
+  'DELETE /api/v1/enrollments/:id': { response: data(z.object({ id: z.string(), status: z.literal('DROPPED') })), errors: [404, 409] },
   'PATCH /api/v1/enrollments/:id/progress': { response: data(ProgressResult), errors: [400, 403, 404, 409] },
   'GET /api/v1/enrollments/stats': { response: data(EnrollmentStats), errors: [400, 403] },
   'GET /api/v1/enrollments/todo': {
@@ -285,6 +292,8 @@ export const RESPONSES: ResponseTable = {
 
   // ---- users
   'GET /api/v1/users': { response: body(z.object({ data: z.array(UserListItem), pagination: Pagination })), errors: [400] },
+  'POST /api/v1/users': { response: body(z.object({ data: UserAccount, invitationSent: z.boolean(), emailConfigured: z.boolean() }), 201), errors: [400, 403, 409] },
+  'POST /api/v1/users/:id/invite': { response: data(z.object({ id: z.string(), invitationSent: z.boolean(), emailConfigured: z.boolean() })), errors: [403, 404, 409] },
   'GET /api/v1/users/:id': { response: data(UserDetail), errors: [403, 404] },
   'PATCH /api/v1/users/:id': { response: data(UserAccount), errors: [400, 403, 404] },
   'GET /api/v1/users/:id/enrollments': {
@@ -349,7 +358,7 @@ export const RESPONSES: ResponseTable = {
   'GET /api/v1/gamification/leaderboard': { response: data(z.array(LeaderboardRow)), errors: [400, 403, 404] },
 
   // ---- forum moderation
-  'GET /api/v1/courses/:courseId/flags': { response: data(z.array(ForumFlagRecord)), errors: [400, 403, 404] },
+  'GET /api/v1/courses/:courseId/flags': { response: data(z.array(ForumFlagView)), errors: [400, 403, 404] },
   'POST /api/v1/flags/:id/resolve': { response: data(z.object({ id: z.string(), resolved: z.literal(true) })), errors: [400, 403, 404] },
   'POST /api/v1/posts/:id/endorse': { response: data(z.object({ id: z.string(), endorsed: z.boolean() })), errors: [400, 403, 404] },
   'PATCH /api/v1/posts/:id/moderate': { response: data(ForumPostRecord), errors: [400, 403, 404] },

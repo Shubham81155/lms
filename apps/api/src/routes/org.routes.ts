@@ -7,6 +7,7 @@ import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
 import { idSchema, parseBody } from '../lib/validate';
+import { mailMode } from '../lib/mailer';
 
 // Mounted at /api/v1/admin. The institutional hierarchy (campuses and their departments) and the
 // compliance posture report. Administrators only.
@@ -218,6 +219,16 @@ router.get(
         id: 'provisioning', name: 'Directory provisioning (SCIM)',
         status: 'INFO',
         detail: scim > 0 ? `${scim} active token(s).` : 'No active SCIM tokens.',
+      },
+      {
+        id: 'outbound-email', name: 'Outbound e-mail',
+        status: mailMode() === 'discarded' ? 'FAIL' : mailMode() === 'console' ? 'WARN' : 'PASS',
+        detail:
+          mailMode() === 'discarded'
+            ? 'No mail transport is configured (set SMTP_URL), so invitations, password resets and verification e-mails are not delivered.'
+            : mailMode() === 'console'
+              ? 'Development mode: messages are printed to the server log and not delivered. Set SMTP_URL to send real e-mail.'
+              : 'Messages are sent through the configured mail transport.',
       },
       {
         id: 'email-verification', name: 'Verified e-mail addresses',

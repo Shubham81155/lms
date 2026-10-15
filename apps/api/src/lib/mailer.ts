@@ -9,8 +9,16 @@ export interface MailMessage {
   html?: string;
 }
 
+/**
+ * What happens to a message: `smtp` is delivered through the configured server, `console` is printed
+ * to the log (development), `discarded` is thrown away (production with no transport configured),
+ * and `custom` is a transport plugged in with setMailer().
+ */
+export type MailMode = 'smtp' | 'console' | 'discarded' | 'custom';
+
 export interface Mailer {
   send(message: MailMessage): Promise<void>;
+  mode?: MailMode;
 }
 
 /**
@@ -19,6 +27,7 @@ export interface Mailer {
  * transport is plugged in via setMailer(), reset and verification emails are not delivered.
  */
 const consoleMailer: Mailer = {
+  mode: config.NODE_ENV === 'production' ? 'discarded' : 'console',
   async send(message) {
     if (config.NODE_ENV === 'production') {
       console.warn('[MAILER] No mail transport configured; message to a user was dropped');
@@ -32,6 +41,7 @@ const consoleMailer: Mailer = {
 function smtpMailer(url: string): Mailer {
   const transport = nodemailer.createTransport(url);
   return {
+    mode: 'smtp',
     async send(message) {
       await transport.sendMail({ from: config.MAIL_FROM, to: message.to, subject: message.subject, text: message.text, ...(message.html ? { html: message.html } : {}) });
     },
@@ -43,6 +53,11 @@ let current: Mailer = config.SMTP_URL ? smtpMailer(config.SMTP_URL) : consoleMai
 export function setMailer(mailer: Mailer): void {
   current = mailer;
 }
+
+export const mailMode = (): MailMode => current.mode ?? 'custom';
+
+/** False when a message sent now would be thrown away, so callers can say so instead of claiming it was sent. */
+export const mailDelivers = (): boolean => mailMode() !== 'discarded';
 
 export function sendMail(message: MailMessage): Promise<void> {
   return current.send(message);

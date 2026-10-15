@@ -13,14 +13,18 @@ import { notify } from '../lib/notify';
 import { awardXp } from '../lib/gamification';
 import { VERBS, recordStatement } from '../lib/xapi';
 import { dispatchWebhook } from '../lib/webhooks';
-import { LEARNER_MAX_PROGRESS } from '../lib/lesson-progress';
+import { LEARNER_MAX_PROGRESS, progressFromLessons } from '../lib/lesson-progress';
 
 const router = Router();
 
-export const enrollSchema = z.object({
-  courseId: idSchema,
-  userId: idSchema.optional(),
-});
+export const enrollSchema = z
+  .object({
+    courseId: idSchema,
+    userId: idSchema.optional(),
+    /** Another way to name the person, for staff who do not know the account id. */
+    email: z.string().trim().toLowerCase().email().max(254).optional(),
+  })
+  .refine((v) => !(v.userId && v.email), { message: 'Send either userId or email, not both' });
 
 export const updateProgressSchema = z.object({
   progressPercent: z.number().min(0).max(100),
@@ -221,8 +225,13 @@ router.post(
   route('Failed to enroll in course', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const user = req.user!;
-    const { courseId, userId } = parseBody(req, enrollSchema);
-    const targetId = userId ?? user.id;
+    const { courseId, userId, email } = parseBody(req, enrollSchema);
+    let targetId = userId ?? user.id;
+    if (email) {
+      const byEmail = await prisma.user.findFirst({ where: { tenantId, email }, select: { id: true } });
+      if (!byEmail) throw new HttpError(404, 'No one in your organisation has that email address');
+      targetId = byEmail.id;
+    }
     const selfEnroll = targetId === user.id;
 
     const course = await prisma.course.findFirst({
@@ -275,10 +284,20 @@ router.post(
     }
 
     const include = { course: { select: { id: true, code: true, title: true } } };
+    const resumed = { progressPercent: existing?.progressPercent ?? 0 };
+    if (existing) {
+      const [finished, lessons] = await Promise.all([
+        prisma.lessonProgress.count({ where: { courseId, userId: targetId } }),
+        prisma.lesson.count({ where: { module: { courseId } } }),
+      ]);
+      if (finished > 0) resumed.progressPercent = progressFromLessons(finished, lessons);
+    }
     const enrollment = existing
       ? await prisma.enrollment.update({
           where: { id: existing.id },
-          data: { status: EnrollmentStatus.ENROLLED, progressPercent: 0, finalGrade: null, completedAt: null },
+          // Coming back picks up where they left off: progress, finished lessons and any grade are kept.
+          // Lessons may have been added or removed meanwhile, so progress is re-derived from what they finished.
+          data: { status: resumed.progressPercent > 0 ? EnrollmentStatus.IN_PROGRESS : EnrollmentStatus.ENROLLED, progressPercent: resumed.progressPercent, completedAt: null },
           include,
         })
       : await prisma.enrollment.create({
@@ -298,6 +317,48 @@ router.post(
     });
 
     return res.status(201).json({ data: enrollment });
+  })
+);
+
+/**
+ * DELETE /api/v1/enrollments/:id - withdraw from a course
+ *  - the learner may leave their own course while it is in progress
+ *  - administrators and the course's instructor may remove a learner
+ * The record is kept (status DROPPED), progress included, so enrolling the person again later
+ * picks up where they left off. A finished or failed enrollment is a record and cannot be withdrawn.
+ */
+router.delete(
+  '/:id',
+  authenticateJWT,
+  route('Failed to withdraw enrollment', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const user = req.user!;
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { id: String(req.params.id), tenantId },
+      include: { course: { select: { code: true, instructors: { select: { userId: true } } } } },
+    });
+
+    const isOwner = !!enrollment && enrollment.userId === user.id;
+    const mayRemove = !!enrollment && !isOwner && isCourseStaff(user, enrollment.course.instructors.map((i) => i.userId)) && user.role !== 'TEACHING_ASSISTANT';
+    if (!enrollment || (!isOwner && !mayRemove)) throw new HttpError(404, 'Enrollment record not found');
+
+    if (enrollment.status === EnrollmentStatus.DROPPED) throw new HttpError(409, 'This enrollment was already withdrawn');
+    if (enrollment.status === EnrollmentStatus.COMPLETED || enrollment.status === EnrollmentStatus.FAILED) {
+      throw new HttpError(409, 'A finished enrollment is kept as a record and cannot be withdrawn');
+    }
+
+    const updated = await prisma.enrollment.update({ where: { id: enrollment.id }, data: { status: EnrollmentStatus.DROPPED } });
+    await logAuditEvent({
+      tenantId,
+      userId: user.id,
+      action: 'USER_UNENROLLED',
+      resourceType: 'ENROLLMENT',
+      resourceId: enrollment.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { courseId: enrollment.courseId, withdrawnUserId: enrollment.userId, byOwner: isOwner },
+    });
+    return res.status(200).json({ data: { id: updated.id, status: updated.status } });
   })
 );
 

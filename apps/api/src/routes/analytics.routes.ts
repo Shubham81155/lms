@@ -12,13 +12,13 @@ const router = Router();
 /**
  * GET /api/v1/analytics/cohort
  * Faculty analytics computed from live data: enrolment / completion metrics, assessment item
- * analysis and early-warning learners. Instructors see only the courses they are assigned to;
- * admins see the whole tenant.
+ * analysis and early-warning learners. Instructors and assistants see only the courses they are
+ * assigned to; admins see the whole tenant.
  */
 router.get(
   '/cohort',
   authenticateJWT,
-  requireRole('INSTRUCTOR', 'TENANT_ADMIN', 'SUPER_ADMIN'),
+  requireRole('INSTRUCTOR', 'TEACHING_ASSISTANT', 'TENANT_ADMIN', 'SUPER_ADMIN'),
   route('Failed to retrieve cohort analytics', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const user = req.user!;

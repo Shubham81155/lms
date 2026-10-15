@@ -366,17 +366,19 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
         where: { id: record.userId },
         select: { status: true },
       });
-      if (!user || user.status !== 'ACTIVE') return false;
+      // An invited person accepts by choosing a password, which activates the account. Anyone else
+      // must already be active; suspended and locked accounts cannot use a link.
+      if (!user || (user.status !== 'ACTIVE' && user.status !== 'INVITED')) return null;
 
       await tx.user.update({
         where: { id: record.userId },
-        data: { passwordHash, failedLoginCount: 0, lockedUntil: null, emailVerified: true, tokenVersion: { increment: 1 } },
+        data: { passwordHash, failedLoginCount: 0, lockedUntil: null, emailVerified: true, status: 'ACTIVE', tokenVersion: { increment: 1 } },
       });
       await tx.passwordResetToken.updateMany({
         where: { userId: record.userId, usedAt: null },
         data: { usedAt: now },
       });
-      return true;
+      return user.status;
     });
 
     invalidateSessionCache(record.userId);
@@ -388,7 +390,7 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
       logAuditEvent({
         tenantId: record.tenantId,
         userId: record.userId,
-        action: 'PASSWORD_RESET_COMPLETED',
+        action: changed === 'INVITED' ? 'USER_INVITATION_ACCEPTED' : 'PASSWORD_RESET_COMPLETED',
         resourceType: 'USER',
         resourceId: record.userId,
         ipAddress: req.ip,
@@ -396,7 +398,7 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
       })
     );
 
-    return res.status(200).json({ message: 'Password updated. You can now sign in.' });
+    return res.status(200).json({ message: changed === 'INVITED' ? 'Your account is ready. You can now sign in.' : 'Password updated. You can now sign in.' });
   } catch (error: any) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/reset-password');
     return res.status(500).json({ error: 'Failed to reset password' });

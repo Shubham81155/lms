@@ -1476,6 +1476,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/enrollments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Withdraw from a course. A learner may leave their own in-progress course; administrators and the course's instructor may remove a learner. The record is kept (status DROPPED) with its progress, and enrolling the person again picks up where they left off; a finished or failed enrollment cannot be withdrawn. */
+        delete: operations["deleteEnrollmentsId"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/enrollments/{id}/progress": {
         parameters: {
             query?: never;
@@ -2349,7 +2366,8 @@ export interface paths {
         /** users of the tenant (admins only) */
         get: operations["getUsers"];
         put?: never;
-        post?: never;
+        /** Invite a person (administrators only). Creates an INVITED account and emails a link to choose a password; using the link activates it. Counts against the seat quota. */
+        post: operations["postUsers"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2385,6 +2403,23 @@ export interface paths {
         get: operations["getUsersIdEnrollments"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a fresh invitation link to someone who has not accepted yet. */
+        post: operations["postUsersIdInvite"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7395,6 +7430,13 @@ export interface operations {
                             reason: string;
                             resolved: boolean;
                             createdAt: string;
+                            reporterName: string;
+                            target: {
+                                threadId: string;
+                                threadTitle: string;
+                                excerpt: string;
+                                hidden: boolean;
+                            } | null;
                         }[];
                     };
                 };
@@ -9690,6 +9732,8 @@ export interface operations {
                 "application/json": {
                     courseId: string;
                     userId?: string;
+                    /** Format: email */
+                    email?: string;
                 };
             };
         };
@@ -9747,6 +9791,61 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteEnrollmentsId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            status: "DROPPED";
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14309,6 +14408,97 @@ export interface operations {
             };
         };
     };
+    postUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    firstName: string;
+                    lastName: string;
+                    /**
+                     * @default STUDENT
+                     * @enum {string}
+                     */
+                    role?: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            avatarUrl: string | null;
+                            /** @enum {string} */
+                            role: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                            emailVerified: boolean;
+                            idpProvider: string | null;
+                            mfaEnabled: boolean;
+                            lastLoginAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                        invitationSent: boolean;
+                        emailConfigured: boolean;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getUsersId: {
         parameters: {
             query?: never;
@@ -14554,6 +14744,70 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postUsersIdInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            invitationSent: boolean;
+                            emailConfigured: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
