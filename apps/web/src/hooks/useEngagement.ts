@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import { timeAgo } from "@/hooks/useNotifications";
 
@@ -15,6 +16,7 @@ export interface CourseRef {
   id: string;
   code: string;
   title: string;
+  instructors?: Array<{ user?: { id: string } }>;
 }
 
 /**
@@ -22,7 +24,9 @@ export interface CourseRef {
  * otherwise the first course the caller can see. `null` when there is none (or while loading).
  */
 export function useCourseByCode(code?: string) {
-  const [course, setCourse] = useState<CourseRef | null>(null);
+  const { user } = useAuth();
+  const [allCourses, setAllCourses] = useState<CourseRef[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -31,9 +35,9 @@ export function useCourseByCode(code?: string) {
       try {
         const res = await api.get<any>("/api/v1/courses", { params: { limit: 100 } });
         const list: CourseRef[] = Array.isArray(res) ? res : res.data ?? res.courses ?? [];
-        if (alive) setCourse(list.find((c) => c.code === code) ?? list[0] ?? null);
+        if (alive) setAllCourses(list);
       } catch {
-        if (alive) setCourse(null);
+        if (alive) setAllCourses([]);
       } finally {
         if (alive) setIsLoading(false);
       }
@@ -41,9 +45,22 @@ export function useCourseByCode(code?: string) {
     return () => {
       alive = false;
     };
-  }, [code]);
+  }, []);
 
-  return { course, isLoading };
+  // The list covers the whole organisation. Offer only courses the person can use: administrators
+  // get all of them, instructors and assistants the ones they teach. Learners keep the single
+  // resolved course, since the list does not say which ones they are enrolled in.
+  const courses = useMemo(() => {
+    if (user?.role === "TENANT_ADMIN" || user?.role === "SUPER_ADMIN") return allCourses;
+    if (user?.role === "INSTRUCTOR" || user?.role === "TEACHING_ASSISTANT") {
+      return allCourses.filter((c) => (c.instructors ?? []).some((i) => i.user?.id === user.id));
+    }
+    const first = allCourses.find((c) => c.code === code) ?? allCourses[0];
+    return first ? [first] : [];
+  }, [allCourses, user, code]);
+
+  const course = courses.find((c) => c.id === selectedId) ?? courses.find((c) => c.code === code) ?? courses[0] ?? null;
+  return { course, courses, selectCourse: setSelectedId, isLoading };
 }
 
 // ---------------------------------------------------------------------------

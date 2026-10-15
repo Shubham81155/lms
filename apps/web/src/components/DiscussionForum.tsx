@@ -30,7 +30,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
   onClose,
 }) => {
   const { user } = useAuth();
-  const { course, isLoading: courseLoading } = useCourseByCode(courseCode);
+  const { course, courses, selectCourse, isLoading: courseLoading } = useCourseByCode(courseCode);
   const forum = useForum(course?.id);
   const { threads, activeId, setActiveId } = forum;
   const isStaff = !!user && STAFF_ROLES.includes(user.role);
@@ -95,9 +95,24 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 id="forum-h" className="font-bold text-base text-ink">Course Collaboration & Q&A Forum</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand-fg border border-brand/50">
-                  {course?.code ?? courseCode} Community
-                </span>
+                {courses.length > 1 ? (
+                  <select
+                    aria-label="Course"
+                    value={course?.id ?? ""}
+                    onChange={(e) => selectCourse(e.target.value)}
+                    className="rounded-full border border-brand/50 bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-fg focus:outline-none"
+                  >
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.code} Community
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand-fg border border-brand/50">
+                    {course ? `${course.code} Community` : "Community"}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-ink-muted">
                 Peer discussions, algorithm debugging, and instructor-verified answers.
