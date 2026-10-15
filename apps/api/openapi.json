@@ -13707,6 +13707,111 @@
         }
       }
     },
+    "/api/v1/courses/{id}/lessons/{lessonId}/complete": {
+      "post": {
+        "operationId": "postCoursesIdLessonsLessonIdComplete",
+        "summary": "Mark a lesson finished (idempotent) and recompute the enrollment's progress. Never reaches 100%: completion stays with the instructor.",
+        "tags": [
+          "courses"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "lessonId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "lessonId": {
+                          "type": "string"
+                        },
+                        "completedLessons": {
+                          "type": "number"
+                        },
+                        "totalLessons": {
+                          "type": "number"
+                        },
+                        "progressPercent": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "lessonId",
+                        "completedLessons",
+                        "totalLessons",
+                        "progressPercent"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/courses/{id}/modules": {
       "get": {
         "operationId": "getCoursesIdModules",
@@ -14749,6 +14854,102 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses/{id}/progress": {
+      "get": {
+        "operationId": "getCoursesIdProgress",
+        "summary": "The caller's own lesson progress in the course: finished lessons and the resulting percentage.",
+        "tags": [
+          "courses"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "completedLessonIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "totalLessons": {
+                          "type": "number"
+                        },
+                        "progressPercent": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "completedLessonIds",
+                        "totalLessons",
+                        "progressPercent"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
                 }
               }
             }

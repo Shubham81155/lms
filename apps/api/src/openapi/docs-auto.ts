@@ -124,6 +124,8 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "DELETE /api/v1/courses/:id/lessons/:lessonId": { summary: "DELETE /api/v1/courses/:id/lessons/:lessonId" },
   "PATCH /api/v1/courses/:id/lessons/:lessonId": { summary: "PATCH /api/v1/courses/:id/lessons/:lessonId", body: r_courses.updateLessonSchema },
   "GET /api/v1/courses/:id/modules": { summary: "GET /api/v1/courses/:id/modules" },
+  "GET /api/v1/courses/:id/progress": { summary: "The caller's own lesson progress in the course: finished lessons and the resulting percentage." },
+  "POST /api/v1/courses/:id/lessons/:lessonId/complete": { summary: "Mark a lesson finished (idempotent) and recompute the enrollment's progress. Never reaches 100%: completion stays with the instructor." },
   "POST /api/v1/courses/:id/modules": { summary: "POST /api/v1/courses/:id/modules", body: r_courses.createModuleSchema },
   "PUT /api/v1/courses/:id/modules-order": { summary: "reorder; the list must contain every module exactly once", body: r_courses.orderSchema },
   "DELETE /api/v1/courses/:id/modules/:moduleId": { summary: "also removes its lessons" },

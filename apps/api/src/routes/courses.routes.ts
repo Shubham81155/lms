@@ -3,9 +3,10 @@ import { z } from 'zod';
 import { prisma, runInTenantTransaction } from '../lib/prisma';
 import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
-import { CourseStatus, ContentType } from '@enterprise-lms/database';
+import { CourseStatus, ContentType, EnrollmentStatus } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
 import { httpUrl, idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
+import { progressFromLessons } from '../lib/lesson-progress';
 import { canSeeAllCourses, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
 
 const router = Router();
@@ -308,6 +309,81 @@ router.get(
       include: { lessons: { orderBy: { orderIndex: 'asc' } } },
     });
     return res.status(200).json({ data: modules });
+  })
+);
+
+/**
+ * GET /api/v1/courses/:id/progress
+ * The caller's own lesson progress in this course: which lessons are finished and the resulting percentage.
+ */
+router.get(
+  '/:id/progress',
+  authenticateJWT,
+  route('Failed to retrieve lesson progress', async (req, res) => {
+    const id = String(req.params.id);
+    await requireContentAccess(req, id);
+    const userId = req.user!.id;
+
+    const [totalLessons, done] = await Promise.all([
+      prisma.lesson.count({ where: { module: { courseId: id } } }),
+      prisma.lessonProgress.findMany({ where: { courseId: id, userId }, select: { lessonId: true } }),
+    ]);
+    return res.status(200).json({
+      data: {
+        completedLessonIds: done.map((d) => d.lessonId),
+        totalLessons,
+        progressPercent: progressFromLessons(done.length, totalLessons),
+      },
+    });
+  })
+);
+
+/**
+ * POST /api/v1/courses/:id/lessons/:lessonId/complete
+ * The learner marks a lesson finished (idempotent). Their enrollment's progress is recomputed from the
+ * finished lessons, never reaching 100%: completing the course stays with the instructor.
+ */
+router.post(
+  '/:id/lessons/:lessonId/complete',
+  authenticateJWT,
+  route('Failed to record lesson progress', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const id = String(req.params.id);
+    const userId = req.user!.id;
+    await requireContentAccess(req, id);
+
+    const enrollment = await prisma.enrollment.findUnique({ where: { courseId_userId: { courseId: id, userId } } });
+    if (!enrollment || enrollment.status === EnrollmentStatus.DROPPED) {
+      throw new HttpError(403, 'Forbidden: only enrolled learners can complete lessons');
+    }
+
+    const lesson = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } }, select: { id: true } });
+    if (!lesson) throw new HttpError(404, 'Lesson not found');
+
+    await prisma.lessonProgress.upsert({
+      where: { userId_lessonId: { userId, lessonId: lesson.id } },
+      update: {},
+      create: { tenantId, courseId: id, userId, lessonId: lesson.id },
+    });
+
+    const [totalLessons, completed] = await Promise.all([
+      prisma.lesson.count({ where: { module: { courseId: id } } }),
+      prisma.lessonProgress.count({ where: { courseId: id, userId } }),
+    ]);
+    const progressPercent = progressFromLessons(completed, totalLessons);
+
+    // A finished or failed course keeps the result staff recorded; only live enrollments are recomputed.
+    const live = enrollment.status === EnrollmentStatus.ENROLLED || enrollment.status === EnrollmentStatus.IN_PROGRESS;
+    if (live) {
+      await prisma.enrollment.update({
+        where: { id: enrollment.id },
+        data: { progressPercent, status: progressPercent > 0 ? EnrollmentStatus.IN_PROGRESS : enrollment.status },
+      });
+    }
+
+    return res.status(201).json({
+      data: { lessonId: lesson.id, completedLessons: completed, totalLessons, progressPercent: live ? progressPercent : enrollment.progressPercent },
+    });
   })
 );
 

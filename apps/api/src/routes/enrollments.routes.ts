@@ -13,6 +13,7 @@ import { notify } from '../lib/notify';
 import { awardXp } from '../lib/gamification';
 import { VERBS, recordStatement } from '../lib/xapi';
 import { dispatchWebhook } from '../lib/webhooks';
+import { LEARNER_MAX_PROGRESS } from '../lib/lesson-progress';
 
 const router = Router();
 
@@ -36,7 +37,6 @@ export const listQuery = z.object({
 });
 
 /** Highest progress a learner can report themselves; finishing a course is recorded by staff. */
-const LEARNER_MAX_PROGRESS = 99;
 
 const courseSummary = {
   id: true,

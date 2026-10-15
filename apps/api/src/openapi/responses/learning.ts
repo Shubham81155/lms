@@ -260,6 +260,14 @@ export const RESPONSES: ResponseTable = {
     errors: [404],
   },
   'GET /api/v1/courses/:id/modules': { response: data(z.array(ModuleWithLessons)), errors: [403, 404] },
+  'GET /api/v1/courses/:id/progress': {
+    response: data(z.object({ completedLessonIds: z.array(z.string()), totalLessons: z.number(), progressPercent: z.number() })),
+    errors: [403, 404],
+  },
+  'POST /api/v1/courses/:id/lessons/:lessonId/complete': {
+    response: data(z.object({ lessonId: z.string(), completedLessons: z.number(), totalLessons: z.number(), progressPercent: z.number() }), 201),
+    errors: [403, 404],
+  },
   'POST /api/v1/courses/:id/modules': { response: data(ModuleWithLessons, 201), errors: [400, 403, 404] },
   'PUT /api/v1/courses/:id/modules-order': { response: data(z.array(ModuleRecord)), errors: [400, 403, 404] },
   'PATCH /api/v1/courses/:id/modules/:moduleId': { response: data(ModuleWithLessons), errors: [400, 403, 404] },
