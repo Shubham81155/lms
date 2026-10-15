@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Navigation } from "@/components/Navigation";
+import { AppShell } from "@/components/shell/AppShell";
 import { QuizTaker } from "@/components/QuizTaker";
 import { LiveNow } from "@/components/LiveNow";
 import { CertificateVerification } from "@/components/CertificateVerification";
@@ -156,12 +156,17 @@ export default function StudentDashboard() {
     }));
 
   return (
-    <div className="min-h-screen bg-canvas text-ink flex flex-col">
-      <Navigation
-        currentRole="student"
-        activeNavTab={activeNavTab}
-        onNavigateTab={handleNavigateTab}
-      />
+    <AppShell
+      area="student"
+      activeKey={activeNavTab}
+      onNavigate={handleNavigateTab}
+      actions={{
+        catalog: () => setShowCourseCatalog(true),
+        forum: () => setShowForum(true),
+        calendar: () => setShowCalendar(true),
+        tutor: () => setShowAiTutor(true),
+      }}
+    >
 
       {/* xAPI Real-time Notification Banner */}
       {notification && (
@@ -524,6 +529,6 @@ export default function StudentDashboard() {
           }}
         />
       )}
-    </div>
+    </AppShell>
   );
 }

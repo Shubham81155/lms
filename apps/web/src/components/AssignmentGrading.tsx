@@ -23,9 +23,9 @@ interface Appeal {
   assignment: Assignment;
 }
 
-const input = "bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500";
-const primary = "px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all";
-const ghost = "px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
+const input = "bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
+const primary = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all";
+const ghost = "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
 /** One number input per criterion, with a live total. */
 export const RubricInputs: React.FC<{ criteria: Criterion[]; values: Record<string, string>; onChange: (v: Record<string, string>) => void; disabled?: boolean }> = ({ criteria, values, onChange, disabled }) => {
   const { total, problem } = rubricDraft(criteria, values);
@@ -33,20 +33,20 @@ export const RubricInputs: React.FC<{ criteria: Criterion[]; values: Record<stri
   return (
     <div className="space-y-2">
       {criteria.map((c) => (
-        <div key={c.id} className="flex items-start justify-between gap-3 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
+        <div key={c.id} className="flex items-start justify-between gap-3 bg-canvas border border-line rounded-xl px-3 py-2">
           <div className="text-xs">
-            <div className="font-semibold text-slate-200">{c.name}</div>
-            {c.description && <div className="text-[11px] text-slate-500">{c.description}</div>}
+            <div className="font-semibold text-ink">{c.name}</div>
+            {c.description && <div className="text-[11px] text-ink-subtle">{c.description}</div>}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <input className={`${input} w-20`} type="number" min={0} max={c.maxPoints} step="0.5" aria-label={`${c.name} score`} disabled={disabled} value={values[c.id] ?? ""} onChange={(e) => onChange({ ...values, [c.id]: e.target.value })} />
-            <span className="text-[11px] text-slate-500">/ {c.maxPoints}</span>
+            <span className="text-[11px] text-ink-subtle">/ {c.maxPoints}</span>
           </div>
         </div>
       ))}
       <div className="flex items-center justify-between text-xs">
-        <span className="font-bold text-white">Total {total} / {max}</span>
-        {problem && <span className="text-amber-400">{problem}</span>}
+        <span className="font-bold text-ink">Total {total} / {max}</span>
+        {problem && <span className="text-accent">{problem}</span>}
       </div>
     </div>
   );
@@ -87,21 +87,21 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
 
   return (
     <div className="space-y-4">
-      <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
+      <div className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <strong className="text-white">{sub.user ? `${sub.user.firstName} ${sub.user.lastName}` : "Learner"}</strong>
-          <span className="text-slate-500">Submitted {new Date(sub.submittedAt).toLocaleString()}</span>
+          <strong className="text-ink">{sub.user ? `${sub.user.firstName} ${sub.user.lastName}` : "Learner"}</strong>
+          <span className="text-ink-subtle">Submitted {new Date(sub.submittedAt).toLocaleString()}</span>
         </div>
-        {sub.submissionText && <p className="text-xs text-slate-300 whitespace-pre-wrap max-h-48 overflow-y-auto">{sub.submissionText}</p>}
-        {sub.fileUrl && <a className="text-xs text-blue-400 underline break-all" href={sub.fileUrl} target="_blank" rel="noopener noreferrer">{sub.fileUrl}</a>}
+        {sub.submissionText && <p className="text-xs text-ink whitespace-pre-wrap max-h-48 overflow-y-auto">{sub.submissionText}</p>}
+        {sub.fileUrl && <a className="text-xs text-brand-fg underline break-all" href={sub.fileUrl} target="_blank" rel="noopener noreferrer">{sub.fileUrl}</a>}
         {sub.plagiarismScore !== null && (
-          <div className={`text-[11px] ${sub.plagiarismScore >= 30 ? "text-rose-400" : "text-emerald-400"}`}>
+          <div className={`text-[11px] ${sub.plagiarismScore >= 30 ? "text-danger" : "text-success"}`}>
             Similarity: {Math.round(sub.plagiarismScore)}%{" "}
             {sub.plagiarismReportUrl && <a className="underline" href={sub.plagiarismReportUrl} target="_blank" rel="noopener noreferrer">report</a>}
           </div>
         )}
         {sub.plagiarismScore === null && sub.plagiarismStatus && sub.plagiarismStatus !== "COMPLETE" && (
-          <div className={`text-[11px] ${sub.plagiarismStatus === "FAILED" ? "text-amber-400" : "text-slate-500"}`}>
+          <div className={`text-[11px] ${sub.plagiarismStatus === "FAILED" ? "text-accent" : "text-ink-subtle"}`}>
             {sub.plagiarismStatus === "PENDING" && "Similarity check queued"}
             {sub.plagiarismStatus === "SUBMITTED" && "Similarity check in progress"}
             {sub.plagiarismStatus === "FAILED" && "Similarity check failed"}
@@ -115,11 +115,11 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
       {rubric ? (
         <RubricInputs criteria={rubric} values={values} onChange={(v) => { clearError(); setValues(v); }} disabled={!canGrade} />
       ) : (
-        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Grade (out of {assignment.maxPoints})
+        <label className="block space-y-1 text-xs text-ink-muted font-semibold">Grade (out of {assignment.maxPoints})
           <input className={`${input} w-32 block`} type="number" min={0} max={assignment.maxPoints} step="0.5" disabled={!canGrade} value={grade} onChange={(e) => { clearError(); setGrade(e.target.value); }} />
         </label>
       )}
-      <label className="block space-y-1 text-xs text-slate-400 font-semibold">Feedback for the learner
+      <label className="block space-y-1 text-xs text-ink-muted font-semibold">Feedback for the learner
         <textarea className={`${input} w-full`} rows={3} maxLength={10000} disabled={!canGrade} value={feedback} onChange={(e) => setFeedback(e.target.value)} />
       </label>
       {canGrade && <button className={primary} disabled={busy || !ok} onClick={save}>{busy ? "Saving…" : sub.gradedAt ? "Update grade" : "Save grade"}</button>}
@@ -133,23 +133,23 @@ const Submissions: React.FC<{ assignment: Assignment; canGrade: boolean }> = ({ 
   const list = data?.data ?? [];
   const current = list.find((s) => s.id === active) ?? list.find((s) => !s.gradedAt) ?? list[0];
 
-  if (isLoading) return <div className="text-xs text-slate-500">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle">Loading…</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
-  if (list.length === 0) return <div className="text-xs text-slate-500 p-10 text-center bg-slate-950 border border-slate-800 rounded-2xl">Nobody has submitted yet.</div>;
+  if (list.length === 0) return <div className="text-xs text-ink-subtle p-10 text-center bg-canvas border border-line rounded-2xl">Nobody has submitted yet.</div>;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
       <ul className="md:col-span-2 space-y-2 max-h-[55vh] overflow-y-auto">
         {list.map((s) => (
           <li key={s.id}>
-            <button onClick={() => setActive(s.id)} className={`w-full text-left p-3 rounded-xl border text-xs ${current?.id === s.id ? "bg-blue-950/30 border-blue-600/60" : "bg-slate-950 border-slate-800 hover:border-slate-700"}`}>
+            <button onClick={() => setActive(s.id)} className={`w-full text-left p-3 rounded-xl border text-xs ${current?.id === s.id ? "bg-brand/15 border-brand/60" : "bg-canvas border-line hover:border-line"}`}>
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-white">{s.user ? `${s.user.firstName} ${s.user.lastName}` : s.userId}</span>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${s.gradedAt ? "bg-emerald-950 text-emerald-300 border-emerald-800" : "bg-amber-950 text-amber-300 border-amber-800"}`}>
+                <span className="font-semibold text-ink">{s.user ? `${s.user.firstName} ${s.user.lastName}` : s.userId}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${s.gradedAt ? "bg-success/10 text-success border-success/30" : "bg-accent/10 text-accent border-accent/30"}`}>
                   {s.gradedAt ? `${s.grade} / ${assignment.maxPoints}` : "To grade"}
                 </span>
               </div>
-              <div className="text-[10px] text-slate-500 mt-1">{new Date(s.submittedAt).toLocaleDateString()}</div>
+              <div className="text-[10px] text-ink-subtle mt-1">{new Date(s.submittedAt).toLocaleDateString()}</div>
             </button>
           </li>
         ))}
@@ -189,7 +189,7 @@ const RubricEditor: React.FC<{ assignment: Assignment; canEdit: boolean; onSaved
       {!canEdit && <Banner kind="error">Only the instructor can change the rubric.</Banner>}
       {error && <Banner kind="error">{error}</Banner>}
       {saved && <Banner kind="ok">Rubric saved.</Banner>}
-      <p className="text-xs text-slate-400">The assignment is worth the total of its criteria ({total} points). Without a rubric, graders enter a single score.</p>
+      <p className="text-xs text-ink-muted">The assignment is worth the total of its criteria ({total} points). Without a rubric, graders enter a single score.</p>
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-12 gap-2 items-start">
           <input className={`${input} col-span-4`} aria-label={`Criterion ${i + 1} name`} placeholder="Criterion" disabled={!edit} value={r.name} onChange={(e) => setRows((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
@@ -214,21 +214,21 @@ const Appeals: React.FC<{ courseId: string; canResolve: boolean }> = ({ courseId
   const [openId, setOpenId] = useState<string | null>(null);
   const list = data?.data ?? [];
 
-  if (isLoading) return <div className="text-xs text-slate-500">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle">Loading…</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
-  if (list.length === 0) return <div className="text-xs text-slate-500 p-10 text-center bg-slate-950 border border-slate-800 rounded-2xl">No grade appeals.</div>;
+  if (list.length === 0) return <div className="text-xs text-ink-subtle p-10 text-center bg-canvas border border-line rounded-2xl">No grade appeals.</div>;
 
   return (
     <ul className="space-y-3">
       {list.map((a) => (
-        <li key={a.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <li key={a.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
           <div className="flex items-center justify-between text-xs">
-            <div><strong className="text-white">{a.student}</strong><span className="text-slate-500"> · {a.assignment.title}</span></div>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${a.status === "OPEN" ? "bg-amber-950 text-amber-300 border-amber-800" : a.status === "UPHELD" ? "bg-emerald-950 text-emerald-300 border-emerald-800" : "bg-slate-800 text-slate-300 border-slate-700"}`}>{a.status}</span>
+            <div><strong className="text-ink">{a.student}</strong><span className="text-ink-subtle"> · {a.assignment.title}</span></div>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${a.status === "OPEN" ? "bg-accent/10 text-accent border-accent/30" : a.status === "UPHELD" ? "bg-success/10 text-success border-success/30" : "bg-raised text-ink border-line"}`}>{a.status}</span>
           </div>
-          <p className="text-xs text-slate-300">"{a.reason}"</p>
-          <div className="text-[11px] text-slate-500">Current grade: {a.submission.grade} / {a.assignment.maxPoints}</div>
-          {a.response && <div className="text-[11px] text-slate-400">Decision: {a.response}</div>}
+          <p className="text-xs text-ink">"{a.reason}"</p>
+          <div className="text-[11px] text-ink-subtle">Current grade: {a.submission.grade} / {a.assignment.maxPoints}</div>
+          {a.response && <div className="text-[11px] text-ink-muted">Decision: {a.response}</div>}
           {a.status === "OPEN" && canResolve && (openId === a.id ? <Resolve appeal={a} onDone={() => { setOpenId(null); reload(); }} /> : <button className={ghost} onClick={() => setOpenId(a.id)}>Review…</button>)}
         </li>
       ))}
@@ -260,20 +260,20 @@ const Resolve: React.FC<{ appeal: Appeal; onDone: () => void }> = ({ appeal, onD
     });
 
   return (
-    <div className="space-y-3 border-t border-slate-800 pt-3" onChange={clearError}>
+    <div className="space-y-3 border-t border-line pt-3" onChange={clearError}>
       {error && <Banner kind="error">{error}</Banner>}
-      <fieldset className="flex gap-4 text-xs text-slate-300">
+      <fieldset className="flex gap-4 text-xs text-ink">
         <legend className="sr-only">Decision</legend>
         {(["DENIED", "UPHELD"] as const).map((d) => (
           <label key={d} className="flex items-center gap-1.5"><input type="radio" name={`d-${appeal.id}`} checked={decision === d} onChange={() => setDecision(d)} />{d === "DENIED" ? "Keep the grade" : "Change the grade"}</label>
         ))}
       </fieldset>
       {decision === "UPHELD" && (rubric ? <RubricInputs criteria={rubric} values={values} onChange={setValues} /> : (
-        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Corrected grade (out of {appeal.assignment.maxPoints})
+        <label className="block space-y-1 text-xs text-ink-muted font-semibold">Corrected grade (out of {appeal.assignment.maxPoints})
           <input className={`${input} w-32 block`} type="number" min={0} max={appeal.assignment.maxPoints} step="0.5" value={grade} onChange={(e) => setGrade(e.target.value)} />
         </label>
       ))}
-      <label className="block space-y-1 text-xs text-slate-400 font-semibold">Explanation shown to the learner
+      <label className="block space-y-1 text-xs text-ink-muted font-semibold">Explanation shown to the learner
         <textarea className={`${input} w-full`} rows={2} maxLength={2000} value={response} onChange={(e) => setResponse(e.target.value)} />
       </label>
       <button className={primary} disabled={busy || !ready} onClick={submit}>{busy ? "Saving…" : "Record decision"}</button>
@@ -300,29 +300,29 @@ export const AssignmentGrading: React.FC<{ onClose: () => void }> = ({ onClose }
   const isEditor = isAdmin || user?.role === "INSTRUCTOR";
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Assignment grading">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-        <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between gap-4">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Assignment grading">
+      <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400"><ClipboardCheck className="h-5 w-5" /></div>
-            <div><h3 className="font-bold text-base text-white">Assignment grading</h3><p className="text-xs text-slate-400">Grade submissions, build rubrics and review appeals.</p></div>
+            <div className="h-9 w-9 rounded-2xl bg-brand/20 border border-brand/30 flex items-center justify-center text-brand-fg"><ClipboardCheck className="h-5 w-5" /></div>
+            <div><h3 className="font-bold text-base text-ink">Assignment grading</h3><p className="text-xs text-ink-muted">Grade submissions, build rubrics and review appeals.</p></div>
           </div>
           <div className="flex items-center gap-2">
             <select className={input} aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)}>{courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.title}</option>)}</select>
             <select className={input} aria-label="Assignment" value={assignmentId} onChange={(e) => setAssignmentId(e.target.value)}>{list.map((a) => <option key={a.id} value={a.id}>{a.title}</option>)}</select>
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"><X className="h-5 w-5" /></button>
           </div>
         </div>
-        <div className="bg-slate-950/60 border-b border-slate-800 px-6 py-2.5 flex gap-2">
+        <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex gap-2">
           {(["submissions", "rubric", "appeals"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize ${tab === t ? "bg-blue-600 text-white" : "text-slate-400 hover:bg-slate-900"}`}>{t}</button>
+            <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize ${tab === t ? "bg-brand text-on-brand" : "text-ink-muted hover:bg-surface"}`}>{t}</button>
           ))}
         </div>
         <div className="flex-1 overflow-y-auto p-6">
-          {isLoading ? <div className="text-xs text-slate-500">Loading…</div>
-            : !courseId ? <div className="text-xs text-slate-500 p-10 text-center">You are not assigned to any course yet.</div>
+          {isLoading ? <div className="text-xs text-ink-subtle">Loading…</div>
+            : !courseId ? <div className="text-xs text-ink-subtle p-10 text-center">You are not assigned to any course yet.</div>
             : tab === "appeals" ? <Appeals key={courseId} courseId={courseId} canResolve={isEditor} />
-            : !assignment ? <div className="text-xs text-slate-500 p-10 text-center">This course has no assignments yet.</div>
+            : !assignment ? <div className="text-xs text-ink-subtle p-10 text-center">This course has no assignments yet.</div>
             : tab === "submissions" ? <Submissions key={assignment.id} assignment={assignment} canGrade />
             : <RubricEditor key={assignment.id} assignment={assignment} canEdit={isEditor} onSaved={assignments.reload} />}
         </div>

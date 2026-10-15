@@ -8,9 +8,9 @@ import { useAuth } from "@/context/AuthContext";
 import { Banner } from "@/components/admin/IdentityPanels";
 
 const input =
-  "w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500";
+  "w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
 const ghostBtn =
-  "px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50 inline-flex items-center gap-1.5";
+  "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50 inline-flex items-center gap-1.5";
 
 interface TenantUser {
   id: string;
@@ -56,8 +56,8 @@ export const PrivacyPanel: React.FC = () => {
   return (
     <section className="space-y-5" aria-labelledby="dsar-h">
       <div>
-        <h3 id="dsar-h" className="font-bold text-base text-white">Data-subject requests</h3>
-        <p className="text-xs text-slate-400">
+        <h3 id="dsar-h" className="font-bold text-base text-ink">Data-subject requests</h3>
+        <p className="text-xs text-ink-muted">
           Export or erase a person&apos;s data when they ask you to. Erasure anonymises the account and keeps grades; each action is audited.
         </p>
       </div>
@@ -70,28 +70,28 @@ export const PrivacyPanel: React.FC = () => {
         }}
       >
         <input className={input} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or e-mail" aria-label="Search people" maxLength={100} />
-        <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5">
+        <button type="submit" className="px-4 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold inline-flex items-center gap-1.5">
           <Search className="h-3.5 w-3.5" /> Find
         </button>
       </form>
 
       {(results.error || error) && <Banner kind="error">{results.error || error}</Banner>}
       {done && <Banner kind="ok">{done}</Banner>}
-      {results.isLoading && <p className="text-xs text-slate-500">Searching…</p>}
-      {results.data && results.data.data.length === 0 && <p className="text-xs text-slate-500">Nobody matches that search.</p>}
+      {results.isLoading && <p className="text-xs text-ink-subtle">Searching…</p>}
+      {results.data && results.data.data.length === 0 && <p className="text-xs text-ink-subtle">Nobody matches that search.</p>}
 
       {results.data && results.data.data.length > 0 && (
-        <ul className="divide-y divide-slate-800 border border-slate-800 rounded-2xl overflow-hidden">
+        <ul className="divide-y divide-line border border-line rounded-2xl overflow-hidden">
           {results.data.data.map((u) => {
             const isSelf = u.id === me?.id;
             return (
-              <li key={u.id} className="p-3 bg-slate-950 space-y-3">
+              <li key={u.id} className="p-3 bg-canvas space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold text-slate-200 truncate">
+                    <div className="text-xs font-semibold text-ink truncate">
                       {u.firstName} {u.lastName}
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate">
+                    <div className="text-[11px] text-ink-subtle truncate">
                       {u.email} · {u.role.replace(/_/g, " ").toLowerCase()} · {u.status.toLowerCase()}
                     </div>
                   </div>
@@ -100,7 +100,7 @@ export const PrivacyPanel: React.FC = () => {
                       <Download className="h-3.5 w-3.5" /> Export
                     </button>
                     <button
-                      className={`${ghostBtn} hover:text-rose-300 hover:border-rose-800`}
+                      className={`${ghostBtn} hover:text-danger hover:border-danger/30`}
                       disabled={busy || isSelf}
                       title={isSelf ? "Use Privacy & data in the header to erase your own account" : undefined}
                       onClick={() => {
@@ -114,14 +114,14 @@ export const PrivacyPanel: React.FC = () => {
                 </div>
 
                 {erasing?.id === u.id && (
-                  <div className="p-3 rounded-xl border border-rose-900/60 bg-rose-950/20 space-y-2">
-                    <p className="text-[11px] text-rose-300">
+                  <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 space-y-2">
+                    <p className="text-[11px] text-danger">
                       This permanently removes {u.email}&apos;s identity, sign-in details and anything they wrote. Type their e-mail to confirm.
                     </p>
                     <div className="flex gap-2">
                       <input className={input} value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={u.email} aria-label={`Confirm erasure of ${u.email}`} />
                       <button
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold shrink-0"
+                        className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-on-brand rounded-xl text-xs font-bold shrink-0"
                         disabled={busy || confirm.trim().toLowerCase() !== u.email.toLowerCase()}
                         onClick={() => eraseFor(u)}
                       >

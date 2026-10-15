@@ -105,22 +105,22 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+            <div className="h-9 w-9 rounded-2xl bg-orchid/20 border border-orchid/30 flex items-center justify-center text-orchid">
               <BarChart2 className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-white">Faculty Cohort Intelligence & Early-Warning Radar</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-950 text-purple-400 border border-purple-800">
+                <h3 className="font-bold text-base text-ink">Faculty Cohort Intelligence & Early-Warning Radar</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orchid/15 text-orchid border border-orchid/30">
                   CS-101 & DS-201 Cohort
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-ink-muted">
                 Predictive student retention, Bloom's cognitive taxonomy distribution, and item difficulty diagnostics.
               </p>
             </div>
@@ -129,14 +129,14 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
           <div className="flex items-center gap-3">
             <button
               onClick={handleExportReport}
-              className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-3.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
-              <Download className="h-3.5 w-3.5 text-purple-400" />
+              <Download className="h-3.5 w-3.5 text-orchid" />
               <span>Export CSV Report</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -145,41 +145,41 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
 
         {/* Notification Banner */}
         {notification && (
-          <div className="bg-emerald-950/90 border-b border-emerald-800/80 px-6 py-2.5 text-xs text-emerald-300 flex items-center gap-2 animate-fadeIn">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <div className="bg-success/10 border-b border-success/30 px-6 py-2.5 text-xs text-success flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="h-4 w-4 text-success" />
             <span className="font-semibold">{notification}</span>
           </div>
         )}
 
         {/* Key Metrics Header */}
-        <div className="bg-slate-950/40 border-b border-slate-800 p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-slate-950 border border-slate-800/90 p-4 rounded-2xl">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase block">Total Learners</span>
-            <div className="text-xl font-extrabold text-white mt-1">{metrics.totalEnrolled}</div>
-            <span className="text-[10px] text-emerald-400 font-medium">92% active this week</span>
+        <div className="bg-canvas/40 border-b border-line p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-canvas border border-line/90 p-4 rounded-2xl">
+            <span className="text-[10px] font-semibold text-ink-subtle uppercase block">Total Learners</span>
+            <div className="text-xl font-extrabold text-ink mt-1">{metrics.totalEnrolled}</div>
+            <span className="text-[10px] text-success font-medium">92% active this week</span>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800/90 p-4 rounded-2xl">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase block">Average Completion</span>
-            <div className="text-xl font-extrabold text-white mt-1">{metrics.averageProgress}%</div>
-            <span className="text-[10px] text-blue-400 font-medium">+4.2% vs last term</span>
+          <div className="bg-canvas border border-line/90 p-4 rounded-2xl">
+            <span className="text-[10px] font-semibold text-ink-subtle uppercase block">Average Completion</span>
+            <div className="text-xl font-extrabold text-ink mt-1">{metrics.averageProgress}%</div>
+            <span className="text-[10px] text-brand-fg font-medium">+4.2% vs last term</span>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800/90 p-4 rounded-2xl">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase block">Predictive At-Risk</span>
-            <div className="text-xl font-extrabold text-rose-400 mt-1">{atRiskLearners.length} Students</div>
-            <span className="text-[10px] text-rose-400 font-medium">Early interventions pending</span>
+          <div className="bg-canvas border border-line/90 p-4 rounded-2xl">
+            <span className="text-[10px] font-semibold text-ink-subtle uppercase block">Predictive At-Risk</span>
+            <div className="text-xl font-extrabold text-danger mt-1">{atRiskLearners.length} Students</div>
+            <span className="text-[10px] text-danger font-medium">Early interventions pending</span>
           </div>
 
-          <div className="bg-slate-950 border border-slate-800/90 p-4 rounded-2xl">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase block">Cohort Average GPA</span>
-            <div className="text-xl font-extrabold text-white mt-1">{metrics.averageGpa}</div>
-            <span className="text-[10px] text-emerald-400 font-medium">Exceeds department benchmark</span>
+          <div className="bg-canvas border border-line/90 p-4 rounded-2xl">
+            <span className="text-[10px] font-semibold text-ink-subtle uppercase block">Cohort Average GPA</span>
+            <div className="text-xl font-extrabold text-ink mt-1">{metrics.averageGpa}</div>
+            <span className="text-[10px] text-success font-medium">Exceeds department benchmark</span>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-slate-950/60 border-b border-slate-800 px-6 py-2.5 flex items-center gap-2 text-xs font-bold">
+        <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex items-center gap-2 text-xs font-bold">
           {[
             { id: "OVERVIEW", label: "Bloom's Cognitive Distribution" },
             { id: "AT_RISK", label: `Early-Warning Radar (${atRiskLearners.length} At-Risk)` },
@@ -190,8 +190,8 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-3 py-1.5 rounded-xl transition-all ${
                 activeTab === tab.id
-                  ? "bg-purple-600 text-white shadow-md shadow-purple-500/20"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+                  ? "bg-purple-600 text-on-brand shadow-md shadow-purple-500/20"
+                  : "text-ink-muted hover:text-ink hover:bg-surface"
               }`}
             >
               {tab.label}
@@ -204,22 +204,22 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
           {activeTab === "OVERVIEW" && (
             <div className="space-y-6 max-w-3xl mx-auto">
               <div>
-                <h4 className="text-sm font-bold text-white">Cohort Mastery Across Bloom's Cognitive Taxonomy</h4>
-                <p className="text-xs text-slate-400 mt-1">
+                <h4 className="text-sm font-bold text-ink">Cohort Mastery Across Bloom's Cognitive Taxonomy</h4>
+                <p className="text-xs text-ink-muted mt-1">
                   Synthesized across MCQ assessments, open code lab unit tests, and rubric grading criteria.
                 </p>
               </div>
 
               <div className="space-y-3.5">
                 {bloomsMastery.map((b) => (
-                  <div key={b.level} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
+                  <div key={b.level} className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
                     <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-slate-200">{b.level}</span>
-                      <span className="text-purple-400 font-bold">{b.score}% Cohort Mastery</span>
+                      <span className="text-ink">{b.level}</span>
+                      <span className="text-orchid font-bold">{b.score}% Cohort Mastery</span>
                     </div>
-                    <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                    <div className="w-full bg-surface rounded-full h-2.5 overflow-hidden border border-line">
                       <div
-                        className="bg-gradient-to-r from-purple-500 to-indigo-500 h-2.5 rounded-full transition-all duration-700"
+                        className="bg-gradient-to-r from-purple-500 to-brand-hover h-2.5 rounded-full transition-all duration-700"
                         style={{ width: `${b.score}%` }}
                       />
                     </div>
@@ -232,8 +232,8 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
           {activeTab === "AT_RISK" && (
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-bold text-white">Predictive At-Risk Student Intervention Queue</h4>
-                <p className="text-xs text-slate-400 mt-1">
+                <h4 className="text-sm font-bold text-ink">Predictive At-Risk Student Intervention Queue</h4>
+                <p className="text-xs text-ink-muted mt-1">
                   Learners automatically flagged by heuristic rules: low engagement, streak drops, or failed milestones.
                 </p>
               </div>
@@ -242,28 +242,28 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
                 {atRiskLearners.map((student) => (
                   <div
                     key={student.id}
-                    className="bg-slate-950 border border-rose-900/40 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg"
+                    className="bg-canvas border border-danger/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <strong className="text-sm text-white">{student.name}</strong>
-                        <span className="text-xs text-slate-400">({student.email})</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800">
+                        <strong className="text-sm text-ink">{student.name}</strong>
+                        <span className="text-xs text-ink-muted">({student.email})</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/30">
                           {student.riskFactor} RISK
                         </span>
-                        <span className="text-xs text-slate-500">• {student.course}</span>
+                        <span className="text-xs text-ink-subtle">• {student.course}</span>
                       </div>
 
                       <div className="space-y-1">
                         {student.reasons.map((r, rIdx) => (
-                          <div key={rIdx} className="text-xs text-slate-400 flex items-center gap-1.5">
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                          <div key={rIdx} className="text-xs text-ink-muted flex items-center gap-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5 text-accent shrink-0" />
                             <span>{r}</span>
                           </div>
                         ))}
                       </div>
 
-                      <div className="text-[11px] text-purple-300 font-medium">
+                      <div className="text-[11px] text-orchid font-medium">
                         Recommended Action: {student.suggestedAction}
                       </div>
                     </div>
@@ -271,7 +271,7 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => handleSendNudge(student.name)}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-500/20 transition-all"
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-500/20 transition-all"
                       >
                         <Sparkles className="h-3.5 w-3.5" />
                         <span>Send Nudge</span>
@@ -286,8 +286,8 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
           {activeTab === "ITEM_ANALYSIS" && (
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-bold text-white">Curriculum & Assessment Item Diagnostics</h4>
-                <p className="text-xs text-slate-400 mt-1">
+                <h4 className="text-sm font-bold text-ink">Curriculum & Assessment Item Diagnostics</h4>
+                <p className="text-xs text-ink-muted mt-1">
                   Questions where student scores deviate significantly from the class baseline.
                 </p>
               </div>
@@ -296,26 +296,26 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
                 {itemAnalysis.map((item) => (
                   <div
                     key={item.questionId}
-                    className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    className="bg-canvas border border-line rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <strong className="text-sm text-white">{item.concept}</strong>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
+                        <strong className="text-sm text-ink">{item.concept}</strong>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-surface text-ink-muted border border-line">
                           {item.taxonomyLevel ? `Bloom: ${item.taxonomyLevel}` : (item.questionType ?? "Question")}
                         </span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           item.averageScorePercent < 60
-                            ? "bg-rose-950 text-rose-400 border border-rose-800"
+                            ? "bg-danger/10 text-danger border border-danger/30"
                             : item.averageScorePercent < 75
-                            ? "bg-amber-950 text-amber-400 border border-amber-800"
-                            : "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                            ? "bg-accent/10 text-accent border border-accent/30"
+                            : "bg-success/10 text-success border border-success/30"
                         }`}>
                           {item.averageScorePercent}% Accuracy
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-1.5">
-                        Faculty Pedagogical Recommendation: <strong className="text-slate-300">{item.recommendation}</strong>
+                      <p className="text-xs text-ink-muted mt-1.5">
+                        Faculty Pedagogical Recommendation: <strong className="text-ink">{item.recommendation}</strong>
                       </p>
                     </div>
                   </div>

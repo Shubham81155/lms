@@ -8,10 +8,10 @@ import { Banner } from "@/components/admin/IdentityPanels";
 import { expandHex, isHexColor, isHttpUrlOrEmpty, isValidCode, normaliseCode } from "@/lib/forms";
 
 const input =
-  "w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500";
-const primary = "px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all";
+  "w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
+const primary = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all";
 const ghost =
-  "px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
+  "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
 
 // ---------------------------------------------------------------------------
 // Campuses and departments
@@ -63,8 +63,8 @@ export const CampusPanel: React.FC = () => {
   return (
     <section className="space-y-4" aria-labelledby="campus-h">
       <div>
-        <h3 id="campus-h" className="font-bold text-base text-white">Campuses and departments</h3>
-        <p className="text-xs text-slate-400">Courses are filed under a department. Codes are upper-case and unique.</p>
+        <h3 id="campus-h" className="font-bold text-base text-ink">Campuses and departments</h3>
+        <p className="text-xs text-ink-muted">Courses are filed under a department. Codes are upper-case and unique.</p>
       </div>
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
 
@@ -75,18 +75,18 @@ export const CampusPanel: React.FC = () => {
         onSubmit={(v) => act(() => api.post("/api/v1/admin/campuses", v))}
       />
 
-      {isLoading && <p className="text-xs text-slate-500">Loading…</p>}
+      {isLoading && <p className="text-xs text-ink-subtle">Loading…</p>}
       {!isLoading && campuses.length === 0 && (
-        <p className="text-xs text-slate-500 text-center p-8 bg-slate-950 border border-slate-800 rounded-2xl">No campuses yet. Add your first one above.</p>
+        <p className="text-xs text-ink-subtle text-center p-8 bg-canvas border border-line rounded-2xl">No campuses yet. Add your first one above.</p>
       )}
 
       <ul className="space-y-3">
         {campuses.map((c) => (
-          <li key={c.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <li key={c.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h4 className="text-sm font-bold text-slate-100">{c.name} <span className="text-[10px] font-mono text-slate-500 ml-1">{c.code}</span></h4>
-                <p className="text-[11px] text-slate-500">{c.departments.length} department(s) · {c.courseCount} course(s)</p>
+                <h4 className="text-sm font-bold text-ink">{c.name} <span className="text-[10px] font-mono text-ink-subtle ml-1">{c.code}</span></h4>
+                <p className="text-[11px] text-ink-subtle">{c.departments.length} department(s) · {c.courseCount} course(s)</p>
               </div>
               <div className="flex gap-2">
                 <button
@@ -112,12 +112,12 @@ export const CampusPanel: React.FC = () => {
 
             <ul className="space-y-1.5">
               {c.departments.map((d) => (
-                <li key={d.id} className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs">
-                  <span className="text-slate-200">{d.name} <span className="font-mono text-[10px] text-slate-500 ml-1">{d.code}</span></span>
+                <li key={d.id} className="flex items-center justify-between bg-surface border border-line rounded-xl px-3 py-2 text-xs">
+                  <span className="text-ink">{d.name} <span className="font-mono text-[10px] text-ink-subtle ml-1">{d.code}</span></span>
                   <span className="flex items-center gap-3">
-                    <span className="text-[11px] text-slate-500">{d.courseCount} course(s)</span>
+                    <span className="text-[11px] text-ink-subtle">{d.courseCount} course(s)</span>
                     <button
-                      className="text-slate-500 hover:text-rose-400 disabled:opacity-50"
+                      className="text-ink-subtle hover:text-danger disabled:opacity-50"
                       disabled={busy}
                       aria-label={`Delete department ${d.name}`}
                       onClick={() => window.confirm(`Delete the department "${d.name}"?`) && act(() => api.delete(`/api/v1/admin/departments/${d.id}`))}
@@ -161,10 +161,10 @@ interface TenantSettings {
 
 const Color: React.FC<{ label: string; value: string; onChange: (v: string) => void }> = ({ label, value, onChange }) => (
   <div className="space-y-1">
-    <label className="text-xs text-slate-400 font-semibold block">{label}</label>
+    <label className="text-xs text-ink-muted font-semibold block">{label}</label>
     <div className="flex items-center gap-2">
-      <input type="color" aria-label={`${label} picker`} value={isHexColor(value) ? expandHex(value) : "#000000"} onChange={(e) => onChange(e.target.value)} className="h-9 w-10 rounded-lg bg-slate-950 border border-slate-800 p-0.5" />
-      <input className={`${input} font-mono ${value && !isHexColor(value) ? "border-rose-700" : ""}`} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} />
+      <input type="color" aria-label={`${label} picker`} value={isHexColor(value) ? expandHex(value) : "#000000"} onChange={(e) => onChange(e.target.value)} className="h-9 w-10 rounded-lg bg-canvas border border-line p-0.5" />
+      <input className={`${input} font-mono ${value && !isHexColor(value) ? "border-danger" : ""}`} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   </div>
 );
@@ -210,31 +210,31 @@ export const BrandingPanel: React.FC = () => {
   return (
     <section className="space-y-4" aria-labelledby="brand-h">
       <div>
-        <h3 id="brand-h" className="font-bold text-base text-white">White-label branding</h3>
-        <p className="text-xs text-slate-400">Shown on your sign-in page. Domain: <span className="font-mono text-slate-300">{t?.customDomain ?? `${t?.slug ?? "…"} (subdomain)`}</span></p>
+        <h3 id="brand-h" className="font-bold text-base text-ink">White-label branding</h3>
+        <p className="text-xs text-ink-muted">Shown on your sign-in page. Domain: <span className="font-mono text-ink">{t?.customDomain ?? `${t?.slug ?? "…"} (subdomain)`}</span></p>
       </div>
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
       {saved && <Banner kind="ok">Branding saved.</Banner>}
 
       <form onSubmit={save} className="space-y-3" onChange={() => { setSaved(false); clearError(); }}>
-        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Organisation name
+        <label className="block space-y-1 text-xs text-ink-muted font-semibold">Organisation name
           <input className={input} required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <Color label="Primary colour" value={primaryC} onChange={setPrimaryC} />
           <Color label="Secondary colour" value={secondaryC} onChange={setSecondaryC} />
         </div>
-        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Logo URL (https)
-          <input className={`${input} ${!isHttpUrlOrEmpty(logo) ? "border-rose-700" : ""}`} placeholder="https://…/logo.png" value={logo} onChange={(e) => setLogo(e.target.value)} />
+        <label className="block space-y-1 text-xs text-ink-muted font-semibold">Logo URL (https)
+          <input className={`${input} ${!isHttpUrlOrEmpty(logo) ? "border-danger" : ""}`} placeholder="https://…/logo.png" value={logo} onChange={(e) => setLogo(e.target.value)} />
         </label>
-        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Favicon URL (https)
-          <input className={`${input} ${!isHttpUrlOrEmpty(favicon) ? "border-rose-700" : ""}`} placeholder="https://…/favicon.ico" value={favicon} onChange={(e) => setFavicon(e.target.value)} />
+        <label className="block space-y-1 text-xs text-ink-muted font-semibold">Favicon URL (https)
+          <input className={`${input} ${!isHttpUrlOrEmpty(favicon) ? "border-danger" : ""}`} placeholder="https://…/favicon.ico" value={favicon} onChange={(e) => setFavicon(e.target.value)} />
         </label>
 
-        <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-800 bg-slate-950" aria-label="Preview">
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-line bg-canvas" aria-label="Preview">
           <span className="h-8 w-8 rounded-lg" style={{ background: isHexColor(primaryC) ? primaryC : "#334155" }} />
           <span className="h-8 w-8 rounded-lg" style={{ background: isHexColor(secondaryC) ? secondaryC : "#334155" }} />
-          <span className="text-xs font-bold text-white">{name || "Your organisation"}</span>
+          <span className="text-xs font-bold text-ink">{name || "Your organisation"}</span>
         </div>
 
         <button className={primary} disabled={busy || isLoading || !valid}>{busy ? "Saving…" : "Save branding"}</button>
@@ -251,10 +251,10 @@ interface Check { id: string; name: string; status: "PASS" | "WARN" | "FAIL" | "
 interface Compliance { checks: Check[]; declarations: { ferpa: boolean; coppa: boolean; dataRegion: string | null }; note: string }
 
 const STATUS: Record<Check["status"], { label: string; cls: string; Icon: React.ElementType }> = {
-  PASS: { label: "Pass", cls: "bg-emerald-950 text-emerald-300 border-emerald-800", Icon: CheckCircle2 },
-  WARN: { label: "Needs attention", cls: "bg-amber-950 text-amber-300 border-amber-800", Icon: AlertTriangle },
-  FAIL: { label: "Fail", cls: "bg-rose-950 text-rose-300 border-rose-800", Icon: ShieldAlert },
-  INFO: { label: "Info", cls: "bg-slate-800 text-slate-300 border-slate-700", Icon: Info },
+  PASS: { label: "Pass", cls: "bg-success/10 text-success border-success/30", Icon: CheckCircle2 },
+  WARN: { label: "Needs attention", cls: "bg-accent/10 text-accent border-accent/30", Icon: AlertTriangle },
+  FAIL: { label: "Fail", cls: "bg-danger/10 text-danger border-danger/30", Icon: ShieldAlert },
+  INFO: { label: "Info", cls: "bg-raised text-ink border-line", Icon: Info },
 };
 
 export const CompliancePanel: React.FC = () => {
@@ -273,11 +273,11 @@ export const CompliancePanel: React.FC = () => {
   return (
     <section className="space-y-5" aria-labelledby="comp-h">
       <div>
-        <h3 id="comp-h" className="font-bold text-base text-white">Security and compliance posture</h3>
-        <p className="text-xs text-slate-400">{d?.note ?? "Measured facts about this deployment."}</p>
+        <h3 id="comp-h" className="font-bold text-base text-ink">Security and compliance posture</h3>
+        <p className="text-xs text-ink-muted">{d?.note ?? "Measured facts about this deployment."}</p>
       </div>
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
-      {isLoading && <p className="text-xs text-slate-500">Checking…</p>}
+      {isLoading && <p className="text-xs text-ink-subtle">Checking…</p>}
 
       {d && (
         <>
@@ -291,27 +291,27 @@ export const CompliancePanel: React.FC = () => {
             {d.checks.map((c) => {
               const { Icon, cls, label } = STATUS[c.status];
               return (
-                <li key={c.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
+                <li key={c.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <strong className="text-sm text-white">{c.name}</strong>
+                    <strong className="text-sm text-ink">{c.name}</strong>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${cls}`}><Icon className="h-3 w-3" />{label}</span>
                   </div>
-                  <p className="text-xs text-slate-400">{c.detail}</p>
+                  <p className="text-xs text-ink-muted">{c.detail}</p>
                 </li>
               );
             })}
           </ul>
 
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
-            <h4 className="text-sm font-bold text-white">Regulatory declarations</h4>
-            <p className="text-[11px] text-slate-500">What your institution states about itself. These do not change how the platform behaves.</p>
+          <div className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
+            <h4 className="text-sm font-bold text-ink">Regulatory declarations</h4>
+            <p className="text-[11px] text-ink-subtle">What your institution states about itself. These do not change how the platform behaves.</p>
             {([["ferpaCompliant", "FERPA (US education records)", d.declarations.ferpa], ["coppaCompliant", "COPPA (children under 13)", d.declarations.coppa]] as const).map(([key, label, on]) => (
-              <label key={key} className="flex items-center justify-between text-xs text-slate-200">
+              <label key={key} className="flex items-center justify-between text-xs text-ink">
                 <span>{label}</span>
                 <input type="checkbox" checked={on} disabled={busy} onChange={(e) => declare(key, e.target.checked)} />
               </label>
             ))}
-            <p className="text-[11px] text-slate-500">Data region: <span className="font-mono text-slate-300">{d.declarations.dataRegion ?? "not set"}</span></p>
+            <p className="text-[11px] text-ink-subtle">Data region: <span className="font-mono text-ink">{d.declarations.dataRegion ?? "not set"}</span></p>
           </div>
         </>
       )}

@@ -21,9 +21,9 @@ interface BankItem {
 }
 interface List { data: BankItem[]; pagination: { page: number; totalPages: number; total: number } }
 
-const input = "bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500";
-const primary = "px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all";
-const ghost = "px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
+const input = "bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
+const primary = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all";
+const ghost = "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
 const label = (s: string) => s.replace(/_/g, " ").toLowerCase();
 
 const blank = (type = "MULTIPLE_CHOICE"): { type: string; text: string; points: string; options: Option[]; answer: string; tags: string; bloom: string; courseId: string } => ({
@@ -62,32 +62,32 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
   };
 
   return (
-    <form onSubmit={save} className="space-y-4 bg-slate-950 border border-slate-800 rounded-2xl p-5">
-      <h4 className="text-sm font-bold text-white">{item ? "Edit question" : "New question"}</h4>
+    <form onSubmit={save} className="space-y-4 bg-canvas border border-line rounded-2xl p-5">
+      <h4 className="text-sm font-bold text-ink">{item ? "Edit question" : "New question"}</h4>
       {error && <Banner kind="error">{error}</Banner>}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <label className="space-y-1 text-xs text-slate-400 font-semibold">Type
+        <label className="space-y-1 text-xs text-ink-muted font-semibold">Type
           <select className={`${input} w-full`} value={d.type} onChange={(e) => set({ type: e.target.value, options: blank(e.target.value).options })}>
             {TYPES.map((t) => <option key={t} value={t}>{label(t)}</option>)}
           </select>
         </label>
-        <label className="space-y-1 text-xs text-slate-400 font-semibold">Points
+        <label className="space-y-1 text-xs text-ink-muted font-semibold">Points
           <input className={`${input} w-full`} type="number" min={0.5} step="0.5" value={d.points} onChange={(e) => set({ points: e.target.value })} />
         </label>
-        <label className="space-y-1 text-xs text-slate-400 font-semibold">Bloom level
+        <label className="space-y-1 text-xs text-ink-muted font-semibold">Bloom level
           <select className={`${input} w-full`} value={d.bloom} onChange={(e) => set({ bloom: e.target.value })}>
             <option value="">Not tagged</option>
             {BLOOM.map((b) => <option key={b} value={b}>{label(b)}</option>)}
           </select>
         </label>
       </div>
-      <label className="block space-y-1 text-xs text-slate-400 font-semibold">Question
+      <label className="block space-y-1 text-xs text-ink-muted font-semibold">Question
         <textarea className={`${input} w-full`} rows={3} value={d.text} onChange={(e) => set({ text: e.target.value })} />
       </label>
 
       {CHOICE.includes(d.type) && (
         <fieldset className="space-y-2">
-          <legend className="text-xs text-slate-400 font-semibold mb-1">Options ({d.type === "MULTI_SELECT" ? "tick every correct one" : "choose the correct one"})</legend>
+          <legend className="text-xs text-ink-muted font-semibold mb-1">Options ({d.type === "MULTI_SELECT" ? "tick every correct one" : "choose the correct one"})</legend>
           {d.options.map((o, i) => (
             <div key={i} className="flex items-center gap-2">
               <input
@@ -105,17 +105,17 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
         </fieldset>
       )}
       {KEYED.includes(d.type) && (
-        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Correct answer {d.type === "SHORT_ANSWER" && "(separate accepted alternatives with ||)"}
+        <label className="block space-y-1 text-xs text-ink-muted font-semibold">Correct answer {d.type === "SHORT_ANSWER" && "(separate accepted alternatives with ||)"}
           <input className={`${input} w-full`} value={d.answer} onChange={(e) => set({ answer: e.target.value })} />
         </label>
       )}
-      {(d.type === "ESSAY" || d.type === "CODE_SANDBOX") && <p className="text-[11px] text-slate-500">This type is graded by a person, so there is no answer key.</p>}
+      {(d.type === "ESSAY" || d.type === "CODE_SANDBOX") && <p className="text-[11px] text-ink-subtle">This type is graded by a person, so there is no answer key.</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <label className="space-y-1 text-xs text-slate-400 font-semibold">Tags (comma separated)
+        <label className="space-y-1 text-xs text-ink-muted font-semibold">Tags (comma separated)
           <input className={`${input} w-full`} placeholder="raft, consensus" value={d.tags} onChange={(e) => set({ tags: e.target.value })} />
         </label>
-        <label className="space-y-1 text-xs text-slate-400 font-semibold">Share with course staff
+        <label className="space-y-1 text-xs text-ink-muted font-semibold">Share with course staff
           <select className={`${input} w-full`} value={d.courseId} onChange={(e) => set({ courseId: e.target.value })}>
             <option value="">Only me</option>
             {courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.title}</option>)}
@@ -126,7 +126,7 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
       <div className="flex items-center gap-3">
         <button className={primary} disabled={busy || !!problem}>{busy ? "Saving…" : "Save question"}</button>
         <button type="button" className={ghost} onClick={onCancel}>Cancel</button>
-        {problem && <span className="text-[11px] text-amber-400">{problem}</span>}
+        {problem && <span className="text-[11px] text-accent">{problem}</span>}
       </div>
     </form>
   );
@@ -183,19 +183,19 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Question bank">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-        <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Question bank">
+      <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400"><Library className="h-5 w-5" /></div>
+            <div className="h-9 w-9 rounded-2xl bg-orchid/20 border border-orchid/30 flex items-center justify-center text-orchid"><Library className="h-5 w-5" /></div>
             <div>
-              <h3 className="font-bold text-base text-white">Question bank</h3>
-              <p className="text-xs text-slate-400">Reusable questions with tags and Bloom levels. Copy them into any quiz you teach.</p>
+              <h3 className="font-bold text-base text-ink">Question bank</h3>
+              <p className="text-xs text-ink-muted">Reusable questions with tags and Bloom levels. Copy them into any quiz you teach.</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button className={primary} onClick={() => setEditing("new")}><Plus className="h-3.5 w-3.5 inline mr-1" />New question</button>
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"><X className="h-5 w-5" /></button>
           </div>
         </div>
 
@@ -219,19 +219,19 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               </div>
 
               <ul className="space-y-2">
-                {isLoading && <li className="text-xs text-slate-500">Loading…</li>}
-                {!isLoading && items.length === 0 && <li className="text-xs text-slate-500 p-8 text-center bg-slate-950 border border-slate-800 rounded-2xl">No questions match. Create your first one.</li>}
+                {isLoading && <li className="text-xs text-ink-subtle">Loading…</li>}
+                {!isLoading && items.length === 0 && <li className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">No questions match. Create your first one.</li>}
                 {items.map((i) => (
-                  <li key={i.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-start gap-3">
+                  <li key={i.id} className="bg-canvas border border-line rounded-2xl p-4 flex items-start gap-3">
                     <input type="checkbox" className="mt-1" aria-label={`Select question: ${i.questionText.slice(0, 40)}`} checked={selected.has(i.id)} onChange={() => toggle(i.id)} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs text-white whitespace-pre-wrap">{i.questionText}</div>
+                      <div className="text-xs text-ink whitespace-pre-wrap">{i.questionText}</div>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
-                        <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">{label(i.questionType)}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">{i.points} pt</span>
-                        {i.bloomLevel && <span className="px-2 py-0.5 rounded-full bg-purple-950 border border-purple-800 text-purple-300">{label(i.bloomLevel)}</span>}
-                        {i.courseId && <span className="px-2 py-0.5 rounded-full bg-blue-950 border border-blue-800 text-blue-300">shared</span>}
-                        {i.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400">#{t}</span>)}
+                        <span className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink">{label(i.questionType)}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink">{i.points} pt</span>
+                        {i.bloomLevel && <span className="px-2 py-0.5 rounded-full bg-orchid/15 border border-orchid/30 text-orchid">{label(i.bloomLevel)}</span>}
+                        {i.courseId && <span className="px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand-fg">shared</span>}
+                        {i.tags.map((t) => <span key={t} className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink-muted">#{t}</span>)}
                       </div>
                     </div>
                     {canModify(i) && (
@@ -245,7 +245,7 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               </ul>
 
               {data && data.pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between text-xs text-slate-400">
+                <div className="flex items-center justify-between text-xs text-ink-muted">
                   <span>Page {data.pagination.page} of {data.pagination.totalPages} · {data.pagination.total} questions</span>
                   <div className="flex gap-2">
                     <button className={ghost} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</button>
@@ -258,8 +258,8 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         </div>
 
         {!editing && (
-          <div className="bg-slate-950 border-t border-slate-800 px-6 py-3 flex flex-wrap items-center gap-3">
-            <span className="text-xs text-slate-400">{selected.size} selected</span>
+          <div className="bg-canvas border-t border-line px-6 py-3 flex flex-wrap items-center gap-3">
+            <span className="text-xs text-ink-muted">{selected.size} selected</span>
             <select className={input} aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
               <option value="">Choose a course…</option>{courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.title}</option>)}
             </select>

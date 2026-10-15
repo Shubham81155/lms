@@ -1,16 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Navigation } from "@/components/Navigation";
+import { AppShell } from "@/components/shell/AppShell";
 import {
-  ShieldCheck,
   Users,
-  Building,
   Key,
   Database,
   Terminal,
   Activity,
-  Webhook,
 } from "lucide-react";
 import { useAuditLogs } from "@/hooks/useAdmin";
 import { useAuth } from "@/context/AuthContext";
@@ -51,27 +48,27 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Navigation
-        currentRole="admin"
-        activeNavTab={activeTab}
-        onNavigateTab={handleNavigateTab}
-      />
+    <AppShell
+      area="admin"
+      activeKey={activeTab}
+      onNavigate={handleNavigateTab}
+      actions={{ lrs: () => setShowLrsStream(true) }}
+    >
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-8">
         {/* Admin Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-900/50 text-amber-300 border border-amber-700/50 font-semibold">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/50 font-semibold">
                 {user?.role === "SUPER_ADMIN" ? "Super Administrator" : "Administrator"}
               </span>
-              <span className="text-xs text-slate-400">Plan: {usage.data?.data.tier ?? "…"}</span>
+              <span className="text-xs text-ink-muted">Plan: {usage.data?.data.tier ?? "…"}</span>
             </div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">
               Tenant Administration & Governance
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-ink-muted">
               Seats, single sign-on, directory provisioning, integrations and the audit trail
             </p>
           </div>
@@ -79,7 +76,7 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setShowLrsStream(true)}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
+              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
             >
               <Activity className="h-4 w-4 text-cyan-400" />
               <span>xAPI LRS Stream</span>
@@ -91,50 +88,23 @@ export default function AdminDashboard() {
         {/* Top Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {[
-            { label: "Seats in use", value: seats ? (seats.quota ? `${seats.used} / ${seats.quota}` : String(seats.used)) : "…", sub: seats ? `${usage.data?.data.last30Days.activeUsers ?? 0} active in 30 days` : "", icon: Users, color: "text-blue-400" },
-            { label: "Courses", value: usage.data ? String(usage.data.data.totals.courses) : "…", sub: `${usage.data?.data.totals.enrollments ?? 0} enrolments`, icon: Database, color: "text-emerald-400" },
-            { label: "Single sign-on", value: flags.sso ? "Available" : "Not in plan", sub: flags.scim ? "SCIM provisioning on" : "SCIM off", icon: Key, color: "text-amber-400" },
-            { label: "Integrations", value: flags.webhooks ? "Webhooks on" : "Webhooks off", sub: flags.lti13 ? "LTI 1.3 on" : "LTI 1.3 off", icon: Terminal, color: "text-purple-400" },
+            { label: "Seats in use", value: seats ? (seats.quota ? `${seats.used} / ${seats.quota}` : String(seats.used)) : "…", sub: seats ? `${usage.data?.data.last30Days.activeUsers ?? 0} active in 30 days` : "", icon: Users, color: "text-brand-fg" },
+            { label: "Courses", value: usage.data ? String(usage.data.data.totals.courses) : "…", sub: `${usage.data?.data.totals.enrollments ?? 0} enrolments`, icon: Database, color: "text-success" },
+            { label: "Single sign-on", value: flags.sso ? "Available" : "Not in plan", sub: flags.scim ? "SCIM provisioning on" : "SCIM off", icon: Key, color: "text-accent" },
+            { label: "Integrations", value: flags.webhooks ? "Webhooks on" : "Webhooks off", sub: flags.lti13 ? "LTI 1.3 on" : "LTI 1.3 off", icon: Terminal, color: "text-orchid" },
           ].map((stat, idx) => {
             const Icon = stat.icon;
             return (
-              <div key={idx} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 shadow-lg">
-                <div className="flex items-center justify-between text-slate-400">
+              <div key={idx} className="bg-surface border border-line rounded-2xl p-5 space-y-3 shadow-lg">
+                <div className="flex items-center justify-between text-ink-muted">
                   <span className="text-xs font-semibold">{stat.label}</span>
                   <Icon className={`h-5 w-5 ${stat.color}`} />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-white">{stat.value}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{stat.sub}</div>
+                  <div className="text-2xl font-bold text-ink">{stat.value}</div>
+                  <div className="text-[11px] text-ink-subtle mt-0.5">{stat.sub}</div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Tab Navigation for Admin Sections */}
-        <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-          {([
-            { id: "overview", label: "Organization & Hierarchy", icon: Building },
-            { id: "compliance", label: "Security & Compliance", icon: ShieldCheck },
-            { id: "sso", label: "Identity & Provisioning", icon: Key },
-            { id: "platform", label: "Plan, Webhooks & Usage", icon: Webhook },
-            { id: "audit", label: "Audit Log", icon: Terminal },
-          ] as const).map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                  activeTab === tab.id
-                    ? "bg-blue-600/20 text-blue-400 border border-blue-600/30"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{tab.label}</span>
-              </button>
             );
           })}
         </div>
@@ -142,10 +112,10 @@ export default function AdminDashboard() {
         {/* Tab Contents */}
         {activeTab === "overview" && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="md:col-span-2 bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <CampusPanel />
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <BrandingPanel />
             </div>
           </div>
@@ -153,10 +123,10 @@ export default function AdminDashboard() {
 
         {activeTab === "compliance" && (
           <div className="space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <CompliancePanel />
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <PrivacyPanel />
             </div>
           </div>
@@ -164,13 +134,13 @@ export default function AdminDashboard() {
 
         {activeTab === "sso" && (
           <div className="space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <SsoPanel available={!!flags.sso} />
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <SamlPanel available={!!flags.sso} />
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <ScimPanel available={!!flags.scim} />
             </div>
           </div>
@@ -178,36 +148,36 @@ export default function AdminDashboard() {
 
         {activeTab === "platform" && (
           <div className="space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <UsagePanel />
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <FeaturesPanel onChanged={features.reload} />
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <WebhooksPanel available={!!flags.webhooks} />
             </div>
           </div>
         )}
 
         {activeTab === "audit" && (
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="bg-surface border border-line rounded-3xl p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-line pb-3">
               <div>
-                <h3 className="font-bold text-base text-white">Audit log</h3>
-                <p className="text-xs text-slate-400">Append-only for the application: it can add entries but not change or delete them.</p>
+                <h3 className="font-bold text-base text-ink">Audit log</h3>
+                <p className="text-xs text-ink-muted">Append-only for the application: it can add entries but not change or delete them.</p>
               </div>
                           </div>
 
-            <div className="bg-slate-950 rounded-2xl p-4 font-mono text-[11px] text-slate-300 space-y-2 overflow-x-auto">
+            <div className="bg-canvas rounded-2xl p-4 font-mono text-[11px] text-ink space-y-2 overflow-x-auto">
               {logs && logs.length > 0 ? (
                 logs.map((log) => (
-                  <p key={log.id} className="text-emerald-400">
+                  <p key={log.id} className="text-success">
                     [{new Date(log.createdAt).toISOString()}] {log.action}: resource="{log.resourceType}" {log.resourceId ? `id="${log.resourceId}"` : ""} user="{log.userId || "system"}"
                   </p>
                 ))
               ) : (
-                <p className="text-slate-500">No audit events recorded yet.</p>
+                <p className="text-ink-subtle">No audit events recorded yet.</p>
               )}
             </div>
           </div>
@@ -221,6 +191,6 @@ export default function AdminDashboard() {
         )}
 
       </main>
-    </div>
+    </AppShell>
   );
 }
