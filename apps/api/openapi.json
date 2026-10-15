@@ -6304,6 +6304,23 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "plagiarismStatus": {
+                            "type": "string",
+                            "nullable": true,
+                            "enum": [
+                              "PENDING",
+                              "SUBMITTED",
+                              "COMPLETE",
+                              "FAILED"
+                            ]
+                          },
+                          "plagiarismAttempts": {
+                            "type": "integer"
+                          },
+                          "plagiarismNextAttemptAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
                           "rubricScoresJson": {
                             "nullable": true
                           },
@@ -6348,6 +6365,9 @@
                           "feedback",
                           "plagiarismScore",
                           "plagiarismReportUrl",
+                          "plagiarismStatus",
+                          "plagiarismAttempts",
+                          "plagiarismNextAttemptAt",
                           "submittedAt",
                           "gradedAt"
                         ]
@@ -6526,6 +6546,23 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "plagiarismStatus": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "PENDING",
+                            "SUBMITTED",
+                            "COMPLETE",
+                            "FAILED"
+                          ]
+                        },
+                        "plagiarismAttempts": {
+                          "type": "integer"
+                        },
+                        "plagiarismNextAttemptAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "rubricScoresJson": {
                           "nullable": true
                         },
@@ -6550,6 +6587,9 @@
                         "feedback",
                         "plagiarismScore",
                         "plagiarismReportUrl",
+                        "plagiarismStatus",
+                        "plagiarismAttempts",
+                        "plagiarismNextAttemptAt",
                         "submittedAt",
                         "gradedAt",
                         "isLate"
@@ -6902,6 +6942,23 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "plagiarismStatus": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "PENDING",
+                            "SUBMITTED",
+                            "COMPLETE",
+                            "FAILED"
+                          ]
+                        },
+                        "plagiarismAttempts": {
+                          "type": "integer"
+                        },
+                        "plagiarismNextAttemptAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "rubricScoresJson": {
                           "nullable": true
                         },
@@ -6923,6 +6980,9 @@
                         "feedback",
                         "plagiarismScore",
                         "plagiarismReportUrl",
+                        "plagiarismStatus",
+                        "plagiarismAttempts",
+                        "plagiarismNextAttemptAt",
                         "submittedAt",
                         "gradedAt"
                       ]
@@ -7082,6 +7142,23 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "plagiarismStatus": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "PENDING",
+                            "SUBMITTED",
+                            "COMPLETE",
+                            "FAILED"
+                          ]
+                        },
+                        "plagiarismAttempts": {
+                          "type": "integer"
+                        },
+                        "plagiarismNextAttemptAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "rubricScoresJson": {
                           "nullable": true
                         },
@@ -7106,6 +7183,9 @@
                         "feedback",
                         "plagiarismScore",
                         "plagiarismReportUrl",
+                        "plagiarismStatus",
+                        "plagiarismAttempts",
+                        "plagiarismNextAttemptAt",
                         "submittedAt",
                         "gradedAt",
                         "isLate"

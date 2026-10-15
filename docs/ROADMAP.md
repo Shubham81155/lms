@@ -56,7 +56,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **Gradebook**: weighted categories, curve, draft -> submit -> two-person approval | Done | teacher screen included; approved grade becomes `Enrollment.finalGrade` |
 | Bloom's-taxonomy mastery analytics | Done | from tagged questions |
 | Proctoring telemetry and flagging | Done | the quiz screen reports tab switches, leaving full screen and copy/paste; no webcam capture |
-| **Plagiarism provider callbacks** (HMAC-signed, replay-limited) | Done | outbound submission is queued, signed, retried with backoff and sent to a configurable provider URL (`PLAGIARISM_SUBMIT_URL`); tested against a local stand-in, no native Turnitin/Copyleaks adapter, status not yet shown on the teacher screen |
+| **Plagiarism provider callbacks** (HMAC-signed, replay-limited) | Done | outbound submission is queued, signed, retried with backoff and sent to a configurable provider URL (`PLAGIARISM_SUBMIT_URL`); tested against a local stand-in, no native Turnitin/Copyleaks adapter, queued/in-progress/failed status shown on the teacher grading panel |
 | **Rubrics** (per-criterion scoring, learner-visible breakdown) | Done | teacher editor and grading screen included |
 | **Grade appeals** (14-day window, instructor decision, reopens an approved course grade) | Done | assignments only; learner and teacher screens included |
 | Peer review | Open | |
@@ -92,5 +92,5 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 
 ## Suggested next steps (highest value first)
 
-1. Webcam/audio proctoring; Turnitin/Copyleaks adapter and plagiarism status on the teacher screen.
+1. Webcam/audio proctoring; Turnitin/Copyleaks adapter.
 2. Daily digest e-mails and SMS/push channels.

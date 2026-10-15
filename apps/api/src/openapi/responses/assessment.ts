@@ -141,6 +141,10 @@ const AssignmentSubmissionRecord = z.object({
   feedback: z.string().nullable(),
   plagiarismScore: z.number().nullable(),
   plagiarismReportUrl: z.string().nullable(),
+  /** Outbound similarity check: PENDING, SUBMITTED, COMPLETE or FAILED; null when none was requested. */
+  plagiarismStatus: z.enum(['PENDING', 'SUBMITTED', 'COMPLETE', 'FAILED']).nullable(),
+  plagiarismAttempts: z.number().int(),
+  plagiarismNextAttemptAt: z.string().nullable(),
   /** {criterionId: points} when the assignment has a rubric. */
   rubricScoresJson: z.unknown(),
   submittedAt: z.string(),

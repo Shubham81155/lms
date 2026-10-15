@@ -5318,6 +5318,10 @@ export interface operations {
                             feedback: string | null;
                             plagiarismScore: number | null;
                             plagiarismReportUrl: string | null;
+                            /** @enum {string|null} */
+                            plagiarismStatus: "PENDING" | "SUBMITTED" | "COMPLETE" | "FAILED" | null;
+                            plagiarismAttempts: number;
+                            plagiarismNextAttemptAt: string | null;
                             rubricScoresJson?: unknown;
                             submittedAt: string;
                             gradedAt: string | null;
@@ -5410,6 +5414,10 @@ export interface operations {
                             feedback: string | null;
                             plagiarismScore: number | null;
                             plagiarismReportUrl: string | null;
+                            /** @enum {string|null} */
+                            plagiarismStatus: "PENDING" | "SUBMITTED" | "COMPLETE" | "FAILED" | null;
+                            plagiarismAttempts: number;
+                            plagiarismNextAttemptAt: string | null;
                             rubricScoresJson?: unknown;
                             submittedAt: string;
                             gradedAt: string | null;
@@ -5593,6 +5601,10 @@ export interface operations {
                             feedback: string | null;
                             plagiarismScore: number | null;
                             plagiarismReportUrl: string | null;
+                            /** @enum {string|null} */
+                            plagiarismStatus: "PENDING" | "SUBMITTED" | "COMPLETE" | "FAILED" | null;
+                            plagiarismAttempts: number;
+                            plagiarismNextAttemptAt: string | null;
                             rubricScoresJson?: unknown;
                             submittedAt: string;
                             gradedAt: string | null;
@@ -5674,6 +5686,10 @@ export interface operations {
                             feedback: string | null;
                             plagiarismScore: number | null;
                             plagiarismReportUrl: string | null;
+                            /** @enum {string|null} */
+                            plagiarismStatus: "PENDING" | "SUBMITTED" | "COMPLETE" | "FAILED" | null;
+                            plagiarismAttempts: number;
+                            plagiarismNextAttemptAt: string | null;
                             rubricScoresJson?: unknown;
                             submittedAt: string;
                             gradedAt: string | null;

@@ -14,7 +14,7 @@ export type { Criterion };
 interface Assignment { id: string; title: string; maxPoints: number; rubricJson: Criterion[] | null; _count?: { submissions: number } }
 interface Submission {
   id: string; userId: string; fileUrl: string | null; submissionText: string | null; grade: number | null; feedback: string | null;
-  plagiarismScore: number | null; plagiarismReportUrl: string | null; rubricScoresJson: Record<string, number> | null;
+  plagiarismScore: number | null; plagiarismReportUrl: string | null; plagiarismStatus: "PENDING" | "SUBMITTED" | "COMPLETE" | "FAILED" | null; rubricScoresJson: Record<string, number> | null;
   submittedAt: string; gradedAt: string | null; user?: { firstName: string; lastName: string; email: string };
 }
 interface Appeal {
@@ -98,6 +98,13 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
           <div className={`text-[11px] ${sub.plagiarismScore >= 30 ? "text-rose-400" : "text-emerald-400"}`}>
             Similarity: {Math.round(sub.plagiarismScore)}%{" "}
             {sub.plagiarismReportUrl && <a className="underline" href={sub.plagiarismReportUrl} target="_blank" rel="noopener noreferrer">report</a>}
+          </div>
+        )}
+        {sub.plagiarismScore === null && sub.plagiarismStatus && sub.plagiarismStatus !== "COMPLETE" && (
+          <div className={`text-[11px] ${sub.plagiarismStatus === "FAILED" ? "text-amber-400" : "text-slate-500"}`}>
+            {sub.plagiarismStatus === "PENDING" && "Similarity check queued"}
+            {sub.plagiarismStatus === "SUBMITTED" && "Similarity check in progress"}
+            {sub.plagiarismStatus === "FAILED" && "Similarity check failed"}
           </div>
         )}
       </div>
