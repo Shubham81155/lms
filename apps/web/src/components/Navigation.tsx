@@ -2,21 +2,18 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   GraduationCap,
   BookOpen,
   Users,
   ShieldCheck,
   Award,
-  Video,
   FileCheck,
   Bell,
   Search,
   LogOut,
   Terminal,
   Building,
-  Calendar,
   UserCog,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -36,7 +33,6 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeNavTab,
   onNavigateTab,
 }) => {
-  const pathname = usePathname();
   const { user, logout } = useAuth();
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);

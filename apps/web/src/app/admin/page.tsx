@@ -6,21 +6,13 @@ import {
   ShieldCheck,
   Users,
   Building,
-  Lock,
   Key,
   Database,
   Terminal,
-  Download,
-  Settings,
-  Globe,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
-  FileSpreadsheet,
   Activity,
   Webhook,
 } from "lucide-react";
-import { useAuditLogs, useDashboardStats } from "@/hooks/useAdmin";
+import { useAuditLogs } from "@/hooks/useAdmin";
 import { useAuth } from "@/context/AuthContext";
 import { useApiData } from "@/hooks/useApiData";
 import { SamlPanel, ScimPanel, SsoPanel } from "@/components/admin/IdentityPanels";
@@ -29,12 +21,15 @@ import { BrandingPanel, CampusPanel, CompliancePanel } from "@/components/admin/
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 
+const TABS = ["overview", "compliance", "sso", "platform", "audit"] as const;
+type Tab = (typeof TABS)[number];
+const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
+
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"overview" | "compliance" | "sso" | "platform" | "audit">("overview");
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showLrsStream, setShowLrsStream] = useState(false);
 
   const { logs } = useAuditLogs();
-  const { stats } = useDashboardStats();
   const { user } = useAuth();
   const usage = useApiData<{ data: Usage }>("/api/v1/admin/usage");
   const features = useApiData<{ data: Record<string, boolean> }>("/api/v1/admin/features");
@@ -44,9 +39,7 @@ export default function AdminDashboard() {
   React.useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace("#", "");
-      if (hash === "compliance" || hash === "sso" || hash === "platform" || hash === "audit" || hash === "overview") {
-        setActiveTab(hash as any);
-      }
+      if (isTab(hash)) setActiveTab(hash);
     };
     handleHash();
     window.addEventListener("hashchange", handleHash);
@@ -54,9 +47,7 @@ export default function AdminDashboard() {
   }, []);
 
   const handleNavigateTab = (tabKey: string) => {
-    if (tabKey === "overview" || tabKey === "compliance" || tabKey === "sso" || tabKey === "platform" || tabKey === "audit") {
-      setActiveTab(tabKey as any);
-    }
+    if (isTab(tabKey)) setActiveTab(tabKey);
   };
 
   return (
@@ -123,18 +114,18 @@ export default function AdminDashboard() {
 
         {/* Tab Navigation for Admin Sections */}
         <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-          {[
+          {([
             { id: "overview", label: "Organization & Hierarchy", icon: Building },
             { id: "compliance", label: "Security & Compliance", icon: ShieldCheck },
             { id: "sso", label: "Identity & Provisioning", icon: Key },
             { id: "platform", label: "Plan, Webhooks & Usage", icon: Webhook },
             { id: "audit", label: "Audit Log", icon: Terminal },
-          ].map((tab) => {
+          ] as const).map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
                   activeTab === tab.id
                     ? "bg-blue-600/20 text-blue-400 border border-blue-600/30"
