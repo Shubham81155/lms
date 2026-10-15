@@ -7,12 +7,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { Banner } from "@/components/admin/IdentityPanels";
-import { CHOICE_TYPES, KEYED_TYPES, draftProblem, type ChoiceOption } from "@/lib/forms";
+import { draftProblem, type ChoiceOption } from "@/lib/forms";
+import { BLOOM_LEVELS, QUESTION_TYPES, QuestionFields, blankQuestion, questionBody, type QuestionDraft } from "@/components/assessments/QuestionFields";
 
-const TYPES = ["MULTIPLE_CHOICE", "MULTI_SELECT", "TRUE_FALSE", "SHORT_ANSWER", "FORMULA_CALCULATED", "ESSAY", "CODE_SANDBOX"] as const;
-const BLOOM = ["REMEMBER", "UNDERSTAND", "APPLY", "ANALYZE", "EVALUATE", "CREATE"] as const;
-const CHOICE = CHOICE_TYPES;
-const KEYED = KEYED_TYPES;
+const TYPES = QUESTION_TYPES;
+const BLOOM = BLOOM_LEVELS;
 
 type Option = ChoiceOption;
 interface BankItem {
@@ -26,10 +25,7 @@ const primary = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 tex
 const ghost = "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
 const label = (s: string) => s.replace(/_/g, " ").toLowerCase();
 
-const blank = (type = "MULTIPLE_CHOICE"): { type: string; text: string; points: string; options: Option[]; answer: string; tags: string; bloom: string; courseId: string } => ({
-  type, text: "", points: "1", answer: "", tags: "", bloom: "", courseId: "",
-  options: type === "TRUE_FALSE" ? [{ text: "True", isCorrect: true }, { text: "False", isCorrect: false }] : [{ text: "", isCorrect: true }, { text: "", isCorrect: false }],
-});
+const blank = (type = "MULTIPLE_CHOICE"): QuestionDraft & { tags: string; courseId: string } => ({ ...blankQuestion(type), tags: "", courseId: "" });
 
 const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: () => void }> = ({ item, onDone, onCancel }) => {
   const { courses } = useStaffCourses();
@@ -46,13 +42,8 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
     e.preventDefault();
     run(async () => {
       const body = {
-        questionText: d.text.trim(),
-        questionType: d.type,
-        points: Number(d.points) || 1,
-        optionsJson: CHOICE.includes(d.type) ? d.options.filter((o) => o.text.trim()).map((o) => ({ ...(o.id ? { id: o.id } : {}), text: o.text.trim(), isCorrect: o.isCorrect })) : null,
-        correctAnswer: KEYED.includes(d.type) ? d.answer.trim() : null,
+        ...questionBody(d),
         tags: d.tags.split(/[,\s]+/).filter(Boolean),
-        bloomLevel: d.bloom || null,
         courseId: d.courseId || null,
       };
       if (item) await api.patch(`/api/v1/question-bank/${item.id}`, body);
@@ -65,51 +56,7 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
     <form onSubmit={save} className="space-y-4 bg-canvas border border-line rounded-2xl p-5">
       <h4 className="text-sm font-bold text-ink">{item ? "Edit question" : "New question"}</h4>
       {error && <Banner kind="error">{error}</Banner>}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <label className="space-y-1 text-xs text-ink-muted font-semibold">Type
-          <select className={`${input} w-full`} value={d.type} onChange={(e) => set({ type: e.target.value, options: blank(e.target.value).options })}>
-            {TYPES.map((t) => <option key={t} value={t}>{label(t)}</option>)}
-          </select>
-        </label>
-        <label className="space-y-1 text-xs text-ink-muted font-semibold">Points
-          <input className={`${input} w-full`} type="number" min={0.5} step="0.5" value={d.points} onChange={(e) => set({ points: e.target.value })} />
-        </label>
-        <label className="space-y-1 text-xs text-ink-muted font-semibold">Bloom level
-          <select className={`${input} w-full`} value={d.bloom} onChange={(e) => set({ bloom: e.target.value })}>
-            <option value="">Not tagged</option>
-            {BLOOM.map((b) => <option key={b} value={b}>{label(b)}</option>)}
-          </select>
-        </label>
-      </div>
-      <label className="block space-y-1 text-xs text-ink-muted font-semibold">Question
-        <textarea className={`${input} w-full`} rows={3} value={d.text} onChange={(e) => set({ text: e.target.value })} />
-      </label>
-
-      {CHOICE.includes(d.type) && (
-        <fieldset className="space-y-2">
-          <legend className="text-xs text-ink-muted font-semibold mb-1">Options ({d.type === "MULTI_SELECT" ? "tick every correct one" : "choose the correct one"})</legend>
-          {d.options.map((o, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                type={d.type === "MULTI_SELECT" ? "checkbox" : "radio"}
-                name="correct"
-                aria-label={`Option ${i + 1} is correct`}
-                checked={o.isCorrect}
-                onChange={(e) => set({ options: d.options.map((x, j) => (d.type === "MULTI_SELECT" ? (j === i ? { ...x, isCorrect: e.target.checked } : x) : { ...x, isCorrect: j === i })) })}
-              />
-              <input className={`${input} flex-1`} aria-label={`Option ${i + 1} text`} value={o.text} disabled={d.type === "TRUE_FALSE"} onChange={(e) => set({ options: d.options.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)) })} />
-              {d.type !== "TRUE_FALSE" && d.options.length > 2 && <button type="button" className={ghost} aria-label={`Remove option ${i + 1}`} onClick={() => set({ options: d.options.filter((_, j) => j !== i) })}><Trash2 className="h-3 w-3" /></button>}
-            </div>
-          ))}
-          {d.type !== "TRUE_FALSE" && d.options.length < 10 && <button type="button" className={ghost} onClick={() => set({ options: [...d.options, { text: "", isCorrect: false }] })}><Plus className="h-3 w-3 inline mr-1" />Add option</button>}
-        </fieldset>
-      )}
-      {KEYED.includes(d.type) && (
-        <label className="block space-y-1 text-xs text-ink-muted font-semibold">Correct answer {d.type === "SHORT_ANSWER" && "(separate accepted alternatives with ||)"}
-          <input className={`${input} w-full`} value={d.answer} onChange={(e) => set({ answer: e.target.value })} />
-        </label>
-      )}
-      {(d.type === "ESSAY" || d.type === "CODE_SANDBOX") && <p className="text-[11px] text-ink-subtle">This type is graded by a person, so there is no answer key.</p>}
+      <QuestionFields d={d} set={set} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="space-y-1 text-xs text-ink-muted font-semibold">Tags (comma separated)
