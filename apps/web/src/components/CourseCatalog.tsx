@@ -13,18 +13,19 @@ import {
   ArrowRight,
   Shield,
   Layers,
-  GraduationCap,
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
 import { useEnroll, useMyEnrollments } from "@/hooks/useEnrollments";
 
 interface CourseCatalogProps {
   onClose: () => void;
+  /** Pre-fills the search box, e.g. from the top-bar search. */
+  initialQuery?: string;
   onEnrolled?: (courseId: string) => void;
 }
 
-export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolled }) => {
-  const [searchQuery, setSearchQuery] = useState("");
+export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolled, initialQuery = "" }) => {
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedDept, setSelectedDept] = useState<string>("ALL");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
@@ -102,7 +103,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                 </span>
               </div>
               <p className="text-xs text-ink-muted">
-                Browse accredited academic curricula, inspect learning outcomes, and self-enroll.
+                Browse the courses open to you, see what each one covers, and self-enroll.
               </p>
             </div>
           </div>
@@ -248,23 +249,19 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                   </div>
                 </div>
 
-                {/* Learning Outcomes & Standards */}
+                {/* What the platform records and issues for this course */}
                 <div className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
                   <h4 className="text-xs font-bold text-ink uppercase tracking-wider">
-                    Standards & Accreditation
+                    Records & Certificate
                   </h4>
                   <ul className="space-y-2 text-xs text-ink">
                     <li className="flex items-center gap-2">
                       <Shield className="h-3.5 w-3.5 text-success shrink-0" />
-                      <span>Compliant with 1EdTech Open Badges 3.0 Verifiable Credentials</span>
+                      <span>A certificate with a public verification number is issued when you complete the course</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-brand-fg shrink-0" />
-                      <span>xAPI Telemetry & SCORM 2004 Runtime Tracking</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <GraduationCap className="h-3.5 w-3.5 text-orchid shrink-0" />
-                      <span>Accredited higher education semester credits applicable</span>
+                      <span>Quiz and completion activity is recorded as xAPI learning statements</span>
                     </li>
                   </ul>
                 </div>

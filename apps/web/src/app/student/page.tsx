@@ -59,6 +59,7 @@ export default function StudentDashboard() {
   const [activeCodingLab, setActiveCodingLab] = useState<string | null>(null);
   const [certificate, setCertificate] = useState<{ studentName: string; courseTitle: string; certificateId: string } | null>(null);
   const [showCourseCatalog, setShowCourseCatalog] = useState(false);
+  const [catalogQuery, setCatalogQuery] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
   const [showForum, setShowForum] = useState(false);
   const [showGamificationHub, setShowGamificationHub] = useState(false);
@@ -92,6 +93,11 @@ export default function StudentDashboard() {
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
   }, []);
+
+  const openCatalog = (query: string) => {
+    setCatalogQuery(query);
+    setShowCourseCatalog(true);
+  };
 
   const handleNavigateTab = (tabKey: string) => {
     setActiveNavTab(tabKey);
@@ -160,8 +166,9 @@ export default function StudentDashboard() {
       area="student"
       activeKey={activeNavTab}
       onNavigate={handleNavigateTab}
+      search={{ placeholder: "Search courses…", onSubmit: (q) => openCatalog(q) }}
       actions={{
-        catalog: () => setShowCourseCatalog(true),
+        catalog: () => openCatalog(""),
         forum: () => setShowForum(true),
         calendar: () => setShowCalendar(true),
         tutor: () => setShowAiTutor(true),
@@ -257,7 +264,7 @@ export default function StudentDashboard() {
                   <span>Academic Calendar</span>
                 </button>
                 <button
-                  onClick={() => setShowCourseCatalog(true)}
+                  onClick={() => openCatalog("")}
                   className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand/20 transition-all"
                 >
                   <Search className="h-3.5 w-3.5" />
@@ -465,6 +472,7 @@ export default function StudentDashboard() {
       {/* Course Catalog Modal */}
       {showCourseCatalog && (
         <CourseCatalog
+          initialQuery={catalogQuery}
           onClose={() => setShowCourseCatalog(false)}
           onEnrolled={(courseId) => {
             triggerXApi(`enrolled in course ${courseId}`, "Catalog");

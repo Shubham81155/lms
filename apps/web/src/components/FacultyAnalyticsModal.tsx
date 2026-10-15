@@ -1,197 +1,313 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  X,
-  BarChart2,
-  TrendingUp,
-  AlertTriangle,
-  Users,
-  CheckCircle2,
-  Download,
-  Mail,
-  Calendar,
-  Sparkles,
-  HelpCircle,
-  FileSpreadsheet,
-} from "lucide-react";
-import { useCohortAnalytics } from "@/hooks/useAnalytics";
+import React, { useEffect, useState } from "react";
+import { X, BarChart2, AlertTriangle, CheckCircle2, Download, Sparkles, RefreshCw } from "lucide-react";
+import { api } from "@/lib/api";
+import { useCohortAnalytics, type AtRiskLearner } from "@/hooks/useAnalytics";
+import { errorMessage } from "@/hooks/useApiData";
+import { activeShare, cohortReportCsv, cohortReportFilename, hasGpa } from "@/lib/cohortReport";
+import { downloadCsv } from "@/lib/download";
 
 interface FacultyAnalyticsModalProps {
   onClose: () => void;
 }
 
+type TabId = "OVERVIEW" | "AT_RISK" | "ITEM_ANALYSIS";
+type Notice = { kind: "ok" | "error"; text: string };
+
+const EmptyState: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <div className="rounded-2xl border border-dashed border-line bg-canvas/50 px-6 py-12 text-center">
+    <p className="text-sm font-bold text-ink">{title}</p>
+    <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-ink-muted">{children}</p>
+  </div>
+);
+
+const MetricCard: React.FC<{ label: string; value: string; caption?: string; tone?: "default" | "danger" }> = ({ label, value, caption, tone = "default" }) => (
+  <div className="rounded-2xl border border-line/90 bg-canvas p-4">
+    <span className="block text-[10px] font-semibold uppercase text-ink-subtle">{label}</span>
+    <div className={`mt-1 text-xl font-extrabold ${tone === "danger" ? "text-danger" : "text-ink"}`}>{value}</div>
+    <span className="block min-h-[14px] text-[10px] font-medium text-ink-muted">{caption}</span>
+  </div>
+);
+
 export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<"OVERVIEW" | "AT_RISK" | "ITEM_ANALYSIS">("OVERVIEW");
-  const [notification, setNotification] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>("OVERVIEW");
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [nudges, setNudges] = useState<Record<string, "sending" | "sent">>({});
+  const { analytics, isLoading, error, refetch } = useCohortAnalytics();
 
-  const { analytics, isLoading } = useCohortAnalytics();
+  const metrics = analytics?.metrics;
+  const atRisk = analytics?.atRiskLearners ?? [];
+  const items = analytics?.itemAnalysis ?? [];
+  const bloom = analytics?.bloomsMastery ?? [];
+  const hasLearners = !!metrics && metrics.totalEnrolled > 0;
+  const share = metrics ? activeShare(metrics) : null;
 
-  const metrics = analytics?.metrics || {
-    totalEnrolled: 428,
-    activeThisWeek: 394,
-    averageProgress: 76.4,
-    completionRate: 74,
-    averageGpa: 3.78,
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const nudgeKey = (s: AtRiskLearner) => `${s.id}:${s.courseId ?? ""}`;
+
+  const sendNudge = async (student: AtRiskLearner) => {
+    if (!student.courseId) return;
+    const key = nudgeKey(student);
+    setNudges((n) => ({ ...n, [key]: "sending" }));
+    try {
+      await api.post("/api/v1/analytics/at-risk/nudge", { courseId: student.courseId, userId: student.id });
+      setNudges((n) => ({ ...n, [key]: "sent" }));
+      setNotice({ kind: "ok", text: `Nudge sent to ${student.name}.` });
+    } catch (e) {
+      setNudges((n) => {
+        const { [key]: _gone, ...rest } = n;
+        return rest;
+      });
+      setNotice({ kind: "error", text: errorMessage(e, "Could not send the nudge.") });
+    }
   };
 
-  const atRiskLearners = analytics?.atRiskLearners || [
-    {
-      id: "usr_03",
-      name: "Liam Johnson",
-      email: "liam.johnson@harvard.edu",
-      course: "CS-101",
-      riskFactor: "HIGH" as const,
-      reasons: ["Plagiarism match 42.8% on Lab 2", "Inactivity for > 6 days", "Quiz attempt score: 58%"],
-      suggestedAction: "Schedule 1-on-1 Office Hours & Academic Support",
-      streakDays: 2,
-    },
-    {
-      id: "usr_04",
-      name: "Ethan Brooks",
-      email: "ethan.brooks@harvard.edu",
-      course: "DS-201",
-      riskFactor: "MEDIUM" as const,
-      reasons: ["Progress stalled at Module 1.2", "Failed Quiz 1 (Score: 62%)"],
-      suggestedAction: "Send AI Adaptive Practice Drill Nudge",
-      streakDays: 4,
-    },
-  ];
-
-  const itemAnalysis = analytics?.itemAnalysis || [
-    {
-      questionId: "q_raft_split",
-      concept: "Raft Split-Brain Quorum Partitioning",
-      taxonomyLevel: "EVALUATE",
-      averageScorePercent: 54,
-      status: "FLAGGED_HIGH_DIFFICULTY",
-      recommendation: "Review leader election edge cases in lecture",
-    },
-    {
-      questionId: "q_aes_gcm",
-      concept: "AES-256-GCM Auth Tag Verification",
-      taxonomyLevel: "APPLY",
-      averageScorePercent: 88,
-      status: "NORMAL",
-      recommendation: "Strong cohort comprehension",
-    },
-    {
-      questionId: "q_flp_thm",
-      concept: "FLP Impossibility in Asynchronous Systems",
-      taxonomyLevel: "ANALYZE",
-      averageScorePercent: 62,
-      status: "ATTENTION_NEEDED",
-      recommendation: "Emphasize partial synchrony assumptions",
-    },
-  ];
-
-  const bloomsMastery = analytics?.bloomsMastery || [
-    { level: "REMEMBER", score: 94 },
-    { level: "UNDERSTAND", score: 89 },
-    { level: "APPLY", score: 82 },
-    { level: "ANALYZE", score: 76 },
-    { level: "EVALUATE", score: 68 },
-    { level: "CREATE", score: 72 },
-  ];
-
-  const handleSendNudge = (studentName: string) => {
-    setNotification(`AI adaptive practice drill and calendar invite dispatched to ${studentName}!`);
-    setTimeout(() => setNotification(null), 4000);
+  const exportReport = () => {
+    if (!analytics) return;
+    downloadCsv(cohortReportFilename(), cohortReportCsv(analytics));
+    setNotice({ kind: "ok", text: "Report downloaded." });
   };
 
-  const handleExportReport = () => {
-    setNotification("Generated Cohort_Analytics_Report_Fall_2026.csv for Faculty Senate!");
-    setTimeout(() => setNotification(null), 4000);
-  };
+  const tabs: { id: TabId; label: string }[] = [
+    { id: "OVERVIEW", label: "Bloom's Cognitive Distribution" },
+    { id: "AT_RISK", label: `Early-Warning Radar${analytics ? ` (${atRisk.length})` : ""}` },
+    { id: "ITEM_ANALYSIS", label: "Assessment Item Difficulty Analysis" },
+  ];
+
+  let body: React.ReactNode;
+  if (isLoading) {
+    body = (
+      <p role="status" className="py-16 text-center text-xs text-ink-muted">
+        Loading cohort analytics…
+      </p>
+    );
+  } else if (error || !analytics) {
+    body = (
+      <div role="alert" className="mx-auto max-w-md rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center">
+        <p className="text-sm font-bold text-danger">Could not load the analytics</p>
+        <p className="mt-1.5 text-xs text-ink-muted">{error ?? "No data was returned."}</p>
+        <button
+          onClick={refetch}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-raised"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Try again
+        </button>
+      </div>
+    );
+  } else if (activeTab === "OVERVIEW") {
+    body = (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div>
+          <h4 className="text-sm font-bold text-ink">Cohort Mastery Across Bloom&apos;s Cognitive Taxonomy</h4>
+          <p className="mt-1 text-xs text-ink-muted">Synthesized across MCQ assessments, open code lab unit tests, and rubric grading criteria.</p>
+        </div>
+        {bloom.length === 0 ? (
+          <EmptyState title="No Bloom's taxonomy data yet">
+            Mastery per level appears once quiz questions have a Bloom level (set it in the Question Bank) and learners have answered them.
+          </EmptyState>
+        ) : (
+          <div className="space-y-3.5">
+            {bloom.map((b) => (
+              <div key={b.level} className="space-y-2 rounded-2xl border border-line bg-canvas p-4">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-ink">{b.level}</span>
+                  <span className="font-bold text-orchid">{b.score}% Cohort Mastery</span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full border border-line bg-surface">
+                  <div className="h-2.5 rounded-full bg-gradient-to-r from-purple-500 to-brand-hover transition-all duration-700" style={{ width: `${b.score}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  } else if (activeTab === "AT_RISK") {
+    body = (
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-bold text-ink">Predictive At-Risk Student Intervention Queue</h4>
+          <p className="mt-1 text-xs text-ink-muted">Learners automatically flagged by heuristic rules: low engagement, streak drops, or failed milestones.</p>
+        </div>
+        {atRisk.length === 0 ? (
+          <EmptyState title="No learners are flagged right now">
+            {hasLearners
+              ? "Nobody in your courses currently matches the early-warning rules. This list updates as engagement and scores change."
+              : "There are no learners enrolled in your courses yet."}
+          </EmptyState>
+        ) : (
+          <div className="space-y-3">
+            {atRisk.map((student) => {
+              const state = nudges[nudgeKey(student)];
+              return (
+                <div key={nudgeKey(student)} className="flex flex-col justify-between gap-4 rounded-2xl border border-danger/30 bg-canvas p-5 shadow-lg md:flex-row md:items-center">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="text-sm text-ink">{student.name}</strong>
+                      <span className="text-xs text-ink-muted">({student.email})</span>
+                      <span className="rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-[10px] font-bold text-danger">{student.riskFactor} RISK</span>
+                      <span className="text-xs text-ink-subtle">• {student.course}</span>
+                    </div>
+                    <div className="space-y-1">
+                      {student.reasons.map((r, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-xs text-ink-muted">
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-accent" />
+                          <span>{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="text-[11px] font-medium text-orchid">Recommended Action: {student.suggestedAction}</div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      onClick={() => sendNudge(student)}
+                      disabled={!student.courseId || state !== undefined}
+                      title={student.courseId ? "Sends the learner a notification" : "This entry has no course"}
+                      className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-on-brand shadow-md shadow-purple-500/20 transition-all hover:bg-purple-500 disabled:opacity-60"
+                    >
+                      {state === "sent" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      <span>{state === "sent" ? "Nudge sent" : state === "sending" ? "Sending…" : "Send Nudge"}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    body = (
+      <div className="space-y-4">
+        <div>
+          <h4 className="text-sm font-bold text-ink">Curriculum & Assessment Item Diagnostics</h4>
+          <p className="mt-1 text-xs text-ink-muted">Questions where student scores deviate significantly from the class baseline.</p>
+        </div>
+        {items.length === 0 ? (
+          <EmptyState title="No question results to analyse yet">Item diagnostics appear once learners have submitted quizzes that contain questions.</EmptyState>
+        ) : (
+          <div className="space-y-3">
+            {items.map((item) => (
+              <div key={item.questionId} className="flex flex-col justify-between gap-4 rounded-2xl border border-line bg-canvas p-5 md:flex-row md:items-center">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <strong className="text-sm text-ink">{item.concept}</strong>
+                    <span className="rounded border border-line bg-surface px-2 py-0.5 text-[10px] font-bold text-ink-muted">
+                      {item.taxonomyLevel ? `Bloom: ${item.taxonomyLevel}` : (item.questionType ?? "Question")}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        item.averageScorePercent < 60
+                          ? "border border-danger/30 bg-danger/10 text-danger"
+                          : item.averageScorePercent < 75
+                            ? "border border-accent/30 bg-accent/10 text-accent"
+                            : "border border-success/30 bg-success/10 text-success"
+                      }`}
+                    >
+                      {item.averageScorePercent}% Accuracy
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-ink-muted">
+                    Faculty Pedagogical Recommendation: <strong className="text-ink">{item.recommendation}</strong>
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-        {/* Header */}
-        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/85 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="cohort-h">
+      <div className="flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-line bg-canvas px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-orchid/20 border border-orchid/30 flex items-center justify-center text-orchid">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-orchid/30 bg-orchid/20 text-orchid">
               <BarChart2 className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-ink">Faculty Cohort Intelligence & Early-Warning Radar</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orchid/15 text-orchid border border-orchid/30">
-                  CS-101 & DS-201 Cohort
-                </span>
-              </div>
-              <p className="text-xs text-ink-muted">
-                Predictive student retention, Bloom's cognitive taxonomy distribution, and item difficulty diagnostics.
-              </p>
+              <h3 id="cohort-h" className="text-base font-bold text-ink">
+                Faculty Cohort Intelligence & Early-Warning Radar
+              </h3>
+              <p className="text-xs text-ink-muted">Learner retention, Bloom&apos;s cognitive taxonomy distribution, and item difficulty diagnostics for your courses.</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
-              onClick={handleExportReport}
-              className="px-3.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              onClick={exportReport}
+              disabled={!analytics}
+              className="flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-raised disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5 text-orchid" />
               <span>Export CSV Report</span>
             </button>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
-            >
+            <button onClick={onClose} aria-label="Close" className="rounded-xl p-1 text-ink-muted transition-colors hover:bg-raised hover:text-ink">
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Notification Banner */}
-        {notification && (
-          <div className="bg-success/10 border-b border-success/30 px-6 py-2.5 text-xs text-success flex items-center gap-2 animate-fadeIn">
-            <CheckCircle2 className="h-4 w-4 text-success" />
-            <span className="font-semibold">{notification}</span>
+        {notice && (
+          <div
+            role={notice.kind === "error" ? "alert" : "status"}
+            className={`flex animate-fadeIn items-center gap-2 border-b px-6 py-2.5 text-xs ${
+              notice.kind === "ok" ? "border-success/30 bg-success/10 text-success" : "border-danger/30 bg-danger/10 text-danger"
+            }`}
+          >
+            {notice.kind === "ok" ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+            <span className="font-semibold">{notice.text}</span>
           </div>
         )}
 
-        {/* Key Metrics Header */}
-        <div className="bg-canvas/40 border-b border-line p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-canvas border border-line/90 p-4 rounded-2xl">
-            <span className="text-[10px] font-semibold text-ink-subtle uppercase block">Total Learners</span>
-            <div className="text-xl font-extrabold text-ink mt-1">{metrics.totalEnrolled}</div>
-            <span className="text-[10px] text-success font-medium">92% active this week</span>
-          </div>
-
-          <div className="bg-canvas border border-line/90 p-4 rounded-2xl">
-            <span className="text-[10px] font-semibold text-ink-subtle uppercase block">Average Completion</span>
-            <div className="text-xl font-extrabold text-ink mt-1">{metrics.averageProgress}%</div>
-            <span className="text-[10px] text-brand-fg font-medium">+4.2% vs last term</span>
-          </div>
-
-          <div className="bg-canvas border border-line/90 p-4 rounded-2xl">
-            <span className="text-[10px] font-semibold text-ink-subtle uppercase block">Predictive At-Risk</span>
-            <div className="text-xl font-extrabold text-danger mt-1">{atRiskLearners.length} Students</div>
-            <span className="text-[10px] text-danger font-medium">Early interventions pending</span>
-          </div>
-
-          <div className="bg-canvas border border-line/90 p-4 rounded-2xl">
-            <span className="text-[10px] font-semibold text-ink-subtle uppercase block">Cohort Average GPA</span>
-            <div className="text-xl font-extrabold text-ink mt-1">{metrics.averageGpa}</div>
-            <span className="text-[10px] text-success font-medium">Exceeds department benchmark</span>
-          </div>
+        <div className="grid grid-cols-2 gap-4 border-b border-line bg-canvas/40 p-6 md:grid-cols-4">
+          <MetricCard
+            label="Total Learners"
+            value={metrics ? String(metrics.totalEnrolled) : "—"}
+            caption={metrics ? (share === null ? "Nobody enrolled yet" : `${share}% active this week`) : undefined}
+          />
+          <MetricCard
+            label="Average Completion"
+            value={hasLearners ? `${metrics.averageProgress}%` : "—"}
+            caption={hasLearners ? `${metrics.completionRate}% have finished` : undefined}
+          />
+          <MetricCard
+            label="At-Risk Learners"
+            value={analytics ? String(atRisk.length) : "—"}
+            tone={atRisk.length > 0 ? "danger" : "default"}
+            caption={analytics ? (atRisk.length > 0 ? "Early interventions pending" : "Nobody flagged right now") : undefined}
+          />
+          <MetricCard
+            label="Cohort Average GPA"
+            value={metrics && hasGpa(metrics) ? metrics.averageGpa.toFixed(2) : "—"}
+            caption={metrics ? (hasGpa(metrics) ? "4.0 scale, approved grades" : "No approved grades yet") : undefined}
+          />
         </div>
 
-        {/* Tab Navigation */}
-        <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex items-center gap-2 text-xs font-bold">
-          {[
-            { id: "OVERVIEW", label: "Bloom's Cognitive Distribution" },
-            { id: "AT_RISK", label: `Early-Warning Radar (${atRiskLearners.length} At-Risk)` },
-            { id: "ITEM_ANALYSIS", label: "Assessment Item Difficulty Analysis" },
-          ].map((tab) => (
+        <div role="tablist" aria-label="Analytics views" className="flex items-center gap-2 border-b border-line bg-canvas/60 px-6 py-2.5 text-xs font-bold">
+          {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3 py-1.5 rounded-xl transition-all ${
-                activeTab === tab.id
-                  ? "bg-purple-600 text-on-brand shadow-md shadow-purple-500/20"
-                  : "text-ink-muted hover:text-ink hover:bg-surface"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`rounded-xl px-3 py-1.5 transition-all ${
+                activeTab === tab.id ? "bg-purple-600 text-on-brand shadow-md shadow-purple-500/20" : "text-ink-muted hover:bg-surface hover:text-ink"
               }`}
             >
               {tab.label}
@@ -199,131 +315,7 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
           ))}
         </div>
 
-        {/* Body Content */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          {activeTab === "OVERVIEW" && (
-            <div className="space-y-6 max-w-3xl mx-auto">
-              <div>
-                <h4 className="text-sm font-bold text-ink">Cohort Mastery Across Bloom's Cognitive Taxonomy</h4>
-                <p className="text-xs text-ink-muted mt-1">
-                  Synthesized across MCQ assessments, open code lab unit tests, and rubric grading criteria.
-                </p>
-              </div>
-
-              <div className="space-y-3.5">
-                {bloomsMastery.map((b) => (
-                  <div key={b.level} className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-ink">{b.level}</span>
-                      <span className="text-orchid font-bold">{b.score}% Cohort Mastery</span>
-                    </div>
-                    <div className="w-full bg-surface rounded-full h-2.5 overflow-hidden border border-line">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 to-brand-hover h-2.5 rounded-full transition-all duration-700"
-                        style={{ width: `${b.score}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "AT_RISK" && (
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-ink">Predictive At-Risk Student Intervention Queue</h4>
-                <p className="text-xs text-ink-muted mt-1">
-                  Learners automatically flagged by heuristic rules: low engagement, streak drops, or failed milestones.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {atRiskLearners.map((student) => (
-                  <div
-                    key={student.id}
-                    className="bg-canvas border border-danger/30 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-sm text-ink">{student.name}</strong>
-                        <span className="text-xs text-ink-muted">({student.email})</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/30">
-                          {student.riskFactor} RISK
-                        </span>
-                        <span className="text-xs text-ink-subtle">• {student.course}</span>
-                      </div>
-
-                      <div className="space-y-1">
-                        {student.reasons.map((r, rIdx) => (
-                          <div key={rIdx} className="text-xs text-ink-muted flex items-center gap-1.5">
-                            <AlertTriangle className="h-3.5 w-3.5 text-accent shrink-0" />
-                            <span>{r}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="text-[11px] text-orchid font-medium">
-                        Recommended Action: {student.suggestedAction}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleSendNudge(student.name)}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-500/20 transition-all"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        <span>Send Nudge</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "ITEM_ANALYSIS" && (
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-bold text-ink">Curriculum & Assessment Item Diagnostics</h4>
-                <p className="text-xs text-ink-muted mt-1">
-                  Questions where student scores deviate significantly from the class baseline.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                {itemAnalysis.map((item) => (
-                  <div
-                    key={item.questionId}
-                    className="bg-canvas border border-line rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <strong className="text-sm text-ink">{item.concept}</strong>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-surface text-ink-muted border border-line">
-                          {item.taxonomyLevel ? `Bloom: ${item.taxonomyLevel}` : (item.questionType ?? "Question")}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          item.averageScorePercent < 60
-                            ? "bg-danger/10 text-danger border border-danger/30"
-                            : item.averageScorePercent < 75
-                            ? "bg-accent/10 text-accent border border-accent/30"
-                            : "bg-success/10 text-success border border-success/30"
-                        }`}>
-                          {item.averageScorePercent}% Accuracy
-                        </span>
-                      </div>
-                      <p className="text-xs text-ink-muted mt-1.5">
-                        Faculty Pedagogical Recommendation: <strong className="text-ink">{item.recommendation}</strong>
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <div className="flex-1 overflow-y-auto p-6">{body}</div>
       </div>
     </div>
   );

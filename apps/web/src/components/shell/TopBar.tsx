@@ -9,8 +9,16 @@ import { NotificationCenter } from "@/components/NotificationCenter";
 import { useNotifications } from "@/hooks/useNotifications";
 import { AREA_LABEL, type Area } from "@/lib/navigation";
 
+export interface TopBarSearch {
+  placeholder: string;
+  /** Called with the trimmed text; an empty string means "show everything". */
+  onSubmit: (query: string) => void;
+}
+
 interface TopBarProps {
   area: Area;
+  /** Without this the search box is not shown, so there is never an input that does nothing. */
+  search?: TopBarSearch;
   /** Label of the current place, shown as the breadcrumb. */
   currentLabel: string;
   drawerOpen: boolean;
@@ -18,8 +26,9 @@ interface TopBarProps {
 }
 
 /** What stays across the top once navigation lives in the sidebar: where you are, search, alerts, theme. */
-export const TopBar: React.FC<TopBarProps> = ({ area, currentLabel, drawerOpen, onOpenMenu }) => {
+export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, drawerOpen, onOpenMenu }) => {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [query, setQuery] = useState("");
   const notifications = useNotifications();
 
   return (
@@ -47,15 +56,27 @@ export const TopBar: React.FC<TopBarProps> = ({ area, currentLabel, drawerOpen, 
       </nav>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
-        <div className="hidden items-center gap-2 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink-muted xl:flex">
-          <Search className="h-3.5 w-3.5" />
-          <input
-            type="text"
-            aria-label="Search"
-            placeholder="Search catalog, records..."
-            className="w-36 border-none bg-transparent text-xs text-ink transition-all focus:w-48 focus:outline-none"
-          />
-        </div>
+        {search && (
+          <form
+            role="search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              search.onSubmit(query.trim());
+            }}
+            className="hidden items-center gap-2 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink-muted transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 md:flex"
+          >
+            <Search className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <input
+              type="search"
+              aria-label={search.placeholder}
+              placeholder={search.placeholder}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              maxLength={100}
+              className="w-32 border-none bg-transparent text-xs text-ink transition-all placeholder:text-ink-subtle focus:w-52 focus:outline-none lg:w-40"
+            />
+          </form>
+        )}
 
         <div className="relative">
           <button
