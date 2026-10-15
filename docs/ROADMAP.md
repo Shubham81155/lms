@@ -16,7 +16,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | Prisma migrations, seed, test database | Done | embedded PostgreSQL in tests |
 | Secrets/config validation at start-up | Done | weak or placeholder secrets refuse to boot |
 | Server-side session revocation (token version, live status/role check), `/ready` probe, global API rate limits | Done | shared across instances when `REDIS_URL` is set (not exercised against a live Redis here), per process otherwise |
-| ESLint, Docker/compose for local stack | Done | Dockerfiles/compose not yet exercised; API runs via ts-node. CI intentionally not set up |
+| CI (lint, typecheck, tests, web build, audit), ESLint, Docker/compose for local stack | Done | workflow not yet run on GitHub; Dockerfiles/compose not yet exercised; API runs via ts-node |
 | Infrastructure as code (Terraform), GitOps CI/CD | Open | |
 | mTLS service mesh, Vault/KMS secret rotation | Open | |
 
