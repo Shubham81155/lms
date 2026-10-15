@@ -67,9 +67,9 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const [showAiTutor, setShowAiTutor] = useState(false);
   const [activeLessonCourse, setActiveLessonCourse] = useState<{
+    id: string;
     code: string;
     title: string;
-    progress: number;
   } | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<string>("courses");
@@ -116,7 +116,7 @@ export default function StudentDashboard() {
     }
   };
 
-  const { enrollments, isLoading: isLoadingEnrollments } = useMyEnrollments();
+  const { enrollments, isLoading: isLoadingEnrollments, refetch: refetchEnrollments } = useMyEnrollments();
   const { stats } = useEnrollmentStats();
   const { state: gameState } = useGamification(null);
 
@@ -312,9 +312,9 @@ export default function StudentDashboard() {
                     <button
                       onClick={() =>
                         setActiveLessonCourse({
+                          id: course.id,
                           code: course.code,
                           title: course.title,
-                          progress: course.progress,
                         })
                       }
                       className="w-full text-left bg-canvas hover:bg-surface rounded-xl p-2.5 border border-line/80 hover:border-brand/50 text-xs transition-colors group/les"
@@ -483,10 +483,13 @@ export default function StudentDashboard() {
       {/* Interactive Lesson Curriculum Player Modal */}
       {activeLessonCourse && (
         <LessonPlayer
+          courseId={activeLessonCourse.id}
           courseCode={activeLessonCourse.code}
           courseTitle={activeLessonCourse.title}
-          initialProgress={activeLessonCourse.progress}
-          onClose={() => setActiveLessonCourse(null)}
+          onClose={() => {
+            setActiveLessonCourse(null);
+            refetchEnrollments();
+          }}
           onProgressUpdated={(newPercent) => {
             triggerXApi(`advanced course progress to ${newPercent}%`, activeLessonCourse.title);
           }}
@@ -494,8 +497,8 @@ export default function StudentDashboard() {
             openExamFor(activeLessonCourse.code);
             setActiveLessonCourse(null);
           }}
-          onOpenCodeLab={() => {
-            setActiveCodingLab(`${activeLessonCourse.code}: Distributed Lab`);
+          onOpenCodeLab={(lessonTitle) => {
+            setActiveCodingLab(`${activeLessonCourse.code}: ${lessonTitle}`);
             setActiveLessonCourse(null);
           }}
         />
