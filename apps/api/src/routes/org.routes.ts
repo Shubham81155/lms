@@ -227,7 +227,7 @@ router.get(
       {
         id: 'data-subject-requests', name: 'Data subject requests',
         status: 'INFO',
-        detail: 'A full tenant export is available under Plan, Webhooks & Usage. Self-service erasure and per-person requests are not built yet.',
+        detail: 'A full tenant export is available under Plan, Webhooks & Usage. People can export their own data, opt out of directory information and erase their account through the API (/api/v1/privacy); administrators can do the same on request. There is no request queue or retention scheduler yet.',
       },
     ];
 

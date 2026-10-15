@@ -94,3 +94,4 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 
 1. Webcam/audio proctoring; Turnitin/Copyleaks adapter.
 2. Daily digest e-mails and SMS/push channels.
+3. Wire `DsarComplianceModal` to `/api/v1/privacy`, then add a DSAR request queue and retention scheduler.
