@@ -23,6 +23,16 @@ interface DiscussionForumProps {
   onClose: () => void;
 }
 
+// Categories every course can use. Older threads may carry others (the API still accepts them),
+// and those show up as filters only while a thread in them is loaded.
+const CATEGORIES = ["General", "Assignments", "Exams", "Logistics"] as const;
+const CATEGORY_LABELS: Record<(typeof CATEGORIES)[number], string> = {
+  General: "General",
+  Assignments: "Assignments & labs",
+  Exams: "Exams",
+  Logistics: "Logistics",
+};
+
 const STAFF_ROLES = ["INSTRUCTOR", "TEACHING_ASSISTANT", "TENANT_ADMIN", "SUPER_ADMIN"];
 
 export const DiscussionForum: React.FC<DiscussionForumProps> = ({
@@ -42,13 +52,21 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
   // New Thread Form States
   const [newTitle, setNewTitle] = useState("");
-  const [newCategory, setNewCategory] = useState<"Consensus" | "Cryptography" | "Assignments" | "General">("Consensus");
+  const [newCategory, setNewCategory] = useState<(typeof CATEGORIES)[number]>("General");
   const [newContent, setNewContent] = useState("");
 
   // Reply Input State
   const [replyText, setReplyText] = useState("");
 
   const activeThread = threads.find((t) => t.id === activeId) || threads[0];
+
+  const filterCategories = [
+    "ALL",
+    ...CATEGORIES,
+    ...Array.from(new Set([...threads.map((t) => t.category), selectedCategory])).filter(
+      (c) => c !== "ALL" && !(CATEGORIES as readonly string[]).includes(c)
+    ),
+  ];
 
   const filteredThreads = threads.filter((t) => {
     const matchesSearch =
@@ -154,7 +172,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-            {["ALL", "Consensus", "Cryptography", "Assignments", "General"].map((cat) => (
+            {filterCategories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
@@ -423,10 +441,11 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                   onChange={(e) => setNewCategory(e.target.value as any)}
                   className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink focus:outline-none focus:border-brand"
                 >
-                  <option value="Consensus">Distributed Consensus</option>
-                  <option value="Cryptography">Data Security & Cryptography</option>
-                  <option value="Assignments">Assignments & Labs</option>
-                  <option value="General">General Inquiries</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_LABELS[c]}
+                    </option>
+                  ))}
                 </select>
               </div>
 
