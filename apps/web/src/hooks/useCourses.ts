@@ -155,13 +155,6 @@ export function useUpdateCourse() {
   };
 }
 
-const LESSON_CONTENT_TYPE: Record<string, string> = {
-  VIDEO: 'VIDEO',
-  CODE: 'INTERACTIVE_CODE',
-  SCORM: 'SCORM_PACKAGE',
-  RICHTEXT: 'RICHTEXT',
-};
-
 /**
  * Creates a course and then its modules and lessons, in order. Throws with a message that says
  * what was and was not saved, so a half-built course is never reported as a success.
@@ -179,14 +172,17 @@ export async function createCourseWithCurriculum(draft: import('@/components/Cou
 
   for (const [m, mod] of draft.modules.entries()) {
     try {
-      const created = await api.post<any>(`/api/v1/courses/${course.id}/modules`, { title: mod.title, orderIndex: m });
+      const created = await api.post<any>(`/api/v1/courses/${course.id}/modules`, { title: mod.title.trim(), orderIndex: m });
       const moduleId = (created.data ?? created).id;
       for (const [l, lesson] of mod.lessons.entries()) {
         await api.post(`/api/v1/courses/${course.id}/modules/${moduleId}/lessons`, {
-          title: lesson.title,
+          title: lesson.title.trim(),
           orderIndex: l,
-          contentType: LESSON_CONTENT_TYPE[lesson.type] ?? 'RICHTEXT',
-          estimatedMinutes: Math.max(1, parseInt(lesson.duration, 10) || 15),
+          contentType: lesson.type,
+          estimatedMinutes: Math.max(1, lesson.minutes || 15),
+          ...(lesson.body.trim() ? { bodyContent: lesson.body.trim() } : {}),
+          ...(lesson.url.trim() && lesson.type === 'EXTERNAL_LTI_TOOL' ? { ltiToolLaunchUrl: lesson.url.trim() } : {}),
+          ...(lesson.url.trim() && lesson.type !== 'EXTERNAL_LTI_TOOL' ? { mediaUrl: lesson.url.trim() } : {}),
         });
       }
     } catch (e) {

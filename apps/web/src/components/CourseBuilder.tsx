@@ -5,10 +5,6 @@ import {
   X,
   Plus,
   Trash2,
-  FileText,
-  Video,
-  Code,
-  Package,
   Sparkles,
   Save,
   CheckCircle,
@@ -20,12 +16,50 @@ import {
 } from "lucide-react";
 import { AiCurriculumGenerator } from "@enterprise-lms/security";
 
+export type LessonType = "RICHTEXT" | "VIDEO" | "INTERACTIVE_CODE" | "PDF_DOCUMENT" | "EXTERNAL_LTI_TOOL";
+
 export interface BuilderLesson {
   id: string;
   title: string;
-  type: string;
-  duration: string;
+  type: LessonType;
+  minutes: number;
+  /** The lesson text; for a code lab, the exercise instructions. */
+  body: string;
+  /** Video or document address, or the external tool's launch address. */
+  url: string;
 }
+
+const LESSON_TYPES: { value: LessonType; label: string }[] = [
+  { value: "RICHTEXT", label: "Reading" },
+  { value: "VIDEO", label: "Video" },
+  { value: "INTERACTIVE_CODE", label: "Code lab" },
+  { value: "PDF_DOCUMENT", label: "Document" },
+  { value: "EXTERNAL_LTI_TOOL", label: "External tool" },
+];
+
+const URL_LABEL: Partial<Record<LessonType, string>> = {
+  VIDEO: "Video address (https)",
+  PDF_DOCUMENT: "Document address (https)",
+  EXTERNAL_LTI_TOOL: "Tool launch address (https)",
+};
+
+const isHttpUrl = (v: string) => {
+  try {
+    return ["http:", "https:"].includes(new URL(v).protocol);
+  } catch {
+    return false;
+  }
+};
+
+const blankLesson = (patch: Partial<BuilderLesson> = {}): BuilderLesson => ({
+  id: `les_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+  title: "",
+  type: "RICHTEXT",
+  minutes: 15,
+  body: "",
+  url: "",
+  ...patch,
+});
 
 export interface BuilderModule {
   id: string;
@@ -78,30 +112,16 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
   const handleApplyAiToModules = () => {
     if (!aiGeneratedItems) return;
 
-    const newLessons = [
-      {
-        id: `les_ai_video_${Date.now()}`,
-        title: `${aiTopic}: Theoretical Foundations`,
-        type: "VIDEO",
-        duration: "30 min",
-      },
-      ...aiGeneratedItems.keyTakeaways.slice(0, 2).map((takeaway: string, idx: number) => ({
-        id: `les_ai_doc_${Date.now()}_${idx}`,
-        title: `Deep Dive: ${takeaway.slice(0, 45)}...`,
-        type: "RICHTEXT",
-        duration: "20 min",
-      })),
-      {
-        id: `les_ai_lab_${Date.now()}`,
-        title: `Hands-on Lab: ${aiTopic} Verification`,
-        type: "CODE",
-        duration: "45 min",
-      },
+    const takeaways: string[] = aiGeneratedItems.keyTakeaways ?? [];
+    const newLessons: BuilderLesson[] = [
+      blankLesson({ title: `${aiTopic}: key ideas`, minutes: 20, body: takeaways.join("\n\n") }),
+      ...takeaways.slice(0, 2).map((takeaway) => blankLesson({ title: `Deep dive: ${takeaway.slice(0, 45)}${takeaway.length > 45 ? "…" : ""}`, minutes: 20, body: takeaway })),
+      blankLesson({ title: `Hands-on lab: ${aiTopic}`, type: "INTERACTIVE_CODE", minutes: 45, body: `Write code that demonstrates the main idea of ${aiTopic}, and print the result with console.log.` }),
     ];
 
-    const newModule = {
+    const newModule: BuilderModule = {
       id: `mod_ai_${Date.now()}`,
-      title: `Module ${modules.length + 1}: ${aiTopic}`,
+      title: aiTopic,
       lessons: newLessons,
     };
 
@@ -110,39 +130,27 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
   };
 
   const addModule = () => {
-    const newMod = {
-      id: `mod_${Date.now()}`,
-      title: `Module ${modules.length + 1}: Advanced Topics`,
-      lessons: [
-        { id: `les_${Date.now()}`, title: "New Lesson Item", type: "RICHTEXT", duration: "20 min" },
-      ],
-    };
-    setModules([...modules, newMod]);
+    setModules([...modules, { id: `mod_${Date.now()}`, title: "", lessons: [blankLesson()] }]);
   };
 
   const deleteModule = (modId: string) => {
     setModules(modules.filter((m) => m.id !== modId));
   };
 
+  const renameModule = (modId: string, title: string) => {
+    setModules(modules.map((m) => (m.id === modId ? { ...m, title } : m)));
+  };
+
   const addLesson = (modId: string) => {
-    setModules(
-      modules.map((m) =>
-        m.id === modId
-          ? {
-              ...m,
-              lessons: [
-                ...m.lessons,
-                {
-                  id: `les_${Date.now()}`,
-                  title: `Lesson ${m.lessons.length + 1}: New Topic`,
-                  type: "RICHTEXT",
-                  duration: "15 min",
-                },
-              ],
-            }
-          : m
-      )
-    );
+    setModules(modules.map((m) => (m.id === modId ? { ...m, lessons: [...m.lessons, blankLesson()] } : m)));
+  };
+
+  const updateLesson = (modId: string, lessonId: string, patch: Partial<BuilderLesson>) => {
+    setModules(modules.map((m) => (m.id === modId ? { ...m, lessons: m.lessons.map((l) => (l.id === lessonId ? { ...l, ...patch } : l)) } : m)));
+  };
+
+  const deleteLesson = (modId: string, lessonId: string) => {
+    setModules(modules.map((m) => (m.id === modId ? { ...m, lessons: m.lessons.filter((l) => l.id !== lessonId) } : m)));
   };
 
   useEffect(() => {
@@ -151,7 +159,12 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose, isSaving]);
 
-  const canSave = courseTitle.trim().length >= 3 && courseCode.trim().length >= 2 && !isSaving;
+  const curriculumProblem = modules.some((m) => !m.title.trim() || m.lessons.some((l) => !l.title.trim()))
+    ? "Every module and lesson needs a title."
+    : modules.some((m) => m.lessons.some((l) => l.url.trim() && !isHttpUrl(l.url.trim())))
+      ? "Addresses must start with http:// or https://."
+      : null;
+  const canSave = courseTitle.trim().length >= 3 && courseCode.trim().length >= 2 && !curriculumProblem && !isSaving;
 
   const save = async () => {
     setIsSaving(true);
@@ -318,43 +331,101 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                 </p>
               )}
 
+              {curriculumProblem && modules.length > 0 && (
+                <p role="status" className="text-[11px] font-semibold text-accent">
+                  {curriculumProblem}
+                </p>
+              )}
+
               {modules.map((mod, modIdx) => (
                 <div key={mod.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-ink">
-                      Module {modIdx + 1}: {mod.title.replace(/^Module \d+: /, "")}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => addLesson(mod.id)}
-                        className="text-[11px] text-brand-fg hover:text-brand-fg font-semibold"
-                      >
-                        + Add Lesson
-                      </button>
-                      <button
-                        onClick={() => deleteModule(mod.id)}
-                        aria-label={`Delete module ${modIdx + 1}`}
-                        className="text-ink-subtle hover:text-danger transition-colors"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 text-xs font-bold text-ink-muted">Module {modIdx + 1}</span>
+                    <input
+                      type="text"
+                      value={mod.title}
+                      onChange={(e) => renameModule(mod.id, e.target.value)}
+                      placeholder="Module title"
+                      aria-label={`Title of module ${modIdx + 1}`}
+                      className="min-w-0 flex-1 bg-surface border border-line rounded-xl px-3 py-1.5 text-xs font-bold text-ink focus:outline-none focus:border-brand"
+                    />
+                    <button
+                      onClick={() => addLesson(mod.id)}
+                      className="shrink-0 text-[11px] text-brand-fg hover:text-brand-fg font-semibold"
+                    >
+                      + Add Lesson
+                    </button>
+                    <button
+                      onClick={() => deleteModule(mod.id)}
+                      aria-label={`Delete module ${modIdx + 1}`}
+                      className="shrink-0 text-ink-subtle hover:text-danger transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
 
+                  {mod.lessons.length === 0 && <p className="text-[11px] text-ink-subtle">No lessons in this module yet.</p>}
+
                   <div className="space-y-2">
-                    {mod.lessons.map((les) => (
-                      <div
-                        key={les.id}
-                        className="bg-surface border border-line/80 p-2.5 rounded-xl flex items-center justify-between text-xs"
-                      >
-                        <div className="flex items-center gap-2 text-ink">
-                          {les.type === "VIDEO" && <Video className="h-3.5 w-3.5 text-danger" />}
-                          {les.type === "CODE" && <Code className="h-3.5 w-3.5 text-success" />}
-                          {les.type === "SCORM" && <Package className="h-3.5 w-3.5 text-accent" />}
-                          {les.type === "RICHTEXT" && <FileText className="h-3.5 w-3.5 text-brand-fg" />}
-                          <span>{les.title}</span>
+                    {mod.lessons.map((les, lesIdx) => (
+                      <div key={les.id} className="bg-surface border border-line/80 p-3 rounded-xl space-y-2 text-xs">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={les.title}
+                            onChange={(e) => updateLesson(mod.id, les.id, { title: e.target.value })}
+                            placeholder="Lesson title"
+                            aria-label={`Title of lesson ${lesIdx + 1} in module ${modIdx + 1}`}
+                            className="min-w-0 flex-1 bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
+                          />
+                          <select
+                            value={les.type}
+                            onChange={(e) => updateLesson(mod.id, les.id, { type: e.target.value as LessonType })}
+                            aria-label="Lesson type"
+                            className="bg-canvas border border-line rounded-lg px-2 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
+                          >
+                            {LESSON_TYPES.map((t) => (
+                              <option key={t.value} value={t.value}>
+                                {t.label}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            min={1}
+                            max={1440}
+                            value={les.minutes}
+                            onChange={(e) => updateLesson(mod.id, les.id, { minutes: Math.min(1440, Math.max(1, Number(e.target.value) || 1)) })}
+                            aria-label="Minutes"
+                            className="w-16 bg-canvas border border-line rounded-lg px-2 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
+                          />
+                          <span className="text-[10px] text-ink-subtle">min</span>
+                          <button
+                            onClick={() => deleteLesson(mod.id, les.id)}
+                            aria-label={`Delete lesson ${lesIdx + 1} in module ${modIdx + 1}`}
+                            className="text-ink-subtle hover:text-danger transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <span className="text-[10px] text-ink-subtle font-mono">{les.duration}</span>
+                        <textarea
+                          rows={3}
+                          value={les.body}
+                          onChange={(e) => updateLesson(mod.id, les.id, { body: e.target.value })}
+                          placeholder={les.type === "INTERACTIVE_CODE" ? "Exercise instructions, shown above the code editor" : "Lesson text. Leave a blank line between paragraphs."}
+                          aria-label="Lesson content"
+                          className="w-full bg-canvas border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
+                        />
+                        {URL_LABEL[les.type] && (
+                          <input
+                            type="url"
+                            value={les.url}
+                            onChange={(e) => updateLesson(mod.id, les.id, { url: e.target.value })}
+                            placeholder={URL_LABEL[les.type]}
+                            aria-label={URL_LABEL[les.type]}
+                            className="w-full bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
+                          />
+                        )}
                       </div>
                     ))}
                   </div>
