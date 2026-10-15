@@ -25,7 +25,7 @@ interface LessonPlayerProps {
   /** Called with the new course percentage after a lesson is recorded as finished. */
   onProgressUpdated?: (newPercent: number) => void;
   onOpenExam?: () => void;
-  onOpenCodeLab?: (lessonTitle: string) => void;
+  onOpenCodeLab?: (lesson: { title: string; instructions: string }) => void;
 }
 
 interface Lesson {
@@ -95,9 +95,10 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
   // Open on the first lesson that is not finished yet, else the first lesson.
   useEffect(() => {
-    if (activeLessonId || lessons.length === 0 || progressReq.isLoading) return;
-    setActiveLessonId((lessons.find((l) => !done.has(l.id)) ?? lessons[0]).id);
-  }, [lessons, done, activeLessonId, progressReq.isLoading]);
+    const finished = progressReq.data?.data.completedLessonIds;
+    if (activeLessonId || lessons.length === 0 || !finished) return;
+    setActiveLessonId((lessons.find((l) => !finished.includes(l.id)) ?? lessons[0]).id);
+  }, [lessons, progressReq.data, activeLessonId]);
 
   const isLoading = modulesReq.isLoading || progressReq.isLoading;
   const loadError = modulesReq.error ?? progressReq.error;
@@ -172,7 +173,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
           {textBlock}
           {onOpenCodeLab && (
             <button
-              onClick={() => onOpenCodeLab(lesson.title)}
+              onClick={() => onOpenCodeLab({ title: lesson.title, instructions: lesson.bodyContent ?? "" })}
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-on-brand shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-500"
             >
               <Code className="h-4 w-4" />

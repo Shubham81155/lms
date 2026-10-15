@@ -39,6 +39,7 @@ import { useMyEnrollments, useEnrollmentStats } from "@/hooks/useEnrollments";
 import { useGamification } from "@/hooks/useEngagement";
 import { api } from "@/lib/api";
 import { useApiData } from "@/hooks/useApiData";
+import { plural } from "@/lib/plural";
 
 interface TodoItem {
   type: "ASSIGNMENT" | "QUIZ";
@@ -56,7 +57,7 @@ interface TodoItem {
 export default function StudentDashboard() {
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [assignmentsCourse, setAssignmentsCourse] = useState<string | undefined>(undefined);
-  const [activeCodingLab, setActiveCodingLab] = useState<string | null>(null);
+  const [activeCodingLab, setActiveCodingLab] = useState<{ title: string; instructions: string } | null>(null);
   const [certificate, setCertificate] = useState<{ studentName: string; courseTitle: string; certificateId: string } | null>(null);
   const [showCourseCatalog, setShowCourseCatalog] = useState(false);
   const [catalogQuery, setCatalogQuery] = useState("");
@@ -215,7 +216,7 @@ export default function StudentDashboard() {
               <div>
                 <div className="text-xs text-ink-muted font-medium">Study Streak</div>
                 <div className="text-lg font-bold text-ink flex items-center gap-1.5">
-                  <span>{gameState?.streakDays ?? 0} Days</span>
+                  <span>{plural(gameState?.streakDays ?? 0, "Day")}</span>
                   <span className="text-[10px] text-accent">🔥</span>
                 </div>
               </div>
@@ -460,13 +461,7 @@ export default function StudentDashboard() {
 
       {/* Interactive Cloud Coding Sandbox Modal */}
       {activeCodingLab && (
-        <CodeSandbox
-          assignmentTitle={activeCodingLab}
-          onClose={() => setActiveCodingLab(null)}
-          onSubmit={(score) => {
-            triggerXApi(`submitted code lab with score ${score}%`, activeCodingLab);
-          }}
-        />
+        <CodeSandbox title={activeCodingLab.title} instructions={activeCodingLab.instructions} onClose={() => setActiveCodingLab(null)} />
       )}
 
       {/* Course Catalog Modal */}
@@ -497,8 +492,8 @@ export default function StudentDashboard() {
             openExamFor(activeLessonCourse.code);
             setActiveLessonCourse(null);
           }}
-          onOpenCodeLab={(lessonTitle) => {
-            setActiveCodingLab(`${activeLessonCourse.code}: ${lessonTitle}`);
+          onOpenCodeLab={(lab) => {
+            setActiveCodingLab({ title: `${activeLessonCourse.code}: ${lab.title}`, instructions: lab.instructions });
             setActiveLessonCourse(null);
           }}
         />
@@ -514,7 +509,7 @@ export default function StudentDashboard() {
       {/* Course Collaboration Forum Modal */}
       {showForum && (
         <DiscussionForum
-          courseCode="CS-101"
+          courseCode={displayCourses[0]?.code}
           onClose={() => setShowForum(false)}
         />
       )}
@@ -532,7 +527,7 @@ export default function StudentDashboard() {
       {/* AI Socratic Academic Tutor Modal */}
       {showAiTutor && (
         <AiTutorModal
-          courseTitle="Advanced Distributed Systems (CS-101)"
+          courseTitle={displayCourses[0] ? `${displayCourses[0].title} (${displayCourses[0].code})` : "your courses"}
           initialTopic="Raft Consensus & Split-Brain Quorum"
           onClose={() => setShowAiTutor(false)}
           onDrillCompleted={(score, boost) => {
