@@ -24,6 +24,7 @@
   --accent: 251 191 36;       /* amber highlight */
   --success: 52 211 153;
   --danger: 253 164 175;
+  --orchid: 192 132 252;      /* purple accents (AI, proctoring) */
 }
 
 html.dark {
@@ -49,6 +50,7 @@ html:not(.dark) {
   --accent: 180 83 9;
   --success: 4 120 87;
   --danger: 190 18 60;
+  --orchid: 109 40 217;
 }
 
 /* Light Theme Styling for Enterprise LMS */
@@ -116,6 +118,11 @@ html:not(.dark) textarea {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border-color: #cbd5e1 !important;
+}
+
+html:not(.dark) input:focus,
+html:not(.dark) textarea:focus {
+  border-color: rgb(var(--brand)) !important;
 }
 
 /* Hide Next.js Development Indicator Badge */

@@ -24,9 +24,9 @@ interface QuizView {
 interface Attempt { submissionId: string; expiresAt: string | null; resumed: boolean }
 interface Result { score: number; maxScore: number; percentage: number; passed: boolean; attemptsRemaining: number; pendingManualGrading: boolean }
 
-const btn = "px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all";
-const ghost = "px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
-const field = "w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500";
+const btn = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all";
+const ghost = "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
+const field = "w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand";
 
 /**
  * Takes a real quiz from the API: starts an attempt (which starts the clock), keeps the countdown,
@@ -155,39 +155,39 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Quiz">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
-        <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between gap-4">
+    <div className="fixed inset-0 z-50 bg-canvas/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Quiz">
+      <div className="bg-surface border border-line rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between gap-4">
           <div>
-            <h3 className="font-bold text-base text-white">{quiz?.title ?? "Quiz"}</h3>
-            {quiz?.course && <p className="text-xs text-slate-400">{quiz.course.code} · {quiz.course.title}</p>}
+            <h3 className="font-bold text-base text-ink">{quiz?.title ?? "Quiz"}</h3>
+            {quiz?.course && <p className="text-xs text-ink-muted">{quiz.course.code} · {quiz.course.title}</p>}
           </div>
           <div className="flex items-center gap-3">
             {attempt && !result && left !== null && (
-              <span className={`flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full border ${left <= 60 ? "text-rose-300 bg-rose-950 border-rose-800" : "text-amber-300 bg-amber-950/60 border-amber-800"}`} aria-live={left <= 60 ? "polite" : "off"}>
+              <span className={`flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1 rounded-full border ${left <= 60 ? "text-danger bg-danger/10 border-danger/30" : "text-accent bg-accent/10 border-accent/30"}`} aria-live={left <= 60 ? "polite" : "off"}>
                 <Clock className="h-3.5 w-3.5" />
                 {formatClock(left)}
               </span>
             )}
-            <button onClick={close} aria-label="Close" className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            <button onClick={close} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"><X className="h-5 w-5" /></button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {loadError && <Banner kind="error">{loadError}</Banner>}
           {error && <Banner kind="error">{error}</Banner>}
-          {!quiz && !loadError && <div className="text-xs text-slate-500">Loading…</div>}
+          {!quiz && !loadError && <div className="text-xs text-ink-subtle">Loading…</div>}
 
           {/* Intro */}
           {quiz && !attempt && !result && (
             <div className="space-y-4">
-              <ul className="text-xs text-slate-300 space-y-1.5 list-disc pl-5">
+              <ul className="text-xs text-ink space-y-1.5 list-disc pl-5">
                 <li>{quiz.questions.length} question{quiz.questions.length === 1 ? "" : "s"}, {quiz.passingPercent}% to pass.</li>
                 <li>{quiz.timeLimitMins ? `${quiz.timeLimitMins} minutes. The clock starts when you press Start and does not stop if you leave.` : "No time limit."}</li>
                 <li>{quiz.attemptsRemaining} attempt{quiz.attemptsRemaining === 1 ? "" : "s"} remaining out of {quiz.maxAttempts}.</li>
               </ul>
               {quiz.requireProctoring && (
-                <div className="p-4 rounded-2xl border border-rose-800/70 bg-rose-950/30 text-xs text-rose-200 space-y-1">
+                <div className="p-4 rounded-2xl border border-danger/30 bg-danger/10 text-xs text-danger space-y-1">
                   <div className="flex items-center gap-2 font-bold"><ShieldAlert className="h-4 w-4" /> This exam is monitored</div>
                   <p>Switching tabs, leaving full-screen mode and copy/paste are recorded and shown to your instructor, who decides whether anything needs review. The exam opens full screen.</p>
                 </div>
@@ -203,21 +203,21 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
           {/* Taking */}
           {quiz && attempt && !result && q && (
             <div className="space-y-4">
-              {notice && <div role="status" className="p-3 rounded-xl border border-amber-800 bg-amber-950/40 text-xs text-amber-200 flex items-start gap-2"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />{notice}</div>}
+              {notice && <div role="status" className="p-3 rounded-xl border border-accent/30 bg-accent/10 text-xs text-accent flex items-start gap-2"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />{notice}</div>}
               {quiz.requireProctoring && !document.fullscreenElement && (
                 <button className={ghost} onClick={() => document.documentElement.requestFullscreen?.().catch(() => undefined)}>Return to full screen</button>
               )}
-              <div className="flex items-center justify-between text-[11px] text-slate-500">
+              <div className="flex items-center justify-between text-[11px] text-ink-subtle">
                 <span>Question {index + 1} of {quiz.questions.length}</span>
                 <span>{q.points} point{q.points === 1 ? "" : "s"}</span>
               </div>
-              <p className="text-sm text-white whitespace-pre-wrap">{q.questionText}</p>
+              <p className="text-sm text-ink whitespace-pre-wrap">{q.questionText}</p>
 
               {["MULTIPLE_CHOICE", "TRUE_FALSE"].includes(q.questionType) && (
                 <fieldset className="space-y-2">
                   <legend className="sr-only">Choose one</legend>
                   {choicesFor(q).map((c) => (
-                    <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer ${values[q.id] === c.id ? "border-blue-500 bg-blue-950/30 text-white" : "border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700"}`}>
+                    <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer ${values[q.id] === c.id ? "border-brand bg-brand/15 text-ink" : "border-line bg-canvas text-ink hover:border-line"}`}>
                       <input type="radio" name={q.id} checked={values[q.id] === c.id} onChange={() => set(q.id, c.id)} />
                       {c.text}
                     </label>
@@ -226,11 +226,11 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
               )}
               {q.questionType === "MULTI_SELECT" && (
                 <fieldset className="space-y-2">
-                  <legend className="text-[11px] text-slate-500 mb-1">Select all that apply</legend>
+                  <legend className="text-[11px] text-ink-subtle mb-1">Select all that apply</legend>
                   {choicesFor(q).map((c) => {
                     const picked = (Array.isArray(values[q.id]) ? (values[q.id] as string[]) : []).includes(c.id);
                     return (
-                      <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer ${picked ? "border-blue-500 bg-blue-950/30 text-white" : "border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700"}`}>
+                      <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer ${picked ? "border-brand bg-brand/15 text-ink" : "border-line bg-canvas text-ink hover:border-line"}`}>
                         <input type="checkbox" checked={picked} onChange={(e) => { const cur = Array.isArray(values[q.id]) ? (values[q.id] as string[]) : []; set(q.id, e.target.checked ? [...cur, c.id] : cur.filter((x) => x !== c.id)); }} />
                         {c.text}
                       </label>
@@ -252,13 +252,13 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                 </div>
                 <div className="flex flex-wrap gap-1" aria-label="Question navigator">
                   {quiz.questions.map((x, i) => (
-                    <button key={x.id} onClick={() => setIndex(i)} aria-label={`Question ${i + 1}${isAnswered(values[x.id]) ? ", answered" : ""}`} className={`h-6 w-6 rounded-md text-[10px] font-bold border ${i === index ? "border-blue-500 text-white" : isAnswered(values[x.id]) ? "bg-emerald-950 text-emerald-300 border-emerald-800" : "bg-slate-950 text-slate-500 border-slate-800"}`}>{i + 1}</button>
+                    <button key={x.id} onClick={() => setIndex(i)} aria-label={`Question ${i + 1}${isAnswered(values[x.id]) ? ", answered" : ""}`} className={`h-6 w-6 rounded-md text-[10px] font-bold border ${i === index ? "border-brand text-ink" : isAnswered(values[x.id]) ? "bg-success/10 text-success border-success/30" : "bg-canvas text-ink-subtle border-line"}`}>{i + 1}</button>
                   ))}
                 </div>
               </div>
 
-              <div className="border-t border-slate-800 pt-4 flex items-center justify-between gap-3">
-                <span className="text-[11px] text-slate-500">{missing.length === 0 ? "All questions answered." : `${missing.length} unanswered.`}{quiz.requireProctoring && events > 0 ? ` ${events} activity event${events === 1 ? "" : "s"} recorded.` : ""}</span>
+              <div className="border-t border-line pt-4 flex items-center justify-between gap-3">
+                <span className="text-[11px] text-ink-subtle">{missing.length === 0 ? "All questions answered." : `${missing.length} unanswered.`}{quiz.requireProctoring && events > 0 ? ` ${events} activity event${events === 1 ? "" : "s"} recorded.` : ""}</span>
                 <button
                   className={btn}
                   disabled={busy}
@@ -277,13 +277,13 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
           {result && (
             <div className="space-y-4 text-center py-6">
               {notice && <Banner kind="ok">{notice}</Banner>}
-              <CheckCircle2 className={`h-12 w-12 mx-auto ${result.pendingManualGrading ? "text-amber-400" : result.passed ? "text-emerald-400" : "text-rose-400"}`} />
-              <div className="text-3xl font-extrabold text-white">{result.percentage}%</div>
-              <p className="text-xs text-slate-400">{result.score} / {result.maxScore} points</p>
-              <p className="text-sm text-slate-200">
+              <CheckCircle2 className={`h-12 w-12 mx-auto ${result.pendingManualGrading ? "text-accent" : result.passed ? "text-success" : "text-danger"}`} />
+              <div className="text-3xl font-extrabold text-ink">{result.percentage}%</div>
+              <p className="text-xs text-ink-muted">{result.score} / {result.maxScore} points</p>
+              <p className="text-sm text-ink">
                 {result.pendingManualGrading ? "Submitted. Some answers need a person to grade them, so the final result will follow." : result.passed ? "You passed." : "You did not reach the passing mark."}
               </p>
-              {result.attemptsRemaining > 0 && !result.passed && <p className="text-[11px] text-slate-500">{result.attemptsRemaining} attempt{result.attemptsRemaining === 1 ? "" : "s"} remaining.</p>}
+              {result.attemptsRemaining > 0 && !result.passed && <p className="text-[11px] text-ink-subtle">{result.attemptsRemaining} attempt{result.attemptsRemaining === 1 ? "" : "s"} remaining.</p>}
               <button className={btn} onClick={onClose}>Done</button>
             </div>
           )}

@@ -34,13 +34,13 @@ const VideoTile: React.FC<{ tile: Tile }> = ({ tile }) => {
     };
   }, [tile.video]);
   return (
-    <div className="relative bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden aspect-video">
+    <div className="relative bg-canvas border border-line rounded-2xl overflow-hidden aspect-video">
       {tile.video ? (
         <video ref={ref} autoPlay playsInline muted={tile.isLocal} className="h-full w-full object-cover" />
       ) : (
-        <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-slate-600">{tile.name.charAt(0).toUpperCase()}</div>
+        <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-ink-subtle">{tile.name.charAt(0).toUpperCase()}</div>
       )}
-      <span className="absolute bottom-2 left-2 text-[11px] font-semibold bg-slate-950/80 text-white px-2 py-0.5 rounded-md">{tile.name}{tile.isLocal ? " (you)" : ""}</span>
+      <span className="absolute bottom-2 left-2 text-[11px] font-semibold bg-canvas/80 text-ink px-2 py-0.5 rounded-md">{tile.name}{tile.isLocal ? " (you)" : ""}</span>
     </div>
   );
 };
@@ -161,70 +161,70 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
   const shown = active.length > 0 ? active : tiles.slice(0, 1);
 
   return (
-    <div className="fixed inset-0 z-[60] bg-slate-950 flex flex-col" role="dialog" aria-modal="true" aria-label={`Live class: ${title}`}>
-      <div className="border-b border-slate-800 px-5 py-3 flex items-center justify-between gap-4">
+    <div className="fixed inset-0 z-[60] bg-canvas flex flex-col" role="dialog" aria-modal="true" aria-label={`Live class: ${title}`}>
+      <div className="border-b border-line px-5 py-3 flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-bold text-white">{title}</h3>
-          <p className="text-[11px] text-slate-500">
+          <h3 className="text-sm font-bold text-ink">{title}</h3>
+          <p className="text-[11px] text-ink-subtle">
             {state === "connecting" ? "Connecting…" : state === "failed" ? "Not connected" : `${tiles.length} in the room`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {join.canPublish && (
             <>
-              <button className={`${btn} ${mic ? "bg-blue-600 border-blue-500 text-white" : "bg-slate-900 border-slate-800 text-slate-300"}`} onClick={() => toggle("mic")} disabled={state !== "connected"} aria-pressed={mic} aria-label={mic ? "Mute microphone" : "Unmute microphone"}>
+              <button className={`${btn} ${mic ? "bg-brand border-brand text-on-brand" : "bg-surface border-line text-ink"}`} onClick={() => toggle("mic")} disabled={state !== "connected"} aria-pressed={mic} aria-label={mic ? "Mute microphone" : "Unmute microphone"}>
                 {mic ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
               </button>
-              <button className={`${btn} ${cam ? "bg-blue-600 border-blue-500 text-white" : "bg-slate-900 border-slate-800 text-slate-300"}`} onClick={() => toggle("cam")} disabled={state !== "connected"} aria-pressed={cam} aria-label={cam ? "Turn camera off" : "Turn camera on"}>
+              <button className={`${btn} ${cam ? "bg-brand border-brand text-on-brand" : "bg-surface border-line text-ink"}`} onClick={() => toggle("cam")} disabled={state !== "connected"} aria-pressed={cam} aria-label={cam ? "Turn camera off" : "Turn camera on"}>
                 {cam ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
               </button>
               {join.role !== "LEARNER" && (
-                <button className={`${btn} ${screen ? "bg-blue-600 border-blue-500 text-white" : "bg-slate-900 border-slate-800 text-slate-300"}`} onClick={() => toggle("screen")} disabled={state !== "connected"} aria-pressed={screen} aria-label={screen ? "Stop sharing screen" : "Share screen"}>
+                <button className={`${btn} ${screen ? "bg-brand border-brand text-on-brand" : "bg-surface border-line text-ink"}`} onClick={() => toggle("screen")} disabled={state !== "connected"} aria-pressed={screen} aria-label={screen ? "Stop sharing screen" : "Share screen"}>
                   <MonitorUp className="h-4 w-4" />
                 </button>
               )}
             </>
           )}
-          <button className={`${btn} bg-rose-600 hover:bg-rose-500 border-rose-500 text-white`} onClick={onLeave}>
+          <button className={`${btn} bg-rose-600 hover:bg-rose-500 border-danger text-on-brand`} onClick={onLeave}>
             <PhoneOff className="h-4 w-4" />
             <span>Leave</span>
           </button>
         </div>
       </div>
 
-      {error && <div role="alert" className="bg-rose-950/60 border-b border-rose-900 px-5 py-2 text-xs text-rose-300">{error}</div>}
+      {error && <div role="alert" className="bg-danger/10 border-b border-danger/30 px-5 py-2 text-xs text-danger">{error}</div>}
 
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 p-4 overflow-y-auto">
           {state === "failed" ? (
-            <div className="h-full flex items-center justify-center text-sm text-slate-400">The room could not be opened.</div>
+            <div className="h-full flex items-center justify-center text-sm text-ink-muted">The room could not be opened.</div>
           ) : (
             <div className={`grid gap-3 ${shown.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 max-w-4xl mx-auto"}`}>
               {shown.map((t) => <VideoTile key={t.id} tile={t} />)}
               {state === "connected" && active.length === 0 && (
-                <p className="text-center text-xs text-slate-500 md:col-span-2">Waiting for the instructor to share video.</p>
+                <p className="text-center text-xs text-ink-subtle md:col-span-2">Waiting for the instructor to share video.</p>
               )}
             </div>
           )}
           <div ref={audioHost} className="hidden" aria-hidden />
         </div>
 
-        <aside className="w-72 border-l border-slate-800 flex flex-col" aria-label="Chat and participants">
-          <div className="p-3 border-b border-slate-800 text-[11px] text-slate-400 space-y-1 max-h-40 overflow-y-auto">
-            <div className="font-bold uppercase tracking-wider text-slate-500">In the room</div>
-            {tiles.map((t) => <div key={t.id} className="text-slate-300">{t.name}{t.isLocal ? " (you)" : ""}</div>)}
+        <aside className="w-72 border-l border-line flex flex-col" aria-label="Chat and participants">
+          <div className="p-3 border-b border-line text-[11px] text-ink-muted space-y-1 max-h-40 overflow-y-auto">
+            <div className="font-bold uppercase tracking-wider text-ink-subtle">In the room</div>
+            {tiles.map((t) => <div key={t.id} className="text-ink">{t.name}{t.isLocal ? " (you)" : ""}</div>)}
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2" aria-live="polite">
-            {chat.length === 0 && <p className="text-[11px] text-slate-500">No messages yet.</p>}
+            {chat.length === 0 && <p className="text-[11px] text-ink-subtle">No messages yet.</p>}
             {chat.map((m, i) => (
               <div key={i} className="text-xs">
-                <span className="font-bold text-slate-200">{m.from}</span> <span className="text-slate-300 break-words">{m.text}</span>
+                <span className="font-bold text-ink">{m.from}</span> <span className="text-ink break-words">{m.text}</span>
               </div>
             ))}
           </div>
-          <form className="p-3 border-t border-slate-800 flex gap-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
+          <form className="p-3 border-t border-line flex gap-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
             <input
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+              className="flex-1 bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
               aria-label="Chat message"
               placeholder="Message everyone"
               maxLength={MAX_CHAT_LENGTH}
@@ -232,7 +232,7 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
               onChange={(e) => setDraft(e.target.value)}
               disabled={state !== "connected"}
             />
-            <button className="px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl" disabled={state !== "connected" || !draft.trim()} aria-label="Send message">
+            <button className="px-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl" disabled={state !== "connected" || !draft.trim()} aria-label="Send message">
               <Send className="h-4 w-4" />
             </button>
           </form>

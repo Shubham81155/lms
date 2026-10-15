@@ -7,9 +7,9 @@ import { useAction, useApiData, downloadFile } from "@/hooks/useApiData";
 import { useAuth } from "@/context/AuthContext";
 import { Banner } from "@/components/admin/IdentityPanels";
 
-const card = "bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3";
+const card = "bg-canvas border border-line rounded-2xl p-5 space-y-3";
 const input =
-  "w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500";
+  "w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
 
 /**
  * The signed-in person's own data rights (GDPR Art. 15/17/20, FERPA directory opt-out),
@@ -48,19 +48,19 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
     });
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="privacy-h">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-        <div className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="privacy-h">
+      <div className="bg-surface border border-line rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="h-9 w-9 rounded-2xl bg-success/20 border border-success/30 flex items-center justify-center text-success">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="privacy-h" className="font-bold text-base text-white">Privacy & your data</h3>
-              <p className="text-xs text-slate-400">Your rights under GDPR and FERPA. Each action is recorded in the audit trail.</p>
+              <h3 id="privacy-h" className="font-bold text-base text-ink">Privacy & your data</h3>
+              <p className="text-xs text-ink-muted">Your rights under GDPR and FERPA. Each action is recorded in the audit trail.</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -69,10 +69,10 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
           {/* Access and portability */}
           <section className={card} aria-labelledby="export-h">
             <div className="flex items-center gap-2">
-              <Download className="h-4 w-4 text-blue-400" />
-              <h4 id="export-h" className="text-sm font-bold text-white">Download your data</h4>
+              <Download className="h-4 w-4 text-brand-fg" />
+              <h4 id="export-h" className="text-sm font-bold text-ink">Download your data</h4>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-ink-muted leading-relaxed">
               A JSON file with your profile, enrolments, grades, quiz attempts, submissions, forum posts, notifications,
               live-class attendance, learning activity and recent account activity.
             </p>
@@ -81,7 +81,7 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
             <button
               onClick={downloadMyData}
               disabled={exportAction.busy}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all"
+              className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all"
             >
               {exportAction.busy ? "Preparing…" : "Download my data"}
             </button>
@@ -90,48 +90,48 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
           {/* FERPA directory opt-out */}
           <section className={card} aria-labelledby="dir-h">
             <div className="flex items-center gap-2">
-              <EyeOff className="h-4 w-4 text-amber-400" />
-              <h4 id="dir-h" className="text-sm font-bold text-white">Hide my name from classmates</h4>
+              <EyeOff className="h-4 w-4 text-accent" />
+              <h4 id="dir-h" className="text-sm font-bold text-ink">Hide my name from classmates</h4>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-ink-muted leading-relaxed">
               Other students see &ldquo;Anonymous learner&rdquo; instead of your name on leaderboards and in forums. Your teachers and administrators still see it.
             </p>
             {(directory.error || directoryAction.error) && <Banner kind="error">{directory.error || directoryAction.error}</Banner>}
-            <label className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer">
-              <span className="text-xs text-slate-300">{optOut ? "Hidden from classmates" : "Visible to classmates"}</span>
+            <label className="flex items-center justify-between p-3 rounded-xl bg-surface border border-line cursor-pointer">
+              <span className="text-xs text-ink">{optOut ? "Hidden from classmates" : "Visible to classmates"}</span>
               <input
                 type="checkbox"
                 role="switch"
                 checked={optOut}
                 disabled={directory.isLoading || directoryAction.busy || !directory.data}
                 onChange={toggleDirectory}
-                className="h-4 w-4 accent-emerald-500"
+                className="h-4 w-4 accent-success"
               />
             </label>
           </section>
 
           {/* Erasure */}
-          <section className="bg-slate-950 border border-rose-900/50 rounded-2xl p-5 space-y-3" aria-labelledby="erase-h">
+          <section className="bg-canvas border border-danger/30 rounded-2xl p-5 space-y-3" aria-labelledby="erase-h">
             <div className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4 text-rose-400" />
-              <h4 id="erase-h" className="text-sm font-bold text-white">Erase my account</h4>
+              <Trash2 className="h-4 w-4 text-danger" />
+              <h4 id="erase-h" className="text-sm font-bold text-ink">Erase my account</h4>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-ink-muted leading-relaxed">
               Your name, e-mail, sign-in details, notifications and anything you wrote (submissions, forum posts) are removed
               and you are signed out everywhere. Grades and scores stay on record, as the institution must keep them, but no
               longer identify you. The audit trail cannot be edited and keeps its existing entries.
             </p>
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-rose-950/30 border border-rose-900/50 text-[11px] text-rose-300">
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-danger/10 border border-danger/30 text-[11px] text-danger">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>This cannot be undone. Download your data first if you want a copy.</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1">
-                <span className="text-[11px] text-slate-400">Type your e-mail address to confirm</span>
+                <span className="text-[11px] text-ink-muted">Type your e-mail address to confirm</span>
                 <input className={input} type="email" autoComplete="off" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} placeholder={user?.email} />
               </label>
               <label className="space-y-1">
-                <span className="text-[11px] text-slate-400">Password (leave empty if you use single sign-on)</span>
+                <span className="text-[11px] text-ink-muted">Password (leave empty if you use single sign-on)</span>
                 <input className={input} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
               </label>
             </div>
@@ -139,7 +139,7 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
             <button
               onClick={eraseAccount}
               disabled={!emailMatches || eraseAction.busy}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all"
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-on-brand rounded-xl text-xs font-bold transition-all"
             >
               {eraseAction.busy ? "Erasing…" : "Erase my account"}
             </button>

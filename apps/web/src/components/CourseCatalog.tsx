@@ -48,7 +48,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
         passingGradePercent: c.passingGradePercent || 70,
         allowSelfEnroll: true,
         tag: "PostgreSQL Live",
-        accent: "from-blue-600 to-indigo-600",
+        accent: "from-brand to-brand-hover",
       }))
     : [];
 
@@ -86,22 +86,22 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-md">
+            <div className="h-10 w-10 rounded-2xl bg-brand/20 border border-brand/30 flex items-center justify-center text-brand-fg shadow-md">
               <BookOpen className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-white">Institutional Course Catalog</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-950 text-blue-400 border border-blue-800">
+                <h3 className="font-bold text-base text-ink">Institutional Course Catalog</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand-fg border border-brand/30">
                   {allCourses.length} Courses Available
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-ink-muted">
                 Browse accredited academic curricula, inspect learning outcomes, and self-enroll.
               </p>
             </div>
@@ -109,7 +109,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
 
           <button
             onClick={onClose}
-            className="h-8 w-8 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            className="h-8 w-8 rounded-xl bg-surface hover:bg-raised border border-line flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -117,22 +117,22 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
 
         {/* Success Banner */}
         {enrollSuccessMessage && (
-          <div className="bg-emerald-950/80 border-b border-emerald-800/80 px-6 py-2.5 text-xs text-emerald-300 flex items-center gap-2 animate-fadeIn">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <div className="bg-success/10 border-b border-success/30 px-6 py-2.5 text-xs text-success flex items-center gap-2 animate-fadeIn">
+            <CheckCircle2 className="h-4 w-4 text-success" />
             <span className="font-medium">{enrollSuccessMessage}</span>
           </div>
         )}
 
         {/* Filter Toolbar */}
-        <div className="bg-slate-900/90 border-b border-slate-800 px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="bg-surface/90 border-b border-line px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="relative flex-1 w-full md:max-w-md">
-            <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="h-4 w-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search by course code, title, or topic..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-canvas border border-line rounded-xl pl-10 pr-4 py-2 text-xs text-ink placeholder-slate-500 focus:outline-none focus:border-brand"
             />
           </div>
 
@@ -143,8 +143,8 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                 onClick={() => setSelectedDept(dept)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                   selectedDept === dept
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                    : "bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800"
+                    ? "bg-brand text-on-brand shadow-md shadow-brand/20"
+                    : "bg-canvas text-ink-muted hover:text-ink border border-line"
                 }`}
               >
                 {dept}
@@ -156,9 +156,9 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
         {/* Main Split Grid */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           {/* Courses List Left */}
-          <div className="w-full md:w-1/2 border-r border-slate-800 overflow-y-auto p-5 space-y-3">
+          <div className="w-full md:w-1/2 border-r border-line overflow-y-auto p-5 space-y-3">
             {filteredCourses.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs">
+              <div className="p-8 text-center text-ink-muted text-xs">
                 {isLoadingCourses ? "Loading courses…" : courses && courses.length > 0 ? "No courses match your search criteria." : "No courses are available yet."}
               </div>
             ) : (
@@ -172,35 +172,35 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                     onClick={() => setSelectedCourseId(course.id)}
                     className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
-                        ? "bg-blue-950/30 border-blue-600/60 shadow-lg shadow-blue-950/20"
-                        : "bg-slate-950/80 border-slate-800/80 hover:border-slate-700"
+                        ? "bg-brand/15 border-brand/60 shadow-lg shadow-brand/20"
+                        : "bg-canvas/80 border-line/80 hover:border-line"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-blue-900/50 text-blue-300 border border-blue-700/50">
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-brand/15 text-brand-fg border border-brand/50">
                         {course.code}
                       </span>
                       <div className="flex items-center gap-2">
                         {isEnrolled && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-success/10 text-success border border-success/30 flex items-center gap-1">
                             <CheckCircle2 className="h-3 w-3" />
                             Enrolled
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                        <span className="text-[10px] text-ink-muted bg-surface px-2 py-0.5 rounded-md border border-line">
                           {course.level}
                         </span>
                       </div>
                     </div>
 
-                    <h4 className="font-bold text-sm text-slate-100 mt-2 line-clamp-1">
+                    <h4 className="font-bold text-sm text-ink mt-2 line-clamp-1">
                       {course.title}
                     </h4>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                    <p className="text-xs text-ink-muted mt-1 line-clamp-2">
                       {course.description}
                     </p>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-900">
+                    <div className="flex items-center justify-between text-[11px] text-ink-subtle mt-3 pt-2 border-t border-line">
                       <span>{course.department}</span>
                       <span>{course.modulesCount} Modules • {course.estimatedHours}h</span>
                     </div>
@@ -212,58 +212,58 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
 
           {/* Course Details Right */}
           {selectedCourse && (
-            <div className="w-full md:w-1/2 p-6 overflow-y-auto space-y-6 bg-slate-900/50 flex flex-col justify-between">
+            <div className="w-full md:w-1/2 p-6 overflow-y-auto space-y-6 bg-surface/50 flex flex-col justify-between">
               <div className="space-y-6">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-blue-900/50 text-blue-300 border border-blue-700/50">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-brand/15 text-brand-fg border border-brand/50">
                       {selectedCourse.code}
                     </span>
-                    <span className="text-xs text-slate-400">{selectedCourse.department}</span>
+                    <span className="text-xs text-ink-muted">{selectedCourse.department}</span>
                   </div>
-                  <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                  <h2 className="text-2xl font-extrabold text-ink tracking-tight">
                     {selectedCourse.title}
                   </h2>
-                  <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                  <p className="text-xs text-ink mt-2 leading-relaxed">
                     {selectedCourse.description}
                   </p>
                 </div>
 
                 {/* Key Metrics */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-center">
-                    <Clock className="h-4 w-4 text-blue-400 mx-auto mb-1" />
-                    <div className="text-[10px] text-slate-400">Duration</div>
-                    <div className="text-xs font-bold text-white mt-0.5">{selectedCourse.estimatedHours} Hours</div>
+                  <div className="bg-canvas border border-line p-3 rounded-2xl text-center">
+                    <Clock className="h-4 w-4 text-brand-fg mx-auto mb-1" />
+                    <div className="text-[10px] text-ink-muted">Duration</div>
+                    <div className="text-xs font-bold text-ink mt-0.5">{selectedCourse.estimatedHours} Hours</div>
                   </div>
-                  <div className="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-center">
-                    <Layers className="h-4 w-4 text-purple-400 mx-auto mb-1" />
-                    <div className="text-[10px] text-slate-400">Curriculum</div>
-                    <div className="text-xs font-bold text-white mt-0.5">{selectedCourse.modulesCount} Modules</div>
+                  <div className="bg-canvas border border-line p-3 rounded-2xl text-center">
+                    <Layers className="h-4 w-4 text-orchid mx-auto mb-1" />
+                    <div className="text-[10px] text-ink-muted">Curriculum</div>
+                    <div className="text-xs font-bold text-ink mt-0.5">{selectedCourse.modulesCount} Modules</div>
                   </div>
-                  <div className="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-center">
-                    <Award className="h-4 w-4 text-amber-400 mx-auto mb-1" />
-                    <div className="text-[10px] text-slate-400">Passing Grade</div>
-                    <div className="text-xs font-bold text-white mt-0.5">{selectedCourse.passingGradePercent}%</div>
+                  <div className="bg-canvas border border-line p-3 rounded-2xl text-center">
+                    <Award className="h-4 w-4 text-accent mx-auto mb-1" />
+                    <div className="text-[10px] text-ink-muted">Passing Grade</div>
+                    <div className="text-xs font-bold text-ink mt-0.5">{selectedCourse.passingGradePercent}%</div>
                   </div>
                 </div>
 
                 {/* Learning Outcomes & Standards */}
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                <div className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
+                  <h4 className="text-xs font-bold text-ink uppercase tracking-wider">
                     Standards & Accreditation
                   </h4>
-                  <ul className="space-y-2 text-xs text-slate-300">
+                  <ul className="space-y-2 text-xs text-ink">
                     <li className="flex items-center gap-2">
-                      <Shield className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <Shield className="h-3.5 w-3.5 text-success shrink-0" />
                       <span>Compliant with 1EdTech Open Badges 3.0 Verifiable Credentials</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-brand-fg shrink-0" />
                       <span>xAPI Telemetry & SCORM 2004 Runtime Tracking</span>
                     </li>
                     <li className="flex items-center gap-2">
-                      <GraduationCap className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                      <GraduationCap className="h-3.5 w-3.5 text-orchid shrink-0" />
                       <span>Accredited higher education semester credits applicable</span>
                     </li>
                   </ul>
@@ -271,24 +271,24 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
               </div>
 
               {/* Action Enroll Footer */}
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-4">
-                <div className="text-xs text-slate-400">
+              <div className="pt-4 border-t border-line flex items-center justify-between gap-4">
+                <div className="text-xs text-ink-muted">
                   Self-enrollment open for active student profiles.
                 </div>
 
                 {enrolledCourseIds.has(selectedCourse.id) || selectedCourse.id === "crs_cs101" ? (
                   <button
                     disabled
-                    className="px-6 py-2.5 bg-slate-800 text-emerald-400 border border-emerald-900/60 rounded-xl text-xs font-bold flex items-center gap-2 cursor-default"
+                    className="px-6 py-2.5 bg-raised text-success border border-success/30 rounded-xl text-xs font-bold flex items-center gap-2 cursor-default"
                   >
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                     <span>Enrolled</span>
                   </button>
                 ) : (
                   <button
                     onClick={() => handleEnroll(selectedCourse.id, selectedCourse.title)}
                     disabled={enrollingId === selectedCourse.id || isEnrolling}
-                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-blue-500/20 transition-all"
+                    className="px-6 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-brand/20 transition-all"
                   >
                     <Sparkles className="h-4 w-4" />
                     <span>{enrollingId === selectedCourse.id ? "Enrolling..." : "Enroll in Course"}</span>

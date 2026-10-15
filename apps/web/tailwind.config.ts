@@ -30,6 +30,7 @@ const config: Config = {
         accent: "rgb(var(--accent) / <alpha-value>)",
         success: "rgb(var(--success) / <alpha-value>)",
         danger: "rgb(var(--danger) / <alpha-value>)",
+        orchid: "rgb(var(--orchid) / <alpha-value>)",
         primary: {
           50: "#eff6ff",
           100: "#dbeafe",

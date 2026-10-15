@@ -15,9 +15,9 @@ interface Submission {
 }
 interface Appeal { id: string; status: "OPEN" | "UPHELD" | "DENIED"; response: string | null; submission: { id: string } }
 
-const input = "bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500";
-const primary = "px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all";
-const ghost = "px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
+const input = "bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
+const primary = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all";
+const ghost = "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
 
 const AppealBox: React.FC<{ assignmentId: string; sub: Submission; appeal: Appeal | undefined; onDone: () => void }> = ({ assignmentId, sub, appeal, onDone }) => {
   const { busy, error, run } = useAction();
@@ -26,14 +26,14 @@ const AppealBox: React.FC<{ assignmentId: string; sub: Submission; appeal: Appea
 
   if (appeal) {
     return (
-      <div className="text-[11px] text-slate-300 bg-slate-900 border border-slate-800 rounded-xl p-3">
-        <strong className="text-white">Appeal: {appeal.status === "OPEN" ? "waiting for a decision" : appeal.status === "UPHELD" ? "upheld, your grade was changed" : "not upheld"}</strong>
-        {appeal.response && <div className="mt-1 text-slate-400">{appeal.response}</div>}
+      <div className="text-[11px] text-ink bg-surface border border-line rounded-xl p-3">
+        <strong className="text-ink">Appeal: {appeal.status === "OPEN" ? "waiting for a decision" : appeal.status === "UPHELD" ? "upheld, your grade was changed" : "not upheld"}</strong>
+        {appeal.response && <div className="mt-1 text-ink-muted">{appeal.response}</div>}
       </div>
     );
   }
   const days = sub.gradedAt ? appealDaysLeft(sub.gradedAt) : 0;
-  if (days === 0) return <div className="text-[11px] text-slate-500">The appeal period for this grade has ended.</div>;
+  if (days === 0) return <div className="text-[11px] text-ink-subtle">The appeal period for this grade has ended.</div>;
 
   return open ? (
     <div className="space-y-2">
@@ -71,31 +71,31 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
   };
 
   return (
-    <li className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3">
+    <li className="bg-canvas border border-line rounded-2xl p-5 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h4 className="text-sm font-bold text-white">{a.title}</h4>
-          <div className="text-[11px] text-slate-500">{a.maxPoints} points{a.dueDate ? ` · due ${new Date(a.dueDate).toLocaleString()}` : ""}{late ? " · past due" : ""}</div>
+          <h4 className="text-sm font-bold text-ink">{a.title}</h4>
+          <div className="text-[11px] text-ink-subtle">{a.maxPoints} points{a.dueDate ? ` · due ${new Date(a.dueDate).toLocaleString()}` : ""}{late ? " · past due" : ""}</div>
         </div>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${graded ? "bg-emerald-950 text-emerald-300 border-emerald-800" : sub ? "bg-blue-950 text-blue-300 border-blue-800" : "bg-slate-800 text-slate-300 border-slate-700"}`}>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${graded ? "bg-success/10 text-success border-success/30" : sub ? "bg-brand/15 text-brand-fg border-brand/30" : "bg-raised text-ink border-line"}`}>
           {graded ? `${sub!.grade} / ${a.maxPoints}` : sub ? "Submitted" : "Not submitted"}
         </span>
       </div>
-      <p className="text-xs text-slate-400 whitespace-pre-wrap">{a.instructions}</p>
+      <p className="text-xs text-ink-muted whitespace-pre-wrap">{a.instructions}</p>
 
       {a.rubricJson && (
-        <div className="text-[11px] text-slate-400 space-y-1">
-          <div className="font-bold uppercase tracking-wider text-slate-500">Rubric</div>
+        <div className="text-[11px] text-ink-muted space-y-1">
+          <div className="font-bold uppercase tracking-wider text-ink-subtle">Rubric</div>
           {a.rubricJson.map((c) => (
             <div key={c.id} className="flex justify-between gap-3">
-              <span>{c.name}{c.description ? <span className="text-slate-600"> · {c.description}</span> : null}</span>
-              <span className="text-slate-300 shrink-0">{graded && sub!.rubricScoresJson ? `${sub!.rubricScoresJson[c.id] ?? 0} / ` : ""}{c.maxPoints}</span>
+              <span>{c.name}{c.description ? <span className="text-ink-subtle"> · {c.description}</span> : null}</span>
+              <span className="text-ink shrink-0">{graded && sub!.rubricScoresJson ? `${sub!.rubricScoresJson[c.id] ?? 0} / ` : ""}{c.maxPoints}</span>
             </div>
           ))}
         </div>
       )}
 
-      {graded && sub!.feedback && <div className="text-xs text-slate-300 bg-slate-900 border border-slate-800 rounded-xl p-3"><strong className="text-white">Feedback:</strong> {sub!.feedback}</div>}
+      {graded && sub!.feedback && <div className="text-xs text-ink bg-surface border border-line rounded-xl p-3"><strong className="text-ink">Feedback:</strong> {sub!.feedback}</div>}
       {graded && <AppealBox assignmentId={a.id} sub={sub!} appeal={appeals.find((p) => p.submission.id === sub!.id)} onDone={reloadAppeals} />}
 
       {!graded && (!sub || editing) && (
@@ -121,23 +121,23 @@ export const MyAssignments: React.FC<{ onClose: () => void; courseId?: string }>
   const appeals = useApiData<{ data: Appeal[] }>(courseId ? `/api/v1/courses/${courseId}/appeals` : null);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="My assignments">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
-        <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between gap-4">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="My assignments">
+      <div className="bg-surface border border-line rounded-3xl w-full max-w-3xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400"><FileText className="h-5 w-5" /></div>
-            <div><h3 className="font-bold text-base text-white">My assignments</h3><p className="text-xs text-slate-400">Submit work, see grades and feedback, and appeal a grade.</p></div>
+            <div className="h-9 w-9 rounded-2xl bg-success/20 border border-success/30 flex items-center justify-center text-success"><FileText className="h-5 w-5" /></div>
+            <div><h3 className="font-bold text-base text-ink">My assignments</h3><p className="text-xs text-ink-muted">Submit work, see grades and feedback, and appeal a grade.</p></div>
           </div>
           <div className="flex items-center gap-2">
             <select className={input} aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)}>{active.map((e) => <option key={e.courseId} value={e.courseId}>{e.course?.code} · {e.course?.title}</option>)}</select>
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"><X className="h-5 w-5" /></button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6">
-          {isLoading ? <div className="text-xs text-slate-500">Loading…</div>
-            : !courseId ? <div className="text-xs text-slate-500 p-10 text-center">Enrol in a course to see its assignments.</div>
+          {isLoading ? <div className="text-xs text-ink-subtle">Loading…</div>
+            : !courseId ? <div className="text-xs text-ink-subtle p-10 text-center">Enrol in a course to see its assignments.</div>
             : list.error ? <Banner kind="error">{list.error}</Banner>
-            : (list.data?.data ?? []).length === 0 ? <div className="text-xs text-slate-500 p-10 text-center">This course has no assignments yet.</div>
+            : (list.data?.data ?? []).length === 0 ? <div className="text-xs text-ink-subtle p-10 text-center">This course has no assignments yet.</div>
             : <ul className="space-y-4">{(list.data?.data ?? []).map((a) => <Card key={a.id} a={a} appeals={appeals.data?.data ?? []} reloadAppeals={appeals.reload} />)}</ul>}
         </div>
       </div>

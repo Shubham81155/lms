@@ -29,65 +29,65 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
   const signatureHash = "0x8f9c7a6e5d4c3b2a10f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7";
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-surface border border-line rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <div className="h-8 w-8 rounded-lg bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
               <Award className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white">W3C Verifiable Credential</h3>
-              <p className="text-[11px] text-slate-400">1EdTech Open Badges 3.0 Standard</p>
+              <h3 className="font-bold text-sm text-ink">W3C Verifiable Credential</h3>
+              <p className="text-[11px] text-ink-muted">1EdTech Open Badges 3.0 Standard</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Certificate Display Card */}
-        <div className="p-8 bg-gradient-to-b from-slate-900 to-slate-950 flex flex-col items-center text-center space-y-6">
-          <div className="p-4 rounded-2xl bg-gradient-to-tr from-amber-500/10 via-blue-500/10 to-indigo-500/10 border border-amber-500/30 w-full max-w-lg space-y-4">
-            <div className="text-[11px] uppercase tracking-widest font-bold text-amber-400">
+        <div className="p-8 bg-gradient-to-b from-surface to-canvas flex flex-col items-center text-center space-y-6">
+          <div className="p-4 rounded-2xl bg-gradient-to-tr from-accent/10 via-brand/10 to-brand/10 border border-accent/30 w-full max-w-lg space-y-4">
+            <div className="text-[11px] uppercase tracking-widest font-bold text-accent">
               Certificate of Academic Mastery
             </div>
 
-            <h2 className="text-xl font-bold text-white tracking-tight">{studentName}</h2>
+            <h2 className="text-xl font-bold text-ink tracking-tight">{studentName}</h2>
 
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-ink">
               has successfully fulfilled all requirements, proctored assessments, and rigorous laboratory coursework in
             </p>
 
-            <div className="text-base font-semibold text-blue-400 py-1 border-y border-slate-800/80">
+            <div className="text-base font-semibold text-brand-fg py-1 border-y border-line/80">
               {courseTitle}
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2">
+            <div className="flex items-center justify-between text-[11px] text-ink-muted pt-2">
               <span>Issued: {issueDate}</span>
-              <span className="font-mono text-slate-300">ID: {certificateId}</span>
+              <span className="font-mono text-ink">ID: {certificateId}</span>
             </div>
           </div>
 
           {/* Verification Audit Proof */}
-          <div className="w-full max-w-lg bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-2">
+          <div className="w-full max-w-lg bg-canvas border border-line rounded-xl p-4 text-left space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
+              <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-success" />
                 <span>Cryptographic Proof Status</span>
               </span>
-              <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-bold">
+              <span className="text-[10px] bg-success/10 text-success border border-success/30 px-2 py-0.5 rounded-full font-bold">
                 VALID SIGNATURE
               </span>
             </div>
 
-            <div className="text-[10px] font-mono text-slate-400 break-all bg-slate-900 p-2 rounded border border-slate-800">
-              <span className="text-slate-500">SHA-256 Hash: </span>{signatureHash}
+            <div className="text-[10px] font-mono text-ink-muted break-all bg-surface p-2 rounded border border-line">
+              <span className="text-ink-subtle">SHA-256 Hash: </span>{signatureHash}
             </div>
           </div>
 
@@ -97,7 +97,7 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
               onClick={() => {
                 alert(`Downloaded Open Badges 3.0 JSON-LD Credential for ${studentName}`);
               }}
-              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all"
+              className="flex-1 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand/20 transition-all"
             >
               <Download className="h-4 w-4" />
               <span>Export Open Badge JSON-LD</span>
@@ -105,7 +105,7 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
 
             <button
               onClick={onClose}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-colors"
+              className="px-5 py-2.5 bg-raised hover:bg-line text-ink rounded-xl text-xs font-semibold transition-colors"
             >
               Close
             </button>

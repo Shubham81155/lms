@@ -74,22 +74,22 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Top Header */}
-        <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+            <div className="h-9 w-9 rounded-2xl bg-brand/20 border border-brand/30 flex items-center justify-center text-brand-fg">
               <MessageSquare className="h-5 w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-white">Course Collaboration & Q&A Forum</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">
+                <h3 className="font-bold text-base text-ink">Course Collaboration & Q&A Forum</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand-fg border border-brand/50">
                   {course?.code ?? courseCode} Community
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-ink-muted">
                 Peer discussions, algorithm debugging, and instructor-verified answers.
               </p>
             </div>
@@ -99,7 +99,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
             {!readOnly && (
             <button
               onClick={() => setShowNewThreadModal(true)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
+              className="px-4 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand/20 transition-all"
             >
               <Plus className="h-4 w-4" />
               <span>Ask Question</span>
@@ -107,7 +107,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
             )}
             <button
               onClick={onClose}
-              className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -115,15 +115,15 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
         </div>
 
         {/* Filter Bar */}
-        <div className="bg-slate-950/60 border-b border-slate-800 px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="relative w-full sm:w-80">
-            <Search className="h-3.5 w-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="h-3.5 w-3.5 text-ink-subtle absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search forum topics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-surface border border-line rounded-xl pl-9 pr-3 py-1.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
             />
           </div>
 
@@ -134,8 +134,8 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
                   selectedCategory === cat
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-400 hover:text-slate-200 bg-slate-900/60 border border-slate-800"
+                    ? "bg-brand text-on-brand"
+                    : "text-ink-muted hover:text-ink bg-surface/60 border border-line"
                 }`}
               >
                 {cat}
@@ -145,7 +145,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
         </div>
 
         {forum.error && (
-          <div role="alert" className="bg-rose-950/60 border-b border-rose-900 px-6 py-2 text-xs text-rose-300">
+          <div role="alert" className="bg-danger/10 border-b border-danger/30 px-6 py-2 text-xs text-danger">
             {forum.error}
           </div>
         )}
@@ -153,15 +153,15 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
         {/* Body Split */}
         <div className="flex-1 flex overflow-hidden">
           {/* Thread List Left */}
-          <div className="w-full md:w-5/12 border-r border-slate-800 overflow-y-auto p-4 space-y-3 bg-slate-950/30">
+          <div className="w-full md:w-5/12 border-r border-line overflow-y-auto p-4 space-y-3 bg-canvas/30">
             {(courseLoading || forum.isLoading) && (
-              <div className="text-xs text-slate-500 p-6 text-center">Loading discussions...</div>
+              <div className="text-xs text-ink-subtle p-6 text-center">Loading discussions...</div>
             )}
             {!courseLoading && !forum.isLoading && !course && (
-              <div className="text-xs text-slate-500 p-6 text-center">You are not part of any course yet.</div>
+              <div className="text-xs text-ink-subtle p-6 text-center">You are not part of any course yet.</div>
             )}
             {!courseLoading && !forum.isLoading && course && filteredThreads.length === 0 && (
-              <div className="text-xs text-slate-500 p-6 text-center">
+              <div className="text-xs text-ink-subtle p-6 text-center">
                 {threads.length === 0 ? "No questions yet. Be the first to ask one." : "No topics match your search."}
               </div>
             )}
@@ -173,50 +173,50 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                   onClick={() => setActiveId(thread.id)}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                     isActive
-                      ? "bg-blue-950/30 border-blue-600/60 shadow-md"
-                      : "bg-slate-950/80 border-slate-800/80 hover:border-slate-700"
+                      ? "bg-brand/15 border-brand/60 shadow-md"
+                      : "bg-canvas/80 border-line/80 hover:border-line"
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-blue-400 border border-slate-800">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-surface text-brand-fg border border-line">
                       {thread.category}
                     </span>
                     <div className="flex items-center gap-2">
                       {thread.pinned && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-accent/10 text-accent border border-accent/30">
                           Pinned
                         </span>
                       )}
                       {thread.hasVerifiedAnswer && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-success/10 text-success border border-success/30 flex items-center gap-1">
                           <CheckCircle2 className="h-2.5 w-2.5" />
                           Verified
                         </span>
                       )}
-                      <span className="text-[10px] text-slate-500">{thread.timestamp}</span>
+                      <span className="text-[10px] text-ink-subtle">{thread.timestamp}</span>
                     </div>
                   </div>
 
-                  <h4 className="font-bold text-xs text-white mt-2 line-clamp-2">
+                  <h4 className="font-bold text-xs text-ink mt-2 line-clamp-2">
                     {thread.title}
                   </h4>
-                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                  <p className="text-[11px] text-ink-muted mt-1 line-clamp-2">
                     {thread.content}
                   </p>
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-900">
+                  <div className="flex items-center justify-between text-[11px] text-ink-subtle mt-3 pt-2 border-t border-line">
                     <div className="flex items-center gap-1.5">
-                      <div className="h-4 w-4 rounded-full bg-slate-800 flex items-center justify-center text-[9px] text-slate-300">
+                      <div className="h-4 w-4 rounded-full bg-raised flex items-center justify-center text-[9px] text-ink">
                         {thread.author[0]}
                       </div>
                       <span>{thread.author}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1 text-slate-400">
+                      <span className="flex items-center gap-1 text-ink-muted">
                         <ThumbsUp className="h-3 w-3" />
                         <span>{thread.upvotes}</span>
                       </span>
-                      <span className="flex items-center gap-1 text-slate-400">
+                      <span className="flex items-center gap-1 text-ink-muted">
                         <MessageSquare className="h-3 w-3" />
                         <span>{thread.replyCount}</span>
                       </span>
@@ -229,25 +229,25 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
           {/* Active Thread Details Right */}
           {activeThread && (
-            <div className="hidden md:flex flex-1 flex-col overflow-hidden bg-slate-900/60">
+            <div className="hidden md:flex flex-1 flex-col overflow-hidden bg-surface/60">
               <div className="flex-1 p-6 overflow-y-auto space-y-6">
                 {/* Thread Question Box */}
-                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg">
+                <div className="bg-canvas border border-line rounded-2xl p-5 space-y-4 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-xl bg-blue-600/30 flex items-center justify-center text-blue-400 font-bold text-xs">
+                      <div className="h-7 w-7 rounded-xl bg-brand/30 flex items-center justify-center text-brand-fg font-bold text-xs">
                         {activeThread.author[0]}
                       </div>
                       <div>
-                        <strong className="text-xs text-white block">{activeThread.author}</strong>
-                        <span className="text-[10px] text-slate-500">{activeThread.timestamp}</span>
+                        <strong className="text-xs text-ink block">{activeThread.author}</strong>
+                        <span className="text-[10px] text-ink-subtle">{activeThread.timestamp}</span>
                       </div>
                     </div>
 
                     <button
                       onClick={() => forum.vote("THREAD", activeThread.id, activeThread.id)}
                       disabled={forum.busy || readOnly}
-                      className={`px-3 py-1.5 bg-slate-900 hover:bg-blue-600/20 border text-slate-300 hover:text-blue-400 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${activeThread.votedByMe ? "border-blue-600 text-blue-400" : "border-slate-800"}`}
+                      className={`px-3 py-1.5 bg-surface hover:bg-brand/20 border text-ink hover:text-brand-fg rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${activeThread.votedByMe ? "border-brand text-brand-fg" : "border-line"}`}
                     >
                       <ThumbsUp className="h-3.5 w-3.5" />
                       <span>{activeThread.upvotes}</span>
@@ -255,8 +255,8 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                   </div>
 
                   <div>
-                    <h3 className="text-base font-extrabold text-white">{activeThread.title}</h3>
-                    <p className="text-xs text-slate-300 mt-2 leading-relaxed whitespace-pre-wrap">
+                    <h3 className="text-base font-extrabold text-ink">{activeThread.title}</h3>
+                    <p className="text-xs text-ink mt-2 leading-relaxed whitespace-pre-wrap">
                       {activeThread.content}
                     </p>
                   </div>
@@ -264,8 +264,8 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
                 {/* Replies Stream */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <div className="flex items-center justify-between border-b border-line pb-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
                       Community Replies ({activeThread.replies.filter((r) => !r.hidden).length}){activeThread.locked ? " · Locked" : ""}
                     </h4>
                   </div>
@@ -275,32 +275,32 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                       key={reply.id}
                       className={`p-4 rounded-2xl border space-y-3 ${
                         reply.isVerifiedAnswer
-                          ? "bg-emerald-950/20 border-emerald-800/80 shadow-md shadow-emerald-950/20"
-                          : "bg-slate-950 border-slate-800"
+                          ? "bg-success/10 border-success/30 shadow-md shadow-success/10"
+                          : "bg-canvas border-line"
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className={`h-6 w-6 rounded-lg flex items-center justify-center text-[10px] font-bold ${
                             reply.role === "INSTRUCTOR"
-                              ? "bg-purple-600 text-white"
+                              ? "bg-purple-600 text-on-brand"
                               : reply.role === "TA"
-                              ? "bg-amber-600 text-white"
-                              : "bg-slate-800 text-slate-300"
+                              ? "bg-amber-600 text-on-brand"
+                              : "bg-raised text-ink"
                           }`}>
                             {reply.author[0]}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <strong className="text-xs text-white">{reply.author}</strong>
+                              <strong className="text-xs text-ink">{reply.author}</strong>
                               {reply.isVerifiedAnswer && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 flex items-center gap-1">
-                                  <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/30 flex items-center gap-1">
+                                  <ShieldCheck className="h-3 w-3 text-success" />
                                   Verified by Faculty
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-slate-500">{reply.timestamp}</span>
+                            <span className="text-[10px] text-ink-subtle">{reply.timestamp}</span>
                           </div>
                         </div>
 
@@ -309,7 +309,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                             <button
                               onClick={() => forum.endorse(reply.id, activeThread.id)}
                               disabled={forum.busy}
-                              className="px-2.5 py-1 bg-slate-900 border border-slate-800 text-slate-400 hover:text-emerald-300 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
+                              className="px-2.5 py-1 bg-surface border border-line text-ink-muted hover:text-success rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
                             >
                               <ShieldCheck className="h-3 w-3" />
                               <span>{reply.isVerifiedAnswer ? "Unverify" : "Verify"}</span>
@@ -318,7 +318,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                           <button
                             onClick={() => forum.vote("POST", reply.id, activeThread.id)}
                             disabled={forum.busy || readOnly}
-                            className={`px-2.5 py-1 bg-slate-900 border text-slate-400 hover:text-white rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60 ${reply.votedByMe ? "border-blue-600 text-blue-400" : "border-slate-800"}`}
+                            className={`px-2.5 py-1 bg-surface border text-ink-muted hover:text-ink rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60 ${reply.votedByMe ? "border-brand text-brand-fg" : "border-line"}`}
                           >
                             <ThumbsUp className="h-3 w-3" />
                             <span>{reply.upvotes}</span>
@@ -326,7 +326,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                         </div>
                       </div>
 
-                      <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap">
                         {reply.content}
                       </p>
                     </div>
@@ -335,7 +335,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               </div>
 
               {/* Bottom Reply Composer */}
-              <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center gap-3">
+              <div className="p-4 bg-canvas border-t border-line flex items-center gap-3">
                 <input
                   type="text"
                   placeholder={activeThread.locked && !isStaff ? "This thread is locked" : "Write a constructive response or answer..."}
@@ -348,12 +348,12 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                       handlePostReply();
                     }
                   }}
-                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+                  className="flex-1 bg-surface border border-line rounded-xl px-4 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
                 />
                 <button
                   onClick={handlePostReply}
                   disabled={!replyText.trim() || forum.busy || readOnly || (activeThread.locked && !isStaff)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
+                  className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand/20 transition-all"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>Reply</span>
@@ -366,13 +366,13 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
       {/* New Question Modal */}
       {showNewThreadModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h4 className="font-bold text-sm text-white">Ask a New Course Question</h4>
+        <div className="fixed inset-0 z-50 bg-canvas/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-line rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <h4 className="font-bold text-sm text-ink">Ask a New Course Question</h4>
               <button
                 onClick={() => setShowNewThreadModal(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-ink-muted hover:text-ink"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -380,22 +380,22 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
             <form onSubmit={handleCreateThread} className="space-y-3 text-xs">
               <div>
-                <label className="text-slate-400 font-semibold block mb-1">Title</label>
+                <label className="text-ink-muted font-semibold block mb-1">Title</label>
                 <input
                   type="text"
                   placeholder="e.g. How does Paxos achieve non-blocking consensus?"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink focus:outline-none focus:border-brand"
                 />
               </div>
 
               <div>
-                <label className="text-slate-400 font-semibold block mb-1">Category</label>
+                <label className="text-ink-muted font-semibold block mb-1">Category</label>
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value as any)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink focus:outline-none focus:border-brand"
                 >
                   <option value="Consensus">Distributed Consensus</option>
                   <option value="Cryptography">Data Security & Cryptography</option>
@@ -405,13 +405,13 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               </div>
 
               <div>
-                <label className="text-slate-400 font-semibold block mb-1">Details</label>
+                <label className="text-ink-muted font-semibold block mb-1">Details</label>
                 <textarea
                   rows={4}
                   placeholder="Provide context, code snippets, or textbook questions..."
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                  className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink focus:outline-none focus:border-brand"
                 />
               </div>
 
@@ -419,14 +419,14 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowNewThreadModal(false)}
-                  className="px-4 py-2 bg-slate-950 border border-slate-800 text-slate-400 rounded-xl text-xs font-semibold"
+                  className="px-4 py-2 bg-canvas border border-line text-ink-muted rounded-xl text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!newTitle.trim() || !newContent.trim() || forum.busy}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20"
+                  className="px-5 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold shadow-md shadow-brand/20"
                 >
                   Post Topic
                 </button>

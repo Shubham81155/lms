@@ -156,7 +156,7 @@ export default function StudentDashboard() {
     }));
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-canvas text-ink flex flex-col">
       <Navigation
         currentRole="student"
         activeNavTab={activeNavTab}
@@ -165,7 +165,7 @@ export default function StudentDashboard() {
 
       {/* xAPI Real-time Notification Banner */}
       {notification && (
-        <div className="bg-blue-600/10 border-b border-blue-500/30 text-blue-400 px-6 py-2 text-xs flex items-center justify-center gap-2 animate-fadeIn">
+        <div className="bg-brand/10 border-b border-brand/30 text-brand-fg px-6 py-2 text-xs flex items-center justify-center gap-2 animate-fadeIn">
           <Sparkles className="h-3.5 w-3.5 animate-pulse" />
           <span>{notification}</span>
         </div>
@@ -173,38 +173,38 @@ export default function StudentDashboard() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-8">
         {/* Welcome Banner with Streak & GPA */}
-        <div className="bg-gradient-to-r from-blue-950/60 via-slate-900 to-indigo-950/60 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
+        <div className="bg-gradient-to-r from-brand/15 via-surface to-brand/10 border border-line rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
           <div className="space-y-2 z-10">
             <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50 font-semibold">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand/15 text-brand-fg border border-brand/50 font-semibold">
                 Student
               </span>
-              <span className="text-xs text-slate-400">{user?.tenantName}</span>
+              <span className="text-xs text-ink-muted">{user?.tenantName}</span>
             </div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">
               Welcome back{user ? `, ${user.name.split(" ")[0]}` : ""}!
             </h1>
-            <p className="text-sm text-slate-300 max-w-xl">
+            <p className="text-sm text-ink max-w-xl">
               {stats
                 ? <>You have <strong>{stats.inProgress} course{stats.inProgress === 1 ? "" : "s"} in progress</strong> and <strong>{stats.completed} completed</strong>. Open your assignments to submit work and see feedback.</>
                 : "Loading your progress…"}
             </p>
           </div>
 
-          <div className="flex items-center gap-4 z-10">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 z-10 w-full md:w-auto">
             {/* Streak Widget */}
             <button
               onClick={() => setShowGamificationHub(true)}
-              className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-4 flex items-center gap-3 shadow-lg transition-all text-left group"
+              className="bg-surface/80 hover:bg-raised/80 border border-line hover:border-accent/40 rounded-2xl p-4 flex items-center gap-3 shadow-lg transition-all text-left group w-full sm:w-auto"
             >
-              <div className="h-10 w-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30 group-hover:scale-105 transition-transform">
+              <div className="h-10 w-10 rounded-xl bg-accent/20 text-accent flex items-center justify-center border border-accent/30 group-hover:scale-105 transition-transform">
                 <Flame className="h-6 w-6" />
               </div>
               <div>
-                <div className="text-xs text-slate-400 font-medium">Study Streak</div>
-                <div className="text-lg font-bold text-white flex items-center gap-1.5">
+                <div className="text-xs text-ink-muted font-medium">Study Streak</div>
+                <div className="text-lg font-bold text-ink flex items-center gap-1.5">
                   <span>{gameState?.streakDays ?? 0} Days</span>
-                  <span className="text-[10px] text-amber-400">🔥</span>
+                  <span className="text-[10px] text-accent">🔥</span>
                 </div>
               </div>
             </button>
@@ -212,14 +212,14 @@ export default function StudentDashboard() {
             {/* Assignments & average grade */}
             <button
               onClick={() => setShowAssignments(true)}
-              className="bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4 flex items-center gap-3 shadow-lg transition-all text-left group"
+              className="bg-surface/80 hover:bg-raised/80 border border-line hover:border-success/40 rounded-2xl p-4 flex items-center gap-3 shadow-lg transition-all text-left group w-full sm:w-auto"
             >
-              <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 group-hover:scale-105 transition-transform">
+              <div className="h-10 w-10 rounded-xl bg-success/20 text-success flex items-center justify-center border border-success/30 group-hover:scale-105 transition-transform">
                 <Award className="h-6 w-6" />
               </div>
               <div>
-                <div className="text-xs text-slate-400 font-medium">Assignments · Average grade</div>
-                <div className="text-lg font-bold text-white">{stats && stats.averageGrade ? `${Math.round(stats.averageGrade)}%` : "–"}</div>
+                <div className="text-xs text-ink-muted font-medium">Assignments · Average grade</div>
+                <div className="text-lg font-bold text-ink">{stats && stats.averageGrade ? `${Math.round(stats.averageGrade)}%` : "–"}</div>
               </div>
             </button>
           </div>
@@ -233,34 +233,34 @@ export default function StudentDashboard() {
           <div className="lg:col-span-2 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-blue-400" />
-                <h2 className="text-lg font-bold text-white">My Enrolled Courses</h2>
+                <BookOpen className="h-5 w-5 text-brand-fg" />
+                <h2 className="text-lg font-bold text-ink">My Enrolled Courses</h2>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setShowForum(true)}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                  className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink hover:text-ink rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
                 >
-                  <MessageSquare className="h-3.5 w-3.5 text-purple-400" />
+                  <MessageSquare className="h-3.5 w-3.5 text-orchid" />
                   <span>Course Forum</span>
                 </button>
                 <button
                   onClick={() => setShowCalendar(true)}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                  className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink hover:text-ink rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
                 >
-                  <Calendar className="h-3.5 w-3.5 text-blue-400" />
+                  <Calendar className="h-3.5 w-3.5 text-brand-fg" />
                   <span>Academic Calendar</span>
                 </button>
                 <button
                   onClick={() => setShowCourseCatalog(true)}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
+                  className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand/20 transition-all"
                 >
                   <Search className="h-3.5 w-3.5" />
                   <span>Browse Catalog</span>
                 </button>
                 <button
                   onClick={() => setShowGamificationHub(true)}
-                  className="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 px-2 py-1"
+                  className="text-xs font-semibold text-accent hover:text-accent flex items-center gap-1.5 px-2 py-1"
                 >
                   <Award className="h-4 w-4" />
                   <span>Badges & XP</span>
@@ -269,32 +269,32 @@ export default function StudentDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {isLoadingEnrollments && <p className="text-xs text-slate-500">Loading your courses…</p>}
+              {isLoadingEnrollments && <p className="text-xs text-ink-subtle">Loading your courses…</p>}
               {!isLoadingEnrollments && displayCourses.length === 0 && (
-                <div className="md:col-span-2 text-center text-xs text-slate-400 bg-slate-900 border border-slate-800 rounded-2xl p-10">
+                <div className="md:col-span-2 text-center text-xs text-ink-muted bg-surface border border-line rounded-2xl p-10">
                   You are not enrolled in any course yet. Use <strong>Browse Catalog</strong> to find one.
                 </div>
               )}
               {displayCourses.map((course) => (
                 <div
                   key={course.id}
-                  className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between transition-all group shadow-lg"
+                  className="bg-surface border border-line hover:border-line rounded-2xl p-5 flex flex-col justify-between transition-all group shadow-lg"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-blue-900/50 text-blue-300 border border-blue-700/50">
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-lg bg-brand/15 text-brand-fg border border-brand/50">
                         {course.code}
                       </span>
-                      <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800 capitalize">
+                      <span className="text-[10px] text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line capitalize">
                         {course.status}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="font-bold text-base text-slate-100 group-hover:text-blue-400 transition-colors">
+                      <h3 className="font-bold text-base text-ink group-hover:text-brand-fg transition-colors">
                         {course.title}
                       </h3>
-                      {course.finalGrade !== null && <p className="text-xs text-emerald-400 mt-0.5">Final grade: {Math.round(course.finalGrade)}%</p>}
+                      {course.finalGrade !== null && <p className="text-xs text-success mt-0.5">Final grade: {Math.round(course.finalGrade)}%</p>}
                     </div>
 
                     <button
@@ -305,27 +305,27 @@ export default function StudentDashboard() {
                           progress: course.progress,
                         })
                       }
-                      className="w-full text-left bg-slate-950 hover:bg-slate-900 rounded-xl p-2.5 border border-slate-800/80 hover:border-blue-500/50 text-xs transition-colors group/les"
+                      className="w-full text-left bg-canvas hover:bg-surface rounded-xl p-2.5 border border-line/80 hover:border-brand/50 text-xs transition-colors group/les"
                     >
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase font-semibold">
+                      <div className="flex items-center justify-between text-[10px] text-ink-subtle uppercase font-semibold">
                         <span>Continue Lesson</span>
-                        <span className="text-blue-400 group-hover/les:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
+                        <span className="text-brand-fg group-hover/les:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
                           Start →
                         </span>
                       </div>
-                      <div className="text-slate-300 font-medium truncate mt-0.5">Open the course lessons</div>
+                      <div className="text-ink font-medium truncate mt-0.5">Open the course lessons</div>
                     </button>
                   </div>
 
                   <div className="pt-4 space-y-3">
                     <div>
                       <div className="flex justify-between text-xs mb-1 font-medium">
-                        <span className="text-slate-400">Course Progress</span>
-                        <span className="text-white">{course.progress}%</span>
+                        <span className="text-ink-muted">Course Progress</span>
+                        <span className="text-ink">{course.progress}%</span>
                       </div>
-                      <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                      <div className="w-full bg-canvas rounded-full h-2 overflow-hidden border border-line">
                         <div
-                          className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all"
+                          className="bg-gradient-to-r from-brand to-brand-hover h-2 rounded-full transition-all"
                           style={{ width: `${course.progress}%` }}
                         />
                       </div>
@@ -334,7 +334,7 @@ export default function StudentDashboard() {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => openExamFor(course.code)}
-                        className="py-2.5 bg-slate-950 hover:bg-blue-600 text-slate-200 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border border-slate-800 hover:border-blue-500 transition-all shadow-md"
+                        className="py-2.5 bg-canvas hover:bg-brand text-ink hover:text-on-brand rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border border-line hover:border-brand transition-all shadow-md"
                       >
                         <PlayCircle className="h-4 w-4" />
                         <span>Exam</span>
@@ -342,16 +342,16 @@ export default function StudentDashboard() {
 
                       <button
                         onClick={() => setAssignmentsCourse(course.id)}
-                        className="py-2.5 bg-slate-950 hover:bg-emerald-600 text-slate-200 hover:text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border border-slate-800 hover:border-emerald-500 transition-all shadow-md"
+                        className="py-2.5 bg-canvas hover:bg-emerald-600 text-ink hover:text-on-brand rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border border-line hover:border-success transition-all shadow-md"
                       >
-                        <FileCheck className="h-4 w-4 text-emerald-400" />
+                        <FileCheck className="h-4 w-4 text-success" />
                         <span>Assignments</span>
                       </button>
                     </div>
                     {course.certificateNumber && (
                       <button
                         onClick={() => setCertificate({ studentName: user?.name ?? "", courseTitle: course.title, certificateId: course.certificateNumber! })}
-                        className="w-full py-2 bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-800/70 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                        className="w-full py-2 bg-accent/10 hover:bg-accent/10 text-accent border border-accent/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <Award className="h-4 w-4" />
                         <span>View certificate</span>
@@ -366,36 +366,36 @@ export default function StudentDashboard() {
           {/* Right Sidebar: Upcoming Deadlines & AI Tutor */}
           <div className="space-y-6">
             {/* Upcoming Schedule / Exams & Assignments */}
-            <div id="exams-section" className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg scroll-mt-20">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2 text-sm font-bold text-white">
-                  <FileCheck className="h-4 w-4 text-blue-400" />
+            <div id="exams-section" className="bg-surface border border-line rounded-2xl p-5 space-y-4 shadow-lg scroll-mt-20">
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-ink">
+                  <FileCheck className="h-4 w-4 text-brand-fg" />
                   <span>Assignments & Exams</span>
                 </div>
-                <span className="text-[11px] text-slate-500">{todo.data ? `${todo.data.data.length} to do` : ""}</span>
+                <span className="text-[11px] text-ink-subtle">{todo.data ? `${todo.data.data.length} to do` : ""}</span>
               </div>
 
               <div className="space-y-3">
-                {todo.isLoading && <p className="text-xs text-slate-500">Loading…</p>}
-                {todo.error && <p role="alert" className="text-xs text-rose-400">{todo.error}</p>}
-                {todo.data && todo.data.data.length === 0 && <p className="text-xs text-slate-500 text-center p-4">You are all caught up.</p>}
+                {todo.isLoading && <p className="text-xs text-ink-subtle">Loading…</p>}
+                {todo.error && <p role="alert" className="text-xs text-danger">{todo.error}</p>}
+                {todo.data && todo.data.data.length === 0 && <p className="text-xs text-ink-subtle text-center p-4">You are all caught up.</p>}
                 {(todo.data?.data ?? []).map((item) => {
                   const quiz = item.type === "QUIZ";
                   return (
                     <button
                       key={`${item.type}-${item.id}`}
                       onClick={() => (quiz ? (triggerXApi("started", item.title), setActiveQuizId(item.id)) : setAssignmentsCourse(item.course.id))}
-                      className="w-full text-left p-3 bg-slate-950 hover:bg-slate-900/90 rounded-xl border border-slate-800/80 hover:border-blue-500/50 space-y-2 transition-all group shadow-sm"
+                      className="w-full text-left p-3 bg-canvas hover:bg-surface/90 rounded-xl border border-line/80 hover:border-brand/50 space-y-2 transition-all group shadow-sm"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-slate-200 group-hover:text-blue-400 transition-colors">{item.title}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${quiz ? (item.requireProctoring ? "bg-rose-950 text-rose-400 border-rose-800" : "bg-purple-950 text-purple-400 border-purple-800") : "bg-blue-950 text-blue-400 border-blue-800"}`}>
+                        <span className="text-xs font-bold text-ink group-hover:text-brand-fg transition-colors">{item.title}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${quiz ? (item.requireProctoring ? "bg-danger/10 text-danger border-danger/30" : "bg-orchid/15 text-orchid border-orchid/30") : "bg-brand/15 text-brand-fg border-brand/30"}`}>
                           {quiz ? (item.requireProctoring ? "PROCTORED QUIZ" : "QUIZ") : "ASSIGNMENT"}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <div className="flex items-center justify-between text-[11px] text-ink-muted">
                         <span>{item.course.code} · {item.course.title}</span>
-                        <span className={item.overdue ? "text-rose-400 font-medium" : "text-amber-400 font-medium"}>
+                        <span className={item.overdue ? "text-danger font-medium" : "text-accent font-medium"}>
                           {item.submitted ? "Submitted" : item.overdue ? "Overdue" : item.dueAt ? `Due ${new Date(item.dueAt).toLocaleDateString()}` : quiz ? (item.hasOpenAttempt ? "In progress" : `${item.attemptsRemaining} attempt${item.attemptsRemaining === 1 ? "" : "s"} left`) : ""}
                         </span>
                       </div>
@@ -406,12 +406,12 @@ export default function StudentDashboard() {
             </div>
 
             {/* AI Learning Assistant */}
-            <div className="bg-gradient-to-br from-blue-950/40 via-indigo-950/30 to-slate-900 border border-blue-800/40 rounded-2xl p-5 space-y-3 shadow-lg">
-              <div className="flex items-center gap-2 text-blue-300 font-bold text-sm">
-                <Sparkles className="h-4 w-4 text-blue-400" />
+            <div className="bg-gradient-to-br from-brand/15 via-brand/10 to-surface border border-brand/30 rounded-2xl p-5 space-y-3 shadow-lg">
+              <div className="flex items-center gap-2 text-brand-fg font-bold text-sm">
+                <Sparkles className="h-4 w-4 text-brand-fg" />
                 <span>AI Personalized Tutor</span>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <p className="text-xs text-ink leading-relaxed">
                 Ask the tutor to explain a topic you are studying and it will walk you through it step by step, then give you a short practice drill.
               </p>
               <button
@@ -419,7 +419,7 @@ export default function StudentDashboard() {
                   triggerXApi("opened", "the AI tutor");
                   setShowAiTutor(true);
                 }}
-                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 bg-gradient-to-r from-brand to-brand-hover hover:from-brand-hover hover:to-brand text-on-brand rounded-xl text-xs font-bold transition-all shadow-md shadow-brand/20 flex items-center justify-center gap-1.5"
               >
                 <Brain className="h-4 w-4" />
                 <span>Launch AI Socratic Tutor</span>
