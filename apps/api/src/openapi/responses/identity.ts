@@ -45,6 +45,26 @@ const SsoStatus = z.union([
   z.object({ enabled: z.boolean(), oidc: z.boolean(), saml: z.boolean() }),
 ]);
 
+// ---- privacy
+const DirectorySetting = z.object({ data: z.object({ optOut: z.boolean() }) });
+const Erased = z.object({ status: z.literal('erased'), userId: z.string() });
+const PersonalDataExport = z.object({
+  exportMetadata: z.object({ format: z.literal('LMS_PERSONAL_DATA_EXPORT_V1'), generatedAt: z.string(), subjectId: z.string(), regulation: z.string() }),
+  profile: z.object({ id: z.string(), email: z.string(), firstName: z.string(), lastName: z.string(), role: z.string(), status: z.string(), directoryOptOut: z.boolean(), createdAt: z.string() }).passthrough(),
+  enrollments: z.array(z.unknown()),
+  quizAttempts: z.array(z.unknown()),
+  assignmentSubmissions: z.array(z.unknown()),
+  courseGrades: z.array(z.unknown()),
+  notifications: z.array(z.unknown()),
+  notificationPreferences: z.unknown(),
+  forum: z.object({ threads: z.array(z.unknown()), posts: z.array(z.unknown()) }),
+  gamification: z.object({ summary: z.unknown(), xpEvents: z.array(z.unknown()) }),
+  liveAttendance: z.array(z.unknown()),
+  learningActivity: z.array(z.unknown()),
+  guardianLinks: z.array(z.unknown()),
+  accountActivity: z.array(z.unknown()),
+});
+
 // ---- LTI
 const LtiLaunchResult = z.object({
   status: z.literal('authenticated'),
@@ -179,6 +199,28 @@ export const RESPONSES: ResponseTable = {
   'DELETE /api/v1/scim/v2/Users/:id': {
     response: { status: 204, description: `Deprovisioned: the account is suspended and keeps its history; no body. ${scimNote}` },
     errors: [401, 403, 404],
+  },
+
+  // ---- privacy (GDPR / FERPA)
+  'GET /api/v1/privacy/me/export': {
+    response: { status: 200, schema: PersonalDataExport, description: 'Attachment (personal-data-<id>.json) with the profile, learning records, submissions, grades, forum posts, notifications, xAPI activity and account activity of the caller.' },
+  },
+  'GET /api/v1/privacy/users/:id/export': {
+    response: { status: 200, schema: PersonalDataExport, description: 'The same export for any person in the tenant. Administrators only; the export is audited.' },
+    errors: [404],
+  },
+  'GET /api/v1/privacy/me/directory': { response: { status: 200, schema: DirectorySetting } },
+  'PUT /api/v1/privacy/me/directory': {
+    response: { status: 200, schema: DirectorySetting, description: 'When true, classmates see "Anonymous learner" on leaderboards and forums. Staff still see the name.' },
+    errors: [400],
+  },
+  'POST /api/v1/privacy/me/erase': {
+    response: { status: 200, schema: Erased, description: 'The account is anonymised and every session revoked. Grades are kept without identity; submission text, forum text, notifications and xAPI actor details are removed. Refused for the only active administrator.' },
+    errors: [400, 403, 404, 409],
+  },
+  'POST /api/v1/privacy/users/:id/erase': {
+    response: { status: 200, schema: Erased, description: 'Same as self-erasure, performed by an administrator. A super administrator can only be erased by another.' },
+    errors: [400, 404, 409],
   },
 
   // ---- provider callbacks

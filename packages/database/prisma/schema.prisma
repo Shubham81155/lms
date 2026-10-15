@@ -175,6 +175,12 @@ model User {
   // Bumped to invalidate every session token issued before (password change, MFA change, suspension, logout).
   tokenVersion      Int       @default(0)
 
+  // Privacy
+  /// FERPA directory information: when true, peers see "Anonymous learner" instead of the name.
+  directoryOptOut Boolean   @default(false)
+  /// Set when the person's data was erased; the row stays so grades, audit and foreign keys keep working.
+  erasedAt        DateTime?
+
   // Relations
   enrollments             Enrollment[]
   teachingCourses         CourseInstructor[]

@@ -85,7 +85,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **Append-only audit trail** (database role cannot update or delete audit rows) | Done | enforced and tested at the database |
 | OneRoster / SIS-ERP connectors (Banner, PowerSchool, Workday, SAP, Salesforce) | Open | adapter library only |
 | Open Badges 3.0 issuance, PDF certificates | Partial | credential engine exists; certificate PDF not rendered |
-| GDPR erasure / DSAR, FERPA directory controls | Partial | library code; no self-serve endpoints |
+| GDPR access, erasure and FERPA directory opt-out | Partial | self-serve JSON export, account erasure (anonymises the person, keeps grades; audit trail is append-only so it keeps ids/IPs) and directory opt-out are API endpoints under `/api/v1/privacy`, admin versions included; the web modal `DsarComplianceModal` still runs on sample data |
 | Penetration test, SOC 2 / FERPA audit | Open | process, not code |
 | Load test (100k exam takers), multi-region HA / DR | Open | targets in `load_testing_sla.md` |
 | Redis cache, read replicas, PgBouncer | Open | |

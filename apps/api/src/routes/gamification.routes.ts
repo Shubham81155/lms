@@ -98,13 +98,13 @@ router.get(
     const access = await requireContentAccess(req, courseId);
     const rows = await prisma.enrollment.findMany({
       where: { tenantId: tenantIdOf(req), courseId: access.course.id, status: { in: ['ENROLLED', 'IN_PROGRESS', 'COMPLETED'] } },
-      select: { user: { select: { id: true, firstName: true, lastName: true, role: true, gamification: true } } },
+      select: { user: { select: { id: true, firstName: true, lastName: true, role: true, directoryOptOut: true, gamification: true } } },
     });
     const standings = rows
       .filter((r) => r.user.role === 'STUDENT')
       .map((r) => ({
         userId: r.user.id,
-        name: `${r.user.firstName} ${r.user.lastName.charAt(0)}.`,
+        name: r.user.directoryOptOut && r.user.id !== req.user!.id && !access.isStaff ? 'Anonymous learner' : `${r.user.firstName} ${r.user.lastName.charAt(0)}.`,
         xp: r.user.gamification?.xp ?? 0,
         level: levelFor(r.user.gamification?.xp ?? 0),
         streakDays: r.user.gamification?.streakDays ?? 0,

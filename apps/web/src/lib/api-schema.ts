@@ -1902,6 +1902,92 @@ export interface paths {
         patch: operations["patchPostsIdModerate"];
         trace?: never;
     };
+    "/api/v1/privacy/me/directory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether you have opted out of FERPA directory information (your name shown to classmates). */
+        get: operations["getPrivacyMeDirectory"];
+        /** Hide your name from classmates on leaderboards and forums; course staff still see it. */
+        put: operations["putPrivacyMeDirectory"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/me/erase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Erase your own account (right to be forgotten). Requires your password when you have one, and your e-mail address as confirmation. */
+        post: operations["postPrivacyMeErase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/me/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download everything held about you as JSON (GDPR Art. 15/20). */
+        get: operations["getPrivacyMeExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/users/{id}/erase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators erase a person's data on request. */
+        post: operations["postPrivacyUsersIdErase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/users/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators export a person's data to answer an access request. */
+        get: operations["getPrivacyUsersIdExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/proctoring/events": {
         parameters: {
             query?: never;
@@ -11243,6 +11329,384 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyMeDirectory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            optOut: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putPrivacyMeDirectory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    optOut: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description When true, classmates see "Anonymous learner" on leaderboards and forums. Staff still see the name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            optOut: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyMeErase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    password?: string;
+                    confirmEmail: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The account is anonymised and every session revoked. Grades are kept without identity; submission text, forum text, notifications and xAPI actor details are removed. Refused for the only active administrator. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "erased";
+                        userId: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyMeExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachment (personal-data-<id>.json) with the profile, learning records, submissions, grades, forum posts, notifications, xAPI activity and account activity of the caller. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        exportMetadata: {
+                            /** @enum {string} */
+                            format: "LMS_PERSONAL_DATA_EXPORT_V1";
+                            generatedAt: string;
+                            subjectId: string;
+                            regulation: string;
+                        };
+                        profile: {
+                            id: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            role: string;
+                            status: string;
+                            directoryOptOut: boolean;
+                            createdAt: string;
+                        };
+                        enrollments: unknown[];
+                        quizAttempts: unknown[];
+                        assignmentSubmissions: unknown[];
+                        courseGrades: unknown[];
+                        notifications: unknown[];
+                        notificationPreferences?: unknown;
+                        forum: {
+                            threads: unknown[];
+                            posts: unknown[];
+                        };
+                        gamification: {
+                            summary?: unknown;
+                            xpEvents: unknown[];
+                        };
+                        liveAttendance: unknown[];
+                        learningActivity: unknown[];
+                        guardianLinks: unknown[];
+                        accountActivity: unknown[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyUsersIdErase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Same as self-erasure, performed by an administrator. A super administrator can only be erased by another. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "erased";
+                        userId: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyUsersIdExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The same export for any person in the tenant. Administrators only; the export is audited. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        exportMetadata: {
+                            /** @enum {string} */
+                            format: "LMS_PERSONAL_DATA_EXPORT_V1";
+                            generatedAt: string;
+                            subjectId: string;
+                            regulation: string;
+                        };
+                        profile: {
+                            id: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            role: string;
+                            status: string;
+                            directoryOptOut: boolean;
+                            createdAt: string;
+                        };
+                        enrollments: unknown[];
+                        quizAttempts: unknown[];
+                        assignmentSubmissions: unknown[];
+                        courseGrades: unknown[];
+                        notifications: unknown[];
+                        notificationPreferences?: unknown;
+                        forum: {
+                            threads: unknown[];
+                            posts: unknown[];
+                        };
+                        gamification: {
+                            summary?: unknown;
+                            xpEvents: unknown[];
+                        };
+                        liveAttendance: unknown[];
+                        learningActivity: unknown[];
+                        guardianLinks: unknown[];
+                        accountActivity: unknown[];
+                    };
                 };
             };
             /** @description Not signed in, or the session was revoked */

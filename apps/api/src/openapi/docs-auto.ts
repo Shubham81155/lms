@@ -21,6 +21,7 @@ import * as r_org from '../routes/org.routes';
 import * as r_platform from '../routes/platform.routes';
 import * as r_questionbank from '../routes/questionbank.routes';
 import * as r_users from '../routes/users.routes';
+import * as r_privacy from '../routes/privacy.routes';
 
 /** Keyed `METHOD /express/style/path`. */
 export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 'body'>> = {
@@ -187,6 +188,12 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "GET /api/v1/threads/:id": { summary: "the thread with its (visible) replies, one page at a time (`nextCursor`).", query: r_forum.postsPageQuery as never },
   "PATCH /api/v1/threads/:id/moderate": { summary: "pin, lock or hide a thread (course staff).", body: r_forum.moderateThreadSchema },
   "POST /api/v1/threads/:id/posts": { summary: "POST /api/v1/threads/:id/posts", body: r_forum.postSchema },
+  "GET /api/v1/privacy/me/directory": { summary: "Whether you have opted out of FERPA directory information (your name shown to classmates)." },
+  "PUT /api/v1/privacy/me/directory": { summary: "Hide your name from classmates on leaderboards and forums; course staff still see it.", body: r_privacy.directorySchema },
+  "POST /api/v1/privacy/me/erase": { summary: "Erase your own account (right to be forgotten). Requires your password when you have one, and your e-mail address as confirmation.", body: r_privacy.selfEraseSchema },
+  "GET /api/v1/privacy/me/export": { summary: "Download everything held about you as JSON (GDPR Art. 15/20)." },
+  "POST /api/v1/privacy/users/:id/erase": { summary: "Administrators erase a person's data on request." },
+  "GET /api/v1/privacy/users/:id/export": { summary: "Administrators export a person's data to answer an access request." },
   "GET /api/v1/users": { summary: "users of the tenant (admins only)", query: r_users.listQuery as never },
   "GET /api/v1/users/:id": { summary: "own profile, or any profile for admins" },
   "PATCH /api/v1/users/:id": { summary: "Anyone may edit their own name and avatar. Roles and status are administrator-only, and: - only a SUPER_ADMIN may grant the SUPER_ADMIN role or change a SUPER_ADMIN's account - nobody may change their own role or status (no self-promotion, no locking...", body: r_users.updateUserSchema },

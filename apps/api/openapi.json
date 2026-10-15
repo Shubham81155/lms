@@ -18726,6 +18726,833 @@
         }
       }
     },
+    "/api/v1/privacy/me/directory": {
+      "get": {
+        "operationId": "getPrivacyMeDirectory",
+        "summary": "Whether you have opted out of FERPA directory information (your name shown to classmates).",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "optOut": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "optOut"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putPrivacyMeDirectory",
+        "summary": "Hide your name from classmates on leaderboards and forums; course staff still see it.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "optOut": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "optOut"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "When true, classmates see \"Anonymous learner\" on leaderboards and forums. Staff still see the name.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "optOut": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "optOut"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/me/erase": {
+      "post": {
+        "operationId": "postPrivacyMeErase",
+        "summary": "Erase your own account (right to be forgotten). Requires your password when you have one, and your e-mail address as confirmation.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "confirmEmail": {
+                    "type": "string",
+                    "maxLength": 320
+                  }
+                },
+                "required": [
+                  "confirmEmail"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The account is anonymised and every session revoked. Grades are kept without identity; submission text, forum text, notifications and xAPI actor details are removed. Refused for the only active administrator.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "erased"
+                      ]
+                    },
+                    "userId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "userId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/me/export": {
+      "get": {
+        "operationId": "getPrivacyMeExport",
+        "summary": "Download everything held about you as JSON (GDPR Art. 15/20).",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attachment (personal-data-<id>.json) with the profile, learning records, submissions, grades, forum posts, notifications, xAPI activity and account activity of the caller.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exportMetadata": {
+                      "type": "object",
+                      "properties": {
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "LMS_PERSONAL_DATA_EXPORT_V1"
+                          ]
+                        },
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "subjectId": {
+                          "type": "string"
+                        },
+                        "regulation": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "format",
+                        "generatedAt",
+                        "subjectId",
+                        "regulation"
+                      ]
+                    },
+                    "profile": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "directoryOptOut": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "firstName",
+                        "lastName",
+                        "role",
+                        "status",
+                        "directoryOptOut",
+                        "createdAt"
+                      ]
+                    },
+                    "enrollments": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "quizAttempts": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "assignmentSubmissions": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "courseGrades": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "notifications": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "notificationPreferences": {
+                      "nullable": true
+                    },
+                    "forum": {
+                      "type": "object",
+                      "properties": {
+                        "threads": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        },
+                        "posts": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "required": [
+                        "threads",
+                        "posts"
+                      ]
+                    },
+                    "gamification": {
+                      "type": "object",
+                      "properties": {
+                        "summary": {
+                          "nullable": true
+                        },
+                        "xpEvents": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "required": [
+                        "xpEvents"
+                      ]
+                    },
+                    "liveAttendance": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "learningActivity": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "guardianLinks": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "accountActivity": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "exportMetadata",
+                    "profile",
+                    "enrollments",
+                    "quizAttempts",
+                    "assignmentSubmissions",
+                    "courseGrades",
+                    "notifications",
+                    "forum",
+                    "gamification",
+                    "liveAttendance",
+                    "learningActivity",
+                    "guardianLinks",
+                    "accountActivity"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/users/{id}/erase": {
+      "post": {
+        "operationId": "postPrivacyUsersIdErase",
+        "summary": "Administrators erase a person's data on request.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Same as self-erasure, performed by an administrator. A super administrator can only be erased by another.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "erased"
+                      ]
+                    },
+                    "userId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "userId"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/users/{id}/export": {
+      "get": {
+        "operationId": "getPrivacyUsersIdExport",
+        "summary": "Administrators export a person's data to answer an access request.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The same export for any person in the tenant. Administrators only; the export is audited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exportMetadata": {
+                      "type": "object",
+                      "properties": {
+                        "format": {
+                          "type": "string",
+                          "enum": [
+                            "LMS_PERSONAL_DATA_EXPORT_V1"
+                          ]
+                        },
+                        "generatedAt": {
+                          "type": "string"
+                        },
+                        "subjectId": {
+                          "type": "string"
+                        },
+                        "regulation": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "format",
+                        "generatedAt",
+                        "subjectId",
+                        "regulation"
+                      ]
+                    },
+                    "profile": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "directoryOptOut": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "firstName",
+                        "lastName",
+                        "role",
+                        "status",
+                        "directoryOptOut",
+                        "createdAt"
+                      ]
+                    },
+                    "enrollments": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "quizAttempts": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "assignmentSubmissions": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "courseGrades": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "notifications": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "notificationPreferences": {
+                      "nullable": true
+                    },
+                    "forum": {
+                      "type": "object",
+                      "properties": {
+                        "threads": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        },
+                        "posts": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "required": [
+                        "threads",
+                        "posts"
+                      ]
+                    },
+                    "gamification": {
+                      "type": "object",
+                      "properties": {
+                        "summary": {
+                          "nullable": true
+                        },
+                        "xpEvents": {
+                          "type": "array",
+                          "items": {
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "required": [
+                        "xpEvents"
+                      ]
+                    },
+                    "liveAttendance": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "learningActivity": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "guardianLinks": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "accountActivity": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    }
+                  },
+                  "required": [
+                    "exportMetadata",
+                    "profile",
+                    "enrollments",
+                    "quizAttempts",
+                    "assignmentSubmissions",
+                    "courseGrades",
+                    "notifications",
+                    "forum",
+                    "gamification",
+                    "liveAttendance",
+                    "learningActivity",
+                    "guardianLinks",
+                    "accountActivity"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/proctoring/events": {
       "post": {
         "operationId": "postProctoringEvents",

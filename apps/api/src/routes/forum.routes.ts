@@ -40,14 +40,14 @@ export const listQuery = z.object({
   includeHidden: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
 });
 
-const authorSelect = { select: { id: true, firstName: true, lastName: true, role: true } } as const;
+const authorSelect = { select: { id: true, firstName: true, lastName: true, role: true, directoryOptOut: true } } as const;
 
 /** Learners see "First L." so a thread does not publish a classmate's full name. */
-function authorView(a: { id: string; firstName: string; lastName: string; role: string }, access: CourseAccess) {
+function authorView(a: { id: string; firstName: string; lastName: string; role: string; directoryOptOut?: boolean }, access: CourseAccess, viewerId?: string) {
   const staffLike = ['INSTRUCTOR', 'TEACHING_ASSISTANT', 'TENANT_ADMIN', 'SUPER_ADMIN'].includes(a.role);
   return {
     id: a.id,
-    name: staffLike || access.isStaff ? `${a.firstName} ${a.lastName}` : `${a.firstName} ${a.lastName.charAt(0)}.`,
+    name: a.directoryOptOut && !staffLike && !access.isStaff && a.id !== viewerId ? 'Anonymous learner' : staffLike || access.isStaff ? `${a.firstName} ${a.lastName}` : `${a.firstName} ${a.lastName.charAt(0)}.`,
     role: a.role,
   };
 }
@@ -114,7 +114,7 @@ router.get(
         locked: t.locked,
         hidden: t.hidden,
         createdAt: t.createdAt,
-        author: authorView(t.author, access),
+        author: authorView(t.author, access, req.user!.id),
         replyCount: t._count.posts,
         upvotes: counts.get(t.id) ?? 0,
         votedByMe: mine.has(t.id),
@@ -171,7 +171,7 @@ router.get(
     return res.json({
       data: {
         ...thread,
-        author: author ? authorView(author, access) : null,
+        author: author ? authorView(author, access, req.user!.id) : null,
         nextCursor: hasMore ? posts[posts.length - 1].id : null,
         upvotes: threadVotes.counts.get(thread.id) ?? 0,
         votedByMe: threadVotes.mine.has(thread.id),
@@ -182,7 +182,7 @@ router.get(
           hidden: p.hidden,
           endorsed: p.endorsed,
           createdAt: p.createdAt,
-          author: authorView(p.author, access),
+          author: authorView(p.author, access, req.user!.id),
           upvotes: postVotes.counts.get(p.id) ?? 0,
           votedByMe: postVotes.mine.has(p.id),
         })),
