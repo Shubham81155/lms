@@ -94,6 +94,16 @@ npm test
 
 ---
 
+## API description (OpenAPI)
+
+The API describes itself: `GET /api/v1/openapi.json` (committed copy: `apps/api/openapi.json`). It is generated from the routes the server actually mounts, so every route is listed with its authentication and required roles; request and response schemas are filled in for the documented endpoints (`apps/api/src/openapi/docs.ts`, starting with auth, courses and enrollments) and extended as endpoints are documented. Request schemas are the same Zod schemas the handlers validate with.
+
+- After changing routes or schemas: `npm run api:sync` (rewrites `apps/api/openapi.json` and the web's generated `apps/web/src/lib/api-schema.ts`). A test fails if either is stale.
+- The web app calls documented endpoints through `typedGet()` (`apps/web/src/lib/typed-api.ts`): a changed response shape or query parameter is a compile error.
+- `apps/api/test/openapi.test.ts` also proves that every route not on an explicit allow-list answers 401 without a session.
+
+---
+
 ## Authentication model
 
 - Sessions are stateless JWTs that are **re-checked against the database on every request**: a suspended or deleted user, a changed role, a password reset, a status change or a logout take effect immediately (`User.tokenVersion`; a per-process cache of 10 s applies across instances). Logout signs the user out everywhere.

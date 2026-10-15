@@ -28,8 +28,8 @@ const courseFields = {
   status: z.nativeEnum(CourseStatus).optional(),
 };
 
-const createCourseSchema = z.object({ ...courseFields, departmentId: idSchema.optional() });
-const updateCourseSchema = z.object(courseFields).partial().extend({ departmentId: idSchema.nullable().optional() });
+export const createCourseSchema = z.object({ ...courseFields, departmentId: idSchema.optional() });
+export const updateCourseSchema = z.object(courseFields).partial().extend({ departmentId: idSchema.nullable().optional() });
 
 const createModuleSchema = z.object({
   title: z.string().trim().min(1).max(255),
@@ -51,7 +51,7 @@ const lessonFields = {
 const createLessonSchema = z.object(lessonFields);
 const updateLessonSchema = z.object(lessonFields).partial();
 
-const listQuery = z.object({
+export const listQuery = z.object({
   ...paginationShape,
   status: z.nativeEnum(CourseStatus).optional(),
   search: z.string().trim().max(100).optional(),

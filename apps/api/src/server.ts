@@ -13,34 +13,10 @@ import { resolveTenant } from './lib/tenant';
 import { tenantFeatures } from './lib/features';
 import { rateLimitStore } from './lib/rate-limit-store';
 
-// Import route modules
-import authRoutes from './routes/auth.routes';
-import coursesRoutes from './routes/courses.routes';
-import enrollmentsRoutes from './routes/enrollments.routes';
-import usersRoutes from './routes/users.routes';
-import assessmentsRoutes from './routes/assessments.routes';
-import adminRoutes from './routes/admin.routes';
-import analyticsRoutes from './routes/analytics.routes';
-import certificatesRoutes from './routes/certificates.routes';
-import notificationsRoutes from './routes/notifications.routes';
-import forumRoutes from './routes/forum.routes';
-import calendarRoutes from './routes/calendar.routes';
-import gamificationRoutes from './routes/gamification.routes';
-import intelligenceRoutes from './routes/intelligence.routes';
-import mfaRoutes from './routes/mfa.routes';
-import platformRoutes from './routes/platform.routes';
-import scimRoutes from './routes/scim.routes';
-import ltiRoutes from './routes/lti.routes';
-import gradebookRoutes from './routes/gradebook.routes';
-import questionBankRoutes from './routes/questionbank.routes';
-import integrationsRoutes from './routes/integrations.routes';
-import ssoRoutes from './routes/sso.routes';
-import samlRoutes from './routes/saml.routes';
+import { apiMounts, rawBodyMounts } from './mounts';
+import { buildOpenApi } from './openapi/spec';
 import { startEmailDispatcher } from './lib/email-dispatch';
 import { startWebhookRetryWorker } from './lib/webhooks';
-import gradingRoutes from './routes/grading.routes';
-import orgRoutes from './routes/org.routes';
-import liveRoutes from './routes/live.routes';
 
 const app = express();
 const PORT = config.PORT;
@@ -85,7 +61,7 @@ app.use(
   })
 );
 // Signed provider callbacks need the raw bytes, so they are mounted ahead of the JSON parser.
-app.use('/api/v1/integrations', integrationsRoutes);
+for (const m of rawBodyMounts) app.use(m.prefix, m.router);
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
@@ -188,6 +164,13 @@ app.get('/ready', async (_req: Request, res: Response) => {
   }
 });
 
+// Machine-readable description of this API (OpenAPI 3), generated from the mounted routes.
+let openApiDocument: ReturnType<typeof buildOpenApi> | undefined;
+app.get('/api/v1/openapi.json', (_req: Request, res: Response) => {
+  openApiDocument ??= buildOpenApi();
+  res.json(openApiDocument);
+});
+
 // Tenant Metadata & Branding Endpoint (public; used to brand the login page)
 app.get('/api/v1/tenant/config', async (req: Request, res: Response) => {
   try {
@@ -230,31 +213,7 @@ app.get('/api/v1/tenant/config', async (req: Request, res: Response) => {
 // 5. MODULAR ROUTE MOUNTING
 // =========================================================
 
-app.use('/api/v1/auth/mfa', mfaRoutes);
-app.use('/api/v1/auth/sso', ssoRoutes);
-app.use('/api/v1/auth/saml', samlRoutes);
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/courses', coursesRoutes);
-app.use('/api/v1/enrollments', enrollmentsRoutes);
-app.use('/api/v1/users', usersRoutes);
-app.use('/api/v1', assessmentsRoutes); // Mounts /courses/:courseId/quizzes, /quizzes, /courses/:courseId/assignments, /assignments
-app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1/analytics', analyticsRoutes);
-app.use('/api/v1/certificates', certificatesRoutes);
-app.use('/api/v1/admin', platformRoutes);
-app.use('/api/v1/admin', orgRoutes);
-app.use('/api/v1/notifications', notificationsRoutes);
-app.use('/api/v1/calendar', calendarRoutes);
-app.use('/api/v1/gamification', gamificationRoutes);
-app.use('/api/v1/scim/v2', scimRoutes);
-app.use('/api/v1/lti', ltiRoutes);
-// Root-mounted routers last: they authenticate only the paths they own (see forum.routes.ts).
-app.use('/api/v1', forumRoutes);
-app.use('/api/v1', gradebookRoutes);
-app.use('/api/v1', gradingRoutes);
-app.use('/api/v1', liveRoutes);
-app.use('/api/v1', questionBankRoutes);
-app.use('/api/v1', intelligenceRoutes);
+for (const m of apiMounts) app.use(m.prefix, m.router); // order, and the root-mounted routers that come last, are defined in mounts.ts
 
 // =========================================================
 // 6. 404 & GLOBAL ERROR HANDLING

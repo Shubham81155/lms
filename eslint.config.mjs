@@ -4,7 +4,7 @@ import prettier from 'eslint-config-prettier';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/coverage/**', '**/*.js', '**/*.d.ts', 'apps/web/next-env.d.ts'] },
+  { ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/coverage/**', '**/*.js', '**/*.d.ts', 'apps/web/next-env.d.ts', 'apps/web/src/lib/api-schema.ts'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
@@ -24,7 +24,7 @@ export default tseslint.config(
   },
   {
     // Tests, seed scripts and the mail dev transport may print.
-    files: ['**/test/**', '**/seed.ts', '**/scripts/**', 'apps/api/src/lib/mailer.ts'],
+    files: ['**/test/**', '**/seed.ts', '**/scripts/**', 'apps/api/src/lib/mailer.ts', 'apps/api/src/openapi/build.ts'],
     rules: { 'no-console': 'off' },
   }
 );

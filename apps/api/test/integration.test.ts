@@ -279,3 +279,38 @@ describe('the database role', () => {
     expect(await findRlsBypassReason(basePrisma)).toBeNull();
   });
 });
+
+describe('responses match the API description', () => {
+  it('login, /me, course list and enrollment list have the documented shape', async () => {
+    const { PublicUser, CourseListItem, EnrollmentItem, Pagination } = await import('../src/openapi/docs.js');
+    const { z } = await import('zod');
+    // An earlier test reset this learner's password; restore the seed one.
+    await admin.user.update({ where: { id: 'harvard-student' }, data: { passwordHash: hash(`${PASSWORD}-harvard`) } });
+    const { agent, res } = await signIn('harvard', 'student');
+    expect(PublicUser.safeParse(res.body.user).success, JSON.stringify(PublicUser.safeParse(res.body.user))).toBe(true);
+
+    const me = await agent.get('/api/v1/auth/me');
+    expect(PublicUser.safeParse(me.body.user).success).toBe(true);
+
+    const courses = await agent.get('/api/v1/courses');
+    const coursesShape = z.object({ data: z.array(CourseListItem), pagination: Pagination });
+    const parsedCourses = coursesShape.safeParse(courses.body);
+    expect(parsedCourses.success, JSON.stringify(parsedCourses)).toBe(true);
+    expect(courses.body.data.length).toBeGreaterThan(0);
+
+    const enrollments = await agent.get('/api/v1/enrollments');
+    const enrollmentsShape = z.object({ data: z.array(EnrollmentItem), pagination: Pagination });
+    const parsedEnrollments = enrollmentsShape.safeParse(enrollments.body);
+    expect(parsedEnrollments.success, JSON.stringify(parsedEnrollments)).toBe(true);
+    expect(enrollments.body.data.length).toBeGreaterThan(0);
+  });
+
+  it('errors have the documented { error, requestId } shape', async () => {
+    const { ErrorResponse } = await import('../src/openapi/docs.js');
+    const res = await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'nope' });
+    expect(res.status).toBe(400);
+    expect(ErrorResponse.safeParse(res.body).success).toBe(true);
+    const unauth = await request(app).get('/api/v1/courses');
+    expect(unauth.status).toBe(401);
+  });
+});

@@ -6,9 +6,11 @@
     "dev": "ts-node src/server.ts",
     "build": "tsc --noEmit -p ../../tsconfig.json",
     "start": "node dist/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "openapi": "ts-node src/openapi/build.ts"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@enterprise-lms/database": "*",
     "@enterprise-lms/security": "*",
     "@enterprise-lms/standards": "*",

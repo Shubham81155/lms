@@ -92,6 +92,10 @@ export interface Course {
   passingGradePercent: number;
   thumbnailUrl?: string | null;
   enrolledCount?: number;
+  /** Counts returned by the course list endpoint. */
+  moduleCount?: number;
+  enrollmentCount?: number;
+  instructorCount?: number;
   instructors?: CourseInstructor[] | string[];
   modules?: Module[];
   tenantId?: string;

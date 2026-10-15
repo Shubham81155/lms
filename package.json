@@ -14,7 +14,10 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "api:spec": "npm run openapi -w @enterprise-lms/api",
+    "api:types": "openapi-typescript apps/api/openapi.json -o apps/web/src/lib/api-schema.ts",
+    "api:sync": "npm run api:spec && npm run api:types"
   },
   "keywords": [
     "lms",
@@ -34,6 +37,7 @@
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.10",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.71.2"

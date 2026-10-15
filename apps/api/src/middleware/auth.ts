@@ -136,7 +136,7 @@ export function tenantIdOf(req: Request): string {
 
 /** Role-Based Access Control Middleware Factory */
 export function requireRole(...roles: UserRole[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  const middleware = (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized: Authentication required' });
     }
@@ -151,4 +151,6 @@ export function requireRole(...roles: UserRole[]) {
 
     return next();
   };
+  // Lets the API description (openapi/inventory.ts) list which roles a route needs.
+  return Object.assign(middleware, { requiredRoles: roles as readonly string[] });
 }

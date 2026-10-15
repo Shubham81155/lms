@@ -16,19 +16,19 @@ import { dispatchWebhook } from '../lib/webhooks';
 
 const router = Router();
 
-const enrollSchema = z.object({
+export const enrollSchema = z.object({
   courseId: idSchema,
   userId: idSchema.optional(),
 });
 
-const updateProgressSchema = z.object({
+export const updateProgressSchema = z.object({
   progressPercent: z.number().min(0).max(100),
   finalGrade: z.number().min(0).max(100).optional(),
 });
 
 const statsQuery = z.object({ userId: idSchema.optional() });
 
-const listQuery = z.object({
+export const listQuery = z.object({
   ...paginationShape,
   userId: idSchema.optional(),
   courseId: idSchema.optional(),

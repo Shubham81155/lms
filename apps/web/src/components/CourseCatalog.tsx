@@ -44,7 +44,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
         level: "Intermediate",
         description: c.description || "Comprehensive university course curriculum designed for academic rigor.",
         estimatedHours: 40,
-        modulesCount: c.modules?.length ?? 0,
+        modulesCount: c.moduleCount ?? c.modules?.length ?? 0,
         passingGradePercent: c.passingGradePercent || 70,
         allowSelfEnroll: true,
         tag: "PostgreSQL Live",

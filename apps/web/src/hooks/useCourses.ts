@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api, ApiError } from '@/lib/api';
+import { typedGet } from '@/lib/typed-api';
 import { Course, PaginatedResponse, PaginationMeta } from '@/lib/types';
 
 export function useCourses(page: number = 1, limit: number = 10) {
@@ -15,50 +16,12 @@ export function useCourses(page: number = 1, limit: number = 10) {
     setIsLoading(true);
     setError(null);
     try {
-      // Backend may return PaginatedResponse<Course> or { courses: Course[], pagination?: ... }
-      const response = await api.get<any>('/api/v1/courses', {
-        params: { page, limit },
-      });
-
-      if (response && Array.isArray(response.data)) {
-        const paginatedData = response as PaginatedResponse<Course>;
-        setData(paginatedData);
-        setCourses(paginatedData.data);
-        setPagination(paginatedData.pagination);
-      } else if (response && Array.isArray(response.courses)) {
-        const courseList = response.courses as Course[];
-        const meta: PaginationMeta = response.pagination || {
-          page,
-          limit,
-          total: courseList.length,
-          totalPages: Math.ceil(courseList.length / limit) || 1,
-        };
-        const structured: PaginatedResponse<Course> = {
-          data: courseList,
-          pagination: meta,
-        };
-        setData(structured);
-        setCourses(courseList);
-        setPagination(meta);
-      } else if (Array.isArray(response)) {
-        const meta: PaginationMeta = {
-          page,
-          limit,
-          total: response.length,
-          totalPages: Math.ceil(response.length / limit) || 1,
-        };
-        const structured: PaginatedResponse<Course> = {
-          data: response,
-          pagination: meta,
-        };
-        setData(structured);
-        setCourses(response);
-        setPagination(meta);
-      } else {
-        setCourses([]);
-        setData(null);
-        setPagination(null);
-      }
+      const response = await typedGet('/api/v1/courses', { page, limit });
+      // The API's list item and the web's Course type describe the same record.
+      const paginatedData: PaginatedResponse<Course> = { data: response.data as Course[], pagination: response.pagination };
+      setData(paginatedData);
+      setCourses(paginatedData.data);
+      setPagination(paginatedData.pagination);
     } catch (err: any) {
       const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to fetch courses');
       setError(message);

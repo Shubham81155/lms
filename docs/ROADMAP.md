@@ -15,6 +15,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | Multi-tenant data isolation (PostgreSQL RLS, fail-closed) | Done | `multi_tenancy.md`; tested with an unprivileged role |
 | Prisma migrations, seed, test database | Done | embedded PostgreSQL in tests |
 | Secrets/config validation at start-up | Done | weak or placeholder secrets refuse to boot |
+| OpenAPI description generated from the mounted routes, generated web types, typed GET client, route-authentication coverage test | Partial | all 169 routes listed with auth and roles; request/response schemas written for auth, courses, enrollments so far |
 | Server-side session revocation (token version, live status/role check), `/ready` probe, global API rate limits | Done | shared across instances when `REDIS_URL` is set (not exercised against a live Redis here), per process otherwise |
 | ESLint, Docker/compose for local stack | Done | Dockerfiles/compose not yet exercised; API runs via ts-node. CI intentionally not set up |
 | Infrastructure as code (Terraform), GitOps CI/CD | Open | |

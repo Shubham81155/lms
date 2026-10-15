@@ -30,7 +30,7 @@ const router = Router();
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-const loginSchema = z.object({
+export const loginSchema = z.object({
   email: z.string().email('Invalid email address format').max(254),
   password: z.string().min(1, 'Password is required').max(PASSWORD_MAX_LENGTH),
   /** TOTP code or recovery code; required only when the account has MFA enabled. */
@@ -42,9 +42,9 @@ const passwordSchema = z
   .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
   .max(PASSWORD_MAX_LENGTH);
 
-const forgotSchema = z.object({ email: z.string().email().max(254) });
-const resetSchema = z.object({ token: z.string().min(20).max(200), password: passwordSchema });
-const verifySchema = z.object({ token: z.string().min(20).max(200) });
+export const forgotSchema = z.object({ email: z.string().email().max(254) });
+export const resetSchema = z.object({ token: z.string().min(20).max(200), password: passwordSchema });
+export const verifySchema = z.object({ token: z.string().min(20).max(200) });
 
 const limiter = (name: string, limit: number, message: string) =>
   rateLimit({
