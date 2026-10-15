@@ -11,6 +11,7 @@ import {
   ExternalLink,
   QrCode,
 } from "lucide-react";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface CertificateVerificationProps {
   studentName: string;
@@ -25,11 +26,12 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
   certificateId,
   onClose,
 }) => {
+  useEscapeKey(onClose);
   const issueDate = "October 8, 2026";
   const signatureHash = "0x8f9c7a6e5d4c3b2a10f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7";
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Certificate">
       <div className="bg-surface border border-line rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col">
         {/* Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
@@ -45,6 +47,7 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
 
           <button
             onClick={onClose}
+            aria-label="Close"
             className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink transition-colors"
           >
             <X className="h-5 w-5" />

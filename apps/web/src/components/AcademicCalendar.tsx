@@ -16,6 +16,7 @@ import {
   Sparkles,
   CheckCircle2,
 } from "lucide-react";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 export interface CalendarEvent {
   id: string;
@@ -70,6 +71,7 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({
   onClose,
   onSelectEvent,
 }) => {
+  useEscapeKey(onClose);
   const [selectedView, setSelectedView] = useState<"MONTH" | "AGENDA">("AGENDA");
   const [calendarSyncNotification, setCalendarSyncNotification] = useState<string | null>(null);
 
@@ -88,7 +90,7 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Academic calendar">
       <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
@@ -116,6 +118,7 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({
             </button>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />

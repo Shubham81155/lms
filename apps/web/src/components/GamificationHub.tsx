@@ -14,6 +14,7 @@ import { OpenBadgesEngine } from "@enterprise-lms/standards";
 import { useAuth } from "@/context/AuthContext";
 import { useMyEnrollments } from "@/hooks/useEnrollments";
 import { useGamification } from "@/hooks/useEngagement";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface GamificationHubProps {
   onClose: () => void;
@@ -30,6 +31,7 @@ const levelLabel = (score: number) =>
 const titleCase = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
 export const GamificationHub: React.FC<GamificationHubProps> = ({ onClose, courseId }) => {
+  useEscapeKey(onClose);
   const { user } = useAuth();
   const { enrollments } = useMyEnrollments();
   const [activeTab, setActiveTab] = useState<"BADGES" | "SKILLS" | "LEADERBOARD">("BADGES");
@@ -81,7 +83,7 @@ export const GamificationHub: React.FC<GamificationHubProps> = ({ onClose, cours
   const streak = state?.streakDays ?? 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Badges and XP">
       <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">

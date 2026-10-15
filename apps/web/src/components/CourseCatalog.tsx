@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
 import { useEnroll, useMyEnrollments } from "@/hooks/useEnrollments";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface CourseCatalogProps {
   onClose: () => void;
@@ -25,6 +26,7 @@ interface CourseCatalogProps {
 }
 
 export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolled, initialQuery = "" }) => {
+  useEscapeKey(onClose);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedDept, setSelectedDept] = useState<string>("ALL");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -87,7 +89,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Course catalog">
       <div className="bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
@@ -110,6 +112,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
 
           <button
             onClick={onClose}
+            aria-label="Close"
             className="h-8 w-8 rounded-xl bg-surface hover:bg-raised border border-line flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
           >
             <X className="h-4 w-4" />

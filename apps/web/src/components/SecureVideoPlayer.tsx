@@ -44,7 +44,7 @@ export const SecureVideoPlayer: React.FC<SecureVideoPlayerProps> = ({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Video lesson">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col">
         {/* Header */}
         <div className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
@@ -64,6 +64,7 @@ export const SecureVideoPlayer: React.FC<SecureVideoPlayerProps> = ({
             </span>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
             >
               <X className="h-5 w-5" />

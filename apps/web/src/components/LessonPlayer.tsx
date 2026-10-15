@@ -177,7 +177,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/90 backdrop-blur-md flex items-center justify-center p-3 md:p-6">
+    <div className="fixed inset-0 z-50 bg-canvas/90 backdrop-blur-md flex items-center justify-center p-3 md:p-6" role="dialog" aria-modal="true" aria-label="Lesson player">
       <div className="bg-surface border border-line rounded-3xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Top Navbar */}
         <div className="bg-canvas border-b border-line px-6 py-3.5 flex items-center justify-between">
@@ -207,6 +207,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
             <button
               onClick={onClose}
+              aria-label="Close"
               className="h-8 w-8 rounded-xl bg-surface hover:bg-raised border border-line flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-4 w-4" />
