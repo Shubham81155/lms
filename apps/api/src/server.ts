@@ -17,6 +17,7 @@ import { apiMounts, rawBodyMounts } from './mounts';
 import { buildOpenApi } from './openapi/spec';
 import { startEmailDispatcher } from './lib/email-dispatch';
 import { startWebhookRetryWorker } from './lib/webhooks';
+import { startPlagiarismSubmitWorker } from './lib/plagiarism-submit';
 
 const app = express();
 const PORT = config.PORT;
@@ -262,6 +263,7 @@ if (config.NODE_ENV !== 'test') {
     });
     startEmailDispatcher();
     startWebhookRetryWorker();
+    startPlagiarismSubmitWorker();
   });
 }
 

@@ -78,7 +78,7 @@ router.post(
 
         await prisma.assignmentSubmission.update({
           where: { id: submission.id },
-          data: { plagiarismScore: parsed.score, plagiarismReportUrl: parsed.reportUrl ?? null },
+          data: { plagiarismScore: parsed.score, plagiarismReportUrl: parsed.reportUrl ?? null, plagiarismStatus: 'COMPLETE', plagiarismNextAttemptAt: null },
         });
 
         let alerted = 0;

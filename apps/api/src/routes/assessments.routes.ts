@@ -1,3 +1,4 @@
+import { shouldCheckPlagiarism } from '../lib/plagiarism-submit';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
@@ -797,7 +798,18 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
   if (existing?.gradedAt) throw new HttpError(409, 'This submission has already been graded and can no longer be changed');
 
   const now = new Date();
-  const data = { fileUrl: fileUrl || null, submissionText: submissionText || null, submittedAt: now };
+  const check = shouldCheckPlagiarism(submissionText);
+  // A new or changed text invalidates any earlier similarity result.
+  const data = {
+    fileUrl: fileUrl || null,
+    submissionText: submissionText || null,
+    submittedAt: now,
+    plagiarismScore: null,
+    plagiarismReportUrl: null,
+    plagiarismStatus: check ? 'PENDING' : null,
+    plagiarismAttempts: 0,
+    plagiarismNextAttemptAt: check ? now : null,
+  };
   const submission = await prisma.assignmentSubmission.upsert({
     where: { assignmentId_userId: { assignmentId: assignment.id, userId } },
     create: { assignmentId: assignment.id, userId, ...data },

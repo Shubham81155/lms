@@ -63,6 +63,12 @@ const envSchema = z.object({
   LIVEKIT_API_KEY: z.string().min(3).optional(),
   LIVEKIT_API_SECRET: z.string().min(32, 'LIVEKIT_API_SECRET must be at least 32 characters').optional(),
   PLAGIARISM_WEBHOOK_SECRET: z.string().min(32, 'PLAGIARISM_WEBHOOK_SECRET must be at least 32 characters').optional(),
+  /** Outbound similarity checks: where text submissions are sent. Needs PLAGIARISM_WEBHOOK_SECRET (signs the request) and API_PUBLIC_URL (callback address). */
+  PLAGIARISM_SUBMIT_URL: z.string().url().optional(),
+  /** Public base URL of this API as the provider sees it, e.g. https://api.example.com */
+  API_PUBLIC_URL: z.string().url().optional(),
+  /** Seconds between outbound plagiarism submission sweeps; 0 turns the background worker off. */
+  PLAGIARISM_SUBMIT_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(30),
 });
 
 export type AppConfig = z.infer<typeof envSchema> & { corsOrigins: string[] };
