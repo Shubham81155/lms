@@ -235,6 +235,43 @@ describe('email verification, end to end', () => {
   });
 });
 
+describe('sessions are revoked server-side', () => {
+  const tokenOf = (res: request.Response) => String(res.headers['set-cookie']).match(/lms_token=([^;]+)/)![1];
+
+  it('a copied token stops working after logout', async () => {
+    const { agent, res } = await signIn('harvard', 'teacher');
+    const token = tokenOf(res);
+    expect((await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`)).status).toBe(200);
+
+    await agent.post('/api/v1/auth/logout');
+    expect((await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`)).status).toBe(401);
+    expect((await signIn('harvard', 'teacher')).res.status).toBe(200); // a fresh sign-in works again
+  });
+
+  it('a suspended user is cut off immediately and a reinstated one needs a new sign-in', async () => {
+    const { res } = await signIn('mit', 'teacher');
+    const token = tokenOf(res);
+    const call = () => request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${token}`);
+    expect((await call()).status).toBe(200);
+
+    await admin.user.update({ where: { id: 'mit-teacher' }, data: { status: 'SUSPENDED', tokenVersion: { increment: 1 } } });
+    expect((await call()).status).toBe(401);
+
+    await admin.user.update({ where: { id: 'mit-teacher' }, data: { status: 'ACTIVE' } });
+    expect((await call()).status).toBe(401); // the old token stays dead
+    expect((await signIn('mit', 'teacher')).res.status).toBe(200);
+  });
+
+  it('the role in the database wins over the role in the token', async () => {
+    const { res } = await signIn('mit', 'teacher');
+    const token = tokenOf(res);
+    await admin.user.update({ where: { id: 'mit-teacher' }, data: { role: 'STUDENT' } });
+    const stats = await request(app).get('/api/v1/admin/stats').set('Authorization', `Bearer ${token}`);
+    expect(stats.status).toBe(403);
+    await admin.user.update({ where: { id: 'mit-teacher' }, data: { role: 'INSTRUCTOR' } });
+  });
+});
+
 describe('the database role', () => {
   it('is not allowed to bypass row-level security', async () => {
     const { basePrisma } = await import('../src/lib/prisma.js');

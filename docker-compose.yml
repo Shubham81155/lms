@@ -1,0 +1,53 @@
+# Local/demo stack: PostgreSQL + API + web. NOT a production deployment (dev passwords below).
+#   docker compose up --build
+# Needs JWT_SECRET and PII_ENCRYPTION_KEY in your shell or a .env file (see .env.example for how to generate).
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: enterprise_lms
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/init-db.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d enterprise_lms"]
+      interval: 5s
+      retries: 10
+
+  migrate:
+    build: { context: ., dockerfile: deploy/Dockerfile.api }
+    depends_on: { db: { condition: service_healthy } }
+    user: node
+    working_dir: /app
+    command: ["npm", "run", "db:deploy", "-w", "@enterprise-lms/database"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/enterprise_lms?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/enterprise_lms?schema=public
+
+  api:
+    build: { context: ., dockerfile: deploy/Dockerfile.api }
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://lms_app:lms_app_dev_password@db:5432/enterprise_lms?schema=public
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?set PII_ENCRYPTION_KEY}
+      TRUST_PROXY: 1
+      CORS_ORIGINS: http://localhost:3000
+      APP_URL: http://localhost:3000
+      DEFAULT_TENANT_SLUG: ${DEFAULT_TENANT_SLUG:-harvard}
+    ports: ["4000:4000"]
+
+  web:
+    build: { context: ., dockerfile: deploy/Dockerfile.web }
+    depends_on: [api]
+    environment:
+      API_URL: http://api:4000
+    ports: ["3000:3000"]
+
+volumes:
+  pgdata:

@@ -8,14 +8,15 @@
 
 ```mermaid
 flowchart TD
-    Client["Next.js Web / Mobile Apps / LTI Tool Consumer"] --> Gateway["API Gateway / WAF (TLS 1.3 + DDoS Shield)"]
-    Gateway --> CoreAPI["API Service (Tenant Isolation & RBAC/ABAC)"]
-    
-    CoreAPI --> DB[("PostgreSQL Multi-Tenant (RLS)")]
-    CoreAPI --> LRS[("ClickHouse xAPI LRS")]
-    CoreAPI --> Media[("Encrypted S3 Media Store")]
-    CoreAPI --> Cache[("Redis Cluster")]
+    Client["Next.js Web / LTI Tool Consumer"] --> CoreAPI["Express API (Tenant Isolation & RBAC)"]
+    CoreAPI --> DB[("PostgreSQL Multi-Tenant (RLS)<br/>incl. xAPI statements and audit trail")]
+    CoreAPI --> SMTP["SMTP"]
+    CoreAPI --> Live["LiveKit (optional)"]
 ```
+
+Not built yet (see [docs/ROADMAP.md](docs/ROADMAP.md)): API gateway/WAF, Redis (shared rate limits, cache, job queue),
+object storage for assets and SCORM packages, a dedicated LRS (xAPI is stored in PostgreSQL today), mobile apps.
+Compliance (FERPA, SOC 2, WCAG) is **not** claimed by the software; `GET /api/v1/admin/compliance` reports measured facts only.
 
 ---
 
@@ -24,7 +25,7 @@ flowchart TD
 ```text
 LMS/
 ├── apps/
-│   ├── api/                 # Express / NestJS Backend with Tenant & Security Middleware
+│   ├── api/                 # Express backend with tenant, session and security middleware
 │   └── web/                 # Next.js Enterprise Student & Instructor Portal
 ├── packages/
 │   ├── database/            # Multi-Tenant Prisma Schema & PostgreSQL RLS Policies
@@ -95,6 +96,9 @@ npm test
 
 ## Authentication model
 
+- Sessions are stateless JWTs that are **re-checked against the database on every request**: a suspended or deleted user, a changed role, a password reset, a status change or a logout take effect immediately (`User.tokenVersion`; a per-process cache of 10 s applies across instances). Logout signs the user out everywhere.
+- `GET /health` is liveness; `GET /ready` checks the database. All of `/api/v1` has a per-IP rate limit (`API_RATE_LIMIT_MAX`, `API_WRITE_RATE_LIMIT_MAX`); set `REDIS_URL` to share the counters between API instances; without it they are per process.
+- Failed webhook deliveries are retried with backoff by a background sweeper (`WEBHOOK_RETRY_INTERVAL_SECONDS`); the tenant export and forum replies are paged/streamed so large tenants do not load everything into memory.
 - Passwords are hashed with bcrypt. Legacy SHA-256 / scrypt hashes are upgraded on next successful sign-in; plaintext is never accepted.
 - `POST /api/v1/auth/login` sets the session as an **httpOnly, SameSite=Lax** cookie (`Secure` in production). No token is returned to JavaScript. API clients may also send `Authorization: Bearer <jwt>`.
 - The web app proxies `/api/v1/*` to the API (`API_URL`), so the cookie is first-party. `src/middleware.ts` validates the session with the API before serving `/student`, `/teacher` and `/admin`.

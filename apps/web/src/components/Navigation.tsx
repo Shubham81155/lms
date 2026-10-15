@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface NavigationProps {
   currentRole: "student" | "teacher" | "admin";
@@ -37,6 +38,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   const { user, logout } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const notifications = useNotifications();
 
   // Fallback info if session is loading
   const displayInfo = {
@@ -144,12 +146,24 @@ export const Navigation: React.FC<NavigationProps> = ({
               }`}
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-slate-950" />
+              {notifications.unreadCount > 0 && (
+                <span
+                  aria-label={`${notifications.unreadCount} unread notifications`}
+                  className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-blue-500 ring-2 ring-slate-950 text-[9px] font-bold text-white flex items-center justify-center"
+                >
+                  {notifications.unreadCount > 9 ? "9+" : notifications.unreadCount}
+                </span>
+              )}
             </button>
 
             <NotificationCenter
               isOpen={showNotifications}
               onClose={() => setShowNotifications(false)}
+              items={notifications.items}
+              isLoading={notifications.isLoading}
+              error={notifications.error}
+              onMarkRead={notifications.markRead}
+              onMarkAllRead={notifications.markAllRead}
             />
           </div>
 

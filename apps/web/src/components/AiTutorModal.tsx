@@ -54,7 +54,7 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({
     {
       id: "msg_1",
       sender: "AI",
-      text: `Hello Alex! I'm your AI Academic Tutor for ${courseTitle}. Based on your recent quizzes and coding labs, reviewing vector clocks and split-brain quorum will boost your midterm readiness by +18%. What would you like to explore?`,
+      text: `Hi! This is a preview of the study tutor for ${courseTitle}. It currently serves prepared practice questions, not a personalised AI model, and the readiness score is illustrative. Pick a topic to try a drill.`,
       timestamp: "Just now",
       drillQuestion: {
         questionText: "In a 5-node distributed cluster running Raft, what is the minimum quorum size required to safely commit a log entry?",
@@ -150,7 +150,7 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({
                 <h3 className="font-bold text-sm text-white">AI Personalized Socratic Tutor</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-950 text-blue-400 border border-blue-800 flex items-center gap-1">
                   <Sparkles className="h-3 w-3" />
-                  Adaptive Engine Active
+                  Demo · template-based, no AI model yet
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">{courseTitle}</p>

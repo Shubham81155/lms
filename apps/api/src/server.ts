@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
 import { config } from './config';
 import { AuditSanitizer } from '@enterprise-lms/security';
 import { logger } from './lib/logger';
@@ -9,7 +10,8 @@ import { requestId, sendError } from './lib/http';
 import { findRlsBypassReason } from '@enterprise-lms/database';
 import { prisma, basePrisma } from './lib/prisma';
 import { resolveTenant } from './lib/tenant';
-import { XApiStatement, Lti13Claims } from '@enterprise-lms/standards';
+import { tenantFeatures } from './lib/features';
+import { rateLimitStore } from './lib/rate-limit-store';
 
 // Import route modules
 import authRoutes from './routes/auth.routes';
@@ -20,7 +22,25 @@ import assessmentsRoutes from './routes/assessments.routes';
 import adminRoutes from './routes/admin.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import certificatesRoutes from './routes/certificates.routes';
-import { authenticateJWT } from './middleware/auth';
+import notificationsRoutes from './routes/notifications.routes';
+import forumRoutes from './routes/forum.routes';
+import calendarRoutes from './routes/calendar.routes';
+import gamificationRoutes from './routes/gamification.routes';
+import intelligenceRoutes from './routes/intelligence.routes';
+import mfaRoutes from './routes/mfa.routes';
+import platformRoutes from './routes/platform.routes';
+import scimRoutes from './routes/scim.routes';
+import ltiRoutes from './routes/lti.routes';
+import gradebookRoutes from './routes/gradebook.routes';
+import questionBankRoutes from './routes/questionbank.routes';
+import integrationsRoutes from './routes/integrations.routes';
+import ssoRoutes from './routes/sso.routes';
+import samlRoutes from './routes/saml.routes';
+import { startEmailDispatcher } from './lib/email-dispatch';
+import { startWebhookRetryWorker } from './lib/webhooks';
+import gradingRoutes from './routes/grading.routes';
+import orgRoutes from './routes/org.routes';
+import liveRoutes from './routes/live.routes';
 
 const app = express();
 const PORT = config.PORT;
@@ -64,6 +84,8 @@ app.use(
     credentials: true,
   })
 );
+// Signed provider callbacks need the raw bytes, so they are mounted ahead of the JSON parser.
+app.use('/api/v1/integrations', integrationsRoutes);
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
@@ -84,6 +106,8 @@ const tenantResolver = (req: Request, _res: Response, next: NextFunction) => {
   const host = rawHost.split(',')[0].trim().split(':')[0].toLowerCase();
   const hasDomain = host.includes('.') && !IPV4.test(host);
 
+  req.publicHost = rawHost.split(',')[0].trim().toLowerCase();
+
   req.tenantHints = [
     typeof headerTenant === 'string' ? headerTenant.trim() : '',
     hasDomain ? host : '', // custom domain, e.g. learn.university.edu
@@ -95,6 +119,25 @@ const tenantResolver = (req: Request, _res: Response, next: NextFunction) => {
 };
 
 app.use(tenantResolver);
+
+// Baseline abuse protection for every API call; login and token flows have stricter limits of their
+// own (auth.routes.ts). Signed provider callbacks are mounted above and are not limited here.
+const apiLimiterOptions = { windowMs: 60_000, standardHeaders: 'draft-7', legacyHeaders: false } as const;
+app.use(
+  '/api/v1',
+  rateLimit({ ...apiLimiterOptions, limit: config.API_RATE_LIMIT_MAX, store: rateLimitStore('api'), passOnStoreError: true, message: { error: 'Too many requests. Slow down and try again shortly.' } })
+);
+app.use(
+  '/api/v1',
+  rateLimit({
+    ...apiLimiterOptions,
+    limit: config.API_WRITE_RATE_LIMIT_MAX,
+    store: rateLimitStore('api-write'),
+    passOnStoreError: true,
+    skip: (req) => req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS',
+    message: { error: 'Too many changes in a short time. Try again shortly.' },
+  })
+);
 
 // =========================================================
 // 3. STRUCTURED REQUEST LOGGING
@@ -127,19 +170,22 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // 4. CORE API ROUTES
 // =========================================================
 
-// Health & System Status
-app.get('/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    service: 'Enterprise LMS API Gateway',
-    compliance: {
-      ferpa: true,
-      coppa: false,
-      soc2: true,
-      wcag: '2.1-AA',
-    },
-  });
+// Liveness: the process is up. Says nothing about compliance; the measured posture is the
+// authenticated GET /api/v1/admin/compliance report.
+app.get('/health', (_req: Request, res: Response) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString(), service: 'enterprise-lms-api' });
+});
+
+// Readiness: only report ready when the database answers, so load balancers stop routing to an
+// instance that has lost it.
+app.get('/ready', async (_req: Request, res: Response) => {
+  try {
+    await basePrisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ready', timestamp: new Date().toISOString() });
+  } catch (error) {
+    logger.error({ err: error }, 'readiness check failed');
+    res.status(503).json({ status: 'unavailable' });
+  }
 });
 
 // Tenant Metadata & Branding Endpoint (public; used to brand the login page)
@@ -172,62 +218,21 @@ app.get('/api/v1/tenant/config', async (req: Request, res: Response) => {
         logoUrl: tenant.logoUrl,
         faviconUrl: tenant.faviconUrl,
       },
-      features: { scorm: true, xapi: true, lti13: true, aiProctoring: true },
+      features: await tenantFeatures(tenant.id),
     });
   } catch (error) {
-    console.error('Error in GET /api/v1/tenant/config:', error);
+    logger.error({ err: error }, 'Error in GET /api/v1/tenant/config');
     return res.status(500).json({ error: 'Failed to load tenant configuration' });
   }
-});
-
-// xAPI Learning Record Store (LRS) Statement Ingestion
-app.post('/api/v1/xapi/statements', authenticateJWT, (req: Request, res: Response) => {
-  const statement: XApiStatement = req.body;
-
-  if (!statement.actor || !statement.verb || !statement.object) {
-    return res.status(400).json({ error: 'Invalid xAPI Statement format' });
-  }
-
-  // Persist to high-throughput LRS (ClickHouse / TimescaleDB)
-  const statementId = statement.id || `stmt_${Date.now()}`;
-
-  return res.status(201).json({
-    message: 'xAPI Statement recorded',
-    statementId,
-    storedAt: new Date().toISOString(),
-  });
-});
-
-// AI Proctoring Telemetry Ingestion
-app.post('/api/v1/proctoring/events', authenticateJWT, (req: Request, res: Response) => {
-  const { submissionId, eventType, severity, snapshotUrl } = req.body;
-
-  // Evaluates violation thresholds
-  return res.status(200).json({
-    status: 'recorded',
-    flagged: severity === 'HIGH',
-    submissionId,
-    eventType,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-// LTI 1.3 Advantage Deep Linking / Launch Handler
-app.post('/api/v1/lti/launch', (req: Request, res: Response) => {
-  const claims: Partial<Lti13Claims> = req.body;
-
-  res.json({
-    status: 'authenticated',
-    ltiVersion: '1.3.0',
-    targetLinkUri: claims['https://purl.imsglobal.org/spec/lti/claim/target_link_uri'],
-    sessionToken: 'lti_sess_mock_valid_token_xyz',
-  });
 });
 
 // =========================================================
 // 5. MODULAR ROUTE MOUNTING
 // =========================================================
 
+app.use('/api/v1/auth/mfa', mfaRoutes);
+app.use('/api/v1/auth/sso', ssoRoutes);
+app.use('/api/v1/auth/saml', samlRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/courses', coursesRoutes);
 app.use('/api/v1/enrollments', enrollmentsRoutes);
@@ -236,6 +241,20 @@ app.use('/api/v1', assessmentsRoutes); // Mounts /courses/:courseId/quizzes, /qu
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/certificates', certificatesRoutes);
+app.use('/api/v1/admin', platformRoutes);
+app.use('/api/v1/admin', orgRoutes);
+app.use('/api/v1/notifications', notificationsRoutes);
+app.use('/api/v1/calendar', calendarRoutes);
+app.use('/api/v1/gamification', gamificationRoutes);
+app.use('/api/v1/scim/v2', scimRoutes);
+app.use('/api/v1/lti', ltiRoutes);
+// Root-mounted routers last: they authenticate only the paths they own (see forum.routes.ts).
+app.use('/api/v1', forumRoutes);
+app.use('/api/v1', gradebookRoutes);
+app.use('/api/v1', gradingRoutes);
+app.use('/api/v1', liveRoutes);
+app.use('/api/v1', questionBankRoutes);
+app.use('/api/v1', intelligenceRoutes);
 
 // =========================================================
 // 6. 404 & GLOBAL ERROR HANDLING
@@ -282,6 +301,8 @@ if (config.NODE_ENV !== 'test') {
     app.listen(PORT, () => {
       logger.info({ port: PORT }, 'Enterprise LMS API listening');
     });
+    startEmailDispatcher();
+    startWebhookRetryWorker();
   });
 }
 

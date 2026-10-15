@@ -1,0 +1,24 @@
+FROM node:22-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/database/package.json packages/database/
+COPY packages/security/package.json packages/security/
+COPY packages/standards/package.json packages/standards/
+RUN npm ci --ignore-scripts
+COPY packages packages
+COPY apps/web apps/web
+# API_URL is baked into the rewrite rules at build time.
+ARG API_URL=http://api:4000
+ENV API_URL=$API_URL NEXT_TELEMETRY_DISABLED=1
+RUN npm run build -w @enterprise-lms/web
+
+FROM node:22-slim
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+COPY --from=build /app /app
+USER node
+EXPOSE 3000
+WORKDIR /app/apps/web
+CMD ["npx", "next", "start"]

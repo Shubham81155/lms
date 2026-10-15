@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { invalidateSessionCache } from '../lib/session';
 import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { GlobalRole, UserStatus } from '@enterprise-lms/database';
@@ -141,10 +142,14 @@ router.patch(
         throw new HttpError(403, 'Only a super administrator can grant or change the super administrator role');
       }
       if (input.role !== undefined) data.role = input.role;
-      if (input.status !== undefined) data.status = input.status;
+      if (input.status !== undefined) {
+        data.status = input.status;
+        if (input.status !== existing.status) data.tokenVersion = { increment: 1 };
+      }
     }
 
     const updated = await prisma.user.update({ where: { id }, data, select: safeUserSelect });
+    invalidateSessionCache(id);
 
     await logAuditEvent({
       tenantId,

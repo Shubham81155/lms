@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { runWithTenant } from '@enterprise-lms/database';
 import { UserRole } from '@enterprise-lms/security';
 import { config } from '../config';
+import { loadSession, sessionIsValid } from '../lib/session';
 
 export const AUTH_COOKIE = 'lms_token';
 
@@ -20,15 +21,17 @@ declare global {
       tenantId?: string;
       /** Unauthenticated tenant hints in priority order; must be resolved against the DB before use. */
       tenantHints?: string[];
+      /** Host the browser used (with port), lower-cased. Only meaningful for choosing among a tenant's own origins. */
+      publicHost?: string;
       user?: AuthUser;
     }
   }
 }
 
 /** Generates a signed JWT. */
-export function generateToken(user: { id: string; role: string; email: string; tenantId: string }): string {
+export function generateToken(user: { id: string; role: string; email: string; tenantId: string; tokenVersion?: number }): string {
   return jwt.sign(
-    { id: user.id, role: user.role, email: user.email, tenantId: user.tenantId },
+    { id: user.id, role: user.role, email: user.email, tenantId: user.tenantId, tv: user.tokenVersion ?? 0 },
     config.JWT_SECRET,
     { algorithm: 'HS256', expiresIn: config.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] }
   );
@@ -51,6 +54,12 @@ export function setAuthCookie(res: Response, token: string): void {
   });
 }
 
+/** Issues the session cookie for a user, stamped with their current token version. */
+export async function startSession(res: Response, user: { id: string; role: string; email: string; tenantId: string }): Promise<void> {
+  const state = await loadSession(user.id, user.tenantId, true);
+  setAuthCookie(res, generateToken({ ...user, tokenVersion: state?.tokenVersion ?? 0 }));
+}
+
 export function clearAuthCookie(res: Response): void {
   res.clearCookie(AUTH_COOKIE, cookieOptions());
 }
@@ -65,44 +74,57 @@ export function extractToken(req: Request): string | null {
   return typeof cookie === 'string' && cookie ? cookie : null;
 }
 
-export function verifyToken(token: string): AuthUser | null {
+export function verifyToken(token: string): (AuthUser & { tv: number }) | null {
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as Partial<AuthUser>;
+    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as Partial<AuthUser> & { tv?: number };
     if (!decoded.id || !decoded.role || !decoded.tenantId || !decoded.email) return null;
-    return { id: decoded.id, role: decoded.role, email: decoded.email, tenantId: decoded.tenantId };
+    return { id: decoded.id, role: decoded.role, email: decoded.email, tenantId: decoded.tenantId, tv: decoded.tv ?? 0 };
   } catch {
     return null;
   }
 }
 
+/**
+ * Verifies the token and re-checks the user server-side (still active, token not revoked). The role
+ * comes from the database, not the token, so a demotion applies immediately.
+ */
+async function authenticate(req: Request): Promise<AuthUser | null> {
+  const token = extractToken(req);
+  const claims = token ? verifyToken(token) : null;
+  if (!claims) return null;
+  const state = await loadSession(claims.id, claims.tenantId);
+  if (!sessionIsValid(state, claims.tv)) return null;
+  return { id: claims.id, role: state.role as UserRole, email: claims.email, tenantId: claims.tenantId };
+}
+
 /** Requires a valid token. Sets req.user and req.tenantId from it; nothing client-supplied is trusted. */
 export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
-  const token = extractToken(req);
-  if (!token) {
+  if (!extractToken(req)) {
     return res.status(401).json({ error: 'Unauthorized: Authentication token is required' });
   }
-
-  const user = verifyToken(token);
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
-  }
-
-  req.user = user;
-  req.tenantId = user.tenantId;
-  // Everything downstream (handlers, audit logging) runs scoped to this tenant at the database.
-  return runWithTenant(user.tenantId, () => next());
+  authenticate(req).then(
+    (user) => {
+      if (!user) return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+      req.user = user;
+      req.tenantId = user.tenantId;
+      // Everything downstream (handlers, audit logging) runs scoped to this tenant at the database.
+      return runWithTenant(user.tenantId, () => next());
+    },
+    () => res.status(503).json({ error: 'Unable to verify session' })
+  );
 };
 
 /** Attaches req.user when a valid token is present but never rejects the request. */
 export const optionalAuth = (req: Request, _res: Response, next: NextFunction) => {
-  const token = extractToken(req);
-  const user = token ? verifyToken(token) : null;
-  if (user) {
-    req.user = user;
-    req.tenantId = user.tenantId;
-    return runWithTenant(user.tenantId, () => next());
-  }
-  next();
+  authenticate(req).then(
+    (user) => {
+      if (!user) return next();
+      req.user = user;
+      req.tenantId = user.tenantId;
+      return runWithTenant(user.tenantId, () => next());
+    },
+    () => next()
+  );
 };
 
 /** Tenant of an authenticated request. Never read the tenant from headers or the body. */

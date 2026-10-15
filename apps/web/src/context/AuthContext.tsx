@@ -30,8 +30,9 @@ interface AuthContextType {
   isLoading: boolean;
   login: (
     email: string,
-    password: string
-  ) => Promise<{ success: boolean; targetRoute?: string; error?: string }>;
+    password: string,
+    mfaCode?: string
+  ) => Promise<{ success: boolean; targetRoute?: string; error?: string; mfaRequired?: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -92,16 +93,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user, isLoading, pathname, router]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, mfaCode?: string) => {
     try {
-      const data = await api.post<{ user: ApiUser }>("/api/v1/auth/login", { email, password });
+      const data = await api.post<{ user: ApiUser }>("/api/v1/auth/login", {
+        email,
+        password,
+        ...(mfaCode ? { mfaCode } : {}),
+      });
       const session = toSession(data.user);
       setUser(session);
       return { success: true, targetRoute: session.targetRoute };
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : "Unable to reach the server. Please try again.";
-      return { success: false, error: message };
+      // The password was right but the account needs its second factor.
+      const mfaRequired = err instanceof ApiError && err.status === 401 && err.details?.mfaRequired === true;
+      return { success: false, error: message, mfaRequired };
     }
   }, []);
 

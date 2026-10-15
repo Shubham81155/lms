@@ -7,9 +7,13 @@ import { resolveTenant } from '../lib/tenant';
 import { HttpError, route } from '../lib/http';
 import { parseQuery } from '../lib/validate';
 
+import { rateLimitStore } from '../lib/rate-limit-store';
+
 const router = Router();
 
 const verifyLimiter = rateLimit({
+  store: rateLimitStore('cert-verify'),
+  passOnStoreError: true,
   windowMs: 15 * 60 * 1000,
   limit: 60,
   standardHeaders: 'draft-7',

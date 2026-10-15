@@ -8,16 +8,19 @@ export interface AtRiskLearner {
   name: string;
   email: string;
   course: string;
+  courseId?: string;
   riskFactor: "HIGH" | "MEDIUM" | "LOW";
   reasons: string[];
   suggestedAction: string;
-  streakDays: number;
+  streakDays?: number;
 }
 
 export interface AssessmentItemAnalysis {
   questionId: string;
   concept: string;
-  taxonomyLevel: string;
+  taxonomyLevel?: string;
+  questionType?: string;
+  attempts?: number;
   averageScorePercent: number;
   status: string;
   recommendation: string;
@@ -31,6 +34,7 @@ export interface CohortAnalyticsResponse {
     averageProgress: number;
     completionRate: number;
     averageGpa: number;
+    averageGrade?: number;
   };
   atRiskLearners: AtRiskLearner[];
   itemAnalysis: AssessmentItemAnalysis[];
@@ -40,11 +44,11 @@ export interface CohortAnalyticsResponse {
 export interface XApiStatementItem {
   id: string;
   timestamp: string;
-  actor: { mbox: string; name: string };
-  verb: { id: string; display: Record<string, string> };
+  actor: { mbox: string; name?: string };
+  verb: { id: string; display?: Record<string, string> };
   object: {
     id: string;
-    definition: { name: Record<string, string>; type: string };
+    definition?: { name?: Record<string, string>; type?: string };
   };
   result?: { score?: { raw: number }; completion?: boolean; duration?: string; success?: boolean };
 }

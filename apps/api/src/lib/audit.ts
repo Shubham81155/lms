@@ -1,3 +1,4 @@
+import { logger } from './logger';
 import { prisma } from './prisma';
 import { AuditSanitizer } from '@enterprise-lms/security';
 
@@ -32,7 +33,7 @@ export async function logAuditEvent(options: AuditLogOptions) {
     });
   } catch (error) {
     // Avoid failing user requests if audit logging encounters an issue
-    console.error('[AUDIT_ERROR] Failed to record audit log:', error);
+    logger.error({ err: error }, '[AUDIT_ERROR] Failed to record audit log');
     return null;
   }
 }

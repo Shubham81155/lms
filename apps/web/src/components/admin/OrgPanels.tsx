@@ -1,0 +1,320 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { CheckCircle2, AlertTriangle, Info, Plus, ShieldAlert, Trash2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { useAction, useApiData } from "@/hooks/useApiData";
+import { Banner } from "@/components/admin/IdentityPanels";
+import { expandHex, isHexColor, isHttpUrlOrEmpty, isValidCode, normaliseCode } from "@/lib/forms";
+
+const input =
+  "w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500";
+const primary = "px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all";
+const ghost =
+  "px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
+
+// ---------------------------------------------------------------------------
+// Campuses and departments
+// ---------------------------------------------------------------------------
+
+interface Department { id: string; name: string; code: string; courseCount: number }
+interface Campus { id: string; name: string; code: string; courseCount: number; departments: Department[] }
+
+const NameCode: React.FC<{
+  placeholderName: string;
+  submitLabel: string;
+  onSubmit: (v: { name: string; code: string }) => Promise<unknown>;
+  disabled: boolean;
+}> = ({ placeholderName, submitLabel, onSubmit, disabled }) => {
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const ok = name.trim().length >= 2 && isValidCode(code);
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        await onSubmit({ name: name.trim(), code: normaliseCode(code) });
+        setName("");
+        setCode("");
+      }}
+    >
+      <input className={`${input} flex-1 min-w-40`} aria-label={placeholderName} placeholder={placeholderName} value={name} onChange={(e) => setName(e.target.value)} />
+      <input className={`${input} w-32`} aria-label="Code" placeholder="CODE" value={code} onChange={(e) => setCode(e.target.value)} />
+      <button className={primary} disabled={disabled || !ok}>
+        <Plus className="h-3.5 w-3.5 inline mr-1" />
+        {submitLabel}
+      </button>
+    </form>
+  );
+};
+
+export const CampusPanel: React.FC = () => {
+  const { data, isLoading, error, reload } = useApiData<{ data: Campus[] }>("/api/v1/admin/campuses");
+  const { busy, error: actionError, run } = useAction();
+
+  const act = (fn: () => Promise<unknown>) =>
+    run(async () => {
+      await fn();
+      await reload();
+    });
+
+  const campuses = data?.data ?? [];
+  return (
+    <section className="space-y-4" aria-labelledby="campus-h">
+      <div>
+        <h3 id="campus-h" className="font-bold text-base text-white">Campuses and departments</h3>
+        <p className="text-xs text-slate-400">Courses are filed under a department. Codes are upper-case and unique.</p>
+      </div>
+      {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
+
+      <NameCode
+        placeholderName="New campus name"
+        submitLabel="Add campus"
+        disabled={busy}
+        onSubmit={(v) => act(() => api.post("/api/v1/admin/campuses", v))}
+      />
+
+      {isLoading && <p className="text-xs text-slate-500">Loading…</p>}
+      {!isLoading && campuses.length === 0 && (
+        <p className="text-xs text-slate-500 text-center p-8 bg-slate-950 border border-slate-800 rounded-2xl">No campuses yet. Add your first one above.</p>
+      )}
+
+      <ul className="space-y-3">
+        {campuses.map((c) => (
+          <li key={c.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-slate-100">{c.name} <span className="text-[10px] font-mono text-slate-500 ml-1">{c.code}</span></h4>
+                <p className="text-[11px] text-slate-500">{c.departments.length} department(s) · {c.courseCount} course(s)</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className={ghost}
+                  disabled={busy}
+                  onClick={() => {
+                    const name = window.prompt("Campus name", c.name)?.trim();
+                    if (name && name !== c.name) act(() => api.patch(`/api/v1/admin/campuses/${c.id}`, { name }));
+                  }}
+                >
+                  Rename
+                </button>
+                <button
+                  className={ghost}
+                  disabled={busy}
+                  aria-label={`Delete campus ${c.name}`}
+                  onClick={() => window.confirm(`Delete the campus "${c.name}"?`) && act(() => api.delete(`/api/v1/admin/campuses/${c.id}`))}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+
+            <ul className="space-y-1.5">
+              {c.departments.map((d) => (
+                <li key={d.id} className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs">
+                  <span className="text-slate-200">{d.name} <span className="font-mono text-[10px] text-slate-500 ml-1">{d.code}</span></span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-[11px] text-slate-500">{d.courseCount} course(s)</span>
+                    <button
+                      className="text-slate-500 hover:text-rose-400 disabled:opacity-50"
+                      disabled={busy}
+                      aria-label={`Delete department ${d.name}`}
+                      onClick={() => window.confirm(`Delete the department "${d.name}"?`) && act(() => api.delete(`/api/v1/admin/departments/${d.id}`))}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <NameCode
+              placeholderName="New department name"
+              submitLabel="Add department"
+              disabled={busy}
+              onSubmit={(v) => act(() => api.post(`/api/v1/admin/campuses/${c.id}/departments`, v))}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// White-label branding
+// ---------------------------------------------------------------------------
+
+interface TenantSettings {
+  name: string;
+  slug: string;
+  customDomain: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  ferpaCompliant: boolean;
+  coppaCompliant: boolean;
+  dataRegion: string;
+}
+
+const Color: React.FC<{ label: string; value: string; onChange: (v: string) => void }> = ({ label, value, onChange }) => (
+  <div className="space-y-1">
+    <label className="text-xs text-slate-400 font-semibold block">{label}</label>
+    <div className="flex items-center gap-2">
+      <input type="color" aria-label={`${label} picker`} value={isHexColor(value) ? expandHex(value) : "#000000"} onChange={(e) => onChange(e.target.value)} className="h-9 w-10 rounded-lg bg-slate-950 border border-slate-800 p-0.5" />
+      <input className={`${input} font-mono ${value && !isHexColor(value) ? "border-rose-700" : ""}`} aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  </div>
+);
+
+export const BrandingPanel: React.FC = () => {
+  const { data, isLoading, error, reload } = useApiData<{ data: TenantSettings }>("/api/v1/admin/tenant");
+  const { busy, error: actionError, run, clearError } = useAction();
+  const [name, setName] = useState("");
+  const [primaryC, setPrimaryC] = useState("");
+  const [secondaryC, setSecondaryC] = useState("");
+  const [logo, setLogo] = useState("");
+  const [favicon, setFavicon] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const t = data?.data;
+  useEffect(() => {
+    if (!t) return;
+    setName(t.name);
+    setPrimaryC(t.primaryColor ?? "");
+    setSecondaryC(t.secondaryColor ?? "");
+    setLogo(t.logoUrl ?? "");
+    setFavicon(t.faviconUrl ?? "");
+  }, [t]);
+
+  const valid = name.trim().length >= 2 && isHexColor(primaryC) && isHexColor(secondaryC) && isHttpUrlOrEmpty(logo) && isHttpUrlOrEmpty(favicon);
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaved(false);
+    run(async () => {
+      await api.patch("/api/v1/admin/tenant", {
+        name: name.trim(),
+        primaryColor: primaryC.trim(),
+        secondaryColor: secondaryC.trim(),
+        logoUrl: logo.trim(),
+        faviconUrl: favicon.trim(),
+      });
+      setSaved(true);
+      await reload();
+    });
+  };
+
+  return (
+    <section className="space-y-4" aria-labelledby="brand-h">
+      <div>
+        <h3 id="brand-h" className="font-bold text-base text-white">White-label branding</h3>
+        <p className="text-xs text-slate-400">Shown on your sign-in page. Domain: <span className="font-mono text-slate-300">{t?.customDomain ?? `${t?.slug ?? "…"} (subdomain)`}</span></p>
+      </div>
+      {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
+      {saved && <Banner kind="ok">Branding saved.</Banner>}
+
+      <form onSubmit={save} className="space-y-3" onChange={() => { setSaved(false); clearError(); }}>
+        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Organisation name
+          <input className={input} required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <Color label="Primary colour" value={primaryC} onChange={setPrimaryC} />
+          <Color label="Secondary colour" value={secondaryC} onChange={setSecondaryC} />
+        </div>
+        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Logo URL (https)
+          <input className={`${input} ${!isHttpUrlOrEmpty(logo) ? "border-rose-700" : ""}`} placeholder="https://…/logo.png" value={logo} onChange={(e) => setLogo(e.target.value)} />
+        </label>
+        <label className="block space-y-1 text-xs text-slate-400 font-semibold">Favicon URL (https)
+          <input className={`${input} ${!isHttpUrlOrEmpty(favicon) ? "border-rose-700" : ""}`} placeholder="https://…/favicon.ico" value={favicon} onChange={(e) => setFavicon(e.target.value)} />
+        </label>
+
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-800 bg-slate-950" aria-label="Preview">
+          <span className="h-8 w-8 rounded-lg" style={{ background: isHexColor(primaryC) ? primaryC : "#334155" }} />
+          <span className="h-8 w-8 rounded-lg" style={{ background: isHexColor(secondaryC) ? secondaryC : "#334155" }} />
+          <span className="text-xs font-bold text-white">{name || "Your organisation"}</span>
+        </div>
+
+        <button className={primary} disabled={busy || isLoading || !valid}>{busy ? "Saving…" : "Save branding"}</button>
+      </form>
+    </section>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Compliance posture
+// ---------------------------------------------------------------------------
+
+interface Check { id: string; name: string; status: "PASS" | "WARN" | "FAIL" | "INFO"; detail: string }
+interface Compliance { checks: Check[]; declarations: { ferpa: boolean; coppa: boolean; dataRegion: string | null }; note: string }
+
+const STATUS: Record<Check["status"], { label: string; cls: string; Icon: React.ElementType }> = {
+  PASS: { label: "Pass", cls: "bg-emerald-950 text-emerald-300 border-emerald-800", Icon: CheckCircle2 },
+  WARN: { label: "Needs attention", cls: "bg-amber-950 text-amber-300 border-amber-800", Icon: AlertTriangle },
+  FAIL: { label: "Fail", cls: "bg-rose-950 text-rose-300 border-rose-800", Icon: ShieldAlert },
+  INFO: { label: "Info", cls: "bg-slate-800 text-slate-300 border-slate-700", Icon: Info },
+};
+
+export const CompliancePanel: React.FC = () => {
+  const { data, isLoading, error, reload } = useApiData<{ data: Compliance }>("/api/v1/admin/compliance");
+  const { busy, error: actionError, run } = useAction();
+  const d = data?.data;
+
+  const declare = (key: "ferpaCompliant" | "coppaCompliant", value: boolean) =>
+    run(async () => {
+      await api.patch("/api/v1/admin/tenant", { [key]: value });
+      await reload();
+    });
+
+  const counts = (d?.checks ?? []).reduce<Record<string, number>>((m, c) => ({ ...m, [c.status]: (m[c.status] ?? 0) + 1 }), {});
+
+  return (
+    <section className="space-y-5" aria-labelledby="comp-h">
+      <div>
+        <h3 id="comp-h" className="font-bold text-base text-white">Security and compliance posture</h3>
+        <p className="text-xs text-slate-400">{d?.note ?? "Measured facts about this deployment."}</p>
+      </div>
+      {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
+      {isLoading && <p className="text-xs text-slate-500">Checking…</p>}
+
+      {d && (
+        <>
+          <div className="flex flex-wrap gap-2 text-[11px]" aria-label="Summary">
+            {(["PASS", "WARN", "FAIL", "INFO"] as const).map((s) => (
+              <span key={s} className={`px-2.5 py-1 rounded-full border font-semibold ${STATUS[s].cls}`}>{counts[s] ?? 0} {STATUS[s].label.toLowerCase()}</span>
+            ))}
+          </div>
+
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {d.checks.map((c) => {
+              const { Icon, cls, label } = STATUS[c.status];
+              return (
+                <li key={c.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-sm text-white">{c.name}</strong>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${cls}`}><Icon className="h-3 w-3" />{label}</span>
+                  </div>
+                  <p className="text-xs text-slate-400">{c.detail}</p>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <h4 className="text-sm font-bold text-white">Regulatory declarations</h4>
+            <p className="text-[11px] text-slate-500">What your institution states about itself. These do not change how the platform behaves.</p>
+            {([["ferpaCompliant", "FERPA (US education records)", d.declarations.ferpa], ["coppaCompliant", "COPPA (children under 13)", d.declarations.coppa]] as const).map(([key, label, on]) => (
+              <label key={key} className="flex items-center justify-between text-xs text-slate-200">
+                <span>{label}</span>
+                <input type="checkbox" checked={on} disabled={busy} onChange={(e) => declare(key, e.target.checked)} />
+              </label>
+            ))}
+            <p className="text-[11px] text-slate-500">Data region: <span className="font-mono text-slate-300">{d.declarations.dataRegion ?? "not set"}</span></p>
+          </div>
+        </>
+      )}
+    </section>
+  );
+};

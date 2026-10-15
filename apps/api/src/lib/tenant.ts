@@ -5,6 +5,7 @@ export interface ResolvedTenant {
   slug: string;
   name: string;
   status: string;
+  customDomain: string | null;
 }
 
 /**
@@ -18,7 +19,7 @@ export async function resolveTenant(hints: string[] | undefined): Promise<Resolv
     if (!hint) continue;
     const tenant = await prisma.tenant.findFirst({
       where: { OR: [{ id: hint }, { slug: hint }, { customDomain: hint }] },
-      select: { id: true, slug: true, name: true, status: true },
+      select: { id: true, slug: true, name: true, status: true, customDomain: true },
     });
     if (tenant) {
       return tenant.status === 'SUSPENDED' || tenant.status === 'ARCHIVED' ? null : tenant;

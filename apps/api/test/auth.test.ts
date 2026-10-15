@@ -100,6 +100,43 @@ describe('authentication cannot be bypassed', () => {
     expect(res.status).toBe(401);
   });
 
+  describe('server-side session checks', () => {
+    const session = (over: Record<string, unknown> = {}) =>
+      fake.user.findFirst.mockResolvedValue({ role: 'STUDENT', status: 'ACTIVE', tokenVersion: 0, ...over });
+
+    it('rejects a token issued before the user token version was bumped', async () => {
+      session({ tokenVersion: 3 });
+      const res = await request(app).get('/api/v1/courses').set('Authorization', `Bearer ${tokenFor()}`);
+      expect(res.status).toBe(401);
+    });
+
+    it('accepts a token whose version still matches', async () => {
+      session({ tokenVersion: 3 });
+      const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${tokenFor({ tv: 3 })}`);
+      expect(res.status).not.toBe(401);
+    });
+
+    it('rejects a token for a suspended or deleted user', async () => {
+      session({ status: 'SUSPENDED' });
+      expect((await request(app).get('/api/v1/courses').set('Authorization', `Bearer ${tokenFor()}`)).status).toBe(401);
+      fake.user.findFirst.mockResolvedValue(null);
+      expect((await request(app).get('/api/v1/courses').set('Authorization', `Bearer ${tokenFor()}`)).status).toBe(401);
+    });
+
+    it('uses the role stored in the database, not the one in the token', async () => {
+      session({ role: 'STUDENT' });
+      const res = await request(app).get('/api/v1/admin/stats').set('Authorization', `Bearer ${tokenFor({ role: 'SUPER_ADMIN' })}`);
+      expect(res.status).toBe(403);
+    });
+
+    it('logout bumps the token version so the old token stops working', async () => {
+      session();
+      await request(app).post('/api/v1/auth/logout').set('Authorization', `Bearer ${tokenFor()}`);
+      const bump = fake.user.update.mock.calls.find((c: any) => c[0].data.tokenVersion);
+      expect(bump?.[0].data.tokenVersion).toEqual({ increment: 1 });
+    });
+  });
+
   it('rejects a token missing required claims', async () => {
     const bad = jwt.sign({ id: 'u1' }, SECRET, { algorithm: 'HS256' });
     const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${bad}`);
@@ -107,6 +144,7 @@ describe('authentication cannot be bypassed', () => {
   });
 
   it('enforces roles: a student token cannot reach admin routes', async () => {
+    fake.user.findFirst.mockResolvedValue({ role: 'STUDENT', status: 'ACTIVE', tokenVersion: 0 });
     const res = await request(app)
       .get('/api/v1/admin/stats')
       .set('Authorization', `Bearer ${tokenFor()}`);
@@ -119,7 +157,7 @@ describe('authentication cannot be bypassed', () => {
       .get('/api/v1/auth/me')
       .set('Authorization', `Bearer ${tokenFor()}`)
       .set('x-tenant-id', 'some-other-tenant');
-    expect(fake.user.findFirst.mock.calls[0][0].where).toMatchObject({ tenantId: 'ten_1' });
+    expect(fake.user.findFirst.mock.calls.map((c: any) => c[0].where).find((w: any) => w.tenantId)).toMatchObject({ tenantId: 'ten_1' });
   });
 
   it('runs the request inside the tenant context from the token, not from headers', async () => {
@@ -216,7 +254,8 @@ describe('POST /auth/login', () => {
       return userRecord();
     });
     await request(app).post('/api/v1/auth/login').send({ email: 'a@x.edu', password: PASSWORD });
-    expect(seen).toEqual(['ten_1']);
+    expect(seen.length).toBeGreaterThan(0);
+    expect(new Set(seen)).toEqual(new Set(['ten_1']));
   });
 
   it('rejects a wrong password and counts the failure', async () => {
@@ -419,6 +458,20 @@ describe('email verification', () => {
     });
     const res = await request(app).post('/api/v1/auth/verify-email').send({ token: 'x'.repeat(43) });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('health endpoints', () => {
+  it('does not claim compliance', async () => {
+    const res = await request(app).get('/health');
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(res.body)).not.toMatch(/ferpa|soc2|wcag|compliance/i);
+  });
+
+  it('reports ready only when the database answers', async () => {
+    (fake as any).$queryRaw = vi.fn().mockResolvedValueOnce([{ '?column?': 1 }]).mockRejectedValueOnce(new Error('down'));
+    expect((await request(app).get('/ready')).status).toBe(200);
+    expect((await request(app).get('/ready')).status).toBe(503);
   });
 });
 

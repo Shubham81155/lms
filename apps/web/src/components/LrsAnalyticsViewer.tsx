@@ -28,7 +28,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
 
   const filteredStatements = statements.filter((s) => {
     if (selectedVerb === "ALL") return true;
-    return s.verb.display["en-US"]?.toLowerCase() === selectedVerb.toLowerCase();
+    return s.verb.display?.["en-US"]?.toLowerCase() === selectedVerb.toLowerCase();
   });
 
   const activeStatement = selectedStatement || filteredStatements[0];
@@ -112,7 +112,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
             ) : (
               filteredStatements.map((stmt) => {
                 const isSelected = activeStatement?.id === stmt.id;
-                const verbDisplay = stmt.verb.display["en-US"] || "interacted";
+                const verbDisplay = stmt.verb.display?.["en-US"] || stmt.verb.id.split("/").pop() || "interacted";
 
                 return (
                   <div
@@ -125,7 +125,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                     }`}
                   >
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-slate-200">{stmt.actor.name}</span>
+                      <span className="font-bold text-slate-200">{stmt.actor.name || stmt.actor.mbox?.replace("mailto:", "")}</span>
                       <span className="text-slate-500 font-mono text-[10px]">
                         {new Date(stmt.timestamp).toLocaleTimeString()}
                       </span>
@@ -136,13 +136,13 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                         {verbDisplay}
                       </span>
                       <span className="text-xs text-slate-300 font-medium truncate">
-                        {stmt.object.definition.name["en-US"]}
+                        {stmt.object.definition?.name?.["en-US"] || stmt.object.id}
                       </span>
                     </div>
 
                     {stmt.result && (
                       <div className="mt-2 text-[10px] text-emerald-400 font-mono">
-                        {stmt.result.score && `Score: ${stmt.result.score.raw}% `}
+                        {stmt.result.score?.raw !== undefined && `Score: ${stmt.result.score.raw}% `}
                         {stmt.result.duration && `Duration: ${stmt.result.duration}`}
                       </div>
                     )}

@@ -2,7 +2,7 @@
 // Database: PostgreSQL with Row-Level Security (RLS) support
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
   // Runtime connection: a NON-owner role without BYPASSRLS so row-level security is enforced.
   url       = env("DATABASE_URL")
   // Migrations / seed: a privileged role. Defaults to DATABASE_URL via scripts/prisma.js in dev.
@@ -31,37 +31,62 @@ enum TenantStatus {
 }
 
 model Tenant {
-  id               String       @id @default(uuid())
-  slug             String       @unique // e.g. "harvard" or "acme-corp"
-  name             String
-  customDomain     String?      @unique // e.g. "learn.university.edu"
-  tier             TenantTier   @default(ENTERPRISE)
-  status           TenantStatus @default(ACTIVE)
-  
+  id           String       @id @default(uuid())
+  slug         String       @unique // e.g. "harvard" or "acme-corp"
+  name         String
+  customDomain String?      @unique // e.g. "learn.university.edu"
+  tier         TenantTier   @default(ENTERPRISE)
+  status       TenantStatus @default(ACTIVE)
+
   // Customization & White-labeling
-  logoUrl          String?
-  primaryColor     String?      @default("#0f172a")
-  secondaryColor   String?      @default("#3b82f6")
-  faviconUrl       String?
-  customCss        String?      @db.Text
-  
+  logoUrl        String?
+  primaryColor   String? @default("#0f172a")
+  secondaryColor String? @default("#3b82f6")
+  faviconUrl     String?
+  customCss      String? @db.Text
+
   // Compliance & Data Residency
-  dataRegion       String       @default("us-east-1")
-  ferpaCompliant   Boolean      @default(true)
-  coppaCompliant   Boolean      @default(false)
-  
+  dataRegion     String  @default("us-east-1")
+  ferpaCompliant Boolean @default(true)
+  coppaCompliant Boolean @default(false)
+
   // Relations
-  campuses         Campus[]
-  users            User[]
-  courses          Course[]
-  enrollments      Enrollment[]
-  quizzes          Quiz[]
-  assignments      Assignment[]
-  ltiDeployments   LtiDeployment[]
-  auditLogs        AuditLog[]
-  
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  campuses          Campus[]
+  users             User[]
+  courses           Course[]
+  enrollments       Enrollment[]
+  quizzes           Quiz[]
+  assignments       Assignment[]
+  ltiDeployments    LtiDeployment[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  notificationPrefs NotificationPreference[]
+  forumThreads      ForumThread[]
+  forumPosts        ForumPost[]
+  forumVotes        ForumVote[]
+  forumFlags        ForumFlag[]
+  calendarEvents    CalendarEvent[]
+  gamification      UserGamification[]
+  xpEvents          XpEvent[]
+  xapiStatements    XapiStatement[]
+  webhookEndpoints  WebhookEndpoint[]
+  webhookDeliveries WebhookDelivery[]
+  scimTokens        ScimToken[]
+  gradeCategories   GradeCategory[]
+  courseGrades      CourseGrade[]
+  questionBank      QuestionBankItem[]
+  ssoConnection     SsoConnection?
+  samlConnection    SamlConnection?
+  liveSessions      LiveSession[]
+  liveAttendance    LiveAttendance[]
+  gradeAppeals      GradeAppeal[]
+
+  // Per-tenant feature toggles (scorm, xapi, lti13, aiProctoring, sso). Null = tier defaults.
+  featureFlags Json?
+  seatQuota    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([slug])
   @@index([customDomain])
@@ -72,26 +97,26 @@ model Campus {
   tenantId    String
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
-  code        String       // e.g. "CAM-BOS-01"
+  code        String // e.g. "CAM-BOS-01"
   departments Department[]
-  
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([tenantId, code])
   @@index([tenantId])
 }
 
 model Department {
-  id          String   @id @default(uuid())
-  campusId    String
-  campus      Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
-  name        String
-  code        String   // e.g. "CS", "ENG", "MED"
-  courses     Course[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id       String   @id @default(uuid())
+  campusId String
+  campus   Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  name     String
+  code     String // e.g. "CS", "ENG", "MED"
+  courses  Course[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([campusId])
 }
@@ -118,50 +143,61 @@ enum UserStatus {
 }
 
 model User {
-  id                String       @id @default(uuid())
-  tenantId          String
-  tenant            Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  email             String
-  emailVerified     Boolean      @default(false)
-  passwordHash      String?      // Null if SAML / OIDC only
-  
-  firstName         String
-  lastName          String
-  avatarUrl         String?
-  role              GlobalRole   @default(STUDENT)
-  status            UserStatus   @default(ACTIVE)
-  
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  email         String
+  emailVerified Boolean @default(false)
+  passwordHash  String? // Null if SAML / OIDC only
+
+  firstName String
+  lastName  String
+  avatarUrl String?
+  role      GlobalRole @default(STUDENT)
+  status    UserStatus @default(ACTIVE)
+
   // Identity Provider federation
-  idpProvider       String?      // "SAML", "OIDC", "AZURE_AD", "GOOGLE", "LOCAL"
-  idpSubjectId      String?      // External SSO subject/sub
-  
+  idpProvider  String? // "SAML", "OIDC", "AZURE_AD", "GOOGLE", "LOCAL"
+  idpSubjectId String? // External SSO subject/sub
+
   // Encrypted PII Fields (Field-Level Encryption)
-  ssnEncrypted      String?      @db.Text
-  dateOfBirthEnc    String?      @db.Text
-  
+  ssnEncrypted   String? @db.Text
+  dateOfBirthEnc String? @db.Text
+
   // Security controls
-  mfaEnabled        Boolean      @default(false)
-  mfaSecret         String?
-  failedLoginCount  Int          @default(0)
+  mfaEnabled        Boolean   @default(false)
+  mfaSecret         String? // AES-256-GCM encrypted TOTP secret
+  mfaRecoveryHashes String[]  @default([])
+  failedLoginCount  Int       @default(0)
   lockedUntil       DateTime?
   lastLoginAt       DateTime?
-  
+  // Bumped to invalidate every session token issued before (password change, MFA change, suspension, logout).
+  tokenVersion      Int       @default(0)
+
   // Relations
-  enrollments       Enrollment[]
-  teachingCourses   CourseInstructor[]
-  submissions       QuizSubmission[]
-  assignmentSubs    AssignmentSubmission[]
-  auditLogsTriggered AuditLog[]   @relation("AuditUser")
+  enrollments             Enrollment[]
+  teachingCourses         CourseInstructor[]
+  submissions             QuizSubmission[]
+  assignmentSubs          AssignmentSubmission[]
+  auditLogsTriggered      AuditLog[]               @relation("AuditUser")
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
-  
-  // Guardian Relations
-  guardians         UserGuardian[] @relation("StudentRelation")
-  wards             UserGuardian[] @relation("GuardianRelation")
+  notifications           Notification[]
+  notificationPref        NotificationPreference?
+  forumThreads            ForumThread[]
+  forumPosts              ForumPost[]
+  gamification            UserGamification?
+  xpEvents                XpEvent[]
+  courseGrades            CourseGrade[]
+  liveAttendance          LiveAttendance[]
 
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  // Guardian Relations
+  guardians UserGuardian[] @relation("StudentRelation")
+  wards     UserGuardian[] @relation("GuardianRelation")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([tenantId, email])
   @@unique([tenantId, idpSubjectId])
@@ -170,38 +206,38 @@ model User {
 
 // Only the SHA-256 hash of the emailed token is stored.
 model PasswordResetToken {
-  id         String    @id @default(uuid())
-  tenantId   String    // lets the token be consumed before the tenant is otherwise known
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash  String    @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime  @default(now())
+  id        String    @id @default(uuid())
+  tenantId  String // lets the token be consumed before the tenant is otherwise known
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }
 
 model EmailVerificationToken {
-  id         String    @id @default(uuid())
-  tenantId   String    // lets the token be consumed before the tenant is otherwise known
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash  String    @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime  @default(now())
+  id        String    @id @default(uuid())
+  tenantId  String // lets the token be consumed before the tenant is otherwise known
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }
 
 model UserGuardian {
-  id         String   @id @default(uuid())
+  id         String @id @default(uuid())
   studentId  String
-  student    User     @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
+  student    User   @relation("StudentRelation", fields: [studentId], references: [id], onDelete: Cascade)
   guardianId String
-  guardian   User     @relation("GuardianRelation", fields: [guardianId], references: [id], onDelete: Cascade)
-  relation   String   // "PARENT", "LEGAL_GUARDIAN", "SPONSOR"
+  guardian   User   @relation("GuardianRelation", fields: [guardianId], references: [id], onDelete: Cascade)
+  relation   String // "PARENT", "LEGAL_GUARDIAN", "SPONSOR"
 
   @@unique([studentId, guardianId])
 }
@@ -226,83 +262,90 @@ enum ContentType {
 }
 
 model Course {
-  id            String       @id @default(uuid())
-  tenantId      String
-  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  departmentId  String?
-  department    Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  
-  code          String       // e.g. "CS-101"
-  title         String
-  description   String?      @db.Text
-  syllabus      String?      @db.Text
-  thumbnailUrl  String?
-  status        CourseStatus @default(DRAFT)
-  
+  liveSessions    LiveSession[]
+  gradeCategories GradeCategory[]
+  courseGrades    CourseGrade[]
+  gradeCurveMethod String @default("NONE") // NONE | ADD_POINTS | SCALE_TO_MAX
+  gradeCurveValue  Float  @default(0)
+  forumThreads   ForumThread[]
+  calendarEvents CalendarEvent[]
+  id             String          @id @default(uuid())
+  tenantId       String
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  departmentId   String?
+  department     Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  code         String // e.g. "CS-101"
+  title        String
+  description  String?      @db.Text
+  syllabus     String?      @db.Text
+  thumbnailUrl String?
+  status       CourseStatus @default(DRAFT)
+
   // Settings
-  passingGradePercent Float  @default(70.0)
+  passingGradePercent Float   @default(70.0)
   enableProctoring    Boolean @default(false)
   allowSelfEnroll     Boolean @default(false)
-  
+
   // Relations
-  instructors   CourseInstructor[]
-  modules       Module[]
-  enrollments   Enrollment[]
-  quizzes       Quiz[]
-  assignments   Assignment[]
-  
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  instructors CourseInstructor[]
+  modules     Module[]
+  enrollments Enrollment[]
+  quizzes     Quiz[]
+  assignments Assignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([tenantId, code])
   @@index([tenantId, status])
 }
 
 model CourseInstructor {
-  id         String   @id @default(uuid())
-  courseId   String
-  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isPrimary  Boolean  @default(false)
+  id        String  @id @default(uuid())
+  courseId  String
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isPrimary Boolean @default(false)
 
   @@unique([courseId, userId])
 }
 
 model Module {
-  id          String    @id @default(uuid())
-  courseId    String
-  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title       String
-  orderIndex  Int       @default(0)
-  isLocked    Boolean   @default(false)
-  
-  lessons     Lesson[]
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id         String  @id @default(uuid())
+  courseId   String
+  course     Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title      String
+  orderIndex Int     @default(0)
+  isLocked   Boolean @default(false)
+
+  lessons Lesson[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([courseId, orderIndex])
 }
 
 model Lesson {
-  id              String      @id @default(uuid())
-  moduleId        String
-  module          Module      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  title           String
-  orderIndex      Int         @default(0)
-  contentType     ContentType @default(RICHTEXT)
-  
+  id          String      @id @default(uuid())
+  moduleId    String
+  module      Module      @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title       String
+  orderIndex  Int         @default(0)
+  contentType ContentType @default(RICHTEXT)
+
   // Content payloads
-  bodyContent     String?     @db.Text
-  mediaUrl        String?     // Video or asset URL
-  scormPackageId  String?     // SCORM Package Reference
+  bodyContent      String? @db.Text
+  mediaUrl         String? // Video or asset URL
+  scormPackageId   String? // SCORM Package Reference
   ltiToolLaunchUrl String?
-  
-  estimatedMinutes Int        @default(15)
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+
+  estimatedMinutes Int @default(15)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([moduleId, orderIndex])
 }
@@ -320,22 +363,22 @@ enum EnrollmentStatus {
 }
 
 model Enrollment {
-  id             String           @id @default(uuid())
-  tenantId       String
-  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  courseId       String
-  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  status         EnrollmentStatus @default(ENROLLED)
-  finalGrade     Float?
-  progressPercent Float           @default(0.0)
-  
-  enrolledAt     DateTime         @default(now())
-  completedAt    DateTime?
-  
-  certificate    Certificate?
+  id       String @id @default(uuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status          EnrollmentStatus @default(ENROLLED)
+  finalGrade      Float?
+  progressPercent Float            @default(0.0)
+
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  certificate Certificate?
 
   @@unique([courseId, userId])
   @@index([userId, status])
@@ -344,14 +387,14 @@ model Enrollment {
 }
 
 model Certificate {
-  id             String     @id @default(uuid())
-  enrollmentId   String     @unique
-  enrollment     Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  certificateNumber String  @unique // e.g. "CERT-2026-X89J"
-  issuedAt       DateTime   @default(now())
-  expiresAt      DateTime?
-  pdfUrl         String?    // PDF rendering is not implemented yet
-  verificationQr String     // URL for public verification
+  id                String     @id @default(uuid())
+  enrollmentId      String     @unique
+  enrollment        Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  certificateNumber String     @unique // e.g. "CERT-2026-X89J"
+  issuedAt          DateTime   @default(now())
+  expiresAt         DateTime?
+  pdfUrl            String? // PDF rendering is not implemented yet
+  verificationQr    String // URL for public verification
 }
 
 // ---------------------------------------------------------
@@ -369,117 +412,125 @@ enum QuestionType {
 }
 
 model Quiz {
-  id             String          @id @default(uuid())
-  tenantId       String
-  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  courseId       String
-  course         Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title          String
-  timeLimitMins  Int?            // Null = untimed
-  maxAttempts    Int             @default(1)
-  randomizeQuestions Boolean     @default(true)
-  requireProctoring   Boolean     @default(false)
-  passingPercent Float           @default(70.0)
-  
-  questions      QuizQuestion[]
-  submissions    QuizSubmission[]
-  
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                 String  @id @default(uuid())
+  tenantId           String
+  tenant             Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId           String
+  course             Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title              String
+  timeLimitMins      Int? // Null = untimed
+  maxAttempts        Int     @default(1)
+  randomizeQuestions Boolean @default(true)
+  requireProctoring  Boolean @default(false)
+  passingPercent     Float   @default(70.0)
+  gradeCategoryId    String?
+  gradeCategory      GradeCategory? @relation(fields: [gradeCategoryId], references: [id], onDelete: SetNull)
+
+  questions   QuizQuestion[]
+  submissions QuizSubmission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([courseId])
 }
 
 model QuizQuestion {
-  id             String       @id @default(uuid())
-  quizId         String
-  quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  questionText   String       @db.Text
-  questionType   QuestionType @default(MULTIPLE_CHOICE)
-  points         Float        @default(1.0)
-  orderIndex     Int          @default(0)
-  
-  optionsJson    Json?        // Array of options { id, text, isCorrect }
-  correctAnswer  String?      @db.Text
-  explanation    String?      @db.Text
+  id           String       @id @default(uuid())
+  quizId       String
+  quiz         Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  questionText String       @db.Text
+  questionType QuestionType @default(MULTIPLE_CHOICE)
+  points       Float        @default(1.0)
+  orderIndex   Int          @default(0)
+
+  optionsJson   Json? // Array of options { id, text, isCorrect }
+  correctAnswer String? @db.Text
+  explanation   String? @db.Text
+  bloomLevel    String? // REMEMBER | UNDERSTAND | APPLY | ANALYZE | EVALUATE | CREATE
 
   @@index([quizId, orderIndex])
 }
 
 model QuizSubmission {
-  id             String       @id @default(uuid())
-  quizId         String
-  quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  score          Float?
-  maxScore       Float
-  passed         Boolean      @default(false)
-  attemptNumber  Int          @default(1)
-  
-  startedAt      DateTime     @default(now())
-  submittedAt    DateTime?
-  
+  id     String @id @default(uuid())
+  quizId String
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  score         Float?
+  maxScore      Float
+  passed        Boolean @default(false)
+  attemptNumber Int     @default(1)
+
+  startedAt   DateTime  @default(now())
+  submittedAt DateTime?
+
   proctoringLogs ProctoringLog[]
-  
-  answersJson    Json         // User's response state
+
+  answersJson Json // User's response state
 
   @@unique([quizId, userId, attemptNumber])
   @@index([quizId, userId])
 }
 
 model ProctoringLog {
-  id             String         @id @default(uuid())
-  submissionId   String
-  submission     QuizSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  eventType      String         // "TAB_SWITCH", "FACE_NOT_DETECTED", "MULTIPLE_FACES", "AUDIO_SPIKE"
-  severity       String         // "LOW", "MEDIUM", "HIGH"
-  timestamp      DateTime       @default(now())
-  snapshotUrl    String?
-  metadataJson   Json?
+  id           String         @id @default(uuid())
+  submissionId String
+  submission   QuizSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  eventType    String // "TAB_SWITCH", "FACE_NOT_DETECTED", "MULTIPLE_FACES", "AUDIO_SPIKE"
+  severity     String // "LOW", "MEDIUM", "HIGH"
+  timestamp    DateTime       @default(now())
+  snapshotUrl  String?
+  metadataJson Json?
 
   @@index([submissionId, timestamp])
 }
 
 model Assignment {
-  id             String       @id @default(uuid())
-  tenantId       String
-  tenant         Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  courseId       String
-  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title          String
-  instructions   String       @db.Text
-  maxPoints      Float        @default(100.0)
-  dueDate        DateTime?
-  
-  submissions    AssignmentSubmission[]
-  
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id           String    @id @default(uuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId     String
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title        String
+  instructions String    @db.Text
+  maxPoints    Float     @default(100.0)
+  dueDate      DateTime?
+  gradeCategoryId String?
+  gradeCategory   GradeCategory? @relation(fields: [gradeCategoryId], references: [id], onDelete: SetNull)
+  rubricJson      Json? // [{ id, name, description?, maxPoints }]; maxPoints of the assignment is their sum
+
+  submissions AssignmentSubmission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([courseId])
 }
 
 model AssignmentSubmission {
-  id             String     @id @default(uuid())
-  assignmentId   String
-  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id           String     @id @default(uuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   fileUrl        String?
-  submissionText String?    @db.Text
+  submissionText String? @db.Text
   grade          Float?
-  feedback       String?    @db.Text
-  
-  plagiarismScore Float?    // Plagiarism percentage (0.0 to 100.0)
+  feedback       String? @db.Text
+
+  plagiarismScore     Float? // Plagiarism percentage (0.0 to 100.0)
   plagiarismReportUrl String?
-  
-  submittedAt    DateTime   @default(now())
-  gradedAt       DateTime?
+  rubricScoresJson    Json? // { [criterionId]: points } when the assignment has a rubric
+  appeal              GradeAppeal?
+
+  submittedAt DateTime  @default(now())
+  gradedAt    DateTime?
 
   @@unique([assignmentId, userId])
   @@index([assignmentId, userId])
@@ -490,19 +541,19 @@ model AssignmentSubmission {
 // ---------------------------------------------------------
 
 model LtiDeployment {
-  id           String   @id @default(uuid())
-  tenantId     String
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clientId     String   // Tool Client ID
-  deploymentId String   // Deployment ID from tool
-  issuer       String   // LMS platform issuer URL
-  authLoginUrl String
+  id            String @id @default(uuid())
+  tenantId      String
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId      String // Tool Client ID
+  deploymentId  String // Deployment ID from tool
+  issuer        String // LMS platform issuer URL
+  authLoginUrl  String
   authTokensUrl String
-  keySetUrl    String
-  
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  keySetUrl     String
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([tenantId, clientId, deploymentId])
 }
@@ -512,21 +563,423 @@ model LtiDeployment {
 // ---------------------------------------------------------
 
 model AuditLog {
-  id           String   @id @default(uuid())
-  tenantId     String
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userId       String?
-  user         User?    @relation("AuditUser", fields: [userId], references: [id], onDelete: SetNull)
-  
-  action       String   // "USER_LOGIN", "GRADE_MODIFIED", "COURSE_DELETED", "SSO_CONFIG_UPDATED"
-  resourceType String   // "USER", "COURSE", "GRADE", "TENANT"
+  id       String  @id @default(uuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId   String?
+  user     User?   @relation("AuditUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  action       String // "USER_LOGIN", "GRADE_MODIFIED", "COURSE_DELETED", "SSO_CONFIG_UPDATED"
+  resourceType String // "USER", "COURSE", "GRADE", "TENANT"
   resourceId   String?
   ipAddress    String?
   userAgent    String?
-  
-  diffJson     Json?    // Before / After state snapshot
-  createdAt    DateTime @default(now())
+
+  diffJson  Json? // Before / After state snapshot
+  createdAt DateTime @default(now())
 
   @@index([tenantId, action, createdAt])
   @@index([tenantId, resourceType, resourceId])
+}
+
+// ---------------------------------------------------------
+// 8. ENGAGEMENT: NOTIFICATIONS, FORUMS, CALENDAR, GAMIFICATION
+// ---------------------------------------------------------
+
+model Notification {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String // "GRADE", "EXAM", "COURSE", "SYSTEM", "FORUM", "LIVE"
+  title     String
+  body      String?   @db.Text
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  // E-mail delivery: NONE (not e-mailed) | PENDING (queued, may be waiting for quiet hours to end) | SENT | FAILED
+  emailStatus   String    @default("NONE")
+  emailAttempts Int       @default(0)
+  emailedAt     DateTime?
+
+  @@index([tenantId, emailStatus, createdAt])
+  @@index([tenantId, userId, readAt, createdAt])
+}
+
+model NotificationPreference {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inAppEnabled    Boolean  @default(true)
+  emailEnabled    Boolean  @default(true)
+  smsEnabled      Boolean  @default(false)
+  pushEnabled     Boolean  @default(false)
+  mutedCategories String[] @default([])
+  // Quiet hours as hours of day (0-23) in `timezone`; push/sms/email are held back inside the window.
+  quietStartHour  Int?
+  quietEndHour    Int?
+  timezone        String   @default("UTC")
+  updatedAt       DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ForumThread {
+  id        String      @id @default(uuid())
+  tenantId  String
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title     String
+  body      String      @db.Text
+  category  String      @default("General")
+  pinned    Boolean     @default(false)
+  locked    Boolean     @default(false)
+  hidden    Boolean     @default(false)
+  posts     ForumPost[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([tenantId, courseId, createdAt])
+}
+
+model ForumPost {
+  id        String      @id @default(uuid())
+  tenantId  String
+  tenant    Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId  String?
+  body      String      @db.Text
+  hidden    Boolean     @default(false)
+  endorsed  Boolean     @default(false) // verified by course staff
+  createdAt DateTime    @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+model ForumVote {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String
+  targetType String // "THREAD" | "POST"
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, targetType, targetId])
+  @@index([tenantId, targetType, targetId])
+}
+
+model ForumFlag {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reporterId String
+  targetType String
+  targetId   String
+  reason     String
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([tenantId, resolved])
+}
+
+model CalendarEvent {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId    String?
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById String
+  title       String
+  description String?  @db.Text
+  category    String // "EXAM", "LAB", "LECTURE", "OFFICE_HOURS", "DEADLINE"
+  startsAt    DateTime
+  endsAt      DateTime
+  timezone    String   @default("UTC")
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, startsAt])
+  @@index([courseId])
+}
+
+model UserGamification {
+  id             String    @id @default(uuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  xp             Int       @default(0)
+  streakDays     Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActiveDate DateTime? @db.Date
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId, xp])
+}
+
+// Append-only ledger. (userId, source, refId) is unique so an award can never be granted twice.
+model XpEvent {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source    String // "LESSON_COMPLETE", "QUIZ_PASSED", "DAILY_STREAK", ...
+  refId     String
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, source, refId])
+  @@index([tenantId, userId, createdAt])
+}
+
+// ---------------------------------------------------------
+// 9. INTELLIGENCE: xAPI LEARNING RECORD STORE
+// ---------------------------------------------------------
+
+model XapiStatement {
+  id            String   @id // statement UUID (client-supplied or generated)
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUserId   String?
+  verbId        String
+  objectId      String
+  statementJson Json
+  timestamp     DateTime
+  storedAt      DateTime @default(now())
+
+  @@index([tenantId, timestamp])
+  @@index([tenantId, actorUserId, timestamp])
+  @@index([tenantId, verbId])
+}
+
+// ---------------------------------------------------------
+// 10. SCALE: WEBHOOKS & SCIM PROVISIONING
+// ---------------------------------------------------------
+
+model WebhookEndpoint {
+  id         String            @id @default(uuid())
+  tenantId   String
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  url        String
+  secret     String // HMAC-SHA256 signing key, shown once on creation
+  events     String[]
+  isActive   Boolean           @default(true)
+  deliveries WebhookDelivery[]
+  createdAt  DateTime          @default(now())
+
+  @@index([tenantId])
+}
+
+model WebhookDelivery {
+  id         String          @id @default(uuid())
+  tenantId   String
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  endpointId String
+  endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  event      String
+  statusCode Int?
+  success    Boolean         @default(false)
+  error      String?
+  createdAt  DateTime        @default(now())
+
+  // Retries: each attempt is its own row. A failed attempt that will be retried keeps its payload
+  // and nextAttemptAt until the retry worker claims it (then both are cleared).
+  attempt       Int       @default(1)
+  payload       String?   @db.Text
+  nextAttemptAt DateTime?
+
+  @@index([endpointId, createdAt])
+  @@index([tenantId, nextAttemptAt])
+}
+
+// Only the SHA-256 hash of the bearer token is stored.
+model ScimToken {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  label     String
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([tenantId])
+}
+
+// ---------------------------------------------------------
+// 11. GRADEBOOK & QUESTION BANK
+// ---------------------------------------------------------
+
+// Weighted grade category of a course (e.g. "Exams" 50%). Quizzes and assignments are assigned to one.
+model GradeCategory {
+  id            String       @id @default(uuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId      String
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name          String
+  weightPercent Float
+  orderIndex    Int          @default(0)
+  quizzes       Quiz[]
+  assignments   Assignment[]
+
+  @@unique([courseId, name])
+  @@index([tenantId, courseId])
+}
+
+// A learner's computed course grade and its approval state. Only APPROVED grades reach
+// Enrollment.finalGrade and become visible to the learner.
+model CourseGrade {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId      String
+  course        Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rawPercent    Float
+  curvedPercent Float
+  letter        String
+  incomplete    Boolean   @default(false) // some graded work is still waiting for a grader
+  breakdownJson Json
+  status        String    @default("DRAFT") // DRAFT | SUBMITTED | APPROVED
+  submittedById String?
+  approvedById  String?
+  approvedAt    DateTime?
+  decisionNote  String?
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([courseId, userId])
+  @@index([tenantId, courseId, status])
+}
+
+// Reusable question pool. Copying an item into a quiz creates an independent QuizQuestion.
+model QuestionBankItem {
+  id            String       @id @default(uuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId      String?
+  ownerId       String
+  questionText  String       @db.Text
+  questionType  QuestionType @default(MULTIPLE_CHOICE)
+  points        Float        @default(1.0)
+  optionsJson   Json?
+  correctAnswer String?      @db.Text
+  explanation   String?      @db.Text
+  tags          String[]     @default([])
+  bloomLevel    String?      // REMEMBER | UNDERSTAND | APPLY | ANALYZE | EVALUATE | CREATE
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([tenantId, courseId])
+}
+
+// ---------------------------------------------------------
+// 12. SINGLE SIGN-ON (OpenID Connect)
+// ---------------------------------------------------------
+
+// One OIDC identity provider per tenant. The client secret is stored encrypted (AES-256-GCM).
+model SsoConnection {
+  id               String   @id @default(uuid())
+  tenantId         String   @unique
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  issuer           String
+  clientId         String
+  clientSecretEnc  String   @db.Text
+  enabled          Boolean  @default(false)
+  allowedDomains   String[] @default([]) // e-mail domains accepted; empty = any
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// A learner's request to review a graded assignment. One per submission.
+model GradeAppeal {
+  id            String               @id @default(uuid())
+  tenantId      String
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  submissionId  String               @unique
+  submission    AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  courseId      String
+  userId        String
+  reason        String               @db.Text
+  status        String               @default("OPEN") // OPEN | UPHELD | DENIED
+  response      String?              @db.Text
+  respondedById String?
+  respondedAt   DateTime?
+  createdAt     DateTime             @default(now())
+
+  @@index([tenantId, courseId, status])
+  @@index([userId])
+}
+
+// One SAML 2.0 identity provider per tenant. Holds only public material: the IdP's signing
+// certificate or public key is pinned, so nothing here is secret.
+model SamlConnection {
+  id             String   @id @default(uuid())
+  tenantId       String   @unique
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entryPoint     String   // IdP single sign-on URL (HTTP-Redirect binding)
+  idpIssuer      String   // IdP entity id
+  idpCert        String   @db.Text // PEM certificate or public key that signs assertions
+  emailAttribute String   @default("email")
+  enabled        Boolean  @default(false)
+  allowedDomains String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// 13. LIVE CLASSES (media runs on LiveKit; this records the schedule and who attended)
+// ---------------------------------------------------------
+
+model LiveSession {
+  id                String   @id @default(uuid())
+  tenantId          String
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId          String
+  course            Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdById       String
+  title             String
+  description       String?  @db.Text
+  scheduledAt       DateTime
+  durationMins      Int      @default(60)
+  status            String   @default("SCHEDULED") // SCHEDULED | LIVE | ENDED | CANCELLED
+  roomName          String   @unique // lms_<tenantId>_<sessionId>: lets the media server's webhook find the tenant
+  allowStudentVideo Boolean  @default(false)
+  calendarEventId   String?
+  startedAt         DateTime?
+  endedAt           DateTime?
+  attendance        LiveAttendance[]
+  createdAt         DateTime @default(now())
+
+  @@index([tenantId, courseId, scheduledAt])
+  @@index([tenantId, status])
+}
+
+model LiveAttendance {
+  id            String      @id @default(uuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessionId     String
+  session       LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstJoinedAt DateTime
+  activeSince   DateTime?   // set while the person is in the room
+  totalSeconds  Int         @default(0)
+  joinCount     Int         @default(1)
+
+  @@unique([sessionId, userId])
+  @@index([tenantId, userId])
 }

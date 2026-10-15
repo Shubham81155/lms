@@ -43,8 +43,26 @@ const envSchema = z.object({
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   TOKEN_FLOW_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  /** Optional. When set, rate-limit counters are shared by every API instance; otherwise they are per process. */
+  REDIS_URL: z.string().url().optional(),
+  /** Per-IP requests per minute across /api/v1 (reads), and for state-changing methods. In-memory per instance. */
+  API_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
+  API_WRITE_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   MAX_FAILED_LOGINS: z.coerce.number().int().positive().default(5),
   LOCKOUT_MINUTES: z.coerce.number().int().positive().default(15),
+  /** Shared secret for inbound plagiarism-provider callbacks; the endpoint is off when unset. */
+  /** smtp:// or smtps:// URL of the mail server. Without it, mail is printed in development and dropped in production. */
+  SMTP_URL: z.string().url().optional(),
+  MAIL_FROM: z.string().min(3).default('Enterprise LMS <no-reply@localhost>'),
+  /** How often queued notification e-mails are sent, in seconds. 0 turns the background sender off. */
+  /** Seconds between webhook retry sweeps; 0 turns the background worker off. */
+  WEBHOOK_RETRY_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(30),
+  EMAIL_DISPATCH_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(60),
+  /** LiveKit media server for live classes. All three are needed; without them live classes are off. */
+  LIVEKIT_URL: z.string().url().optional(),
+  LIVEKIT_API_KEY: z.string().min(3).optional(),
+  LIVEKIT_API_SECRET: z.string().min(32, 'LIVEKIT_API_SECRET must be at least 32 characters').optional(),
+  PLAGIARISM_WEBHOOK_SECRET: z.string().min(32, 'PLAGIARISM_WEBHOOK_SECRET must be at least 32 characters').optional(),
 });
 
 export type AppConfig = z.infer<typeof envSchema> & { corsOrigins: string[] };

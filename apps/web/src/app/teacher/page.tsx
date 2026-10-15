@@ -3,8 +3,11 @@
 import React, { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { CourseBuilder } from "@/components/CourseBuilder";
-import { Gradebook } from "@/components/Gradebook";
-import { LiveClassroom } from "@/components/LiveClassroom";
+import { CourseGradebook } from "@/components/CourseGradebook";
+import { QuestionBank } from "@/components/QuestionBank";
+import { AssignmentGrading } from "@/components/AssignmentGrading";
+import { LiveClasses } from "@/components/LiveClasses";
+import { LiveNow } from "@/components/LiveNow";
 import {
   BookOpen,
   Users,
@@ -21,16 +24,24 @@ import {
   Search,
   MessageSquare,
   Activity,
+  Library,
+  ClipboardCheck,
 } from "lucide-react";
 import { useCourses, useCreateCourse } from "@/hooks/useCourses";
 import { DiscussionForum } from "@/components/DiscussionForum";
 import { FacultyAnalyticsModal } from "@/components/FacultyAnalyticsModal";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
+import { useAuth } from "@/context/AuthContext";
+import { useApiData } from "@/hooks/useApiData";
+import { useCohortAnalytics } from "@/hooks/useAnalytics";
+import { timeAgo } from "@/hooks/useNotifications";
 
 export default function TeacherDashboard() {
   const [showCourseBuilder, setShowCourseBuilder] = useState(false);
   const [showGradebook, setShowGradebook] = useState(false);
-  const [activeLiveClass, setActiveLiveClass] = useState<string | null>(null);
+  const [showQuestionBank, setShowQuestionBank] = useState(false);
+  const [showAssignmentGrading, setShowAssignmentGrading] = useState(false);
+  const [showLiveClasses, setShowLiveClasses] = useState(false);
   const [showForum, setShowForum] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showLrsStream, setShowLrsStream] = useState(false);
@@ -70,35 +81,17 @@ export default function TeacherDashboard() {
   const { courses, refetch: refetchCourses } = useCourses();
   const { createCourse, isCreating } = useCreateCourse();
 
-  const [proctorLogs, setProctorLogs] = useState([
-    {
-      id: "log_1",
-      student: "Maria Rodriguez",
-      course: "CS-101 Midterm",
-      event: "MULTIPLE_FACES",
-      severity: "HIGH",
-      time: "3 mins ago",
-      desc: "Second person entered webcam frame for > 5 seconds",
-    },
-    {
-      id: "log_2",
-      student: "Alex Chen",
-      course: "CS-101 Midterm",
-      event: "TAB_SWITCH",
-      severity: "MEDIUM",
-      time: "7 mins ago",
-      desc: "Switched away from examination tab (duration: 3s)",
-    },
-    {
-      id: "log_3",
-      student: "Liam Johnson",
-      course: "CS-101 Midterm",
-      event: "GAZE_OFFSCREEN",
-      severity: "LOW",
-      time: "14 mins ago",
-      desc: "Repeated off-screen eye movements detected",
-    },
-  ]);
+  const { user } = useAuth();
+  const { analytics } = useCohortAnalytics();
+  const proctoring = useApiData<{
+    openAttempts: number;
+    data: { id: string; student: string; quiz: string; eventType: string; severity: string; timestamp: string }[];
+  }>("/api/v1/analytics/proctoring", { limit: 10 });
+  const pending = useApiData<{
+    total: number;
+    data: { id: string; student: string; assignment: string; course: string; plagiarismScore: number | null }[];
+  }>("/api/v1/analytics/pending-grading", { limit: 5 });
+  const proctorLogs = proctoring.data?.data ?? [];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
@@ -114,14 +107,14 @@ export default function TeacherDashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-900/50 text-purple-300 border border-purple-700/50 font-semibold">
-                Department of Computer Science
+                {user?.tenantName || "Faculty"}
               </span>
             </div>
             <h1 className="text-3xl font-extrabold text-white tracking-tight">
               Faculty Command Center
             </h1>
             <p className="text-sm text-slate-400">
-              Welcome, Prof. David Malan • 3 Active Courses • 428 Enrolled Students
+              Welcome{user ? `, ${user.name}` : ""} • {courses.length} {courses.length === 1 ? "Course" : "Courses"}{analytics ? ` • ${analytics.metrics.totalEnrolled} Enrolments` : ""}
             </p>
           </div>
 
@@ -139,7 +132,23 @@ export default function TeacherDashboard() {
               className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-800 transition-colors"
             >
               <FileCheck className="h-4 w-4 text-emerald-400" />
-              <span>Evaluate Gradebook</span>
+              <span>Gradebook</span>
+            </button>
+
+            <button
+              onClick={() => setShowAssignmentGrading(true)}
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-800 transition-colors"
+            >
+              <ClipboardCheck className="h-4 w-4 text-blue-400" />
+              <span>Grade Assignments</span>
+            </button>
+
+            <button
+              onClick={() => setShowQuestionBank(true)}
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-800 transition-colors"
+            >
+              <Library className="h-4 w-4 text-purple-400" />
+              <span>Question Bank</span>
             </button>
 
             <button
@@ -167,43 +176,45 @@ export default function TeacherDashboard() {
             </button>
 
             <button
-              onClick={() => setActiveLiveClass("CS-101: Distributed Consensus & Raft")}
+              onClick={() => setShowLiveClasses(true)}
               className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-rose-600/20 transition-all"
             >
               <Video className="h-4 w-4" />
-              <span>Start Live Lecture</span>
+              <span>Live Classes</span>
             </button>
           </div>
         </div>
+
+        <LiveNow />
 
         {/* Metric Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {[
             {
-              label: "Active Cohort Students",
-              value: "428",
-              sub: "+12 enrolled this week",
+              label: "Enrolled Learners",
+              value: analytics ? String(analytics.metrics.totalEnrolled) : "…",
+              sub: analytics ? `${analytics.metrics.activeThisWeek} active this week` : "",
               icon: Users,
               color: "text-blue-400",
             },
             {
-              label: "Pending Lab Submissions",
-              value: "14",
-              sub: "Requires rubric evaluation",
+              label: "Pending Submissions",
+              value: pending.data ? String(pending.data.total) : "…",
+              sub: "Waiting for a grade",
               icon: FileCheck,
               color: "text-emerald-400",
             },
             {
-              label: "AI Proctoring Active Tests",
-              value: "128",
-              sub: "CS101 Midterm Session",
+              label: "Open Proctored Attempts",
+              value: proctoring.data ? String(proctoring.data.openAttempts) : "…",
+              sub: "In progress right now",
               icon: ShieldAlert,
               color: "text-rose-400",
             },
             {
-              label: "Average Cohort Mastery",
-              value: "88.4%",
-              sub: "Based on Bloom's rubrics",
+              label: "Completion Rate",
+              value: analytics ? `${analytics.metrics.completionRate}%` : "…",
+              sub: analytics ? `${analytics.atRiskLearners.length} learners at risk` : "",
               icon: TrendingUp,
               color: "text-purple-400",
             },
@@ -235,17 +246,21 @@ export default function TeacherDashboard() {
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-white">Live AI Proctoring Anomaly Radar</h3>
-                  <p className="text-xs text-slate-400">Real-Time Biometric & Tab Switch Ingestion</p>
+                  <p className="text-xs text-slate-400">Integrity events reported by exam takers' browsers</p>
                 </div>
               </div>
 
               <span className="text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-3 py-1 rounded-full font-medium flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                128 Active Streams
+                {proctoring.data?.openAttempts ?? 0} open attempt(s)
               </span>
             </div>
 
             <div className="space-y-3">
+              {proctoring.isLoading && <p className="text-xs text-slate-500">Loading…</p>}
+              {!proctoring.isLoading && proctorLogs.length === 0 && (
+                <p className="text-xs text-slate-500 p-6 text-center">No integrity events have been reported.</p>
+              )}
               {proctorLogs.map((log) => (
                 <div
                   key={log.id}
@@ -254,7 +269,7 @@ export default function TeacherDashboard() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <strong className="text-white text-sm">{log.student}</strong>
-                      <span className="text-slate-400">({log.course})</span>
+                      <span className="text-slate-400">({log.quiz})</span>
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
                           log.severity === "HIGH"
@@ -264,20 +279,14 @@ export default function TeacherDashboard() {
                             : "bg-blue-950 text-blue-400 border border-blue-800"
                         }`}
                       >
-                        {log.event}
+                        {log.eventType.replace(/_/g, " ")}
                       </span>
                     </div>
-                    <p className="text-slate-400">{log.desc}</p>
+                    <p className="text-slate-400">Severity: {log.severity.toLowerCase()}</p>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className="text-[11px] text-slate-500 font-mono">{log.time}</span>
-                    <button
-                      onClick={() => alert(`Reviewing synchronized video & audio recording for ${log.student}`)}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-slate-200 font-semibold text-[11px] transition-colors"
-                    >
-                      Review Snapshot
-                    </button>
+                    <span className="text-[11px] text-slate-500 font-mono">{timeAgo(log.timestamp)}</span>
                   </div>
                 </div>
               ))}
@@ -289,33 +298,31 @@ export default function TeacherDashboard() {
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-4 shadow-xl">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <h3 className="font-bold text-sm text-white">Pending Submissions</h3>
-                <span className="text-xs text-blue-400 font-semibold">14 to review</span>
+                <span className="text-xs text-blue-400 font-semibold">{pending.data?.total ?? 0} to review</span>
               </div>
 
               <div className="space-y-3">
-                {[
-                  { name: "Alex Chen", lab: "Raft Consensus Lab", plag: "3.2%", status: "Original" },
-                  { name: "Sophia Wang", lab: "Distributed Key-Value", plag: "1.8%", status: "Original" },
-                  { name: "Liam Johnson", lab: "Paxos Quorum Engine", plag: "42.8%", status: "Flagged" },
-                ].map((s, idx) => (
-                  <div key={idx} className="bg-slate-950 rounded-2xl p-3.5 border border-slate-800/80 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-white">{s.name}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${s.status === "Flagged" ? "bg-rose-950 text-rose-400" : "bg-emerald-950 text-emerald-400"}`}>
-                        {s.plag} Match
-                      </span>
+                {pending.data && pending.data.data.length === 0 && (
+                  <p className="text-xs text-slate-500 text-center p-4">Nothing is waiting for a grade.</p>
+                )}
+                {(pending.data?.data ?? []).map((s) => {
+                  const flagged = (s.plagiarismScore ?? 0) >= 30;
+                  return (
+                    <div key={s.id} className="bg-slate-950 rounded-2xl p-3.5 border border-slate-800/80 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-white">{s.student}</span>
+                        {s.plagiarismScore !== null && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${flagged ? "bg-rose-950 text-rose-400" : "bg-emerald-950 text-emerald-400"}`}>
+                            {Math.round(s.plagiarismScore)}% match
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        {s.assignment} <span className="text-slate-600">· {s.course}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400">
-                      <span>{s.lab}</span>
-                      <button
-                        onClick={() => setShowGradebook(true)}
-                        className="text-blue-400 hover:text-blue-300 font-semibold"
-                      >
-                        Grade Rubric →
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -343,15 +350,14 @@ export default function TeacherDashboard() {
       )}
 
       {showGradebook && (
-        <Gradebook onClose={() => setShowGradebook(false)} />
+        <CourseGradebook onClose={() => setShowGradebook(false)} />
       )}
 
-      {activeLiveClass && (
-        <LiveClassroom
-          courseTitle={activeLiveClass}
-          onClose={() => setActiveLiveClass(null)}
-        />
-      )}
+      {showQuestionBank && <QuestionBank onClose={() => setShowQuestionBank(false)} />}
+
+      {showAssignmentGrading && <AssignmentGrading onClose={() => { setShowAssignmentGrading(false); pending.reload(); }} />}
+
+      {showLiveClasses && <LiveClasses onClose={() => setShowLiveClasses(false)} />}
 
       {showForum && (
         <DiscussionForum

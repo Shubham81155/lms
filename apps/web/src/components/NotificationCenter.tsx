@@ -1,6 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import type { NotificationItem } from "@/hooks/useNotifications";
+import { NotificationSettings } from "@/components/NotificationSettings";
+
+export type { NotificationItem };
 import {
   Bell,
   Check,
@@ -13,81 +17,32 @@ import {
   Sparkles,
   X,
   ExternalLink,
+  Settings,
 } from "lucide-react";
-
-export interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  timestamp: string;
-  type: "ACADEMIC" | "EXAM" | "SECURITY" | "ANNOUNCEMENT";
-  isRead: boolean;
-  actionUrl?: string;
-  actionLabel?: string;
-}
 
 interface NotificationCenterProps {
   isOpen: boolean;
   onClose: () => void;
   onActionClick?: (actionUrl: string) => void;
+  items: NotificationItem[];
+  isLoading?: boolean;
+  error?: string | null;
+  onMarkRead: (id: string) => void;
+  onMarkAllRead: () => void;
 }
 
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   isOpen,
   onClose,
   onActionClick,
+  items: notifications,
+  isLoading = false,
+  error = null,
+  onMarkRead,
+  onMarkAllRead,
 }) => {
   const [filter, setFilter] = useState<"ALL" | "UNREAD" | "ACADEMIC" | "SECURITY">("ALL");
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: "notif_1",
-      title: "CS-101 Midterm Examination Scheduled",
-      message: "Your AI-proctored distributed systems midterm opens tomorrow at 2:00 PM EST. Please verify webcam permissions.",
-      timestamp: "10 mins ago",
-      type: "EXAM",
-      isRead: false,
-      actionUrl: "exam",
-      actionLabel: "View Exam Details",
-    },
-    {
-      id: "notif_2",
-      title: "Grade Committed: Lab 3 Zero-Trust Ingress",
-      message: "Prof. David Malan committed an evaluation score of 94% with written rubric feedback.",
-      timestamp: "1 hour ago",
-      type: "ACADEMIC",
-      isRead: false,
-      actionUrl: "gradebook",
-      actionLabel: "View Rubric",
-    },
-    {
-      id: "notif_3",
-      title: "Live WebRTC Session Active: Raft Protocol",
-      message: "CS-101 live lecture is currently in progress with 128 learners and breakout rooms.",
-      timestamp: "2 hours ago",
-      type: "ANNOUNCEMENT",
-      isRead: false,
-      actionUrl: "live",
-      actionLabel: "Join Live Room",
-    },
-    {
-      id: "notif_4",
-      title: "Open Badges 3.0 Credential Issued",
-      message: "W3C cryptographic verifiable badge for 'Distributed Consensus Mastery' has been cryptographically signed.",
-      timestamp: "1 day ago",
-      type: "ACADEMIC",
-      isRead: true,
-      actionUrl: "badge",
-      actionLabel: "Verify Certificate",
-    },
-    {
-      id: "notif_5",
-      title: "FERPA Audit Compliance Log Verified",
-      message: "Automated cryptographic audit log chain validated for institutional data region us-east-1.",
-      timestamp: "2 days ago",
-      type: "SECURITY",
-      isRead: true,
-    },
-  ]);
+  const [showSettings, setShowSettings] = useState(false);
 
   if (!isOpen) return null;
 
@@ -100,15 +55,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     return true;
   });
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
-  };
-
-  const markSingleAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
-  };
+  const markAllAsRead = onMarkAllRead;
+  const markSingleAsRead = onMarkRead;
 
   return (
     <div className="absolute right-0 top-12 z-50 w-96 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-fadeIn">
@@ -137,7 +85,16 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             </button>
           )}
           <button
+            onClick={() => setShowSettings((v) => !v)}
+            aria-label="Notification settings"
+            aria-pressed={showSettings}
+            className={`p-1 rounded-lg transition-colors ${showSettings ? "text-blue-400 bg-slate-800" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </button>
+          <button
             onClick={onClose}
+            aria-label="Close notifications"
             className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="h-3.5 w-3.5" />
@@ -145,6 +102,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         </div>
       </div>
 
+      {showSettings ? (
+        <NotificationSettings onDone={() => setShowSettings(false)} />
+      ) : (
+        <>
       {/* Filter Tabs */}
       <div className="bg-slate-950/60 border-b border-slate-800 px-3 py-2 flex items-center gap-1 overflow-x-auto text-[11px]">
         {[
@@ -169,7 +130,11 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
       {/* Notifications List */}
       <div className="max-h-96 overflow-y-auto divide-y divide-slate-800/80">
-        {filteredNotifications.length === 0 ? (
+        {isLoading && notifications.length === 0 ? (
+          <div className="p-8 text-center text-slate-500 text-xs">Loading notifications...</div>
+        ) : error && notifications.length === 0 ? (
+          <div className="p-8 text-center text-rose-400 text-xs">{error}</div>
+        ) : filteredNotifications.length === 0 ? (
           <div className="p-8 text-center text-slate-500 text-xs">
             No notifications in this category.
           </div>
@@ -221,6 +186,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
           ))
         )}
       </div>
+        </>
+      )}
     </div>
   );
 };

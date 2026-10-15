@@ -1,3 +1,5 @@
+import { logger } from '../lib/logger';
+import { rateLimitStore } from '../lib/rate-limit-store';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
@@ -14,13 +16,14 @@ import {
 } from '../lib/password';
 import { generateOneTimeToken, hashOneTimeToken } from '../lib/one-time-token';
 import { sendMail } from '../lib/mailer';
+import { verifySecondFactor } from '../lib/mfa';
 import {
   authenticateJWT,
   clearAuthCookie,
-  generateToken,
   optionalAuth,
-  setAuthCookie,
+  startSession,
 } from '../middleware/auth';
+import { invalidateSessionCache, revokeSessions } from '../lib/session';
 
 const router = Router();
 
@@ -30,6 +33,8 @@ const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const loginSchema = z.object({
   email: z.string().email('Invalid email address format').max(254),
   password: z.string().min(1, 'Password is required').max(PASSWORD_MAX_LENGTH),
+  /** TOTP code or recovery code; required only when the account has MFA enabled. */
+  mfaCode: z.string().trim().min(6).max(32).optional(),
 });
 
 const passwordSchema = z
@@ -41,8 +46,10 @@ const forgotSchema = z.object({ email: z.string().email().max(254) });
 const resetSchema = z.object({ token: z.string().min(20).max(200), password: passwordSchema });
 const verifySchema = z.object({ token: z.string().min(20).max(200) });
 
-const limiter = (limit: number, message: string) =>
+const limiter = (name: string, limit: number, message: string) =>
   rateLimit({
+    store: rateLimitStore(name),
+    passOnStoreError: true,
     windowMs: 15 * 60 * 1000,
     limit,
     standardHeaders: 'draft-7',
@@ -50,8 +57,8 @@ const limiter = (limit: number, message: string) =>
     message: { error: message },
   });
 
-const loginLimiter = limiter(config.LOGIN_RATE_LIMIT_MAX, 'Too many login attempts. Try again later.');
-const tokenFlowLimiter = limiter(config.TOKEN_FLOW_RATE_LIMIT_MAX, 'Too many requests. Try again later.');
+const loginLimiter = limiter('login', config.LOGIN_RATE_LIMIT_MAX, 'Too many login attempts. Try again later.');
+const tokenFlowLimiter = limiter('token-flow', config.TOKEN_FLOW_RATE_LIMIT_MAX, 'Too many requests. Try again later.');
 
 const publicUserSelect = {
   id: true,
@@ -80,7 +87,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
       });
     }
 
-    const { email, password } = parseResult.data;
+    const { email, password, mfaCode } = parseResult.data;
     const invalid = () => res.status(401).json({ error: 'Invalid email or password' });
 
     const tenant = await resolveTenant(req.tenantHints);
@@ -143,6 +150,37 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
         });
       }
 
+      if (user.mfaEnabled) {
+        if (!mfaCode) {
+          // Password was right; ask for the second factor without creating a session.
+          return res.status(401).json({ error: 'Two-factor code required', mfaRequired: true });
+        }
+        if (!(await verifySecondFactor(user, mfaCode))) {
+          const { failedLoginCount } = await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginCount: { increment: 1 } },
+            select: { failedLoginCount: true },
+          });
+          if (failedLoginCount >= config.MAX_FAILED_LOGINS) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { failedLoginCount: 0, lockedUntil: new Date(Date.now() + config.LOCKOUT_MINUTES * 60 * 1000) },
+            });
+          }
+          await logAuditEvent({
+            tenantId: tenant.id,
+            userId: user.id,
+            action: 'USER_LOGIN_FAILED',
+            resourceType: 'USER',
+            resourceId: user.id,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            diffJson: { reason: 'MFA_CODE_INVALID' },
+          });
+          return res.status(401).json({ error: 'Invalid two-factor code', mfaRequired: true });
+        }
+      }
+
       const updatedUser = await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -154,15 +192,12 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
         select: publicUserSelect,
       });
 
-      setAuthCookie(
-        res,
-        generateToken({
-          id: updatedUser.id,
-          role: updatedUser.role,
-          email: updatedUser.email,
-          tenantId: updatedUser.tenantId,
-        })
-      );
+      await startSession(res, {
+        id: updatedUser.id,
+        role: updatedUser.role,
+        email: updatedUser.email,
+        tenantId: updatedUser.tenantId,
+      });
 
       await logAuditEvent({
         tenantId: tenant.id,
@@ -177,7 +212,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
       return res.status(200).json({ user: updatedUser });
     });
   } catch (error: any) {
-    console.error('Error in POST /api/v1/auth/login:', error);
+    logger.error({ err: error }, 'Error in POST /api/v1/auth/login');
     return res.status(500).json({ error: 'Internal server error during authentication' });
   }
 });
@@ -190,6 +225,8 @@ router.post('/logout', optionalAuth, async (req: Request, res: Response) => {
   clearAuthCookie(res);
 
   if (req.user) {
+    // Sign out invalidates the token itself, not just the browser cookie (so a copied token is dead too).
+    await revokeSessions(req.user.id);
     await logAuditEvent({
       tenantId: req.user.tenantId,
       userId: req.user.id,
@@ -228,7 +265,7 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
 
     return res.status(200).json({ user });
   } catch (error: any) {
-    console.error('Error in GET /api/v1/auth/me:', error);
+    logger.error({ err: error }, 'Error in GET /api/v1/auth/me');
     return res.status(500).json({ error: 'Internal server error retrieving user profile' });
   }
 });
@@ -255,7 +292,7 @@ router.post('/forgot-password', tokenFlowLimiter, async (req: Request, res: Resp
 
     return res.status(200).json(GENERIC_FORGOT_RESPONSE);
   } catch (error: any) {
-    console.error('Error in POST /api/v1/auth/forgot-password:', error);
+    logger.error({ err: error }, 'Error in POST /api/v1/auth/forgot-password');
     return res.status(500).json({ error: 'Failed to process password reset request' });
   }
 });
@@ -333,7 +370,7 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
 
       await tx.user.update({
         where: { id: record.userId },
-        data: { passwordHash, failedLoginCount: 0, lockedUntil: null, emailVerified: true },
+        data: { passwordHash, failedLoginCount: 0, lockedUntil: null, emailVerified: true, tokenVersion: { increment: 1 } },
       });
       await tx.passwordResetToken.updateMany({
         where: { userId: record.userId, usedAt: null },
@@ -342,6 +379,7 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
       return true;
     });
 
+    invalidateSessionCache(record.userId);
     if (!changed) {
       return res.status(400).json({ error: 'This reset link is invalid or has expired' });
     }
@@ -360,7 +398,7 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
 
     return res.status(200).json({ message: 'Password updated. You can now sign in.' });
   } catch (error: any) {
-    console.error('Error in POST /api/v1/auth/reset-password:', error);
+    logger.error({ err: error }, 'Error in POST /api/v1/auth/reset-password');
     return res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -406,7 +444,7 @@ router.post('/verify-email', tokenFlowLimiter, async (req: Request, res: Respons
 
     return res.status(200).json({ message: 'Email verified' });
   } catch (error: any) {
-    console.error('Error in POST /api/v1/auth/verify-email:', error);
+    logger.error({ err: error }, 'Error in POST /api/v1/auth/verify-email');
     return res.status(500).json({ error: 'Failed to verify email' });
   }
 });
@@ -447,7 +485,7 @@ router.post('/resend-verification', authenticateJWT, tokenFlowLimiter, async (re
 
     return res.status(200).json({ message: 'Verification email sent' });
   } catch (error: any) {
-    console.error('Error in POST /api/v1/auth/resend-verification:', error);
+    logger.error({ err: error }, 'Error in POST /api/v1/auth/resend-verification');
     return res.status(500).json({ error: 'Failed to send verification email' });
   }
 });

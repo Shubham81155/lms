@@ -14,6 +14,13 @@ import {
   requireCourseEditor,
   requireCourseStaff,
 } from '../lib/access';
+import { config } from '../config';
+import { commitGrade, resolveGradeInput } from '../lib/assignment-grade';
+import { validateQuestion, withOptionIds } from '../lib/questions';
+import { notify } from '../lib/notify';
+import { awardXp, touchStreak } from '../lib/gamification';
+import { VERBS, recordStatement } from '../lib/xapi';
+import { dispatchWebhook } from '../lib/webhooks';
 import { MANUAL_TYPES, QuestionType as GradingType, gradeQuiz, hasPassed, normalizeAnswers } from '../lib/grading';
 
 const router = Router();
@@ -50,6 +57,7 @@ const questionFields = {
   optionsJson: z.array(optionSchema).max(20).nullable().optional(),
   correctAnswer: z.string().max(5000).nullable().optional(),
   explanation: z.string().max(10_000).nullable().optional(),
+  bloomLevel: z.enum(['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE']).nullable().optional(),
 };
 const createQuestionSchema = z.object(questionFields);
 const updateQuestionSchema = z.object(questionFields).partial();
@@ -82,52 +90,20 @@ const assignmentSubmissionSchema = z
   })
   .refine((d) => d.fileUrl || d.submissionText, { message: 'Either fileUrl or submissionText must be provided' });
 
-const gradeSubmissionSchema = z.object({
-  grade: z.number().min(0),
-  feedback: z.string().max(10_000).optional(),
-});
+const gradeSubmissionSchema = z
+  .object({
+    grade: z.number().min(0).optional(),
+    /** Points per rubric criterion, for assignments that have a rubric. */
+    criteria: z.record(z.string().max(64), z.number().min(0).max(10_000)).optional(),
+    feedback: z.string().max(10_000).optional(),
+  })
+  .refine((d) => (d.grade === undefined) !== (d.criteria === undefined), { message: 'Send either grade or criteria' });
 
 const submissionListQuery = z.object({ ...paginationShape, userId: idSchema.optional() });
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-interface QuestionInput {
-  questionType: QuestionType;
-  optionsJson?: { id?: string; text: string; isCorrect: boolean }[] | null;
-  correctAnswer?: string | null;
-}
-
-/** Rejects questions that could never be answered correctly or graded. */
-function validateQuestion(q: QuestionInput) {
-  const options = q.optionsJson ?? [];
-  const correct = options.filter((o) => o.isCorrect).length;
-  const hasKey = !!q.correctAnswer?.trim();
-
-  switch (q.questionType) {
-    case 'MULTIPLE_CHOICE':
-    case 'TRUE_FALSE':
-      if (options.length > 0 ? options.length < 2 || correct !== 1 : !hasKey) {
-        throw new HttpError(400, 'Choice questions need at least two options with exactly one correct, or a correctAnswer');
-      }
-      break;
-    case 'MULTI_SELECT':
-      if (options.length < 2 || correct < 1) {
-        throw new HttpError(400, 'Multi-select questions need at least two options with at least one correct');
-      }
-      break;
-    case 'SHORT_ANSWER':
-    case 'FORMULA_CALCULATED':
-      if (!hasKey) throw new HttpError(400, `${q.questionType} questions need a correctAnswer`);
-      break;
-    default:
-      break; // ESSAY / CODE_SANDBOX are graded by a person
-  }
-}
-
-const withOptionIds = (options: { id?: string; text: string; isCorrect: boolean }[] | null | undefined) =>
-  options ? options.map((o) => ({ ...o, id: o.id ?? randomUUID() })) : options;
 
 async function loadQuiz(req: Request, quizId: string) {
   const quiz = await prisma.quiz.findFirst({
@@ -342,6 +318,7 @@ router.post(
         optionsJson: withOptionIds(input.optionsJson) ?? undefined,
         correctAnswer: input.correctAnswer ?? null,
         explanation: input.explanation ?? null,
+        bloomLevel: input.bloomLevel ?? null,
       },
     });
     return res.status(201).json({ data: question });
@@ -376,6 +353,7 @@ router.patch(
         optionsJson: input.optionsJson === undefined ? undefined : withOptionIds(input.optionsJson) ?? undefined,
         correctAnswer: input.correctAnswer,
         explanation: input.explanation,
+        bloomLevel: input.bloomLevel,
       },
     });
     return res.status(200).json({ data: updated });
@@ -486,7 +464,7 @@ const submitQuiz = route('Failed to submit and grade quiz', async (req: Request,
   assertCanTake(await requireContentAccess(req, quiz.courseId));
   const submitted = normalizeAnswers(parseBody(req, submitSchema).answers as any);
 
-  let open = await prisma.quizSubmission.findFirst({ where: { quizId: quiz.id, userId, submittedAt: null } });
+  const open = await prisma.quizSubmission.findFirst({ where: { quizId: quiz.id, userId, submittedAt: null } });
 
   if (quiz.timeLimitMins) {
     if (!open) throw new HttpError(400, 'This quiz is timed: start an attempt before submitting');
@@ -547,6 +525,21 @@ const submitQuiz = route('Failed to submit and grade quiz', async (req: Request,
     submissionId = created.id;
     attemptNumber = created.attemptNumber;
   }
+
+  // Engagement and telemetry side effects; none of these can fail the submission.
+  await Promise.all([
+    recordStatement({
+      tenantId,
+      user: { id: userId, email: req.user!.email },
+      verb: grade.pendingManual.length > 0 ? VERBS.attempted : passed ? VERBS.passed : VERBS.failed,
+      object: { id: `${config.APP_URL}/xapi/quizzes/${quiz.id}`, name: quiz.title, type: 'http://adlnet.gov/expapi/activities/assessment' },
+      result: { score: { raw: grade.score, max: grade.maxScore, scaled: grade.maxScore > 0 ? grade.score / grade.maxScore : 0 }, success: passed },
+    }),
+    passed ? awardXp({ tenantId, userId, source: 'QUIZ_PASSED', refId: quiz.id }) : Promise.resolve(0),
+    touchStreak(tenantId, userId).catch(() => null),
+  ]);
+  // Not awaited: a slow receiver must not hold up the learner's response.
+  void dispatchWebhook(tenantId, 'quiz.submitted', { quizId: quiz.id, submissionId, userId, score: grade.score, maxScore: grade.maxScore, passed });
 
   await logAuditEvent({
     tenantId,
@@ -667,6 +660,20 @@ router.patch(
       where: { id: submission.id },
       data: { score, passed, answersJson: { ...stored, grading, pendingManual } },
     });
+
+    if (pendingManual.length === 0) {
+      await Promise.all([
+        notify({
+          tenantId,
+          userId: submission.userId,
+          category: 'GRADE',
+          title: `Your quiz "${quiz.title}" has been graded`,
+          body: `Score: ${score} / ${submission.maxScore}${passed ? ' (passed)' : ''}`,
+          link: `/quizzes/${quiz.id}`,
+        }),
+        passed ? awardXp({ tenantId, userId: submission.userId, source: 'QUIZ_PASSED', refId: quiz.id }) : Promise.resolve(0),
+      ]);
+    }
 
     await logAuditEvent({
       tenantId,
@@ -851,34 +858,17 @@ router.patch(
     const tenantId = tenantIdOf(req);
     const assignment = await loadAssignment(req, String(req.params.id));
     await requireCourseStaff(req, assignment.courseId);
-    const { grade, feedback } = parseBody(req, gradeSubmissionSchema);
+    const { grade, criteria, feedback } = parseBody(req, gradeSubmissionSchema);
 
     const submission = await prisma.assignmentSubmission.findFirst({
       where: { id: String(req.params.subId), assignmentId: assignment.id },
     });
     if (!submission) throw new HttpError(404, 'Assignment submission not found');
 
-    if (grade > assignment.maxPoints) {
-      throw new HttpError(400, `Grade (${grade}) cannot exceed max points (${assignment.maxPoints})`);
-    }
+    const resolved = resolveGradeInput(assignment, { grade, criteria });
+    const { updated, courseGradeReopened } = await commitGrade({ req, tenantId, assignment, submission, resolved, feedback });
 
-    const updated = await prisma.assignmentSubmission.update({
-      where: { id: submission.id },
-      data: { grade, feedback: feedback || null, gradedAt: new Date() },
-    });
-
-    await logAuditEvent({
-      tenantId,
-      userId: req.user!.id,
-      action: 'GRADE_MODIFIED',
-      resourceType: 'GRADE',
-      resourceId: submission.id,
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-      diffJson: { assignmentId: assignment.id, previousGrade: submission.grade, newGrade: grade },
-    });
-
-    return res.status(200).json({ data: updated });
+    return res.status(200).json({ data: updated, courseGradeReopened });
   })
 );
 

@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { handleError } from '../lib/http';
+import { handleError, route } from '../lib/http';
+import { isAdminRole } from '../lib/access';
+import { computeAtRisk } from '../lib/risk';
+import { bloomsMastery } from '../lib/bloom';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { AiCurriculumGenerator } from '@enterprise-lms/security';
 
@@ -8,188 +11,80 @@ const router = Router();
 
 /**
  * GET /api/v1/analytics/cohort
- * Faculty analytics: cohort retention, assessment item analysis, at-risk learners
+ * Faculty analytics computed from live data: enrolment / completion metrics, assessment item
+ * analysis and early-warning learners. Instructors see only the courses they are assigned to;
+ * admins see the whole tenant.
  */
-router.get('/cohort', authenticateJWT, requireRole('INSTRUCTOR', 'TENANT_ADMIN', 'SUPER_ADMIN'), async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/cohort',
+  authenticateJWT,
+  requireRole('INSTRUCTOR', 'TENANT_ADMIN', 'SUPER_ADMIN'),
+  route('Failed to retrieve cohort analytics', async (req, res) => {
     const tenantId = tenantIdOf(req);
+    const user = req.user!;
+    const courseWhere = isAdminRole(user.role)
+      ? { tenantId }
+      : { tenantId, instructors: { some: { userId: user.id } } };
+    const courses = await prisma.course.findMany({ where: courseWhere, select: { id: true } });
+    const courseIds = courses.map((c) => c.id);
+    const inCourses = { tenantId, courseId: { in: courseIds } };
 
-    const [totalEnrollments, completedEnrollments, inProgressEnrollments] = await Promise.all([
-      prisma.enrollment.count({ where: { tenantId } }),
-      prisma.enrollment.count({ where: { tenantId, status: 'COMPLETED' } }),
-      prisma.enrollment.count({ where: { tenantId, status: 'IN_PROGRESS' } }),
+    const weekAgo = new Date(Date.now() - 7 * 86_400_000);
+    const [totalEnrollments, completed, enrollments, active, quizzes] = await Promise.all([
+      prisma.enrollment.count({ where: inCourses }),
+      prisma.enrollment.count({ where: { ...inCourses, status: 'COMPLETED' } }),
+      prisma.enrollment.findMany({ where: inCourses, select: { progressPercent: true, finalGrade: true } }),
+      prisma.xapiStatement.groupBy({ by: ['actorUserId'], where: { tenantId, timestamp: { gte: weekAgo }, actorUserId: { not: null } } }),
+      prisma.quiz.findMany({
+        where: { courseId: { in: courseIds } },
+        select: { questions: { select: { id: true, questionText: true, questionType: true, bloomLevel: true } }, submissions: { where: { submittedAt: { not: null } }, select: { answersJson: true } } },
+      }),
     ]);
 
-    const completionRate = totalEnrollments > 0 ? Math.round((completedEnrollments / totalEnrollments) * 100) : 74;
+    const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+    const grades = enrollments.filter((e) => e.finalGrade !== null).map((e) => e.finalGrade as number);
 
-    // Predictive Early Warning: Identify at-risk learners
-    const atRiskLearners = [
-      {
-        id: "usr_03",
-        name: "Liam Johnson",
-        email: "liam.johnson@harvard.edu",
-        course: "CS-101",
-        riskFactor: "HIGH",
-        reasons: ["Plagiarism match 42.8% on Lab 2", "Inactivity for > 6 days", "Quiz attempt score: 58%"],
-        suggestedAction: "Schedule 1-on-1 Office Hours & Academic Support",
-        streakDays: 2,
-      },
-      {
-        id: "usr_04",
-        name: "Ethan Brooks",
-        email: "ethan.brooks@harvard.edu",
-        course: "DS-201",
-        riskFactor: "MEDIUM",
-        reasons: ["Progress stalled at Module 1.2", "Failed Quiz 1 (Score: 62%)"],
-        suggestedAction: "Send AI Adaptive Practice Drill Nudge",
-        streakDays: 4,
-      },
-    ];
-
-    // Assessment Item Difficulty Analysis
-    const itemAnalysis = [
-      {
-        questionId: "q_raft_split",
-        concept: "Raft Split-Brain Quorum Partitioning",
-        taxonomyLevel: "EVALUATE",
-        averageScorePercent: 54,
-        status: "FLAGGED_HIGH_DIFFICULTY",
-        recommendation: "Review leader election edge cases in lecture",
-      },
-      {
-        questionId: "q_aes_gcm",
-        concept: "AES-256-GCM Auth Tag Verification",
-        taxonomyLevel: "APPLY",
-        averageScorePercent: 88,
-        status: "NORMAL",
-        recommendation: "Strong cohort comprehension",
-      },
-      {
-        questionId: "q_flp_thm",
-        concept: "FLP Impossibility in Asynchronous Systems",
-        taxonomyLevel: "ANALYZE",
-        averageScorePercent: 62,
-        status: "ATTENTION_NEEDED",
-        recommendation: "Emphasize partial synchrony assumptions",
-      },
-    ];
-
-    // Bloom's Taxonomy Mastery Breakdown
-    const bloomsMastery = [
-      { level: "REMEMBER", score: 94 },
-      { level: "UNDERSTAND", score: 89 },
-      { level: "APPLY", score: 82 },
-      { level: "ANALYZE", score: 76 },
-      { level: "EVALUATE", score: 68 },
-      { level: "CREATE", score: 72 },
-    ];
+    // Item analysis: share of awarded points per question across all graded attempts.
+    const itemAnalysis = quizzes
+      .flatMap((q) =>
+        q.questions.map((question) => {
+          const results = q.submissions
+            .map((s) => (s.answersJson as any)?.grading?.[question.id])
+            .filter((r) => r && !r.needsManualGrading && r.maxPoints > 0);
+          if (results.length === 0) return null;
+          const pct = (results.reduce((a: number, r: any) => a + r.awardedPoints, 0) / results.reduce((a: number, r: any) => a + r.maxPoints, 0)) * 100;
+          return {
+            questionId: question.id,
+            concept: question.questionText.slice(0, 120),
+            questionType: question.questionType,
+            attempts: results.length,
+            averageScorePercent: Math.round(pct),
+            status: pct < 55 ? 'FLAGGED_HIGH_DIFFICULTY' : pct < 70 ? 'ATTENTION_NEEDED' : 'NORMAL',
+            recommendation: pct < 55 ? 'Review this topic in class; most learners missed it' : pct < 70 ? 'Consider reinforcing this concept' : 'Strong cohort comprehension',
+          };
+        })
+      )
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.averageScorePercent - b.averageScorePercent)
+      .slice(0, 20);
 
     return res.json({
       tenantId,
       metrics: {
-        totalEnrolled: totalEnrollments || 428,
-        activeThisWeek: 394,
-        averageProgress: 76.4,
-        completionRate,
-        averageGpa: 3.78,
+        totalEnrolled: totalEnrollments,
+        activeThisWeek: active.length,
+        averageProgress: parseFloat(avg(enrollments.map((e) => e.progressPercent)).toFixed(1)),
+        completionRate: totalEnrollments > 0 ? Math.round((completed / totalEnrollments) * 100) : 0,
+        averageGrade: parseFloat(avg(grades).toFixed(1)),
+        // Kept for older clients; the LMS grades on a percentage scale, not a GPA.
+        averageGpa: parseFloat(((avg(grades) / 100) * 4).toFixed(2)),
       },
-      atRiskLearners,
+      atRiskLearners: await computeAtRisk(tenantId, courseIds),
       itemAnalysis,
-      bloomsMastery,
+      bloomsMastery: bloomsMastery(quizzes),
     });
-  } catch (error: any) {
-    return handleError(req, res, error, 'Failed to retrieve cohort analytics');
-  }
-});
-
-/**
- * GET /api/v1/analytics/xapi/stream
- * Queryable xAPI statement ingestion stream for accreditation audits
- */
-router.get('/xapi/stream', authenticateJWT, async (req: Request, res: Response) => {
-  try {
-    const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
-
-    // Mock high-throughput LRS statement stream compliant with IEEE/ADL xAPI spec
-    const statements = [
-      {
-        id: "stmt_xapi_101",
-        timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-        actor: {
-          mbox: "mailto:alex.chen@harvard.edu",
-          name: "Alex Chen",
-        },
-        verb: {
-          id: "http://adlnet.gov/expapi/verbs/experienced",
-          display: { "en-US": "experienced" },
-        },
-        object: {
-          id: "https://learn.harvard.edu/xapi/activities/cs101-raft-lecture",
-          definition: {
-            name: { "en-US": "Module 2.1: Raft Consensus Leader Election" },
-            type: "http://adlnet.gov/expapi/activities/media",
-          },
-        },
-        result: {
-          completion: true,
-          duration: "PT28M15S",
-        },
-      },
-      {
-        id: "stmt_xapi_102",
-        timestamp: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-        actor: {
-          mbox: "mailto:maria.rodriguez@harvard.edu",
-          name: "Maria Rodriguez",
-        },
-        verb: {
-          id: "http://adlnet.gov/expapi/verbs/passed",
-          display: { "en-US": "passed" },
-        },
-        object: {
-          id: "https://learn.harvard.edu/xapi/activities/cs101-midterm",
-          definition: {
-            name: { "en-US": "CS-101 Midterm Examination" },
-            type: "http://adlnet.gov/expapi/activities/assessment",
-          },
-        },
-        result: {
-          score: { scaled: 0.94, raw: 94, min: 0, max: 100 },
-          success: true,
-        },
-      },
-      {
-        id: "stmt_xapi_103",
-        timestamp: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-        actor: {
-          mbox: "mailto:alex.chen@harvard.edu",
-          name: "Alex Chen",
-        },
-        verb: {
-          id: "http://adlnet.gov/expapi/verbs/answered",
-          display: { "en-US": "answered" },
-        },
-        object: {
-          id: "https://learn.harvard.edu/xapi/activities/cs101-lab-quorum",
-          definition: {
-            name: { "en-US": "Interactive Lab: Quorum Verification Assertion" },
-            type: "http://adlnet.gov/expapi/activities/interaction",
-          },
-        },
-        result: {
-          success: true,
-        },
-      },
-    ];
-
-    return res.json({
-      total: statements.length,
-      statements: statements.slice(0, limit),
-    });
-  } catch (error: any) {
-    return handleError(req, res, error, 'Failed to retrieve xAPI stream');
-  }
-});
+  })
+);
 
 /**
  * POST /api/v1/analytics/ai/tutor

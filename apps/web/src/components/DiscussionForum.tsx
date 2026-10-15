@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useCourseByCode, useForum } from "@/hooks/useEngagement";
 import {
   X,
   MessageSquare,
@@ -15,41 +17,27 @@ import {
   Filter,
 } from "lucide-react";
 
-interface ForumReply {
-  id: string;
-  author: string;
-  role: "STUDENT" | "INSTRUCTOR" | "TA";
-  content: string;
-  timestamp: string;
-  upvotes: number;
-  isVerifiedAnswer?: boolean;
-}
-
-interface ForumThread {
-  id: string;
-  title: string;
-  author: string;
-  courseCode: string;
-  category: "Consensus" | "Cryptography" | "Assignments" | "General";
-  content: string;
-  timestamp: string;
-  upvotes: number;
-  replies: ForumReply[];
-  hasVerifiedAnswer?: boolean;
-}
-
 interface DiscussionForumProps {
+  /** Used to find the course; falls back to the first course the user can see. */
   courseCode?: string;
   onClose: () => void;
 }
+
+const STAFF_ROLES = ["INSTRUCTOR", "TEACHING_ASSISTANT", "TENANT_ADMIN", "SUPER_ADMIN"];
 
 export const DiscussionForum: React.FC<DiscussionForumProps> = ({
   courseCode = "CS-101",
   onClose,
 }) => {
+  const { user } = useAuth();
+  const { course, isLoading: courseLoading } = useCourseByCode(courseCode);
+  const forum = useForum(course?.id);
+  const { threads, activeId, setActiveId } = forum;
+  const isStaff = !!user && STAFF_ROLES.includes(user.role);
+  const readOnly = user?.role === "AUDITOR";
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
-  const [activeThreadId, setActiveThreadId] = useState<string>("thread_1");
   const [showNewThreadModal, setShowNewThreadModal] = useState(false);
 
   // New Thread Form States
@@ -60,162 +48,26 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
   // Reply Input State
   const [replyText, setReplyText] = useState("");
 
-  const [threads, setThreads] = useState<ForumThread[]>([
-    {
-      id: "thread_1",
-      title: "Why does Raft require randomized election timeouts?",
-      author: "Alex Chen",
-      courseCode: "CS-101",
-      category: "Consensus",
-      content:
-        "In the Raft paper, section 5.2 mentions randomized election timeouts between 150ms and 300ms. What happens if all nodes use fixed timers?",
-      timestamp: "3 hours ago",
-      upvotes: 18,
-      hasVerifiedAnswer: true,
-      replies: [
-        {
-          id: "rep_1",
-          author: "Prof. David Malan",
-          role: "INSTRUCTOR",
-          content:
-            "If timeouts are synchronized with a fixed timer, multiple followers will timeout simultaneously, split the vote equally in candidate state, and enter split-vote deadlocks where no leader can ever achieve quorum.",
-          timestamp: "2 hours ago",
-          upvotes: 24,
-          isVerifiedAnswer: true,
-        },
-        {
-          id: "rep_2",
-          author: "Maria Rodriguez",
-          role: "STUDENT",
-          content:
-            "This was also demonstrated in Lab 2 when we tested split-brain partitioning!",
-          timestamp: "1 hour ago",
-          upvotes: 5,
-        },
-      ],
-    },
-    {
-      id: "thread_2",
-      title: "Field-Level Encryption (AES-256-GCM) authentication tag length",
-      author: "Liam Johnson",
-      courseCode: "DS-201",
-      category: "Cryptography",
-      content:
-        "When encrypting student PII for FERPA compliance, why is the 16-byte GCM authentication tag mandatory instead of standard CBC mode?",
-      timestamp: "5 hours ago",
-      upvotes: 12,
-      hasVerifiedAnswer: true,
-      replies: [
-        {
-          id: "rep_3",
-          author: "Dr. Elena Rostova",
-          role: "INSTRUCTOR",
-          content:
-            "GCM is an Authenticated Encryption with Associated Data (AEAD) scheme. The 16-byte tag prevents ciphertext tampering and bit-flipping attacks that CBC is vulnerable to without an HMAC.",
-          timestamp: "4 hours ago",
-          upvotes: 19,
-          isVerifiedAnswer: true,
-        },
-      ],
-    },
-    {
-      id: "thread_3",
-      title: "Clarification on Lab 3: Zero-Trust Ingress Envoy Gateway",
-      author: "Sophia Wang",
-      courseCode: "CS-101",
-      category: "Assignments",
-      content:
-        "For step 4 of Lab 3, should our mutual TLS certificate validation include SAN matching for internal cluster service accounts?",
-      timestamp: "1 day ago",
-      upvotes: 8,
-      hasVerifiedAnswer: false,
-      replies: [
-        {
-          id: "rep_4",
-          author: "David Chen (TA)",
-          role: "TA",
-          content:
-            "Yes! You should match the SPIFFE ID in the SAN field to ensure only authorized pods can connect to the ingress controller.",
-          timestamp: "18 hours ago",
-          upvotes: 7,
-        },
-      ],
-    },
-  ]);
-
-  const activeThread = threads.find((t) => t.id === activeThreadId) || threads[0];
+  const activeThread = threads.find((t) => t.id === activeId) || threads[0];
 
   const filteredThreads = threads.filter((t) => {
     const matchesSearch =
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "ALL" || t.category === selectedCategory;
+    const matchesCategory = selectedCategory === "ALL" || t.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const handleUpvoteThread = (threadId: string) => {
-    setThreads(
-      threads.map((t) =>
-        t.id === threadId ? { ...t, upvotes: t.upvotes + 1 } : t
-      )
-    );
-  };
-
-  const handleUpvoteReply = (replyId: string) => {
-    setThreads(
-      threads.map((t) =>
-        t.id === activeThread.id
-          ? {
-              ...t,
-              replies: t.replies.map((r) =>
-                r.id === replyId ? { ...r, upvotes: r.upvotes + 1 } : r
-              ),
-            }
-          : t
-      )
-    );
-  };
-
-  const handlePostReply = () => {
-    if (!replyText.trim()) return;
-
-    const newReply: ForumReply = {
-      id: `rep_${Date.now()}`,
-      author: "Alex Chen",
-      role: "STUDENT",
-      content: replyText.trim(),
-      timestamp: "Just now",
-      upvotes: 1,
-    };
-
-    setThreads(
-      threads.map((t) =>
-        t.id === activeThread.id ? { ...t, replies: [...t.replies, newReply] } : t
-      )
-    );
-
+  const handlePostReply = async () => {
+    if (!replyText.trim() || !activeThread) return;
+    await forum.postReply(activeThread.id, replyText.trim());
     setReplyText("");
   };
 
-  const handleCreateThread = (e: React.FormEvent) => {
+  const handleCreateThread = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) return;
-
-    const created: ForumThread = {
-      id: `thread_${Date.now()}`,
-      title: newTitle.trim(),
-      author: "Alex Chen",
-      courseCode,
-      category: newCategory,
-      content: newContent.trim(),
-      timestamp: "Just now",
-      upvotes: 1,
-      replies: [],
-    };
-
-    setThreads([created, ...threads]);
-    setActiveThreadId(created.id);
+    await forum.createThread({ title: newTitle.trim(), body: newContent.trim(), category: newCategory });
     setShowNewThreadModal(false);
     setNewTitle("");
     setNewContent("");
@@ -234,7 +86,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-base text-white">Course Collaboration & Q&A Forum</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-900/50 text-blue-300 border border-blue-700/50">
-                  {courseCode} Community
+                  {course?.code ?? courseCode} Community
                 </span>
               </div>
               <p className="text-xs text-slate-400">
@@ -244,6 +96,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {!readOnly && (
             <button
               onClick={() => setShowNewThreadModal(true)}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
@@ -251,6 +104,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               <Plus className="h-4 w-4" />
               <span>Ask Question</span>
             </button>
+            )}
             <button
               onClick={onClose}
               className="p-1 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
@@ -290,16 +144,33 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
           </div>
         </div>
 
+        {forum.error && (
+          <div role="alert" className="bg-rose-950/60 border-b border-rose-900 px-6 py-2 text-xs text-rose-300">
+            {forum.error}
+          </div>
+        )}
+
         {/* Body Split */}
         <div className="flex-1 flex overflow-hidden">
           {/* Thread List Left */}
           <div className="w-full md:w-5/12 border-r border-slate-800 overflow-y-auto p-4 space-y-3 bg-slate-950/30">
+            {(courseLoading || forum.isLoading) && (
+              <div className="text-xs text-slate-500 p-6 text-center">Loading discussions...</div>
+            )}
+            {!courseLoading && !forum.isLoading && !course && (
+              <div className="text-xs text-slate-500 p-6 text-center">You are not part of any course yet.</div>
+            )}
+            {!courseLoading && !forum.isLoading && course && filteredThreads.length === 0 && (
+              <div className="text-xs text-slate-500 p-6 text-center">
+                {threads.length === 0 ? "No questions yet. Be the first to ask one." : "No topics match your search."}
+              </div>
+            )}
             {filteredThreads.map((thread) => {
               const isActive = thread.id === activeThread?.id;
               return (
                 <div
                   key={thread.id}
-                  onClick={() => setActiveThreadId(thread.id)}
+                  onClick={() => setActiveId(thread.id)}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                     isActive
                       ? "bg-blue-950/30 border-blue-600/60 shadow-md"
@@ -311,6 +182,11 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                       {thread.category}
                     </span>
                     <div className="flex items-center gap-2">
+                      {thread.pinned && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800">
+                          Pinned
+                        </span>
+                      )}
                       {thread.hasVerifiedAnswer && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
                           <CheckCircle2 className="h-2.5 w-2.5" />
@@ -342,7 +218,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                       </span>
                       <span className="flex items-center gap-1 text-slate-400">
                         <MessageSquare className="h-3 w-3" />
-                        <span>{thread.replies.length}</span>
+                        <span>{thread.replyCount}</span>
                       </span>
                     </div>
                   </div>
@@ -369,8 +245,9 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                     </div>
 
                     <button
-                      onClick={() => handleUpvoteThread(activeThread.id)}
-                      className="px-3 py-1.5 bg-slate-900 hover:bg-blue-600/20 border border-slate-800 text-slate-300 hover:text-blue-400 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      onClick={() => forum.vote("THREAD", activeThread.id, activeThread.id)}
+                      disabled={forum.busy || readOnly}
+                      className={`px-3 py-1.5 bg-slate-900 hover:bg-blue-600/20 border text-slate-300 hover:text-blue-400 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${activeThread.votedByMe ? "border-blue-600 text-blue-400" : "border-slate-800"}`}
                     >
                       <ThumbsUp className="h-3.5 w-3.5" />
                       <span>{activeThread.upvotes}</span>
@@ -389,11 +266,11 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Community Replies ({activeThread.replies.length})
+                      Community Replies ({activeThread.replies.filter((r) => !r.hidden).length}){activeThread.locked ? " · Locked" : ""}
                     </h4>
                   </div>
 
-                  {activeThread.replies.map((reply) => (
+                  {activeThread.replies.filter((r) => !r.hidden || isStaff).map((reply) => (
                     <div
                       key={reply.id}
                       className={`p-4 rounded-2xl border space-y-3 ${
@@ -427,13 +304,26 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => handleUpvoteReply(reply.id)}
-                          className="px-2.5 py-1 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors"
-                        >
-                          <ThumbsUp className="h-3 w-3" />
-                          <span>{reply.upvotes}</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {isStaff && (
+                            <button
+                              onClick={() => forum.endorse(reply.id, activeThread.id)}
+                              disabled={forum.busy}
+                              className="px-2.5 py-1 bg-slate-900 border border-slate-800 text-slate-400 hover:text-emerald-300 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
+                            >
+                              <ShieldCheck className="h-3 w-3" />
+                              <span>{reply.isVerifiedAnswer ? "Unverify" : "Verify"}</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => forum.vote("POST", reply.id, activeThread.id)}
+                            disabled={forum.busy || readOnly}
+                            className={`px-2.5 py-1 bg-slate-900 border text-slate-400 hover:text-white rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60 ${reply.votedByMe ? "border-blue-600 text-blue-400" : "border-slate-800"}`}
+                          >
+                            <ThumbsUp className="h-3 w-3" />
+                            <span>{reply.upvotes}</span>
+                          </button>
+                        </div>
                       </div>
 
                       <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
@@ -448,7 +338,8 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center gap-3">
                 <input
                   type="text"
-                  placeholder="Write a constructive response or answer..."
+                  placeholder={activeThread.locked && !isStaff ? "This thread is locked" : "Write a constructive response or answer..."}
+                  disabled={readOnly || (activeThread.locked && !isStaff)}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   onKeyDown={(e) => {
@@ -461,7 +352,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                 />
                 <button
                   onClick={handlePostReply}
-                  disabled={!replyText.trim()}
+                  disabled={!replyText.trim() || forum.busy || readOnly || (activeThread.locked && !isStaff)}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition-all"
                 >
                   <Send className="h-3.5 w-3.5" />
@@ -534,7 +425,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={!newTitle.trim() || !newContent.trim()}
+                  disabled={!newTitle.trim() || !newContent.trim() || forum.busy}
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20"
                 >
                   Post Topic

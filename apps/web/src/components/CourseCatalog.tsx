@@ -34,81 +34,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
   const { enroll, isEnrolling } = useEnroll();
   const { enrollments, refetch: refetchEnrollments } = useMyEnrollments();
 
-  // Mock catalog fallback if database has few or offline courses
-  const catalogCourses = [
-    {
-      id: "crs_cs101",
-      code: "CS-101",
-      title: "Advanced Distributed Systems & Microservices",
-      department: "Computer Science",
-      level: "Intermediate",
-      description: "Master consensus protocols, Raft, Paxos, distributed transaction isolation, and container orchestration architectures.",
-      estimatedHours: 45,
-      modulesCount: 8,
-      passingGradePercent: 70,
-      allowSelfEnroll: true,
-      tag: "SCORM 2004",
-      accent: "from-blue-600 to-indigo-600",
-    },
-    {
-      id: "crs_ds201",
-      code: "DS-201",
-      title: "Enterprise Data Governance & FERPA Compliance",
-      department: "Data Architecture",
-      level: "Advanced",
-      description: "In-depth regulatory privacy compliance engineering covering FERPA, GDPR, field-level encryption, and zero-trust data access.",
-      estimatedHours: 30,
-      modulesCount: 6,
-      passingGradePercent: 75,
-      allowSelfEnroll: true,
-      tag: "xAPI / Cmi5",
-      accent: "from-purple-600 to-pink-600",
-    },
-    {
-      id: "crs_ai301",
-      code: "AI-301",
-      title: "Deep Learning Foundations & Neural Architectures",
-      department: "Artificial Intelligence",
-      level: "Advanced",
-      description: "Explore transformer mechanisms, diffusion models, attention heads, and high-performance GPU tensor parallelism.",
-      estimatedHours: 60,
-      modulesCount: 10,
-      passingGradePercent: 80,
-      allowSelfEnroll: true,
-      tag: "LTI 1.3 Advantage",
-      accent: "from-emerald-600 to-teal-600",
-    },
-    {
-      id: "crs_sec401",
-      code: "SEC-401",
-      title: "Zero-Trust Cloud Security & Cryptographic Protocols",
-      department: "Computer Science",
-      level: "Expert",
-      description: "Hardware security modules, post-quantum cryptography, mTLS service meshes, and automated SOC 2 audit verification.",
-      estimatedHours: 40,
-      modulesCount: 7,
-      passingGradePercent: 75,
-      allowSelfEnroll: true,
-      tag: "W3C Verifiable",
-      accent: "from-rose-600 to-amber-600",
-    },
-    {
-      id: "crs_bio105",
-      code: "BIO-105",
-      title: "Computational Genomics & CRISPR Algorithms",
-      department: "Bioengineering",
-      level: "Introductory",
-      description: "Sequence alignment algorithms, hidden Markov models, and deep learning for protein folding and genetic variant analysis.",
-      estimatedHours: 35,
-      modulesCount: 5,
-      passingGradePercent: 70,
-      allowSelfEnroll: true,
-      tag: "Interactive Lab",
-      accent: "from-cyan-600 to-blue-600",
-    },
-  ];
-
-  // Merge live API courses if returned
+  // Only real courses are listed: placeholder entries cannot be enrolled in and would mislead learners.
   const allCourses = courses && courses.length > 0
     ? courses.map((c) => ({
         id: c.id,
@@ -118,13 +44,13 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
         level: "Intermediate",
         description: c.description || "Comprehensive university course curriculum designed for academic rigor.",
         estimatedHours: 40,
-        modulesCount: c.modules?.length || 6,
+        modulesCount: c.modules?.length ?? 0,
         passingGradePercent: c.passingGradePercent || 70,
         allowSelfEnroll: true,
         tag: "PostgreSQL Live",
         accent: "from-blue-600 to-indigo-600",
       }))
-    : catalogCourses;
+    : [];
 
   const enrolledCourseIds = new Set(
     (enrollments || []).map((e) => e.courseId || e.course?.id)
@@ -233,7 +159,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
           <div className="w-full md:w-1/2 border-r border-slate-800 overflow-y-auto p-5 space-y-3">
             {filteredCourses.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
-                No courses match your search criteria.
+                {isLoadingCourses ? "Loading courses…" : courses && courses.length > 0 ? "No courses match your search criteria." : "No courses are available yet."}
               </div>
             ) : (
               filteredCourses.map((course) => {

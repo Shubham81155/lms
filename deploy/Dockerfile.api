@@ -1,0 +1,21 @@
+# API image. The workspace packages are TypeScript sources, so the service runs through ts-node
+# (transpile-only; type checking happens in CI via `npm run typecheck`).
+FROM node:22-slim
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/database/package.json packages/database/
+COPY packages/security/package.json packages/security/
+COPY packages/standards/package.json packages/standards/
+RUN npm ci --ignore-scripts
+COPY packages packages
+COPY apps/api apps/api
+RUN npm run db:generate -w @enterprise-lms/database
+ENV NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true
+USER node
+EXPOSE 4000
+HEALTHCHECK --interval=30s --timeout=3s CMD node -e "fetch('http://localhost:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+WORKDIR /app/apps/api
+CMD ["npx", "ts-node", "src/server.ts"]

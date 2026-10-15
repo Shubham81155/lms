@@ -1,9 +1,12 @@
+import nodemailer from 'nodemailer';
 import { config } from '../config';
 
 export interface MailMessage {
   to: string;
   subject: string;
   text: string;
+  /** Optional HTML alternative. Callers must escape anything user-supplied. */
+  html?: string;
 }
 
 export interface Mailer {
@@ -25,7 +28,17 @@ const consoleMailer: Mailer = {
   },
 };
 
-let current: Mailer = consoleMailer;
+/** Real transport, used whenever SMTP_URL is configured. */
+function smtpMailer(url: string): Mailer {
+  const transport = nodemailer.createTransport(url);
+  return {
+    async send(message) {
+      await transport.sendMail({ from: config.MAIL_FROM, to: message.to, subject: message.subject, text: message.text, ...(message.html ? { html: message.html } : {}) });
+    },
+  };
+}
+
+let current: Mailer = config.SMTP_URL ? smtpMailer(config.SMTP_URL) : consoleMailer;
 
 export function setMailer(mailer: Mailer): void {
   current = mailer;

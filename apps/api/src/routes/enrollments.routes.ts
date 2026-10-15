@@ -8,6 +8,11 @@ import { HttpError, route } from '../lib/http';
 import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { COURSE_STAFF_ROLES, isAdminRole, canSeeAllCourses } from '../lib/access';
 import { issueCertificate } from '../lib/certificates';
+import { config } from '../config';
+import { notify } from '../lib/notify';
+import { awardXp } from '../lib/gamification';
+import { VERBS, recordStatement } from '../lib/xapi';
+import { dispatchWebhook } from '../lib/webhooks';
 
 const router = Router();
 
@@ -46,6 +51,73 @@ const courseSummary = {
 const isCourseStaff = (user: NonNullable<Request['user']>, instructorIds: string[]) =>
   isAdminRole(user.role) ||
   ((COURSE_STAFF_ROLES as readonly string[]).includes(user.role) && instructorIds.includes(user.id));
+
+/**
+ * GET /api/v1/enrollments/todo
+ * The caller's own upcoming work from the courses they are actively enrolled in (published
+ * courses only): assignments not yet submitted or still ungraded, and quizzes with attempts left
+ * (or an attempt in progress). Dated assignments come first, soonest due first.
+ */
+router.get(
+  '/todo',
+  authenticateJWT,
+  route('Failed to load your to-do list', async (req, res) => {
+    const userId = req.user!.id;
+    const tenantId = tenantIdOf(req);
+    const enrollments = await prisma.enrollment.findMany({
+      where: { tenantId, userId, status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS] }, course: { status: 'PUBLISHED' } },
+      select: { course: { select: { id: true, code: true, title: true } } },
+    });
+    const courses = new Map(enrollments.map((e) => [e.course.id, e.course]));
+    const courseIds = [...courses.keys()];
+    if (courseIds.length === 0) return res.json({ data: [] });
+
+    const [assignments, quizzes] = await Promise.all([
+      prisma.assignment.findMany({
+        where: {
+          courseId: { in: courseIds },
+          OR: [{ submissions: { none: { userId } } }, { submissions: { some: { userId, gradedAt: null } } }],
+        },
+        select: { id: true, title: true, dueDate: true, courseId: true, submissions: { where: { userId }, select: { id: true } } },
+      }),
+      prisma.quiz.findMany({
+        where: { courseId: { in: courseIds }, questions: { some: {} } },
+        select: {
+          id: true, title: true, courseId: true, timeLimitMins: true, maxAttempts: true, requireProctoring: true,
+          submissions: { where: { userId }, select: { submittedAt: true } },
+        },
+      }),
+    ]);
+
+    const now = Date.now();
+    const work = assignments.map((a) => ({
+      type: 'ASSIGNMENT' as const,
+      id: a.id,
+      title: a.title,
+      course: courses.get(a.courseId)!,
+      dueAt: a.dueDate,
+      overdue: !!a.dueDate && a.dueDate.getTime() < now && a.submissions.length === 0,
+      submitted: a.submissions.length > 0,
+    }));
+    const tests = quizzes
+      .map((q) => ({
+        type: 'QUIZ' as const,
+        id: q.id,
+        title: q.title,
+        course: courses.get(q.courseId)!,
+        dueAt: null as Date | null,
+        timeLimitMins: q.timeLimitMins,
+        requireProctoring: q.requireProctoring,
+        attemptsRemaining: Math.max(0, q.maxAttempts - q.submissions.length),
+        hasOpenAttempt: q.submissions.some((s) => s.submittedAt === null),
+      }))
+      .filter((q) => q.attemptsRemaining > 0 || q.hasOpenAttempt);
+
+    const byDue = (a: { dueAt: Date | null; title: string }, b: { dueAt: Date | null; title: string }) =>
+      (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity) || a.title.localeCompare(b.title);
+    return res.json({ data: [...work.sort(byDue), ...tests.sort(byDue)].slice(0, 20) });
+  })
+);
 
 /**
  * GET /api/v1/enrollments/stats
@@ -291,6 +363,34 @@ router.patch(
     if (updated.status === EnrollmentStatus.COMPLETED) {
       const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } });
       certificate = await issueCertificate(updated.id, tenant?.slug ?? tenantId);
+
+      // Only on the transition into COMPLETED, so re-sending progress does not re-notify.
+      if (enrollment.status !== EnrollmentStatus.COMPLETED) {
+        const learner = await prisma.user.findFirst({ where: { id: updated.userId }, select: { id: true, email: true, firstName: true, lastName: true } });
+        await Promise.all([
+          awardXp({ tenantId, userId: updated.userId, source: 'COURSE_COMPLETE', refId: updated.courseId }),
+          notify({
+            tenantId,
+            userId: updated.userId,
+            category: 'COURSE',
+            title: `You completed ${updated.course.title}`,
+            body: certificate ? `Certificate ${certificate.certificateNumber} is ready.` : undefined,
+            link: `/courses/${updated.courseId}`,
+          }),
+          learner
+            ? recordStatement({
+                tenantId,
+                user: learner,
+                verb: VERBS.completed,
+                object: { id: `${config.APP_URL}/xapi/courses/${updated.courseId}`, name: updated.course.title, type: 'http://adlnet.gov/expapi/activities/course' },
+                result: { completion: true, ...(grade !== null ? { score: { raw: grade, min: 0, max: 100 } } : {}) },
+              })
+            : Promise.resolve(null),
+        ]);
+        // Not awaited: a slow receiver must not hold up the response.
+        void dispatchWebhook(tenantId, 'enrollment.completed', { enrollmentId: updated.id, courseId: updated.courseId, userId: updated.userId, finalGrade: grade });
+        if (certificate) void dispatchWebhook(tenantId, 'certificate.issued', { certificateNumber: certificate.certificateNumber, userId: updated.userId, courseId: updated.courseId });
+      }
     }
 
     await logAuditEvent({

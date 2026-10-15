@@ -302,7 +302,7 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
                       <div className="flex items-center gap-2">
                         <strong className="text-sm text-white">{item.concept}</strong>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
-                          Bloom: {item.taxonomyLevel}
+                          {item.taxonomyLevel ? `Bloom: ${item.taxonomyLevel}` : (item.questionType ?? "Question")}
                         </span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           item.averageScorePercent < 60

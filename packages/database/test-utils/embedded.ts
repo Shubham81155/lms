@@ -66,8 +66,18 @@ export async function startTestDatabase(): Promise<TestDatabase> {
     adminUrl,
     appUrl,
     stop: async () => {
-      await pg.stop();
-      fs.rmSync(dataDir, { recursive: true, force: true });
+      // Windows can hold the data files for a moment after postgres exits (embedded-postgres
+      // also removes its own data dir here); a leftover temp dir must not fail the run.
+      try {
+        await pg.stop();
+      } catch {
+        /* postgres has exited; only the cleanup raced */
+      }
+      try {
+        fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+      } catch {
+        /* best effort */
+      }
     },
   };
 }
