@@ -150,7 +150,7 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({
                 <h3 className="font-bold text-sm text-white">AI Personalized Socratic Tutor</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-950 text-blue-400 border border-blue-800 flex items-center gap-1">
                   <Sparkles className="h-3 w-3" />
-                  Demo · template-based, no AI model yet
+                  Demo Â· template-based, no AI model yet
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">{courseTitle}</p>

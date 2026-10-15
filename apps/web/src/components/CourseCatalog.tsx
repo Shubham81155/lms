@@ -159,7 +159,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
           <div className="w-full md:w-1/2 border-r border-slate-800 overflow-y-auto p-5 space-y-3">
             {filteredCourses.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
-                {isLoadingCourses ? "Loading courses…" : courses && courses.length > 0 ? "No courses match your search criteria." : "No courses are available yet."}
+                {isLoadingCourses ? "Loading coursesâ€¦" : courses && courses.length > 0 ? "No courses match your search criteria." : "No courses are available yet."}
               </div>
             ) : (
               filteredCourses.map((course) => {
