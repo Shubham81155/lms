@@ -48,7 +48,7 @@ const AttendanceTable: React.FC<{ sessionId: string }> = ({ sessionId }) => {
   );
 };
 
-export const LiveClasses: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const LiveClasses: React.FC<{ onClose: () => void; /** Open on this course when the person may use it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
   const { user } = useAuth();
   const { courses, isLoading: loadingCourses } = useStaffCourses();
   const [courseId, setCourseId] = useState("");
@@ -57,16 +57,19 @@ export const LiveClasses: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [duration, setDuration] = useState(60);
   const [studentVideo, setStudentVideo] = useState(false);
   const [openAttendance, setOpenAttendance] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [room, setRoom] = useState<{ title: string; join: JoinInfo } | null>(null);
   const { busy, error, run, clearError } = useAction();
 
-  useEffect(() => { if (!courseId && courses.length) setCourseId(courses[0].id); }, [courses, courseId]);
+  useEffect(() => { if (!courseId && courses.length) setCourseId(initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0].id); }, [courses, courseId]);
   const sessions = useApiData<{ configured: boolean; data: LiveSessionView[] }>(courseId ? `/api/v1/courses/${courseId}/live-sessions` : null);
   const list = sessions.data?.data ?? [];
 
   const isAdmin = user?.role === "TENANT_ADMIN" || user?.role === "SUPER_ADMIN";
   const canManage = isAdmin || user?.role === "INSTRUCTOR";
-  const problem = scheduleProblem({ title, when, durationMins: duration });
+  const editedSession = editingId ? list.find((x) => x.id === editingId) : undefined;
+  const startUnchanged = !!editedSession && when === toLocalInput(new Date(editedSession.scheduledAt));
+  const problem = scheduleProblem({ title, when, durationMins: duration }, Date.now(), startUnchanged);
 
   const joinRoom = (s: LiveSessionView) =>
     run(async () => {
@@ -77,10 +80,40 @@ export const LiveClasses: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const schedule = (e: React.FormEvent) => {
     e.preventDefault();
     run(async () => {
-      await api.post(`/api/v1/courses/${courseId}/live-sessions`, { title: title.trim(), scheduledAt: fromLocalInput(when), durationMins: duration, allowStudentVideo: studentVideo });
+      const body = { title: title.trim(), scheduledAt: fromLocalInput(when), durationMins: duration, allowStudentVideo: studentVideo };
+      if (editingId) {
+        // Send only what changed, so retitling a class does not re-submit a start time that has passed.
+        const was = list.find((x) => x.id === editingId);
+        const changes = was
+          ? {
+              ...(body.title !== was.title ? { title: body.title } : {}),
+              ...(when !== toLocalInput(new Date(was.scheduledAt)) ? { scheduledAt: body.scheduledAt } : {}),
+              ...(duration !== was.durationMins ? { durationMins: duration } : {}),
+              ...(studentVideo !== was.allowStudentVideo ? { allowStudentVideo: studentVideo } : {}),
+            }
+          : body;
+        if (Object.keys(changes).length > 0) await api.patch(`/api/v1/live-sessions/${editingId}`, changes);
+        setEditingId(null);
+      } else {
+        await api.post(`/api/v1/courses/${courseId}/live-sessions`, body);
+      }
       setTitle("");
       await sessions.reload();
     });
+  };
+
+  const startEditing = (s: LiveSessionView) => {
+    clearError();
+    setEditingId(s.id);
+    setTitle(s.title);
+    setWhen(toLocalInput(new Date(s.scheduledAt)));
+    setDuration(s.durationMins);
+    setStudentVideo(!!s.allowStudentVideo);
+  };
+
+  const stopEditing = () => {
+    setEditingId(null);
+    setTitle("");
   };
 
   const act = (path: string, then?: () => Promise<unknown>) =>
@@ -114,7 +147,7 @@ export const LiveClasses: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
           {canManage && courseId && (
             <form onSubmit={schedule} onChange={clearError} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
-              <h4 className="text-sm font-bold text-ink">Schedule a class</h4>
+              <h4 className="text-sm font-bold text-ink">{editingId ? "Change this class" : "Schedule a class"}</h4>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <input className={`${input} md:col-span-2`} aria-label="Title" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
                 <input className={input} type="datetime-local" aria-label="Start time" value={when} onChange={(e) => setWhen(e.target.value)} />
@@ -125,7 +158,8 @@ export const LiveClasses: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 Let learners use their camera and microphone
               </label>
               <div className="flex items-center gap-3">
-                <button className={primary} disabled={busy || !!problem}>Schedule</button>
+                <button className={primary} disabled={busy || !!problem}>{editingId ? "Save changes" : "Schedule"}</button>
+                {editingId && <button type="button" className={ghost} onClick={stopEditing}>Cancel</button>}
                 {problem && title.trim().length > 0 && <span className="text-[11px] text-accent">{problem}</span>}
               </div>
             </form>
@@ -150,6 +184,7 @@ export const LiveClasses: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     {s.status === "SCHEDULED" && canManage && (
                       <>
                         <button className={primary} disabled={busy || !sessions.data?.configured} onClick={() => act(`/api/v1/live-sessions/${s.id}/start`, () => joinRoom(s))}>Start and join</button>
+                        <button className={ghost} disabled={busy} onClick={() => startEditing(s)} aria-label={`Edit ${s.title}`}>Edit</button>
                         <button className={ghost} disabled={busy} onClick={() => window.confirm(`Cancel "${s.title}"? Learners will be told.`) && act(`/api/v1/live-sessions/${s.id}/cancel`)}>Cancel</button>
                       </>
                     )}

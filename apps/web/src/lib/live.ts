@@ -42,11 +42,12 @@ export function fromLocalInput(value: string): string | null {
 }
 
 /** Whether a schedule form can be submitted, with the reason when it cannot. */
-export function scheduleProblem(f: { title: string; when: string; durationMins: number }, now: number = Date.now()): string | null {
+/** `allowPast` is for changing other details of a class whose start time is left as it was. */
+export function scheduleProblem(f: { title: string; when: string; durationMins: number }, now: number = Date.now(), allowPast = false): string | null {
   if (f.title.trim().length < 2) return "Give the class a title.";
   const iso = fromLocalInput(f.when);
   if (!iso) return "Choose a date and time.";
-  if (new Date(iso).getTime() < now - 5 * 60_000) return "That time is in the past.";
+  if (!allowPast && new Date(iso).getTime() < now - 5 * 60_000) return "That time is in the past.";
   if (!Number.isInteger(f.durationMins) || f.durationMins < 5 || f.durationMins > 480) return "Duration must be between 5 and 480 minutes.";
   return null;
 }

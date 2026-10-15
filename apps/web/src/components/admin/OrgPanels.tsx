@@ -49,6 +49,38 @@ const NameCode: React.FC<{
   );
 };
 
+/** A name with a "Rename" button that turns into an input in place (no browser dialog). */
+const InlineRename: React.FC<{ name: string; what: string; busy: boolean; onSave: (name: string) => void; children: (rename: React.ReactNode) => React.ReactNode }> = ({ name, what, busy, onSave, children }) => {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(name);
+  const trimmed = value.trim();
+  if (!editing) {
+    return (
+      <>
+        {children(
+          <button className={ghost} disabled={busy} aria-label={`Rename ${what} ${name}`} onClick={() => { setValue(name); setEditing(true); }}>
+            Rename
+          </button>
+        )}
+      </>
+    );
+  }
+  return (
+    <form
+      className="flex items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (trimmed && trimmed !== name) onSave(trimmed);
+        setEditing(false);
+      }}
+    >
+      <input className={`${input} min-w-40`} aria-label={`New name for ${what} ${name}`} maxLength={120} autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+      <button className={primary} disabled={busy || !trimmed || trimmed === name}>Save</button>
+      <button type="button" className={ghost} onClick={() => setEditing(false)}>Cancel</button>
+    </form>
+  );
+};
+
 export const CampusPanel: React.FC = () => {
   const { data, isLoading, error, reload } = useApiData<{ data: Campus[] }>("/api/v1/admin/campuses");
   const { busy, error: actionError, run } = useAction();
@@ -83,22 +115,15 @@ export const CampusPanel: React.FC = () => {
       <ul className="space-y-3">
         {campuses.map((c) => (
           <li key={c.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
+            <InlineRename name={c.name} what="campus" busy={busy} onSave={(name) => act(() => api.patch(`/api/v1/admin/campuses/${c.id}`, { name }))}>
+              {(rename) => (
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h4 className="text-sm font-bold text-ink">{c.name} <span className="text-[10px] font-mono text-ink-subtle ml-1">{c.code}</span></h4>
                 <p className="text-[11px] text-ink-subtle">{c.departments.length} department(s) · {c.courseCount} course(s)</p>
               </div>
               <div className="flex gap-2">
-                <button
-                  className={ghost}
-                  disabled={busy}
-                  onClick={() => {
-                    const name = window.prompt("Campus name", c.name)?.trim();
-                    if (name && name !== c.name) act(() => api.patch(`/api/v1/admin/campuses/${c.id}`, { name }));
-                  }}
-                >
-                  Rename
-                </button>
+                {rename}
                 <button
                   className={ghost}
                   disabled={busy}
@@ -109,12 +134,18 @@ export const CampusPanel: React.FC = () => {
                 </button>
               </div>
             </div>
+              )}
+            </InlineRename>
 
             <ul className="space-y-1.5">
               {c.departments.map((d) => (
                 <li key={d.id} className="flex items-center justify-between bg-surface border border-line rounded-xl px-3 py-2 text-xs">
-                  <span className="text-ink">{d.name} <span className="font-mono text-[10px] text-ink-subtle ml-1">{d.code}</span></span>
-                  <span className="flex items-center gap-3">
+                  <InlineRename name={d.name} what="department" busy={busy} onSave={(name) => act(() => api.patch(`/api/v1/admin/departments/${d.id}`, { name }))}>
+                    {(rename) => (
+                      <>
+                        <span className="text-ink">{d.name} <span className="font-mono text-[10px] text-ink-subtle ml-1">{d.code}</span></span>
+                        <span className="flex items-center gap-3">
+                    {rename}
                     <span className="text-[11px] text-ink-subtle">{d.courseCount} course(s)</span>
                     <button
                       className="text-ink-subtle hover:text-danger disabled:opacity-50"
@@ -125,6 +156,9 @@ export const CampusPanel: React.FC = () => {
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </span>
+                      </>
+                    )}
+                  </InlineRename>
                 </li>
               ))}
             </ul>

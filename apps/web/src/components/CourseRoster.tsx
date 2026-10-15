@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { X, CheckCircle2, AlertTriangle, Award } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { errorMessage, useApiData } from "@/hooks/useApiData";
 import { useStaffCourses } from "@/hooks/useStaffCourses";
@@ -36,9 +37,14 @@ const primaryBtn = "rounded-lg bg-brand px-3 py-1.5 text-[11px] font-bold text-o
  * Learners of a course and the one thing only staff can do for them: record that they finished it.
  * Completing issues the certificate; a final grade below the passing grade records a failure instead.
  */
-export const CourseRoster: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const CourseRoster: React.FC<{ onClose: () => void; /** Open on this course when the person may use it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
   useEscapeKey(onClose);
+  const { user } = useAuth();
   const { courses, isLoading: coursesLoading } = useStaffCourses();
+  // Administrators and the assigned instructor manage enrolment; assistants can only look.
+  const canManage = user?.role === "INSTRUCTOR" || user?.role === "TENANT_ADMIN" || user?.role === "SUPER_ADMIN";
+  const [enrollEmail, setEnrollEmail] = useState("");
+  const [removing, setRemoving] = useState<string | null>(null);
   const [courseId, setCourseId] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -46,7 +52,7 @@ export const CourseRoster: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const [grade, setGrade] = useState("");
 
   useEffect(() => {
-    if (!courseId && courses.length > 0) setCourseId(courses[0].id);
+    if (!courseId && courses.length > 0) setCourseId(initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0].id);
   }, [courses, courseId]);
 
   useEffect(() => {
@@ -61,6 +67,38 @@ export const CourseRoster: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const course = courses.find((c) => c.id === courseId);
   const gradeValue = grade.trim() === "" ? undefined : Number(grade);
   const gradeInvalid = gradeValue !== undefined && (!Number.isFinite(gradeValue) || gradeValue < 0 || gradeValue > 100);
+
+  const enroll = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = enrollEmail.trim();
+    if (!email) return;
+    setBusy(true);
+    try {
+      await api.post("/api/v1/enrollments", { courseId, email });
+      setNotice({ kind: "ok", text: `${email} is now enrolled in ${course?.code}.` });
+      setEnrollEmail("");
+    } catch (err) {
+      setNotice({ kind: "error", text: errorMessage(err, "Could not enroll that person.") });
+    } finally {
+      setBusy(false);
+      roster.reload();
+    }
+  };
+
+  const remove = async (row: RosterRow) => {
+    const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : "This learner";
+    setBusy(true);
+    try {
+      await api.delete(`/api/v1/enrollments/${row.id}`);
+      setNotice({ kind: "ok", text: `${name} was removed from ${course?.code}. Their progress is kept; enrolling them again picks up where they left off.` });
+      setRemoving(null);
+    } catch (err) {
+      setNotice({ kind: "error", text: errorMessage(err, "Could not remove that learner.") });
+    } finally {
+      setBusy(false);
+      roster.reload();
+    }
+  };
 
   const complete = async (row: RosterRow) => {
     const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : "This learner";
@@ -132,13 +170,34 @@ export const CourseRoster: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 Try again
               </button>
             </div>
-          ) : rows.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-xs text-ink-muted">Nobody is enrolled in {course?.code} yet.</p>
           ) : (
             <div className="space-y-3">
-              <p className="text-[11px] text-ink-subtle">
-                {rows.length} of {total} learner{total === 1 ? "" : "s"} shown
-              </p>
+              {canManage && (
+                <form onSubmit={enroll} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-canvas p-3">
+                  <label className="text-xs font-semibold text-ink-muted" htmlFor="enroll-email">
+                    Enroll a learner
+                  </label>
+                  <input
+                    id="enroll-email"
+                    type="email"
+                    value={enrollEmail}
+                    onChange={(e) => setEnrollEmail(e.target.value)}
+                    placeholder="their email address"
+                    maxLength={254}
+                    disabled={busy}
+                    className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
+                  />
+                  <button type="submit" disabled={busy || !enrollEmail.trim()} className={primaryBtn}>
+                    Enroll
+                  </button>
+                </form>
+              )}
+              {rows.length === 0 && <p className="rounded-2xl border border-dashed border-line px-6 py-10 text-center text-xs text-ink-muted">Nobody is enrolled in {course?.code} yet.</p>}
+              {rows.length > 0 && (
+                <p className="text-[11px] text-ink-subtle">
+                  {rows.length} of {total} learner{total === 1 ? "" : "s"} shown
+                </p>
+              )}
               {rows.map((row) => {
                 const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : "Learner";
                 const open = row.status === "ENROLLED" || row.status === "IN_PROGRESS";
@@ -177,8 +236,25 @@ export const CourseRoster: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                             Mark as completed
                           </button>
                         )}
+                        {open && canManage && removing !== row.id && (
+                          <button onClick={() => setRemoving(row.id)} disabled={busy} aria-label={`Remove ${name} from the course`} className={smallBtn}>
+                            Remove
+                          </button>
+                        )}
                       </div>
                     </div>
+
+                    {open && canManage && removing === row.id && (
+                      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5 text-xs">
+                        <span className="text-ink">Remove {name} from {course?.code}? They lose access to it. Their progress is kept, and enrolling them again picks up where they left off.</span>
+                        <button onClick={() => remove(row)} disabled={busy} aria-label={`Confirm removing ${name}`} className="rounded-lg bg-danger px-3 py-1.5 text-[11px] font-bold text-on-brand disabled:opacity-50">
+                          {busy ? "Removing…" : "Remove"}
+                        </button>
+                        <button onClick={() => setRemoving(null)} disabled={busy} className={smallBtn}>
+                          Keep
+                        </button>
+                      </div>
+                    )}
 
                     {open && asking && (
                       <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-brand/40 bg-brand/10 px-3 py-2.5 text-xs">
