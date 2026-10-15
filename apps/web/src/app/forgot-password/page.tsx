@@ -28,12 +28,12 @@ export default function ForgotPasswordPage() {
   return (
     <AuthCard title="Reset your password" subtitle="We will email you a link to choose a new one.">
       {message ? (
-        <p className="text-xs text-emerald-300 bg-emerald-950/40 border border-emerald-800/60 rounded-2xl p-3.5">
+        <p className="text-xs text-success bg-success/10 border border-success/25 rounded-2xl p-3.5">
           {message}
         </p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          {error && <p className="text-xs text-rose-300">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
           <input
             type="email"
             required
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
         </form>
       )}
       <p className="text-center text-[11px]">
-        <Link href="/login" className="text-blue-400 hover:text-blue-300">
+        <Link href="/login" className="text-brand-fg hover:underline underline-offset-2">
           Back to sign in
         </Link>
       </p>

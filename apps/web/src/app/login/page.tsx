@@ -4,7 +4,6 @@ import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  GraduationCap,
   Lock,
   Mail,
   ArrowRight,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BrandLogo } from "@/components/BrandLogo";
 import { api } from "@/lib/api";
 
 // Error codes the API puts in /login?error= after a failed single sign-on round trip.
@@ -83,42 +83,35 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
-      {/* Top Header */}
-      <header className="border-b border-slate-800 bg-slate-950/80 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 font-bold text-lg text-white">
-            <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="leading-tight">
-                Apex<span className="text-blue-500">LMS</span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-normal">Enterprise Education</span>
-            </div>
-          </Link>
+    <div className="min-h-screen bg-canvas text-ink flex flex-col relative overflow-hidden">
+      <div aria-hidden="true" className="absolute top-24 left-1/2 -translate-x-1/2 h-[420px] w-[720px] max-w-full rounded-full bg-brand/15 blur-3xl" />
+      <div aria-hidden="true" className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-accent/10 blur-3xl" />
 
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-          </div>
+      {/* Top Header */}
+      <header className="relative border-b border-line bg-canvas/80 backdrop-blur-md px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <BrandLogo />
+          <ThemeToggle />
         </div>
       </header>
 
       {/* Main Login Box */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl">
-          <div className="text-center space-y-1.5">
-            <h1 className="text-2xl font-extrabold text-white">Sign In</h1>
-            <p className="text-xs text-slate-400">
+      <main className="relative flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-md bg-surface border border-line rounded-3xl p-8 space-y-6 shadow-2xl shadow-black/20">
+          <div className="text-center space-y-2">
+            <div className="mx-auto h-11 w-11 rounded-2xl bg-brand/10 border border-brand/20 text-brand-fg flex items-center justify-center">
+              <Lock className="h-5 w-5" />
+            </div>
+            <h1 className="text-2xl font-extrabold text-ink">Welcome back</h1>
+            <p className="text-xs text-ink-muted">
               Enter your institutional credentials to access your portal.
             </p>
           </div>
 
           {/* Error Banner */}
           {errorMsg && (
-            <div className="p-3.5 bg-rose-950/50 border border-rose-800/80 rounded-2xl flex items-start gap-2.5 text-xs text-rose-300 animate-fadeIn">
-              <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+            <div role="alert" className="p-3.5 bg-danger/10 border border-danger/30 rounded-2xl flex items-start gap-2.5 text-xs text-danger animate-fadeIn">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -126,34 +119,34 @@ function LoginForm() {
           {/* Credentials Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-semibold text-ink">
                 Institutional Email
               </label>
               <div className="relative">
-                <Mail className="h-4 w-4 text-slate-500 absolute left-3.5 top-3" />
+                <Mail className="h-4 w-4 text-ink-subtle absolute left-3.5 top-3" />
                 <input
                   type="email"
                   required
                   placeholder="e.g. name@university.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-canvas border border-line rounded-xl pl-10 pr-4 py-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300">Password</label>
+                <label className="text-xs font-semibold text-ink">Password</label>
                 <Link
                   href="/forgot-password"
-                  className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
+                  className="text-[11px] text-brand-fg hover:underline underline-offset-2 transition-colors"
                 >
                   Forgot password?
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="h-4 w-4 text-slate-500 absolute left-3.5 top-3" />
+                <Lock className="h-4 w-4 text-ink-subtle absolute left-3.5 top-3" />
                 <input
                   type="password"
                   required
@@ -161,18 +154,18 @@ function LoginForm() {
                   placeholder="••••••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-canvas border border-line rounded-xl pl-10 pr-4 py-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
                 />
               </div>
             </div>
 
             {needsMfa && (
               <div className="space-y-1.5">
-                <label htmlFor="mfa-code" className="text-xs font-semibold text-slate-300">
+                <label htmlFor="mfa-code" className="text-xs font-semibold text-ink">
                   Authentication code
                 </label>
                 <div className="relative">
-                  <ShieldCheck className="h-4 w-4 text-slate-500 absolute left-3.5 top-3" />
+                  <ShieldCheck className="h-4 w-4 text-ink-subtle absolute left-3.5 top-3" />
                   <input
                     id="mfa-code"
                     type="text"
@@ -184,22 +177,22 @@ function LoginForm() {
                     placeholder="6-digit code or recovery code"
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                    className="w-full bg-canvas border border-line rounded-xl pl-10 pr-4 py-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-ink-subtle">
                   Open your authenticator app, or enter one of your single-use recovery codes.
                 </p>
               </div>
             )}
 
-            <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="flex items-center justify-between text-xs text-ink-muted">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-slate-800 bg-slate-950 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-line accent-brand"
                 />
                 <span>Remember this workstation</span>
               </label>
@@ -208,7 +201,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 transition-all"
+              className="w-full py-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-brand/25 transition-all"
             >
               {isSubmitting ? (
                 <span>Signing In...</span>
@@ -223,10 +216,10 @@ function LoginForm() {
 
           {(sso.oidc || sso.saml) && (
             <div className="space-y-3">
-              <div className="flex items-center gap-3 text-[11px] text-slate-500">
-                <span className="h-px flex-1 bg-slate-800" />
+              <div className="flex items-center gap-3 text-[11px] text-ink-subtle">
+                <span className="h-px flex-1 bg-line" />
                 <span>or</span>
-                <span className="h-px flex-1 bg-slate-800" />
+                <span className="h-px flex-1 bg-line" />
               </div>
               {/* A full-page navigation: the identity provider redirects back to the API callback. */}
               {[
@@ -238,9 +231,9 @@ function LoginForm() {
                   <a
                     key={m.href}
                     href={m.href}
-                    className="w-full py-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                    className="w-full py-3 bg-canvas hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
                   >
-                    <KeyRound className="h-4 w-4 text-blue-400" />
+                    <KeyRound className="h-4 w-4 text-brand-fg" />
                     <span>{m.label}</span>
                   </a>
                 ))}
@@ -248,8 +241,6 @@ function LoginForm() {
           )}
         </div>
       </main>
-
-      <div />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 
 export const metadata: Metadata = {
-  title: "Enterprise Educational LMS Portal",
+  title: "ApexLMS: Enterprise Learning Platform",
   description: "Enterprise Multi-Tenant Learning Management Platform",
 };
 

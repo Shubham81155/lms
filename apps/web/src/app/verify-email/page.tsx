@@ -30,13 +30,13 @@ function VerifyEmail() {
 
   return (
     <AuthCard title="Email verification">
-      <p className="text-xs text-center text-slate-300">
+      <p className="text-xs text-center text-ink">
         {state.status === "working" && "Verifying..."}
         {state.status === "ok" && "Your email address is verified."}
         {state.status === "error" && state.message}
       </p>
       <p className="text-center text-[11px]">
-        <Link href="/login" className="text-blue-400 hover:text-blue-300">
+        <Link href="/login" className="text-brand-fg hover:underline underline-offset-2">
           Continue to sign in
         </Link>
       </p>

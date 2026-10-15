@@ -41,9 +41,9 @@ function ResetForm() {
   if (!token) {
     return (
       <AuthCard title="Invalid link">
-        <p className="text-xs text-slate-400 text-center">
+        <p className="text-xs text-ink-muted text-center">
           This reset link is incomplete.{" "}
-          <Link href="/forgot-password" className="text-blue-400">
+          <Link href="/forgot-password" className="text-brand-fg hover:underline underline-offset-2">
             Request a new one
           </Link>
           .
@@ -55,15 +55,15 @@ function ResetForm() {
   return (
     <AuthCard title="Choose a new password">
       {done ? (
-        <p className="text-xs text-center text-emerald-300">
+        <p className="text-xs text-center text-success">
           Password updated.{" "}
-          <Link href="/login" className="text-blue-400">
+          <Link href="/login" className="text-brand-fg hover:underline underline-offset-2">
             Sign in
           </Link>
         </p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          {error && <p className="text-xs text-rose-300">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
           <input
             type="password"
             required

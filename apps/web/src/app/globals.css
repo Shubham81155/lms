@@ -2,9 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Semantic colour tokens (space-separated RGB so Tailwind opacity modifiers work).
+ * Used by the public pages (landing, sign-in flow); each has a dark and a light value.
+ */
 :root {
   --background: #020617;
   --foreground: #f8fafc;
+
+  --canvas: 8 11 24;          /* page background */
+  --surface: 16 21 41;        /* cards */
+  --raised: 24 30 56;         /* rows/inputs inside cards, hover */
+  --line: 38 46 78;           /* borders, tracks */
+  --ink: 236 239 250;         /* primary text */
+  --ink-muted: 163 171 198;   /* body text */
+  --ink-subtle: 124 133 166;  /* captions, placeholders */
+  --brand: 79 70 229;         /* filled buttons; white text on it is 6.3:1 */
+  --brand-hover: 99 102 241;
+  --brand-fg: 165 180 252;    /* brand-coloured text and icons */
+  --on-brand: 255 255 255;
+  --accent: 251 191 36;       /* amber highlight */
+  --success: 52 211 153;
+  --danger: 253 164 175;
 }
 
 html.dark {
@@ -15,6 +34,21 @@ html:not(.dark) {
   color-scheme: light;
   --background: #f8fafc;
   --foreground: #0f172a;
+
+  --canvas: 246 247 252;
+  --surface: 255 255 255;
+  --raised: 240 242 250;
+  --line: 223 227 239;
+  --ink: 15 19 38;
+  --ink-muted: 72 81 108;
+  --ink-subtle: 100 109 136;
+  --brand: 79 70 229;
+  --brand-hover: 67 56 202;
+  --brand-fg: 67 56 202;
+  --on-brand: 255 255 255;
+  --accent: 180 83 9;
+  --success: 4 120 87;
+  --danger: 190 18 60;
 }
 
 /* Light Theme Styling for Enterprise LMS */

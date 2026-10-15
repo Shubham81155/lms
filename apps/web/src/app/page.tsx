@@ -4,14 +4,136 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  GraduationCap,
   ShieldCheck,
   ArrowRight,
   BookOpen,
   Award,
+  ClipboardCheck,
+  Building2,
+  Lock,
+  FileSearch,
+  Video,
+  ScrollText,
+  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BrandLogo } from "@/components/BrandLogo";
+
+const STANDARDS = ["xAPI LRS", "LTI 1.3 Advantage", "SCIM 2.0", "OIDC & SAML SSO", "FERPA", "GDPR"];
+
+const ROLES = [
+  {
+    icon: BookOpen,
+    title: "Students",
+    body: "Pick up lessons where you left off, take quizzes, submit assignments, join live classes and earn certificates.",
+    accent: "text-brand-fg bg-brand/10 border-brand/20",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Faculty",
+    body: "Build courses, grade with rubrics, see plagiarism check status on every text submission and follow each cohort's progress.",
+    accent: "text-success bg-success/10 border-success/20",
+  },
+  {
+    icon: Building2,
+    title: "Administrators",
+    body: "Onboard tenants, manage users and roles, review audit trails and answer data-subject requests from one console.",
+    accent: "text-accent bg-accent/10 border-accent/20",
+  },
+];
+
+const FEATURES = [
+  {
+    icon: BookOpen,
+    title: "Standards-based delivery",
+    body: "An xAPI Learning Record Store, LTI 1.3 Advantage tool launches and SCIM 2.0 provisioning with OIDC or SAML single sign-on.",
+  },
+  {
+    icon: Lock,
+    title: "Isolated by default",
+    body: "PostgreSQL Row-Level Security separates every tenant; sensitive fields are encrypted with AES-256-GCM.",
+  },
+  {
+    icon: ScrollText,
+    title: "Immutable audit trail",
+    body: "Write-once audit logging records who did what and when, ready for accreditation and compliance reviews.",
+  },
+  {
+    icon: Award,
+    title: "Verifiable certificates",
+    body: "Every course certificate carries a unique number that employers and other institutions can check publicly.",
+  },
+  {
+    icon: FileSearch,
+    title: "Academic integrity",
+    body: "Text submissions go to a plagiarism provider over signed, retried requests, with results shown at grading time.",
+  },
+  {
+    icon: Video,
+    title: "Live classrooms",
+    body: "Run real-time sessions alongside course content, with an academic calendar and notifications to match.",
+  },
+];
+
+const PRIVACY = [
+  "Export of a person's data on request",
+  "Directory opt-out for students",
+  "Erasure that keeps academic records intact",
+  "Field-level encryption at rest",
+];
+
+// Decorative product preview for the hero; not interactive.
+function PortalPreview() {
+  const courses = [
+    { name: "Organic Chemistry II", progress: 72, bar: "bg-brand-hover" },
+    { name: "Data Structures", progress: 45, bar: "bg-success" },
+    { name: "Academic Writing", progress: 90, bar: "bg-accent" },
+  ];
+  return (
+    <div aria-hidden="true" className="relative">
+      <div className="absolute -inset-6 rounded-[2.5rem] bg-brand/10 blur-3xl" />
+      <div className="relative bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden">
+        <div className="flex items-center gap-1.5 px-5 py-3 border-b border-line">
+          <span className="h-2.5 w-2.5 rounded-full bg-line" />
+          <span className="h-2.5 w-2.5 rounded-full bg-line" />
+          <span className="h-2.5 w-2.5 rounded-full bg-line" />
+          <span className="ml-3 text-[11px] text-ink-subtle">Student portal</span>
+        </div>
+        <div className="p-5 space-y-5">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-ink-subtle font-semibold">Continue learning</p>
+            <p className="text-sm font-bold text-ink mt-1">Good morning — 3 courses in progress</p>
+          </div>
+          <div className="space-y-3">
+            {courses.map((c) => (
+              <div key={c.name} className="bg-canvas border border-line rounded-2xl p-3.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-ink">{c.name}</span>
+                  <span className="text-ink-muted tabular-nums">{c.progress}%</span>
+                </div>
+                <div className="mt-2.5 h-1.5 rounded-full bg-line overflow-hidden">
+                  <div className={`h-full rounded-full ${c.bar}`} style={{ width: `${c.progress}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 bg-canvas border border-line rounded-2xl p-3.5">
+            <div className="h-9 w-9 shrink-0 rounded-xl bg-accent/15 text-accent flex items-center justify-center">
+              <Award className="h-[18px] w-[18px]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-ink">Certificate issued: Lab Safety</p>
+              <p className="text-[11px] text-ink-subtle flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-success" /> Publicly verifiable
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const router = useRouter();
@@ -25,93 +147,181 @@ export default function Home() {
   }, [user, isLoading, router]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
+    <div className="min-h-screen bg-canvas text-ink flex flex-col">
       {/* Top Header */}
-      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5 font-bold text-lg text-white">
-            <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="leading-tight">
-                Apex<span className="text-blue-500">LMS</span>
-              </span>
-              <span className="text-[10px] text-slate-400 font-normal">Enterprise Education</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
+      <header className="border-b border-line bg-canvas/80 backdrop-blur-md px-6 py-4 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <BrandLogo />
+          <nav className="flex items-center gap-2 sm:gap-6">
+            <a href="#roles" className="hidden md:inline text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors">
+              Who it&apos;s for
+            </a>
+            <a href="#platform" className="hidden md:inline text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors">
+              Platform
+            </a>
+            <a href="#privacy" className="hidden md:inline text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors">
+              Privacy
+            </a>
             <ThemeToggle />
             <Link
               href="/login"
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
+              className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold shadow-md shadow-brand/20 transition-all flex items-center gap-1.5"
             >
               <span>Sign In</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-          </div>
+          </nav>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="max-w-5xl w-full mx-auto px-6 py-16 md:py-24 text-center space-y-8">
-        <div className="space-y-4 max-w-3xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
-            Academic Excellence Powered by <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">Zero-Trust Learning</span>
-          </h1>
-          <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
-            Secure, scalable, and verifiable digital education for students, faculty, and administrative staff.
-          </p>
-        </div>
-
-        <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            href="/login"
-            className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-xl shadow-blue-500/25 transition-all"
-          >
-            <span>Sign In to Your Account</span>
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-
-        {/* System Pillars */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12 text-left">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center border border-blue-500/30">
-              <BookOpen className="h-5 w-5" />
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="relative overflow-hidden">
+          <div aria-hidden="true" className="absolute top-0 left-1/2 -translate-x-1/2 h-[480px] w-[960px] max-w-full rounded-full bg-brand/15 blur-3xl" />
+          <div aria-hidden="true" className="absolute top-40 right-0 h-[320px] w-[320px] rounded-full bg-accent/10 blur-3xl" />
+          <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28 grid gap-14 lg:grid-cols-[1.1fr_1fr] items-center">
+            <div className="space-y-7">
+              <span className="inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-[11px] font-semibold text-brand-fg">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Multi-tenant · Zero-trust · Standards-based
+              </span>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-ink leading-[1.05] text-balance">
+                One learning platform for your whole institution, <span className="text-brand-fg">secure by design.</span>
+              </h1>
+              <p className="text-base md:text-lg text-ink-muted leading-relaxed max-w-xl">
+                Courses, assessments, live classes and verifiable certificates for students, faculty and administrators,
+                with every tenant&apos;s data isolated and every action audited.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link
+                  href="/login"
+                  className="px-7 py-3.5 bg-brand hover:bg-brand-hover text-on-brand rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-xl shadow-brand/25 transition-all"
+                >
+                  <span>Sign in to your portal</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <a
+                  href="#platform"
+                  className="px-7 py-3.5 border border-line hover:border-brand bg-surface/60 text-ink rounded-2xl text-sm font-bold flex items-center justify-center transition-colors"
+                >
+                  Explore the platform
+                </a>
+              </div>
             </div>
-            <h3 className="font-bold text-white text-base">Standardized Delivery</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Native SCORM 1.2/2004 runtime player, xAPI Learning Record Store, and 1EdTech LTI 1.3 Advantage interoperability.
+            <PortalPreview />
+          </div>
+        </section>
+
+        {/* Standards strip */}
+        <section aria-label="Supported standards" className="border-y border-line bg-surface/60">
+          <div className="max-w-6xl mx-auto px-6 py-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-subtle">Built on open standards</span>
+            {STANDARDS.map((s) => (
+              <span key={s} className="text-sm font-semibold text-ink">
+                {s}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {/* Roles */}
+        <section id="roles" className="max-w-6xl mx-auto px-6 py-20 md:py-24 scroll-mt-20">
+          <div className="max-w-2xl space-y-3">
+            <p className="text-xs uppercase tracking-wider font-bold text-brand-fg">Who it&apos;s for</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-ink text-balance">A dedicated portal for every role</h2>
+            <p className="text-ink-muted leading-relaxed">
+              Sign in once and you land in the workspace built for you, with access scoped to your role and institution.
             </p>
           </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <h3 className="font-bold text-white text-base">Zero-Trust Security</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              PostgreSQL Row-Level Security, AES-256-GCM Field-Level Encryption, and immutable write-once audit logging.
-            </p>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            {ROLES.map(({ icon: Icon, title, body, accent }) => (
+              <div key={title} className="bg-surface border border-line rounded-3xl p-7 space-y-4 hover:border-brand/40 transition-colors">
+                <div className={`h-11 w-11 rounded-xl border flex items-center justify-center ${accent}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className="font-bold text-ink text-lg">{title}</h3>
+                <p className="text-sm text-ink-muted leading-relaxed">{body}</p>
+              </div>
+            ))}
           </div>
+        </section>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
-            <div className="h-10 w-10 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
-              <Award className="h-5 w-5" />
+        {/* Platform features */}
+        <section id="platform" className="border-t border-line bg-surface/50 scroll-mt-20">
+          <div className="max-w-6xl mx-auto px-6 py-20 md:py-24">
+            <div className="max-w-2xl space-y-3">
+              <p className="text-xs uppercase tracking-wider font-bold text-brand-fg">Platform</p>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-ink text-balance">Everything teaching needs, nothing it doesn&apos;t</h2>
             </div>
-            <h3 className="font-bold text-white text-base">Verifiable Credentials</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Cryptographically signed W3C Open Badges 3.0 verifiable achievements with instant public verification.
-            </p>
+            <div className="mt-10 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURES.map(({ icon: Icon, title, body }) => (
+                <div key={title} className="space-y-3">
+                  <div className="h-10 w-10 rounded-xl bg-brand/10 text-brand-fg flex items-center justify-center">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="font-bold text-ink">{title}</h3>
+                  <p className="text-sm text-ink-muted leading-relaxed">{body}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </section>
+
+        {/* Privacy */}
+        <section id="privacy" className="max-w-6xl mx-auto px-6 py-20 md:py-24 scroll-mt-20">
+          <div className="bg-surface border border-line rounded-3xl p-8 md:p-12 grid gap-10 md:grid-cols-2 items-center">
+            <div className="space-y-4">
+              <div className="h-11 w-11 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-ink text-balance">Student privacy, built into the platform</h2>
+              <p className="text-ink-muted leading-relaxed">
+                GDPR and FERPA rights are handled by the platform itself: data export, directory opt-out and erasure run through audited privacy endpoints, not manual database work.
+              </p>
+            </div>
+            <ul className="space-y-3">
+              {PRIVACY.map((item) => (
+                <li key={item} className="flex items-center gap-3 bg-canvas border border-line rounded-2xl px-4 py-3.5 text-sm font-semibold text-ink">
+                  <CheckCircle2 className="h-[18px] w-[18px] shrink-0 text-success" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* Closing CTA */}
+        <section className="max-w-6xl mx-auto px-6 pb-24">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand via-brand to-[#7c3aed] px-8 py-14 md:py-16 text-center shadow-2xl shadow-brand/25">
+            <div aria-hidden="true" className="absolute -top-24 -right-16 h-64 w-64 rounded-full bg-on-brand/10 blur-2xl" />
+            <div className="relative space-y-5">
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-brand text-balance">Ready to get to class?</h2>
+              <p className="text-on-brand/80 max-w-md mx-auto">Use the account your institution gave you to sign in.</p>
+              <Link
+                href="/login"
+                className="inline-flex px-7 py-3.5 bg-on-brand text-brand hover:bg-on-brand/90 rounded-2xl text-sm font-bold items-center gap-2 shadow-xl shadow-black/20 transition-all"
+              >
+                <span>Sign in</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
-        <p>© ApexLMS Enterprise Platform. All rights reserved.</p>
+      <footer className="border-t border-line bg-canvas">
+        <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-ink-subtle">
+          <p>© ApexLMS Enterprise Platform. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            <Link href="/login" className="hover:text-brand-fg transition-colors">
+              Sign in
+            </Link>
+            <Link href="/forgot-password" className="hover:text-brand-fg transition-colors">
+              Forgot password
+            </Link>
+          </div>
+        </div>
       </footer>
     </div>
   );
