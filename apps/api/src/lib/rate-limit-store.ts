@@ -8,11 +8,19 @@ let client: Redis | null = null;
 
 function redis(): Redis | null {
   if (!config.REDIS_URL || config.NODE_ENV === 'test') return null;
-  if (!client) {
-    client = new Redis(config.REDIS_URL, { maxRetriesPerRequest: 1, enableOfflineQueue: false, lazyConnect: false });
-    client.on('error', (err) => logger.warn({ err }, 'redis error (rate limiting falls back to allowing requests)'));
-  }
+  client ??= newRedisClient(config.REDIS_URL);
   return client;
+}
+
+/**
+ * The offline queue must stay on: the rate-limit store loads its Lua script as soon as it is created,
+ * which is before the connection is up. A command that cannot get through within `commandTimeout`
+ * fails fast instead of holding the request, and the limiter then lets the request pass.
+ */
+export function newRedisClient(url: string): Redis {
+  const r = new Redis(url, { maxRetriesPerRequest: 1, commandTimeout: 500 });
+  r.on('error', (err) => logger.warn({ err }, 'redis error (rate limiting falls back to allowing requests)'));
+  return r;
 }
 
 /**
@@ -22,7 +30,11 @@ function redis(): Redis | null {
  */
 export function rateLimitStore(prefix: string): Store | undefined {
   const r = redis();
-  if (!r) return undefined;
+  return r ? redisRateLimitStore(r, prefix) : undefined;
+}
+
+/** The store itself, for a given client (also what the Redis integration test uses). */
+export function redisRateLimitStore(r: Redis, prefix: string): Store {
   return new RedisStore({
     prefix: `lms:rl:${prefix}:`,
     sendCommand: (command: string, ...args: string[]) => r.call(command, ...args) as Promise<any>,
