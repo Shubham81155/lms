@@ -9,7 +9,9 @@ import { AuthCard, buttonClass, inputClass } from "@/components/AuthCard";
 const MIN_LENGTH = 10;
 
 function ResetForm() {
-  const token = useSearchParams().get("token") ?? "";
+  const params = useSearchParams();
+  const token = params.get("token") ?? "";
+  const invited = params.get("invite") === "1";
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [done, setDone] = useState(false);
@@ -53,10 +55,10 @@ function ResetForm() {
   }
 
   return (
-    <AuthCard title="Choose a new password">
+    <AuthCard title={invited ? "Welcome. Choose a password" : "Choose a new password"}>
       {done ? (
         <p className="text-xs text-center text-success">
-          Password updated.{" "}
+          {invited ? "Your account is ready." : "Password updated."}{" "}
           <Link href="/login" className="text-brand-fg hover:underline underline-offset-2">
             Sign in
           </Link>
@@ -83,7 +85,7 @@ function ResetForm() {
             className={inputClass}
           />
           <button type="submit" disabled={busy} className={buttonClass}>
-            {busy ? "Saving..." : "Update password"}
+            {busy ? "Saving..." : invited ? "Activate my account" : "Update password"}
           </button>
         </form>
       )}
