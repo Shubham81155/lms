@@ -3,59 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, ApiError } from '@/lib/api';
 import {
-  TenantConfig,
   DashboardStats,
   AuditLog,
   PaginatedResponse,
   PaginationMeta,
 } from '@/lib/types';
-
-export function useTenantConfig() {
-  const [config, setConfig] = useState<TenantConfig | null>(null);
-  const [data, setData] = useState<TenantConfig | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchConfig = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.get<any>('/api/v1/tenant/config');
-      const normalized: TenantConfig = {
-        id: response.id || response.tenantId || '',
-        name: response.name || '',
-        logoUrl: response.logoUrl || response.theme?.logoUrl || null,
-        primaryColor: response.primaryColor || response.theme?.primaryColor || '#0f172a',
-        secondaryColor: response.secondaryColor || response.theme?.secondaryColor || '#3b82f6',
-        features: response.features || {},
-        tenantId: response.tenantId || response.id,
-        slug: response.slug,
-        theme: response.theme,
-      };
-      setConfig(normalized);
-      setData(normalized);
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to fetch tenant configuration');
-      setError(message);
-      setConfig(null);
-      setData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchConfig();
-  }, [fetchConfig]);
-
-  return {
-    config,
-    data,
-    isLoading,
-    error,
-    refetch: fetchConfig,
-  };
-}
 
 export function useDashboardStats() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
