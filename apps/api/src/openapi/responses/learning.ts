@@ -145,6 +145,18 @@ const TodoItem = z.discriminatedUnion('type', [
   }),
 ]);
 
+const AnnouncementView = z.object({
+  id: z.string(),
+  courseId: z.string(),
+  title: z.string(),
+  body: z.string(),
+  pinned: z.boolean(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  /** Null when the author's account was deleted. */
+  author: z.object({ id: z.string(), name: z.string() }).nullable(),
+});
+
 const EnrollmentStats = z.object({
   total: z.number(),
   completed: z.number(),
@@ -273,6 +285,17 @@ export const RESPONSES: ResponseTable = {
   'DELETE /api/v1/enrollments/:id': { response: data(z.object({ id: z.string(), status: z.literal('DROPPED') })), errors: [404, 409] },
   'PATCH /api/v1/enrollments/:id/progress': { response: data(ProgressResult), errors: [400, 403, 404, 409] },
   'GET /api/v1/enrollments/stats': { response: data(EnrollmentStats), errors: [400, 403] },
+  'GET /api/v1/courses/:courseId/announcements': { response: body(z.object({ data: z.array(AnnouncementView), pagination: Pagination })), errors: [400, 403, 404] },
+  'GET /api/v1/announcements/recent': {
+    response: data(z.array(AnnouncementView.extend({ course: z.object({ id: z.string(), code: z.string(), title: z.string() }) }))),
+    errors: [400],
+  },
+  'POST /api/v1/courses/:courseId/announcements': {
+    response: body(z.object({ data: AnnouncementView, notified: z.number().describe('Learners who were notified') }), 201),
+    errors: [400, 403, 404],
+  },
+  'PATCH /api/v1/announcements/:id': { response: data(AnnouncementView), errors: [400, 403, 404] },
+  'DELETE /api/v1/announcements/:id': { response: { status: 204, description: 'Deleted' }, errors: [403, 404] },
   'GET /api/v1/enrollments/grades': {
     response: data(
       z.array(

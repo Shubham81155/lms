@@ -7,6 +7,7 @@ import * as r_assessments from '../routes/assessments.routes';
 import * as r_calendar from '../routes/calendar.routes';
 import * as r_certificates from '../routes/certificates.routes';
 import * as r_courses from '../routes/courses.routes';
+import * as r_announcements from '../routes/announcements.routes';
 import * as r_deadlines from '../routes/deadlines.routes';
 import * as r_enrollments from '../routes/enrollments.routes';
 import * as r_forum from '../routes/forum.routes';
@@ -141,6 +142,11 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "PATCH /api/v1/enrollments/:id/progress": { summary: "the learner: may report their own progress, never backwards and never to 100% - the course's staff / admins: may set progress and the final grade; reaching 100% completes (or fails, against the course's passing grade) the enrollment and issues the certificate", body: r_enrollments.updateProgressSchema },
   "GET /api/v1/enrollments/my": { summary: "GET /api/v1/enrollments/my" },
   "GET /api/v1/enrollments/stats": { summary: "Aggregates for the caller; admins and auditors may pass ?userId=.", query: r_enrollments.statsQuery as never },
+  "GET /api/v1/courses/:courseId/announcements": { summary: "A course's announcements, pinned first then newest, for anyone who can open the course.", query: r_announcements.announcementListQuery as never },
+  "GET /api/v1/announcements/recent": { summary: "The latest announcements across the courses the caller is actively enrolled in.", query: r_announcements.recentQuery as never },
+  "POST /api/v1/courses/:courseId/announcements": { summary: "Course staff post an announcement; unless notify is false, every active learner gets a notification (and an e-mail, by their settings). Audited.", body: r_announcements.announcementSchema },
+  "PATCH /api/v1/announcements/:id": { summary: "Course staff correct or pin an announcement (no new notification).", body: r_announcements.announcementUpdateSchema },
+  "DELETE /api/v1/announcements/:id": { summary: "Course staff delete an announcement. Audited." },
   "GET /api/v1/enrollments/grades": { summary: "The caller's own results per course: the approved course grade, every assignment with its grade and feedback, and every quiz with the best attempt." },
   "GET /api/v1/enrollments/todo": { summary: "The caller's own upcoming work from the courses they are actively enrolled in (published courses only): assignments not yet submitted or still ungraded, and quizzes with attempts left (or an attempt in progress). Dated assignments come first, soonest due..." },
   "POST /api/v1/flags": { summary: "any participant reports a thread or reply to the course staff.", body: r_forum.flagSchema },

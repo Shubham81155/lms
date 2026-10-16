@@ -25,6 +25,12 @@ describe('resolveDeepLink', () => {
     expect(resolveDeepLink('/courses/c1/forum/moderation', 'TENANT_ADMIN')).toBe('/admin');
   });
 
+  it('opens course announcements and a course assignment list', () => {
+    expect(resolveDeepLink('/courses/c1/announcements', 'STUDENT')).toBe('/student?open=announcements&course=c1');
+    expect(resolveDeepLink('/courses/c1/announcements', 'INSTRUCTOR')).toBe('/teacher?open=announcements&course=c1');
+    expect(resolveDeepLink('/courses/c1/assignments', 'STUDENT')).toBe('/student?open=assignments&course=c1');
+  });
+
   it('lands on the dashboard when there is nothing specific to open', () => {
     expect(resolveDeepLink('/quizzes/q1', 'STUDENT')).toBe('/student');
     expect(resolveDeepLink('/courses/c1/live', 'STUDENT')).toBe('/student');

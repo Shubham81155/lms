@@ -77,6 +77,7 @@ model Tenant {
   liveSessions      LiveSession[]
   aiConfig          TenantAiConfig?
   extensions        DeadlineExtension[]
+  announcements     Announcement[]
   liveAttendance    LiveAttendance[]
   lessonProgress    LessonProgress[]
   gradeAppeals      GradeAppeal[]
@@ -193,6 +194,7 @@ model User {
   liveAttendance          LiveAttendance[]
   lessonProgress          LessonProgress[]
   extensions              DeadlineExtension[]
+  announcements           Announcement[]
 
   // Guardian Relations
   guardians UserGuardian[] @relation("StudentRelation")
@@ -266,6 +268,7 @@ enum ContentType {
 model Course {
   liveSessions    LiveSession[]
   lessonProgress  LessonProgress[]
+  announcements   Announcement[]
   gradeCategories GradeCategory[]
   courseGrades    CourseGrade[]
   gradeCurveMethod String @default("NONE") // NONE | ADD_POINTS | SCALE_TO_MAX
@@ -1028,4 +1031,22 @@ model DeadlineExtension {
   @@unique([assignmentId, userId])
   @@unique([quizId, userId])
   @@index([tenantId, userId])
+}
+
+// A message from course staff to everyone in a course.
+model Announcement {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  title     String
+  body      String   @db.Text
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, courseId, createdAt])
 }

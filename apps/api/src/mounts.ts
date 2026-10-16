@@ -27,6 +27,7 @@ import liveRoutes from './routes/live.routes';
 import aiRoutes from './routes/ai.routes';
 import operatorRoutes from './routes/operator.routes';
 import deadlinesRoutes from './routes/deadlines.routes';
+import announcementsRoutes from './routes/announcements.routes';
 
 /** Where each router is mounted, in mounting order (order matters: see the notes in server.ts). */
 export interface Mount {
@@ -65,4 +66,5 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1', router: questionBankRoutes },
   { prefix: '/api/v1', router: intelligenceRoutes },
   { prefix: '/api/v1', router: deadlinesRoutes },
+  { prefix: '/api/v1', router: announcementsRoutes },
 ];

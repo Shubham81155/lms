@@ -1,17 +1,18 @@
 "use client";
 
 import React from "react";
-import { BookOpen, CalendarDays, ClipboardCheck, ClipboardList, FileCheck, MessageSquare, Settings2, Users, Video } from "lucide-react";
+import { BookOpen, CalendarDays, ClipboardCheck, ClipboardList, FileCheck, Megaphone, MessageSquare, Settings2, Users, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useStaffCourses, type StaffCourse } from "@/hooks/useStaffCourses";
 import { plural } from "@/lib/plural";
 
 /** The per-course tools a dashboard can open. */
-export type CourseTool = "content" | "settings" | "learners" | "assessments" | "grading" | "gradebook" | "forum" | "live" | "calendar";
+export type CourseTool = "content" | "settings" | "announcements" | "learners" | "assessments" | "grading" | "gradebook" | "forum" | "live" | "calendar";
 
 const TOOLS: { key: CourseTool; label: string; icon: LucideIcon; editorsOnly?: boolean }[] = [
   { key: "content", label: "Content", icon: BookOpen, editorsOnly: true },
   { key: "settings", label: "Settings", icon: Settings2, editorsOnly: true },
+  { key: "announcements", label: "Announce", icon: Megaphone },
   { key: "learners", label: "Learners", icon: Users },
   { key: "assessments", label: "Quizzes & assignments", icon: ClipboardList },
   { key: "grading", label: "Grade submissions", icon: ClipboardCheck },

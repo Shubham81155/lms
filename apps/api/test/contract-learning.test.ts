@@ -122,6 +122,38 @@ describe('contract: courses', () => {
     expect((await (await as('s2')).get('/api/v1/courses/nope')).status).toBe(404);
   });
 
+  it('announcements: staff post and learners are notified and can read them', async () => {
+    const teacher = await as('teacher');
+    const posted = await teacher.post('/api/v1/courses/c1/announcements').send({ title: 'Week 2', body: 'Read chapter 3 before Monday.', pinned: true });
+    expect(posted.status).toBe(201);
+    check('POST /api/v1/courses/:courseId/announcements', posted);
+    expect(posted.body.notified).toBe(3); // s1, s3 and s4 are enrolled in c1
+    expect(await admin.notification.count({ where: { userId: 's1', title: 'C1: Week 2' } })).toBe(1);
+    const quiet = await teacher.post('/api/v1/courses/c1/announcements').send({ title: 'Typo fixed', body: 'No action needed.', notify: false });
+    expect(quiet.body.notified).toBe(0);
+
+    const s1 = await as('s1');
+    const list = await s1.get('/api/v1/courses/c1/announcements');
+    check('GET /api/v1/courses/:courseId/announcements', list);
+    expect(list.body.data.map((a: any) => a.title)).toEqual(['Week 2', 'Typo fixed']); // pinned first
+    const recent = await s1.get('/api/v1/announcements/recent');
+    check('GET /api/v1/announcements/recent', recent);
+    expect(recent.body.data[0].course.code).toBe('C1');
+
+    // Learners cannot post or change; outsiders cannot read.
+    expect((await s1.post('/api/v1/courses/c1/announcements').send({ title: 'x', body: 'y' })).status).toBe(403);
+    expect((await s1.patch(`/api/v1/announcements/${posted.body.data.id}`).send({ pinned: false })).status).toBe(403);
+    expect((await (await as('s2')).get('/api/v1/courses/c1/announcements')).status).toBe(403);
+    expect((await teacher.post('/api/v1/courses/c1/announcements').send({ title: '', body: 'y' })).status).toBe(400);
+
+    const unpinned = await teacher.patch(`/api/v1/announcements/${posted.body.data.id}`).send({ pinned: false });
+    check('PATCH /api/v1/announcements/:id', unpinned);
+    expect(unpinned.body.data.pinned).toBe(false);
+    const del = await teacher.delete(`/api/v1/announcements/${quiet.body.data.id}`);
+    check('DELETE /api/v1/announcements/:id', del);
+    expect(await admin.auditLog.count({ where: { action: { in: ['ANNOUNCEMENT_POSTED', 'ANNOUNCEMENT_DELETED'] } } })).toBe(3);
+  });
+
   it('GET /enrollments/grades shows a learner their own results', async () => {
     await admin.assignmentSubmission.create({ data: { assignmentId: 'a1', userId: 's3', submissionText: 'x', grade: 80, feedback: 'Good', gradedAt: new Date() } });
     const res = await (await as('s3')).get('/api/v1/enrollments/grades');

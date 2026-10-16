@@ -12,10 +12,12 @@ import { AcademicCalendar } from "@/components/AcademicCalendar";
 import { DiscussionForum } from "@/components/DiscussionForum";
 import { MyAssignments } from "@/components/MyAssignments";
 import { MyGrades } from "@/components/MyGrades";
+import { CourseAnnouncements } from "@/components/CourseAnnouncements";
+import { timeAgo } from "@/hooks/useNotifications";
 import { useAuth } from "@/context/AuthContext";
 import { AiTutorModal } from "@/components/AiTutorModal";
 import { useAiStatus } from "@/hooks/useAi";
-import { BookOpen, Award, Sparkles, FileCheck, Search, MessageSquare, Brain } from "lucide-react";
+import { BookOpen, Award, Sparkles, FileCheck, Search, MessageSquare, Brain, Megaphone } from "lucide-react";
 import { useMyEnrollments, useEnrollmentStats } from "@/hooks/useEnrollments";
 import { api } from "@/lib/api";
 import { useOpenIntent } from "@/hooks/useOpenIntent";
@@ -56,6 +58,7 @@ export default function StudentDashboard() {
   } | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<string | null>(null);
+  const [announcementsCourse, setAnnouncementsCourse] = useState<{ id: string; label: string } | null>(null);
   const [leaveBusy, setLeaveBusy] = useState(false);
   const [activeNavTab, setActiveNavTab] = useState<string>("courses");
 
@@ -104,6 +107,10 @@ export default function StudentDashboard() {
   const ai = useAiStatus();
 
   const todo = useApiData<{ data: TodoItem[] }>("/api/v1/enrollments/todo");
+  const announcements = useApiData<{ data: { id: string; title: string; body: string; createdAt: string; course: { id: string; code: string; title: string } }[] }>(
+    "/api/v1/announcements/recent",
+    { limit: 5 }
+  );
 
   /** The next quiz this learner can take in a course, if any (from the to-do list). */
   const nextQuizIn = (courseId: string) => todo.data?.data.find((i) => i.type === "QUIZ" && i.course.id === courseId) ?? null;
@@ -146,6 +153,10 @@ export default function StudentDashboard() {
     forum: (id) => {
       setForumCourseId(id);
       setShowForum(true);
+    },
+    announcements: (id) => {
+      const c = displayCourses.find((x) => x.id === id);
+      if (c) setAnnouncementsCourse({ id: c.id, label: c.code });
     },
     assignments: (id) => {
       if (id && displayCourses.some((x) => x.id === id)) setAssignmentsCourse(id);
@@ -395,6 +406,29 @@ export default function StudentDashboard() {
               </div>
             </div>
 
+            {(announcements.data?.data.length ?? 0) > 0 && (
+              <div className="bg-surface border border-line rounded-2xl p-5 space-y-3 shadow-lg">
+                <div className="flex items-center gap-2 text-sm font-bold text-ink border-b border-line pb-3">
+                  <Megaphone className="h-4 w-4 text-brand-fg" />
+                  <span>Announcements</span>
+                </div>
+                {announcements.data!.data.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => setAnnouncementsCourse({ id: a.course.id, label: a.course.code })}
+                    className="w-full text-left p-3 bg-canvas hover:bg-surface/90 rounded-xl border border-line/80 hover:border-brand/50 space-y-1"
+                  >
+                    <div className="flex items-center justify-between gap-2 text-[10px] text-ink-subtle">
+                      <span className="font-bold">{a.course.code}</span>
+                      <span>{timeAgo(a.createdAt)}</span>
+                    </div>
+                    <div className="text-xs font-bold text-ink">{a.title}</div>
+                    <p className="text-[11px] text-ink-muted line-clamp-2">{a.body}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {ai.enabled && (
               <div className="bg-gradient-to-br from-brand/15 via-brand/10 to-surface border border-brand/30 rounded-2xl p-5 space-y-3 shadow-lg">
                 <div className="flex items-center gap-2 text-brand-fg font-bold text-sm">
@@ -493,6 +527,10 @@ export default function StudentDashboard() {
 
       {showAssignments && <MyAssignments onClose={() => setShowAssignments(false)} />}
       {assignmentsCourse && <MyAssignments courseId={assignmentsCourse} onClose={() => { setAssignmentsCourse(undefined); todo.reload(); }} />}
+
+      {announcementsCourse && (
+        <CourseAnnouncements courseId={announcementsCourse.id} courseLabel={announcementsCourse.label} canPost={false} onClose={() => setAnnouncementsCourse(null)} />
+      )}
 
       {showAiTutor && (
         <AiTutorModal
