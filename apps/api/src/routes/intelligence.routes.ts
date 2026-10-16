@@ -94,7 +94,8 @@ export const streamQuery = z.object({
 
 /**
  * GET /api/v1/analytics/xapi/stream
- * Staff, admins and auditors browse the tenant's statements; everyone else sees only their own.
+ * Admins and auditors browse the tenant's statements. Instructors and assistants see statements about the
+ * learners of courses they are assigned to (and their own). Everyone else sees only their own.
  */
 router.get(
   '/analytics/xapi/stream',
@@ -103,12 +104,30 @@ router.get(
     const tenantId = tenantIdOf(req);
     const user = req.user!;
     const q = parseQuery(req, streamQuery);
-    const broad = canSeeAllCourses(user.role) || user.role === 'INSTRUCTOR' || user.role === 'TEACHING_ASSISTANT';
+    const wholeTenant = canSeeAllCourses(user.role);
+    const courseStaff = user.role === 'INSTRUCTOR' || user.role === 'TEACHING_ASSISTANT';
 
-    const actor = broad && q.actorEmail ? await prisma.user.findFirst({ where: { tenantId, email: q.actorEmail.toLowerCase() }, select: { id: true } }) : null;
+    // Whose statements this person may read: everyone (null), their courses' learners and themselves, or themselves.
+    let visible: string[] | null = [user.id];
+    if (wholeTenant) visible = null;
+    else if (courseStaff) {
+      const learners = await prisma.enrollment.findMany({
+        where: { tenantId, course: { instructors: { some: { userId: user.id } } } },
+        select: { userId: true },
+        distinct: ['userId'],
+      });
+      visible = [user.id, ...learners.map((l) => l.userId)];
+    }
+
+    const actor = (wholeTenant || courseStaff) && q.actorEmail ? await prisma.user.findFirst({ where: { tenantId, email: q.actorEmail.toLowerCase() }, select: { id: true } }) : null;
+    const actorFilter = q.actorEmail && (wholeTenant || courseStaff)
+      ? { actorUserId: actor && (visible === null || visible.includes(actor.id)) ? actor.id : '__none__' }
+      : visible === null
+        ? {}
+        : { actorUserId: { in: visible } };
     const where = {
       tenantId,
-      ...(broad ? (q.actorEmail ? { actorUserId: actor?.id ?? '__none__' } : {}) : { actorUserId: user.id }),
+      ...actorFilter,
       ...(q.verb ? { verbId: q.verb } : {}),
       ...(q.since || q.until ? { timestamp: { ...(q.since ? { gte: q.since } : {}), ...(q.until ? { lte: q.until } : {}) } } : {}),
     };

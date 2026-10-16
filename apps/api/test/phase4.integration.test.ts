@@ -392,7 +392,7 @@ describe('xAPI learning record store', () => {
     expect((await s3.post('/api/v1/xapi/statements').send(Array(51).fill(stmt('s3@x.edu')))).status).toBe(400);
   });
 
-  it('scopes the stream: learners see only their own, staff see the tenant, tenants are isolated', async () => {
+  it('scopes the stream: learners see only their own, staff see their learners, tenants are isolated', async () => {
     const own = await (await as('s3')).get('/api/v1/analytics/xapi/stream?limit=100');
     expect(own.body.statements.every((s: any) => s.actor.mbox === 'mailto:s3@x.edu')).toBe(true);
     const asLearnerAskingForOthers = await (await as('s3')).get('/api/v1/analytics/xapi/stream?actorEmail=s1@x.edu');
@@ -402,6 +402,21 @@ describe('xAPI learning record store', () => {
     const actors = new Set(staff.body.statements.map((s: any) => s.actor.mbox));
     expect(actors.size).toBeGreaterThan(1);
     expect((await (await as('m-admin', 'mit')).get('/api/v1/analytics/xapi/stream')).body.total).toBe(0);
+  });
+
+  it("limits instructors to the learners of courses they teach", async () => {
+    // teacher2 teaches nothing: no learner's records, even when asked by e-mail.
+    const t2 = await as('teacher2');
+    const none = await t2.get('/api/v1/analytics/xapi/stream?limit=100');
+    expect(none.status).toBe(200);
+    expect(none.body.statements.every((s: any) => s.actor.mbox === 'mailto:teacher2@x.edu')).toBe(true);
+    expect((await t2.get('/api/v1/analytics/xapi/stream?actorEmail=s3@x.edu')).body.total).toBe(0);
+
+    // The course's own instructor sees its learner; administrators and auditors see the whole tenant.
+    expect((await (await as('teacher')).get('/api/v1/analytics/xapi/stream?actorEmail=s3@x.edu')).body.total).toBeGreaterThan(0);
+    const all = (await (await as('admin')).get('/api/v1/analytics/xapi/stream?limit=1')).body.total;
+    expect(all).toBeGreaterThan(0);
+    expect((await (await as('auditor')).get('/api/v1/analytics/xapi/stream?limit=1')).body.total).toBe(all);
   });
 });
 
