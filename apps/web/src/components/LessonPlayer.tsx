@@ -12,7 +12,7 @@ import {
   ExternalLink,
   Award,
 } from "lucide-react";
-import { SecureVideoPlayer } from "./SecureVideoPlayer";
+import { VideoPlayer } from "./VideoPlayer";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { errorMessage, useApiData } from "@/hooks/useApiData";
@@ -84,7 +84,6 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [showSecureVideoModal, setShowSecureVideoModal] = useState(false);
 
   useEffect(() => {
     const p = progressReq.data?.data;
@@ -148,17 +147,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
       return (
         <div className="space-y-4">
           {lesson.mediaUrl ? (
-            <div className="flex aspect-video flex-col items-center justify-center rounded-2xl border border-line bg-canvas p-6 text-center">
-              <PlayCircle className="mb-3 h-10 w-10 text-brand-fg" />
-              <h4 className="text-base font-bold text-ink">{lesson.title}</h4>
-              <button
-                onClick={() => setShowSecureVideoModal(true)}
-                className="mt-4 flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-bold text-on-brand shadow-lg shadow-brand/30 transition-all hover:bg-brand-hover"
-              >
-                <PlayCircle className="h-4 w-4" />
-                <span>Play video</span>
-              </button>
-            </div>
+            <VideoPlayer key={lesson.id} url={lesson.mediaUrl} title={lesson.title} watermark={user?.email} />
           ) : (
             !textBlock && <NoContent />
           )}
@@ -373,9 +362,6 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
         )}
       </div>
 
-      {showSecureVideoModal && current && (
-        <SecureVideoPlayer lessonTitle={current.title} studentEmail={user?.email} onClose={() => setShowSecureVideoModal(false)} />
-      )}
     </div>
   );
 };
