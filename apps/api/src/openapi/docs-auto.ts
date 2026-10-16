@@ -136,6 +136,7 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "PATCH /api/v1/enrollments/:id/progress": { summary: "the learner: may report their own progress, never backwards and never to 100% - the course's staff / admins: may set progress and the final grade; reaching 100% completes (or fails, against the course's passing grade) the enrollment and issues the certificate", body: r_enrollments.updateProgressSchema },
   "GET /api/v1/enrollments/my": { summary: "GET /api/v1/enrollments/my" },
   "GET /api/v1/enrollments/stats": { summary: "Aggregates for the caller; admins and auditors may pass ?userId=.", query: r_enrollments.statsQuery as never },
+  "GET /api/v1/enrollments/grades": { summary: "The caller's own results per course: the approved course grade, every assignment with its grade and feedback, and every quiz with the best attempt." },
   "GET /api/v1/enrollments/todo": { summary: "The caller's own upcoming work from the courses they are actively enrolled in (published courses only): assignments not yet submitted or still ungraded, and quizzes with attempts left (or an attempt in progress). Dated assignments come first, soonest due..." },
   "POST /api/v1/flags": { summary: "any participant reports a thread or reply to the course staff.", body: r_forum.flagSchema },
   "POST /api/v1/flags/:id/resolve": { summary: "POST /api/v1/flags/:id/resolve" },

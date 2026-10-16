@@ -16770,6 +16770,224 @@
         }
       }
     },
+    "/api/v1/enrollments/grades": {
+      "get": {
+        "operationId": "getEnrollmentsGrades",
+        "summary": "The caller's own results per course: the approved course grade, every assignment with its grade and feedback, and every quiz with the best attempt.",
+        "tags": [
+          "enrollments"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "course": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "passingGradePercent": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "title",
+                              "passingGradePercent"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ENROLLED",
+                              "IN_PROGRESS",
+                              "COMPLETED",
+                              "DROPPED",
+                              "FAILED"
+                            ]
+                          },
+                          "progressPercent": {
+                            "type": "number"
+                          },
+                          "courseGrade": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "letter": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "percent": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "approvedAt": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "letter",
+                              "percent",
+                              "approvedAt"
+                            ]
+                          },
+                          "assignments": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                },
+                                "maxPoints": {
+                                  "type": "number"
+                                },
+                                "dueDate": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "submittedAt": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "late": {
+                                  "type": "boolean"
+                                },
+                                "grade": {
+                                  "type": "number",
+                                  "nullable": true
+                                },
+                                "feedback": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "gradedAt": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "appealStatus": {
+                                  "type": "string",
+                                  "nullable": true
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title",
+                                "maxPoints",
+                                "dueDate",
+                                "submittedAt",
+                                "late",
+                                "grade",
+                                "feedback",
+                                "gradedAt",
+                                "appealStatus"
+                              ]
+                            }
+                          },
+                          "quizzes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                },
+                                "attemptsUsed": {
+                                  "type": "number"
+                                },
+                                "maxAttempts": {
+                                  "type": "number"
+                                },
+                                "passingPercent": {
+                                  "type": "number"
+                                },
+                                "bestPercent": {
+                                  "type": "number",
+                                  "nullable": true
+                                },
+                                "passed": {
+                                  "type": "boolean"
+                                },
+                                "awaitingManualGrading": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title",
+                                "attemptsUsed",
+                                "maxAttempts",
+                                "passingPercent",
+                                "bestPercent",
+                                "passed",
+                                "awaitingManualGrading"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "course",
+                          "status",
+                          "progressPercent",
+                          "courseGrade",
+                          "assignments",
+                          "quizzes"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/enrollments/my": {
       "get": {
         "operationId": "getEnrollmentsMy",

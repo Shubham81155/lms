@@ -122,6 +122,22 @@ describe('contract: courses', () => {
     expect((await (await as('s2')).get('/api/v1/courses/nope')).status).toBe(404);
   });
 
+  it('GET /enrollments/grades shows a learner their own results', async () => {
+    await admin.assignmentSubmission.create({ data: { assignmentId: 'a1', userId: 's3', submissionText: 'x', grade: 80, feedback: 'Good', gradedAt: new Date() } });
+    const res = await (await as('s3')).get('/api/v1/enrollments/grades');
+    expect(res.status).toBe(200);
+    check('GET /api/v1/enrollments/grades', res);
+    const c1 = res.body.data.find((c: any) => c.course.id === 'c1');
+    expect(c1.courseGrade).toBeNull();
+    expect(c1.assignments[0]).toMatchObject({ id: 'a1', grade: 80, feedback: 'Good', late: false });
+    expect(c1.quizzes[0]).toMatchObject({ id: 'q1', attemptsUsed: 0, bestPercent: null });
+
+    const s1 = (await (await as('s1')).get('/api/v1/enrollments/grades')).body.data.find((c: any) => c.course.id === 'c1');
+    expect(s1.quizzes[0]).toMatchObject({ attemptsUsed: 1, bestPercent: 100, passed: true });
+    expect(s1.assignments[0]).toMatchObject({ submittedAt: null, grade: null });
+    expect((await request(app).get('/api/v1/enrollments/grades')).status).toBe(401);
+  });
+
   it('POST /users/import (dry run)', async () => {
     const res = await (await as('admin')).post('/api/v1/users/import').send({ csv: 'email,first_name,last_name\nnew@x.edu,New,Person\ns1@x.edu,S,One\n' });
     expect(res.status).toBe(200);

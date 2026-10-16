@@ -267,6 +267,46 @@ export const RESPONSES: ResponseTable = {
   'DELETE /api/v1/enrollments/:id': { response: data(z.object({ id: z.string(), status: z.literal('DROPPED') })), errors: [404, 409] },
   'PATCH /api/v1/enrollments/:id/progress': { response: data(ProgressResult), errors: [400, 403, 404, 409] },
   'GET /api/v1/enrollments/stats': { response: data(EnrollmentStats), errors: [400, 403] },
+  'GET /api/v1/enrollments/grades': {
+    response: data(
+      z.array(
+        z.object({
+          course: z.object({ id: z.string(), code: z.string(), title: z.string(), passingGradePercent: z.number() }),
+          status: EnrollmentStatus,
+          progressPercent: z.number(),
+          /** Only once the course grade is approved. */
+          courseGrade: z.object({ letter: z.string().nullable(), percent: z.number().nullable(), approvedAt: z.string().nullable() }).nullable(),
+          assignments: z.array(
+            z.object({
+              id: z.string(),
+              title: z.string(),
+              maxPoints: z.number(),
+              dueDate: z.string().nullable(),
+              submittedAt: z.string().nullable(),
+              late: z.boolean(),
+              /** Null until graded. */
+              grade: z.number().nullable(),
+              feedback: z.string().nullable(),
+              gradedAt: z.string().nullable(),
+              appealStatus: z.string().nullable(),
+            })
+          ),
+          quizzes: z.array(
+            z.object({
+              id: z.string(),
+              title: z.string(),
+              attemptsUsed: z.number(),
+              maxAttempts: z.number(),
+              passingPercent: z.number(),
+              bestPercent: z.number().nullable(),
+              passed: z.boolean(),
+              awaitingManualGrading: z.boolean(),
+            })
+          ),
+        })
+      )
+    ),
+  },
   'GET /api/v1/enrollments/todo': {
     response: { ...data(z.array(TodoItem)), description: 'Up to 20 items: assignments (soonest due first), then quizzes.' },
   },

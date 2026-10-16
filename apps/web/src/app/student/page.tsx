@@ -11,6 +11,7 @@ import { LessonPlayer } from "@/components/LessonPlayer";
 import { AcademicCalendar } from "@/components/AcademicCalendar";
 import { DiscussionForum } from "@/components/DiscussionForum";
 import { MyAssignments } from "@/components/MyAssignments";
+import { MyGrades } from "@/components/MyGrades";
 import { useAuth } from "@/context/AuthContext";
 import { AiTutorModal } from "@/components/AiTutorModal";
 import { useAiStatus } from "@/hooks/useAi";
@@ -60,7 +61,9 @@ export default function StudentDashboard() {
   React.useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash;
-      if (hash === "#exams") {
+      if (hash === "#grades") {
+        setActiveNavTab("grades");
+      } else if (hash === "#exams") {
         setActiveNavTab("exams");
         const el = document.getElementById("exams-section");
         if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -80,7 +83,8 @@ export default function StudentDashboard() {
 
   const handleNavigateTab = (tabKey: string) => {
     setActiveNavTab(tabKey);
-    if (tabKey === "courses") {
+    if (tabKey === "courses" || tabKey === "grades") {
+      window.history.replaceState(null, "", tabKey === "grades" ? "#grades" : window.location.pathname);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (tabKey === "exams") {
       const el = document.getElementById("exams-section");
@@ -167,6 +171,11 @@ export default function StudentDashboard() {
         </div>
       )}
 
+      {activeNavTab === "grades" ? (
+        <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-8">
+          <MyGrades onOpenAssignments={(id) => setAssignmentsCourse(id)} />
+        </main>
+      ) : (
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-8">
         {/* Welcome banner */}
         <div className="bg-gradient-to-r from-brand/15 via-surface to-brand/10 border border-line rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
@@ -405,6 +414,7 @@ export default function StudentDashboard() {
           </div>
         </div>
       </main>
+      )}
 
       {/* Modals */}
       {activeQuizId && (

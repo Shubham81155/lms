@@ -56,6 +56,98 @@ const isCourseStaff = (user: NonNullable<Request['user']>, instructorIds: string
   ((COURSE_STAFF_ROLES as readonly string[]).includes(user.role) && instructorIds.includes(user.id));
 
 /**
+ * GET /api/v1/enrollments/grades
+ * The caller's own results, per course they are or were enrolled in: the course grade once it is approved,
+ * every assignment (submitted or not) with its grade and feedback, and every quiz with the best attempt.
+ */
+router.get(
+  '/grades',
+  authenticateJWT,
+  route('Failed to load your grades', async (req, res) => {
+    const userId = req.user!.id;
+    const tenantId = tenantIdOf(req);
+    const enrollments = await prisma.enrollment.findMany({
+      where: { tenantId, userId, status: { not: EnrollmentStatus.DROPPED } },
+      orderBy: { enrolledAt: 'desc' },
+      select: {
+        status: true,
+        progressPercent: true,
+        finalGrade: true,
+        course: { select: { id: true, code: true, title: true, passingGradePercent: true } },
+      },
+    });
+    const courseIds = enrollments.map((e) => e.course.id);
+    if (courseIds.length === 0) return res.json({ data: [] });
+
+    const [grades, assignments, quizzes] = await Promise.all([
+      prisma.courseGrade.findMany({ where: { tenantId, userId, courseId: { in: courseIds }, status: 'APPROVED' } }),
+      prisma.assignment.findMany({
+        where: { courseId: { in: courseIds } },
+        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        select: {
+          id: true, title: true, courseId: true, maxPoints: true, dueDate: true,
+          submissions: { where: { userId }, select: { submittedAt: true, grade: true, feedback: true, gradedAt: true, appeal: { select: { status: true } } } },
+        },
+      }),
+      prisma.quiz.findMany({
+        where: { courseId: { in: courseIds }, questions: { some: {} } },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true, title: true, courseId: true, maxAttempts: true, passingPercent: true,
+          submissions: { where: { userId, submittedAt: { not: null } }, select: { score: true, maxScore: true, passed: true, submittedAt: true, answersJson: true } },
+        },
+      }),
+    ]);
+    const gradeOf = new Map(grades.map((g) => [g.courseId, g]));
+
+    return res.json({
+      data: enrollments.map((e) => {
+        const g = gradeOf.get(e.course.id);
+        return {
+          course: e.course,
+          status: e.status,
+          progressPercent: e.progressPercent,
+          courseGrade: g ? { letter: g.letter, percent: g.curvedPercent, approvedAt: g.approvedAt } : null,
+          assignments: assignments
+            .filter((a) => a.courseId === e.course.id)
+            .map((a) => {
+              const s = a.submissions[0];
+              return {
+                id: a.id,
+                title: a.title,
+                maxPoints: a.maxPoints,
+                dueDate: a.dueDate,
+                submittedAt: s?.submittedAt ?? null,
+                late: !!(s && a.dueDate && s.submittedAt > a.dueDate),
+                grade: s?.gradedAt ? s.grade : null,
+                feedback: s?.gradedAt ? s.feedback : null,
+                gradedAt: s?.gradedAt ?? null,
+                appealStatus: s?.appeal?.status ?? null,
+              };
+            }),
+          quizzes: quizzes
+            .filter((q) => q.courseId === e.course.id)
+            .map((q) => {
+              const scored = q.submissions.filter((s) => s.score !== null && s.maxScore > 0);
+              const best = scored.sort((x, y) => y.score! / y.maxScore - x.score! / x.maxScore)[0];
+              return {
+                id: q.id,
+                title: q.title,
+                attemptsUsed: q.submissions.length,
+                maxAttempts: q.maxAttempts,
+                passingPercent: q.passingPercent,
+                bestPercent: best ? Math.round((best.score! / best.maxScore) * 1000) / 10 : null,
+                passed: q.submissions.some((s) => s.passed),
+                awaitingManualGrading: q.submissions.some((s) => ((s.answersJson as any)?.pendingManual ?? []).length > 0),
+              };
+            }),
+        };
+      }),
+    });
+  })
+);
+
+/**
  * GET /api/v1/enrollments/todo
  * The caller's own upcoming work from the courses they are actively enrolled in (published
  * courses only): assignments not yet submitted or still ungraded, and quizzes with attempts left

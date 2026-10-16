@@ -7,6 +7,7 @@ import {
   ChartColumn,
   ClipboardCheck,
   FileCheck,
+  GraduationCap,
   FileQuestion,
   KeyRound,
   LayoutGrid,
@@ -68,6 +69,7 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
       items: [
         tab("courses", "My courses", BookOpen, "/student"),
         tab("exams", "To do", FileCheck, "/student#exams"),
+        tab("grades", "Grades", GraduationCap, "/student#grades"),
       ],
     },
     {

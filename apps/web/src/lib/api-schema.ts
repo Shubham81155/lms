@@ -1629,6 +1629,23 @@ export interface paths {
         patch: operations["patchEnrollmentsIdProgress"];
         trace?: never;
     };
+    "/api/v1/enrollments/grades": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's own results per course: the approved course grade, every assignment with its grade and feedback, and every quiz with the best attempt. */
+        get: operations["getEnrollmentsGrades"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/enrollments/my": {
         parameters: {
             query?: never;
@@ -10505,6 +10522,74 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEnrollmentsGrades: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            course: {
+                                id: string;
+                                code: string;
+                                title: string;
+                                passingGradePercent: number;
+                            };
+                            /** @enum {string} */
+                            status: "ENROLLED" | "IN_PROGRESS" | "COMPLETED" | "DROPPED" | "FAILED";
+                            progressPercent: number;
+                            courseGrade: {
+                                letter: string | null;
+                                percent: number | null;
+                                approvedAt: string | null;
+                            } | null;
+                            assignments: {
+                                id: string;
+                                title: string;
+                                maxPoints: number;
+                                dueDate: string | null;
+                                submittedAt: string | null;
+                                late: boolean;
+                                grade: number | null;
+                                feedback: string | null;
+                                gradedAt: string | null;
+                                appealStatus: string | null;
+                            }[];
+                            quizzes: {
+                                id: string;
+                                title: string;
+                                attemptsUsed: number;
+                                maxAttempts: number;
+                                passingPercent: number;
+                                bestPercent: number | null;
+                                passed: boolean;
+                                awaitingManualGrading: boolean;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
