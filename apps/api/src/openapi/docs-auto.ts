@@ -115,6 +115,7 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "GET /api/v1/courses/:courseId/threads": { summary: "GET /api/v1/courses/:courseId/threads", query: r_forum.listQuery as never },
   "POST /api/v1/courses/:courseId/threads": { summary: "POST /api/v1/courses/:courseId/threads", body: r_forum.threadSchema },
   "DELETE /api/v1/courses/:id": { summary: "archive (soft delete), admins only" },
+  "GET /api/v1/courses/departments": { summary: "Departments to file a course under (staff)." },
   "GET /api/v1/courses/:id": { summary: "Metadata for anyone who can see the course; modules and lessons only for enrolled learners, assigned staff, admins and auditors." },
   "PUT /api/v1/courses/:id": { summary: "update (assigned instructor or admin)", body: r_courses.updateCourseSchema },
   "DELETE /api/v1/courses/:id/lessons/:lessonId": { summary: "DELETE /api/v1/courses/:id/lessons/:lessonId" },

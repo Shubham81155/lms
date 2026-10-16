@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { AppShell } from "@/components/shell/AppShell";
 import { CourseBuilder } from "@/components/CourseBuilder";
 import { CourseContentEditor } from "@/components/CourseContentEditor";
+import { CourseSettings } from "@/components/CourseSettings";
 import { CourseRoster } from "@/components/CourseRoster";
 import { useOpenIntent } from "@/hooks/useOpenIntent";
 import { AssessmentManager } from "@/components/AssessmentManager";
@@ -13,284 +14,99 @@ import { QuestionBank } from "@/components/QuestionBank";
 import { AssignmentGrading } from "@/components/AssignmentGrading";
 import { LiveClasses } from "@/components/LiveClasses";
 import { LiveNow } from "@/components/LiveNow";
-import {
-  BookOpen,
-  Users,
-  FileCheck,
-  AlertTriangle,
-  Video,
-  Plus,
-  BarChart2,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  TrendingUp,
-  ShieldAlert,
-  Search,
-  MessageSquare,
-  Activity,
-  Library,
-  ClipboardCheck,
-  ClipboardList,
-  CalendarDays,
-} from "lucide-react";
+import { StaffCourseList, type CourseTool } from "@/components/StaffCourseList";
+import { Users, FileCheck, Plus, ShieldAlert, TrendingUp, ChevronRight } from "lucide-react";
 import { createCourseWithCurriculum } from "@/hooks/useCourses";
-import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { DiscussionForum } from "@/components/DiscussionForum";
 import { FacultyAnalyticsModal } from "@/components/FacultyAnalyticsModal";
-import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 import { useAuth } from "@/context/AuthContext";
 import { useApiData } from "@/hooks/useApiData";
 import { useCohortAnalytics } from "@/hooks/useAnalytics";
 import { timeAgo } from "@/hooks/useNotifications";
 import { plural } from "@/lib/plural";
 
+/** Which dialog is open, and on which course. */
+type Open = { tool: CourseTool | "builder" | "questionbank" | "analytics"; courseId: string | null } | null;
+
 export default function TeacherDashboard() {
-  const [showCourseBuilder, setShowCourseBuilder] = useState(false);
-  const [showContentEditor, setShowContentEditor] = useState(false);
-  const [showRoster, setShowRoster] = useState(false);
-  const [showAssessments, setShowAssessments] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [showGradebook, setShowGradebook] = useState(false);
-  const [showQuestionBank, setShowQuestionBank] = useState(false);
-  const [showAssignmentGrading, setShowAssignmentGrading] = useState(false);
-  const [showLiveClasses, setShowLiveClasses] = useState(false);
-  const [showForum, setShowForum] = useState(false);
-  const [focusCourse, setFocusCourse] = useState<string | null>(null);
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [showLrsStream, setShowLrsStream] = useState(false);
-  const [activeNavTab, setActiveNavTab] = useState<string>("courses");
-
-  React.useEffect(() => {
-    const handleHash = () => {
-      const hash = window.location.hash;
-      if (hash === "#gradebook") {
-        setActiveNavTab("gradebook");
-        setShowGradebook(true);
-      } else if (hash === "#proctoring") {
-        setActiveNavTab("proctoring");
-        const el = document.getElementById("proctoring-radar");
-        if (el) el.scrollIntoView({ behavior: "smooth" });
-      } else {
-        setActiveNavTab("courses");
-      }
-    };
-    handleHash();
-    window.addEventListener("hashchange", handleHash);
-    return () => window.removeEventListener("hashchange", handleHash);
-  }, []);
-
-  const handleNavigateTab = (tabKey: string) => {
-    setActiveNavTab(tabKey);
-    if (tabKey === "courses") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (tabKey === "gradebook") {
-      setShowGradebook(true);
-    } else if (tabKey === "proctoring") {
-      const el = document.getElementById("proctoring-radar");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  // The courses this person teaches (every course, for an administrator), not everything they can see.
-  const { courses, reload: refetchCourses } = useStaffCourses();
-
+  const [open, setOpen] = useState<Open>(null);
+  const [coursesVersion, setCoursesVersion] = useState(0);
   const { user } = useAuth();
+  const show = (tool: NonNullable<Open>["tool"], courseId: string | null = null) => setOpen({ tool, courseId });
+  const close = () => setOpen(null);
 
   // A link from a notification or email can ask for a tool, on a particular course (see lib/deeplink).
   useOpenIntent(!!user, {
-    forum: (id) => { setFocusCourse(id); setShowForum(true); },
-    live: (id) => { setFocusCourse(id); setShowLiveClasses(true); },
-    grading: (id) => { setFocusCourse(id); setShowAssignmentGrading(true); },
-    assessments: (id) => { setFocusCourse(id); setShowAssessments(true); },
-    learners: (id) => { setFocusCourse(id); setShowRoster(true); },
-    gradebook: (id) => { setFocusCourse(id); setShowGradebook(true); },
+    forum: (id) => show("forum", id),
+    live: (id) => show("live", id),
+    grading: (id) => show("grading", id),
+    assessments: (id) => show("assessments", id),
+    learners: (id) => show("learners", id),
+    gradebook: (id) => show("gradebook", id),
   });
-  const canEditCourses = user?.role === "INSTRUCTOR";
+
+  const canEditCourses = user?.role === "INSTRUCTOR" || user?.role === "TENANT_ADMIN" || user?.role === "SUPER_ADMIN";
   const { analytics, refetch: analyticsReload } = useCohortAnalytics();
   const proctoring = useApiData<{
     openAttempts: number;
     data: { id: string; student: string; quiz: string; eventType: string; severity: string; timestamp: string }[];
-  }>("/api/v1/analytics/proctoring", { limit: 10 });
+  }>("/api/v1/analytics/proctoring", { limit: 5 });
   const pending = useApiData<{
     total: number;
-    data: { id: string; student: string; assignment: string; course: string; plagiarismScore: number | null }[];
-  }>("/api/v1/analytics/pending-grading", { limit: 5 });
-  const proctorLogs = proctoring.data?.data ?? [];
+    data: { id: string; student: string; assignment: string; course: string; courseId: string; plagiarismScore: number | null }[];
+  }>("/api/v1/analytics/pending-grading", { limit: 6 });
+
+  const onClose = (then?: () => void) => () => {
+    close();
+    then?.();
+  };
 
   return (
     <AppShell
       area="teacher"
-      activeKey={activeNavTab}
-      onNavigate={handleNavigateTab}
+      activeKey="courses"
+      onNavigate={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       actions={{
-        builder: () => setShowCourseBuilder(true),
-        grading: () => setShowAssignmentGrading(true),
-        questionbank: () => setShowQuestionBank(true),
-        live: () => setShowLiveClasses(true),
-        forum: () => setShowForum(true),
-        analytics: () => setShowAnalytics(true),
-        lrs: () => setShowLrsStream(true),
+        builder: () => show("builder"),
+        grading: () => show("grading"),
+        questionbank: () => show("questionbank"),
+        calendar: () => show("calendar"),
+        analytics: () => show("analytics"),
       }}
     >
-
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-8">
-        {/* Teacher Header & Quick Actions */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-orchid/15 text-orchid border border-orchid/50 font-semibold">
-                {user?.tenantName || "Faculty"}
-              </span>
-            </div>
-            <h1 className="text-3xl font-extrabold text-ink tracking-tight">
-              Faculty Command Center
-            </h1>
+            <p className="text-xs text-ink-muted">{user?.tenantName}</p>
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">Teaching</h1>
             <p className="text-sm text-ink-muted">
-              Welcome{user ? `, ${user.name}` : ""} • {courses.length} {courses.length === 1 ? "Course" : "Courses"}{analytics ? ` • ${plural(analytics.metrics.totalEnrolled, "Enrolment")}` : ""}
+              Welcome{user ? `, ${user.name}` : ""}
+              {analytics ? ` · ${plural(analytics.metrics.totalEnrolled, "enrolment")}` : ""}
             </p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {canEditCourses && (
+          {user?.role === "INSTRUCTOR" && (
             <button
-              onClick={() => setShowCourseBuilder(true)}
-              className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-brand/20 transition-all"
+              onClick={() => show("builder")}
+              className="self-start md:self-auto px-4 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-brand/20"
             >
               <Plus className="h-4 w-4" />
               <span>Create course</span>
             </button>
-            )}
-
-            {canEditCourses && (
-            <button
-              onClick={() => setShowContentEditor(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <BookOpen className="h-4 w-4 text-brand-fg" />
-              <span>Course Content</span>
-            </button>
-            )}
-
-            <button
-              onClick={() => setShowAssessments(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <ClipboardList className="h-4 w-4 text-accent" />
-              <span>Quizzes &amp; Assignments</span>
-            </button>
-
-            <button
-              onClick={() => setShowCalendar(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <CalendarDays className="h-4 w-4 text-orchid" />
-              <span>Calendar Events</span>
-            </button>
-
-            <button
-              onClick={() => setShowRoster(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <Users className="h-4 w-4 text-success" />
-              <span>Learners</span>
-            </button>
-
-            <button
-              onClick={() => setShowGradebook(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <FileCheck className="h-4 w-4 text-success" />
-              <span>Gradebook</span>
-            </button>
-
-            <button
-              onClick={() => setShowAssignmentGrading(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <ClipboardCheck className="h-4 w-4 text-brand-fg" />
-              <span>Grade Assignments</span>
-            </button>
-
-            <button
-              onClick={() => setShowQuestionBank(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <Library className="h-4 w-4 text-orchid" />
-              <span>Question Bank</span>
-            </button>
-
-            <button
-              onClick={() => setShowAnalytics(true)}
-              className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-purple-600/20 transition-all"
-            >
-              <BarChart2 className="h-4 w-4" />
-              <span>Cohort Intelligence</span>
-            </button>
-
-            <button
-              onClick={() => setShowLrsStream(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <Activity className="h-4 w-4 text-cyan-400" />
-              <span>xAPI LRS Stream</span>
-            </button>
-
-            <button
-              onClick={() => setShowForum(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center gap-2 border border-line transition-colors"
-            >
-              <MessageSquare className="h-4 w-4 text-orchid" />
-              <span>Course Q&A Forum</span>
-            </button>
-
-            <button
-              onClick={() => setShowLiveClasses(true)}
-              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-rose-600/20 transition-all"
-            >
-              <Video className="h-4 w-4" />
-              <span>Live Classes</span>
-            </button>
-          </div>
+          )}
         </div>
 
         <LiveNow />
 
-        {/* Metric Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            {
-              label: "Enrolled Learners",
-              value: analytics ? String(analytics.metrics.totalEnrolled) : "…",
-              sub: analytics ? `${analytics.metrics.activeThisWeek} active this week` : "",
-              icon: Users,
-              color: "text-brand-fg",
-            },
-            {
-              label: "Pending Submissions",
-              value: pending.data ? String(pending.data.total) : "…",
-              sub: "Waiting for a grade",
-              icon: FileCheck,
-              color: "text-success",
-            },
-            {
-              label: "Open Proctored Attempts",
-              value: proctoring.data ? String(proctoring.data.openAttempts) : "…",
-              sub: "In progress right now",
-              icon: ShieldAlert,
-              color: "text-danger",
-            },
-            {
-              label: "Completion Rate",
-              value: analytics ? `${analytics.metrics.completionRate}%` : "…",
-              sub: analytics ? `${plural(analytics.atRiskLearners.length, "learner")} at risk` : "",
-              icon: TrendingUp,
-              color: "text-orchid",
-            },
-          ].map((stat, idx) => {
+            { label: "Learners", value: analytics ? String(analytics.metrics.totalEnrolled) : "…", sub: analytics ? `${analytics.metrics.activeThisWeek} active this week` : "", icon: Users, color: "text-brand-fg" },
+            { label: "Waiting for a grade", value: pending.data ? String(pending.data.total) : "…", sub: "Assignment submissions", icon: FileCheck, color: "text-success" },
+            { label: "At risk", value: analytics ? String(analytics.atRiskLearners.length) : "…", sub: "See learner analytics", icon: ShieldAlert, color: "text-danger" },
+            { label: "Completion rate", value: analytics ? `${analytics.metrics.completionRate}%` : "…", sub: analytics ? `Average progress ${Math.round(analytics.metrics.averageProgress)}%` : "", icon: TrendingUp, color: "text-orchid" },
+          ].map((stat) => {
             const Icon = stat.icon;
             return (
-              <div key={idx} className="bg-surface border border-line rounded-2xl p-5 space-y-3 shadow-lg">
+              <div key={stat.label} className="bg-surface border border-line rounded-2xl p-5 space-y-3">
                 <div className="flex items-center justify-between text-ink-muted">
                   <span className="text-xs font-semibold">{stat.label}</span>
                   <Icon className={`h-5 w-5 ${stat.color}`} />
@@ -304,160 +120,97 @@ export default function TeacherDashboard() {
           })}
         </div>
 
-        {/* Two-Column Section: Active Proctoring Feed & Courses Taught */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Proctoring events reported by the quiz screen */}
-          <div id="proctoring-radar" className="lg:col-span-2 bg-surface border border-line rounded-3xl p-6 space-y-5 shadow-xl scroll-mt-20">
-            <div className="flex items-center justify-between border-b border-line pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-danger/20 text-danger border border-danger/30 flex items-center justify-center">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-ink">Proctoring events</h3>
-                  <p className="text-xs text-ink-muted">Integrity events reported by exam takers' browsers</p>
-                </div>
-              </div>
-
-              <span className="text-xs text-success bg-success/10 border border-success/30 px-3 py-1 rounded-full font-medium flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                {proctoring.data?.openAttempts ?? 0} open attempt(s)
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {proctoring.isLoading && <p className="text-xs text-ink-subtle">Loading…</p>}
-              {!proctoring.isLoading && proctorLogs.length === 0 && (
-                <p className="text-xs text-ink-subtle p-6 text-center">No integrity events have been reported.</p>
-              )}
-              {proctorLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="bg-canvas border border-line/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-line transition-colors"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <strong className="text-ink text-sm">{log.student}</strong>
-                      <span className="text-ink-muted">({log.quiz})</span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                          log.severity === "HIGH"
-                            ? "bg-danger/10 text-danger border border-danger/30"
-                            : log.severity === "MEDIUM"
-                            ? "bg-accent/10 text-accent border border-accent/30"
-                            : "bg-brand/15 text-brand-fg border border-brand/30"
-                        }`}
-                      >
-                        {log.eventType.replace(/_/g, " ")}
-                      </span>
-                    </div>
-                    <p className="text-ink-muted">Severity: {log.severity.toLowerCase()}</p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-[11px] text-ink-subtle font-mono">{timeAgo(log.timestamp)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="lg:col-span-2">
+            <StaffCourseList
+              title="My courses"
+              canEdit={canEditCourses}
+              tools={["content", "settings", "learners", "assessments", "grading", "gradebook", "forum", "live"]}
+              onOpen={(tool, id) => show(tool, id)}
+              emptyText={user?.role === "INSTRUCTOR" ? "You do not teach any course yet. Create one, or ask an administrator to assign you." : "You are not assigned to any course yet."}
+              refreshKey={coursesVersion}
+            />
           </div>
 
-          {/* Quick Grading & Courses Sidepanel */}
           <div className="space-y-6">
-            <div className="bg-surface border border-line rounded-3xl p-6 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-line pb-3">
-                <h3 className="font-bold text-sm text-ink">Pending Submissions</h3>
-                <span className="text-xs text-brand-fg font-semibold">{pending.data?.total ?? 0} to review</span>
+            <section className="bg-surface border border-line rounded-2xl p-5 space-y-3" aria-labelledby="pending-h">
+              <div className="flex items-center justify-between">
+                <h3 id="pending-h" className="font-bold text-sm text-ink">Waiting for a grade</h3>
+                {pending.data && pending.data.total > 0 && <span className="text-xs text-ink-muted">{pending.data.total}</span>}
               </div>
-
-              <div className="space-y-3">
-                {pending.data && pending.data.data.length === 0 && (
-                  <p className="text-xs text-ink-subtle text-center p-4">Nothing is waiting for a grade.</p>
-                )}
-                {(pending.data?.data ?? []).map((s) => {
-                  const flagged = (s.plagiarismScore ?? 0) >= 30;
-                  return (
-                    <div key={s.id} className="bg-canvas rounded-2xl p-3.5 border border-line/80 space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-ink">{s.student}</span>
-                        {s.plagiarismScore !== null && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${flagged ? "bg-danger/10 text-danger" : "bg-success/10 text-success"}`}>
-                            {Math.round(s.plagiarismScore)}% match
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-ink-muted">
-                        {s.assignment} <span className="text-ink-subtle">· {s.course}</span>
+              {pending.data?.data.length === 0 && <p className="text-xs text-ink-subtle">Nothing is waiting for a grade.</p>}
+              {(pending.data?.data ?? []).map((s) => {
+                const flagged = (s.plagiarismScore ?? 0) >= 30;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => show("grading", s.courseId)}
+                    className="w-full text-left bg-canvas rounded-xl p-3 border border-line hover:border-brand/40 flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-ink truncate">{s.student}</div>
+                      <div className="text-[11px] text-ink-muted truncate">
+                        {s.assignment} · {s.course}
                       </div>
                     </div>
-                  );
-                })}
+                    {s.plagiarismScore !== null && (
+                      <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${flagged ? "bg-danger/10 text-danger" : "bg-success/10 text-success"}`}>
+                        {Math.round(s.plagiarismScore)}% match
+                      </span>
+                    )}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-ink-subtle" />
+                  </button>
+                );
+              })}
+            </section>
+
+            <section className="bg-surface border border-line rounded-2xl p-5 space-y-3" aria-labelledby="proctoring-h">
+              <div>
+                <h3 id="proctoring-h" className="font-bold text-sm text-ink">Recent proctoring events</h3>
+                <p className="text-[11px] text-ink-muted">
+                  Reported by learners' browsers during proctored quizzes. {proctoring.data ? `${plural(proctoring.data.openAttempts, "attempt")} in progress.` : ""}
+                </p>
               </div>
-            </div>
+              {proctoring.data?.data.length === 0 && <p className="text-xs text-ink-subtle">No events reported.</p>}
+              {(proctoring.data?.data ?? []).map((log) => (
+                <div key={log.id} className="text-xs flex items-start justify-between gap-2 border-t border-line pt-2 first:border-0 first:pt-0">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-ink truncate">{log.student}</div>
+                    <div className="text-[11px] text-ink-muted truncate">
+                      {log.eventType.replace(/_/g, " ").toLowerCase()} · {log.quiz}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[10px] text-ink-subtle">{timeAgo(log.timestamp)}</span>
+                </div>
+              ))}
+            </section>
           </div>
         </div>
       </main>
 
-      {/* Modals */}
-      {showCourseBuilder && (
+      {open?.tool === "builder" && (
         <CourseBuilder
-          onClose={() => setShowCourseBuilder(false)}
+          onClose={close}
           onSave={async (draft) => {
             try {
               await createCourseWithCurriculum(draft);
             } finally {
-              refetchCourses();
+              setCoursesVersion((v) => v + 1);
             }
           }}
         />
       )}
-
-      {showContentEditor && <CourseContentEditor onClose={() => setShowContentEditor(false)} />}
-
-      {showAssessments && <AssessmentManager initialCourseId={focusCourse} onClose={() => { setShowAssessments(false); pending.reload(); }} />}
-
-      {showCalendar && <CalendarManager onClose={() => setShowCalendar(false)} />}
-
-      {showRoster && (
-        <CourseRoster
-          initialCourseId={focusCourse}
-          onClose={() => {
-            setShowRoster(false);
-            analyticsReload();
-          }}
-        />
-      )}
-
-      {showGradebook && (
-        <CourseGradebook initialCourseId={focusCourse} onClose={() => setShowGradebook(false)} />
-      )}
-
-      {showQuestionBank && <QuestionBank onClose={() => setShowQuestionBank(false)} />}
-
-      {showAssignmentGrading && <AssignmentGrading initialCourseId={focusCourse} onClose={() => { setShowAssignmentGrading(false); pending.reload(); }} />}
-
-      {showLiveClasses && <LiveClasses initialCourseId={focusCourse} onClose={() => setShowLiveClasses(false)} />}
-
-      {showForum && (
-        <DiscussionForum
-          courseId={focusCourse}
-          onClose={() => setShowForum(false)}
-        />
-      )}
-
-      {/* Faculty Cohort Analytics & Predictive At-Risk Radar */}
-      {showAnalytics && (
-        <FacultyAnalyticsModal
-          onClose={() => setShowAnalytics(false)}
-        />
-      )}
-
-      {/* xAPI Learning Record Store (LRS) Statement Stream */}
-      {showLrsStream && (
-        <LrsAnalyticsViewer
-          onClose={() => setShowLrsStream(false)}
-        />
-      )}
+      {open?.tool === "content" && <CourseContentEditor initialCourseId={open.courseId} onClose={onClose(() => setCoursesVersion((v) => v + 1))} />}
+      {open?.tool === "settings" && open.courseId && <CourseSettings courseId={open.courseId} onClose={close} onSaved={() => setCoursesVersion((v) => v + 1)} />}
+      {open?.tool === "assessments" && <AssessmentManager initialCourseId={open.courseId} onClose={onClose(pending.reload)} />}
+      {open?.tool === "calendar" && <CalendarManager onClose={close} />}
+      {open?.tool === "learners" && <CourseRoster initialCourseId={open.courseId} onClose={onClose(() => { analyticsReload(); setCoursesVersion((v) => v + 1); })} />}
+      {open?.tool === "gradebook" && <CourseGradebook initialCourseId={open.courseId} onClose={close} />}
+      {open?.tool === "questionbank" && <QuestionBank onClose={close} />}
+      {open?.tool === "grading" && <AssignmentGrading initialCourseId={open.courseId} onClose={onClose(pending.reload)} />}
+      {open?.tool === "live" && <LiveClasses initialCourseId={open.courseId} onClose={close} />}
+      {open?.tool === "forum" && <DiscussionForum courseId={open.courseId} onClose={close} />}
+      {open?.tool === "analytics" && <FacultyAnalyticsModal onClose={close} />}
     </AppShell>
   );
 }

@@ -2,19 +2,7 @@
 
 import React, { useState } from "react";
 import { AppShell } from "@/components/shell/AppShell";
-import {
-  Users,
-  Key,
-  Database,
-  Terminal,
-  Activity,
-  Plus,
-  BookOpen,
-  ClipboardList,
-  FileCheck,
-  CalendarDays,
-  UserCog,
-} from "lucide-react";
+import { Users, Key, Database, Terminal, Plus, UserCog } from "lucide-react";
 import { useAuditLogs } from "@/hooks/useAdmin";
 import { useAuth } from "@/context/AuthContext";
 import { useApiData } from "@/hooks/useApiData";
@@ -27,6 +15,11 @@ import { OperatorPanel } from "@/components/admin/OperatorPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 import { CourseBuilder } from "@/components/CourseBuilder";
 import { CourseContentEditor } from "@/components/CourseContentEditor";
+import { CourseSettings } from "@/components/CourseSettings";
+import { StaffCourseList, type CourseTool } from "@/components/StaffCourseList";
+import { AssignmentGrading } from "@/components/AssignmentGrading";
+import { LiveClasses } from "@/components/LiveClasses";
+import { DiscussionForum } from "@/components/DiscussionForum";
 import { CourseRoster } from "@/components/CourseRoster";
 import { CourseGradebook } from "@/components/CourseGradebook";
 import { useOpenIntent } from "@/hooks/useOpenIntent";
@@ -36,30 +29,27 @@ import { UserManager } from "@/components/UserManager";
 import { createCourseWithCurriculum } from "@/hooks/useCourses";
 import { plural } from "@/lib/plural";
 
-const TABS = ["overview", "compliance", "sso", "platform", "audit"] as const;
+const TABS = ["overview", "courses", "compliance", "sso", "platform", "audit"] as const;
 type Tab = (typeof TABS)[number];
 const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [showLrsStream, setShowLrsStream] = useState(false);
-  const [showBuilder, setShowBuilder] = useState(false);
-  const [showContentEditor, setShowContentEditor] = useState(false);
-  const [showRoster, setShowRoster] = useState(false);
-  const [showGradebook, setShowGradebook] = useState(false);
-  const [focusCourse, setFocusCourse] = useState<string | null>(null);
-  const [showAssessments, setShowAssessments] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
   const [showPeople, setShowPeople] = useState(false);
+  const [open, setOpen] = useState<{ tool: CourseTool | "builder"; courseId: string | null } | null>(null);
+  const [coursesVersion, setCoursesVersion] = useState(0);
+  const show = (tool: CourseTool | "builder", courseId: string | null = null) => setOpen({ tool, courseId });
+  const close = () => setOpen(null);
 
   const { logs } = useAuditLogs();
   const { user } = useAuth();
 
   // A link from a notification or email can ask for a tool, on a particular course (see lib/deeplink).
   useOpenIntent(!!user, {
-    gradebook: (id) => { setFocusCourse(id); setShowGradebook(true); },
-    learners: (id) => { setFocusCourse(id); setShowRoster(true); },
-    assessments: (id) => { setFocusCourse(id); setShowAssessments(true); },
+    gradebook: (id) => show("gradebook", id),
+    learners: (id) => show("learners", id),
+    assessments: (id) => show("assessments", id),
   });
   const usage = useApiData<{ data: Usage }>("/api/v1/admin/usage");
   const features = useApiData<{ data: Record<string, boolean> }>("/api/v1/admin/features");
@@ -99,10 +89,10 @@ export default function AdminDashboard() {
               <span className="text-xs text-ink-muted">Plan: {usage.data?.data.tier ?? "…"}</span>
             </div>
             <h1 className="text-3xl font-extrabold text-ink tracking-tight">
-              Tenant Administration & Governance
+              Administration
             </h1>
             <p className="text-sm text-ink-muted">
-              Seats, single sign-on, directory provisioning, integrations and the audit trail
+              People, courses, sign-in, integrations and the audit trail
             </p>
           </div>
 
@@ -116,61 +106,12 @@ export default function AdminDashboard() {
             </button>
 
             <button
-              onClick={() => setShowBuilder(true)}
+              onClick={() => show("builder")}
               className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
             >
               <Plus className="h-4 w-4" />
-              <span>Create Course</span>
+              <span>Create course</span>
             </button>
-
-            <button
-              onClick={() => setShowContentEditor(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
-            >
-              <BookOpen className="h-4 w-4 text-brand-fg" />
-              <span>Course Content</span>
-            </button>
-
-            <button
-              onClick={() => setShowAssessments(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
-            >
-              <ClipboardList className="h-4 w-4 text-accent" />
-              <span>Quizzes &amp; Assignments</span>
-            </button>
-
-            <button
-              onClick={() => setShowCalendar(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
-            >
-              <CalendarDays className="h-4 w-4 text-orchid" />
-              <span>Calendar Events</span>
-            </button>
-
-            <button
-              onClick={() => setShowGradebook(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
-            >
-              <FileCheck className="h-4 w-4 text-success" />
-              <span>Gradebook</span>
-            </button>
-
-            <button
-              onClick={() => setShowRoster(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
-            >
-              <Users className="h-4 w-4 text-success" />
-              <span>Learners</span>
-            </button>
-
-            <button
-              onClick={() => setShowLrsStream(true)}
-              className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
-            >
-              <Activity className="h-4 w-4 text-cyan-400" />
-              <span>xAPI LRS Stream</span>
-            </button>
-
           </div>
         </div>
 
@@ -208,6 +149,17 @@ export default function AdminDashboard() {
               <BrandingPanel />
             </div>
           </div>
+        )}
+
+        {activeTab === "courses" && (
+          <StaffCourseList
+            title="All courses"
+            canEdit
+            tools={["content", "settings", "learners", "assessments", "grading", "gradebook", "forum", "live", "calendar"]}
+            onOpen={(tool, id) => show(tool, id)}
+            emptyText="No courses yet. Create one, or ask an instructor to."
+            refreshKey={coursesVersion}
+          />
         )}
 
         {activeTab === "compliance" && (
@@ -276,28 +228,28 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {showBuilder && (
+        {open?.tool === "builder" && (
           <CourseBuilder
-            onClose={() => setShowBuilder(false)}
+            onClose={close}
             onSave={async (draft) => {
               try {
                 await createCourseWithCurriculum(draft);
               } finally {
                 usage.reload();
+                setCoursesVersion((v) => v + 1);
               }
             }}
           />
         )}
-
-        {showContentEditor && <CourseContentEditor onClose={() => setShowContentEditor(false)} />}
-
-        {showRoster && <CourseRoster initialCourseId={focusCourse} onClose={() => setShowRoster(false)} />}
-
-        {showGradebook && <CourseGradebook initialCourseId={focusCourse} onClose={() => setShowGradebook(false)} />}
-
-        {showAssessments && <AssessmentManager initialCourseId={focusCourse} onClose={() => setShowAssessments(false)} />}
-
-        {showCalendar && <CalendarManager onClose={() => setShowCalendar(false)} />}
+        {open?.tool === "content" && <CourseContentEditor initialCourseId={open.courseId} onClose={() => { close(); setCoursesVersion((v) => v + 1); }} />}
+        {open?.tool === "settings" && open.courseId && <CourseSettings courseId={open.courseId} onClose={close} onSaved={() => setCoursesVersion((v) => v + 1)} />}
+        {open?.tool === "learners" && <CourseRoster initialCourseId={open.courseId} onClose={() => { close(); setCoursesVersion((v) => v + 1); }} />}
+        {open?.tool === "gradebook" && <CourseGradebook initialCourseId={open.courseId} onClose={close} />}
+        {open?.tool === "assessments" && <AssessmentManager initialCourseId={open.courseId} onClose={close} />}
+        {open?.tool === "grading" && <AssignmentGrading initialCourseId={open.courseId} onClose={close} />}
+        {open?.tool === "live" && <LiveClasses initialCourseId={open.courseId} onClose={close} />}
+        {open?.tool === "forum" && <DiscussionForum courseId={open.courseId} onClose={close} />}
+        {open?.tool === "calendar" && <CalendarManager onClose={close} />}
 
         {showPeople && <UserManager onClose={() => { setShowPeople(false); usage.reload(); }} />}
 

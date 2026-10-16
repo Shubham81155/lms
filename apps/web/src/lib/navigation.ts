@@ -11,11 +11,9 @@ import {
   KeyRound,
   LayoutGrid,
   MessageSquare,
-  Radar,
   ScrollText,
   ShieldCheck,
   Sparkles,
-  Video,
   Webhook,
   type LucideIcon,
 } from "lucide-react";
@@ -50,7 +48,7 @@ export interface NavSection {
 
 export const AREA_LABEL: Record<Area, string> = {
   student: "Student",
-  teacher: "Faculty",
+  teacher: "Teaching",
   admin: "Administration",
 };
 
@@ -67,18 +65,18 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
       id: "learn",
       title: "Learn",
       items: [
-        tab("courses", "My Courses", BookOpen, "/student"),
-        tab("exams", "Assignments & Exams", FileCheck, "/student#exams"),
+        tab("courses", "My courses", BookOpen, "/student"),
+        tab("exams", "To do", FileCheck, "/student#exams"),
       ],
     },
     {
       id: "tools",
       title: "Explore",
       items: [
-        action("catalog", "Course Catalog", LayoutGrid),
-        action("forum", "Course Forum", MessageSquare),
-        action("calendar", "Academic Calendar", CalendarDays),
-        action("tutor", "AI Tutor", Sparkles),
+        action("catalog", "Course catalogue", LayoutGrid),
+        action("forum", "Forum", MessageSquare),
+        action("calendar", "Calendar", CalendarDays),
+        action("tutor", "Study tutor", Sparkles),
       ],
     },
   ],
@@ -86,23 +84,17 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
     {
       id: "teach",
       title: "Teach",
-      items: [
-        tab("courses", "Courses Taught", BookOpen, "/teacher"),
-        tab("gradebook", "Gradebook & Rubrics", FileCheck, "/teacher#gradebook"),
-        tab("proctoring", "Proctoring Radar", Radar, "/teacher#proctoring"),
-      ],
+      items: [tab("courses", "My courses", BookOpen, "/teacher")],
     },
     {
       id: "tools",
       title: "Tools",
       items: [
-        action("builder", "Course Builder", BookPlus, COURSE_LEADS),
-        action("grading", "Assignment Grading", ClipboardCheck),
-        action("questionbank", "Question Bank", FileQuestion),
-        action("live", "Live Classes", Video),
-        action("forum", "Course Forum", MessageSquare),
-        action("analytics", "Faculty Analytics", ChartColumn, COURSE_LEADS),
-        action("lrs", "xAPI LRS Stream", Activity),
+        action("builder", "Create course", BookPlus, COURSE_LEADS),
+        action("grading", "Grade submissions", ClipboardCheck),
+        action("questionbank", "Question bank", FileQuestion),
+        action("calendar", "Calendar", CalendarDays),
+        action("analytics", "Learner analytics", ChartColumn, COURSE_LEADS),
       ],
     },
   ],
@@ -111,7 +103,8 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
       id: "manage",
       title: "Manage",
       items: [
-        tab("overview", "Organization", Building, "/admin#overview"),
+        tab("overview", "Organisation", Building, "/admin#overview"),
+        tab("courses", "Courses", BookOpen, "/admin#courses"),
         tab("compliance", "Security & Compliance", ShieldCheck, "/admin#compliance"),
         tab("sso", "Identity & Provisioning", KeyRound, "/admin#sso"),
         tab("platform", "Plan & Integrations", Webhook, "/admin#platform"),
@@ -121,7 +114,7 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
     {
       id: "tools",
       title: "Tools",
-      items: [action("lrs", "xAPI LRS Stream", Activity)],
+      items: [action("lrs", "Learning records (xAPI)", Activity)],
     },
   ],
 };

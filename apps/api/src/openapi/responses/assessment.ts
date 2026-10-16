@@ -405,6 +405,7 @@ export const RESPONSES: ResponseTable = {
             id: z.string(),
             student: z.string(),
             assignmentId: z.string(),
+            courseId: z.string(),
             assignment: z.string(),
             /** Course code. */
             course: z.string(),

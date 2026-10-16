@@ -273,7 +273,7 @@ router.get(
         select: {
           id: true, submittedAt: true, plagiarismScore: true,
           user: { select: { firstName: true, lastName: true } },
-          assignment: { select: { id: true, title: true, course: { select: { code: true } } } },
+          assignment: { select: { id: true, title: true, course: { select: { id: true, code: true } } } },
         },
       }),
     ]);
@@ -285,6 +285,7 @@ router.get(
         assignmentId: r.assignment.id,
         assignment: r.assignment.title,
         course: r.assignment.course.code,
+        courseId: r.assignment.course.id,
         submittedAt: r.submittedAt,
         plagiarismScore: r.plagiarismScore,
       })),

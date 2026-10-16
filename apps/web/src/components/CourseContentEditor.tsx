@@ -245,7 +245,7 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, count, busy, act
   );
 };
 
-export const CourseContentEditor: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const CourseContentEditor: React.FC<{ onClose: () => void; /** Open on this course when the person may edit it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
   useEscapeKey(onClose);
   const { courses, isLoading: coursesLoading, reload: reloadCourses } = useStaffCourses({ editableOnly: true });
   const [pendingStatus, setPendingStatus] = useState<StaffCourse["status"] | null>(null);
@@ -255,8 +255,8 @@ export const CourseContentEditor: React.FC<{ onClose: () => void }> = ({ onClose
   const [newModule, setNewModule] = useState("");
 
   useEffect(() => {
-    if (!courseId && courses.length > 0) setCourseId(courses[0].id);
-  }, [courses, courseId]);
+    if (!courseId && courses.length > 0) setCourseId((courses.find((c) => c.id === initialCourseId) ?? courses[0]).id);
+  }, [courses, courseId, initialCourseId]);
 
   useEffect(() => {
     if (!notice) return;

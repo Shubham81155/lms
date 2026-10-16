@@ -14,31 +14,11 @@ import { MyAssignments } from "@/components/MyAssignments";
 import { useAuth } from "@/context/AuthContext";
 import { AiTutorModal } from "@/components/AiTutorModal";
 import { useAiStatus } from "@/hooks/useAi";
-import {
-  BookOpen,
-  GraduationCap,
-  Award,
-  Video,
-  Clock,
-  Sparkles,
-  PlayCircle,
-  CheckCircle2,
-  Calendar,
-  FileCheck,
-  TrendingUp,
-  BarChart,
-  ArrowRight,
-  Code,
-  Wifi,
-  Search,
-  MessageSquare,
-  Brain,
-} from "lucide-react";
+import { BookOpen, Award, Sparkles, FileCheck, Search, MessageSquare, Brain } from "lucide-react";
 import { useMyEnrollments, useEnrollmentStats } from "@/hooks/useEnrollments";
 import { api } from "@/lib/api";
 import { useOpenIntent } from "@/hooks/useOpenIntent";
 import { useApiData } from "@/hooks/useApiData";
-import { plural } from "@/lib/plural";
 
 interface TodoItem {
   type: "ASSIGNMENT" | "QUIZ";
@@ -119,32 +99,8 @@ export default function StudentDashboard() {
 
   const todo = useApiData<{ data: TodoItem[] }>("/api/v1/enrollments/todo");
 
-  // Records a real xAPI statement about the signed-in learner and only reports success if the LRS accepted it.
-  const triggerXApi = async (verb: string, target: string) => {
-    if (!user) return;
-    try {
-      await api.post("/api/v1/xapi/statements", {
-        actor: { mbox: `mailto:${user.email}`, name: user.name },
-        verb: { id: "http://adlnet.gov/expapi/verbs/experienced", display: { "en-US": verb } },
-        object: { id: `${window.location.origin}/xapi/activities/${encodeURIComponent(target.toLowerCase().replace(/\s+/g, "-"))}`, definition: { name: { "en-US": target } } },
-      });
-      setNotification(`Recorded in your learning record: you ${verb} ${target}.`);
-      setTimeout(() => setNotification(null), 4000);
-    } catch {
-      /* the activity itself still works if the record could not be stored */
-    }
-  };
-
-  const openExamFor = (courseCode: string) => {
-    const quiz = todo.data?.data.find((i) => i.type === "QUIZ" && i.course.code === courseCode);
-    if (quiz) {
-      triggerXApi("started", quiz.title);
-      setActiveQuizId(quiz.id);
-    } else {
-      setNotification("There is no exam to take in this course right now.");
-      setTimeout(() => setNotification(null), 4000);
-    }
-  };
+  /** The next quiz this learner can take in a course, if any (from the to-do list). */
+  const nextQuizIn = (courseId: string) => todo.data?.data.find((i) => i.type === "QUIZ" && i.course.id === courseId) ?? null;
 
   const leaveCourse = async (enrollmentId: string, title: string) => {
     setLeaveBusy(true);
@@ -205,11 +161,9 @@ export default function StudentDashboard() {
       }}
     >
 
-      {/* xAPI Real-time Notification Banner */}
       {notification && (
-        <div className="bg-brand/10 border-b border-brand/30 text-brand-fg px-6 py-2 text-xs flex items-center justify-center gap-2 animate-fadeIn">
-          <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-          <span>{notification}</span>
+        <div role="status" className="bg-brand/10 border-b border-brand/30 text-ink px-6 py-2 text-xs text-center">
+          {notification}
         </div>
       )}
 
@@ -259,38 +213,22 @@ export default function StudentDashboard() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-brand-fg" />
-                <h2 className="text-lg font-bold text-ink">My Enrolled Courses</h2>
+                <h2 className="text-lg font-bold text-ink">My courses</h2>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setShowForum(true)}
-                  className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink hover:text-ink rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
-                >
-                  <MessageSquare className="h-3.5 w-3.5 text-orchid" />
-                  <span>Course Forum</span>
-                </button>
-                <button
-                  onClick={() => setShowCalendar(true)}
-                  className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink hover:text-ink rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
-                >
-                  <Calendar className="h-3.5 w-3.5 text-brand-fg" />
-                  <span>Academic Calendar</span>
-                </button>
-                <button
-                  onClick={() => openCatalog("")}
-                  className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand/20 transition-all"
-                >
-                  <Search className="h-3.5 w-3.5" />
-                  <span>Browse Catalog</span>
-                </button>
-              </div>
+              <button
+                onClick={() => openCatalog("")}
+                className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand/20"
+              >
+                <Search className="h-3.5 w-3.5" />
+                <span>Browse catalogue</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {isLoadingEnrollments && <p className="text-xs text-ink-subtle">Loading your courses…</p>}
               {!isLoadingEnrollments && displayCourses.length === 0 && (
                 <div className="md:col-span-2 text-center text-xs text-ink-muted bg-surface border border-line rounded-2xl p-10">
-                  You are not enrolled in any course yet. Use <strong>Browse Catalog</strong> to find one.
+                  You are not enrolled in any course yet. Use <strong>Browse catalogue</strong> to find one.
                 </div>
               )}
               {displayCourses.map((course) => (
@@ -351,11 +289,14 @@ export default function StudentDashboard() {
 
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => openExamFor(course.code)}
-                        className="py-2.5 bg-canvas hover:bg-brand text-ink hover:text-on-brand rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border border-line hover:border-brand transition-all shadow-md"
+                        onClick={() => {
+                          setForumCourseId(course.id);
+                          setShowForum(true);
+                        }}
+                        className="py-2.5 bg-canvas hover:bg-raised text-ink rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border border-line transition-all"
                       >
-                        <PlayCircle className="h-4 w-4" />
-                        <span>Exam</span>
+                        <MessageSquare className="h-4 w-4 text-orchid" />
+                        <span>Forum</span>
                       </button>
 
                       <button
@@ -401,14 +342,14 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* Right Sidebar: Upcoming Deadlines & AI Tutor */}
+          {/* To do and study tutor */}
           <div className="space-y-6">
             {/* Upcoming Schedule / Exams & Assignments */}
             <div id="exams-section" className="bg-surface border border-line rounded-2xl p-5 space-y-4 shadow-lg scroll-mt-20">
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2 text-sm font-bold text-ink">
                   <FileCheck className="h-4 w-4 text-brand-fg" />
-                  <span>Assignments & Exams</span>
+                  <span>To do</span>
                 </div>
                 <span className="text-[11px] text-ink-subtle">{todo.data ? `${todo.data.data.length} to do` : ""}</span>
               </div>
@@ -422,7 +363,7 @@ export default function StudentDashboard() {
                   return (
                     <button
                       key={`${item.type}-${item.id}`}
-                      onClick={() => (quiz ? (triggerXApi("started", item.title), setActiveQuizId(item.id)) : setAssignmentsCourse(item.course.id))}
+                      onClick={() => (quiz ? setActiveQuizId(item.id) : setAssignmentsCourse(item.course.id))}
                       className="w-full text-left p-3 bg-canvas hover:bg-surface/90 rounded-xl border border-line/80 hover:border-brand/50 space-y-2 transition-all group shadow-sm"
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -504,13 +445,14 @@ export default function StudentDashboard() {
             setActiveLessonCourse(null);
             refetchEnrollments();
           }}
-          onProgressUpdated={(newPercent) => {
-            triggerXApi(`advanced course progress to ${newPercent}%`, activeLessonCourse.title);
-          }}
-          onOpenExam={() => {
-            openExamFor(activeLessonCourse.code);
-            setActiveLessonCourse(null);
-          }}
+          onOpenExam={
+            nextQuizIn(activeLessonCourse.id)
+              ? () => {
+                  setActiveQuizId(nextQuizIn(activeLessonCourse.id)!.id);
+                  setActiveLessonCourse(null);
+                }
+              : undefined
+          }
           onOpenCodeLab={(lab) => {
             setActiveCodingLab({ title: `${activeLessonCourse.code}: ${lab.title}`, instructions: lab.instructions });
             setActiveLessonCourse(null);

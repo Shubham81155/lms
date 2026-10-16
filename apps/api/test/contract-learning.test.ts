@@ -122,6 +122,16 @@ describe('contract: courses', () => {
     expect((await (await as('s2')).get('/api/v1/courses/nope')).status).toBe(404);
   });
 
+  it('GET /courses/departments lists departments for staff only', async () => {
+    const campus = await admin.campus.create({ data: { tenantId: 't-h', name: 'Main', code: 'MAIN' } });
+    await admin.department.create({ data: { id: 'd-bio', campusId: campus.id, name: 'Biology', code: 'BIO' } });
+    const res = await (await as('teacher')).get('/api/v1/courses/departments');
+    expect(res.status).toBe(200);
+    check('GET /api/v1/courses/departments', res);
+    expect(res.body.data).toEqual([{ id: 'd-bio', name: 'Biology', code: 'BIO', campus: 'Main' }]);
+    expect((await (await as('s1')).get('/api/v1/courses/departments')).status).toBe(403);
+  });
+
   it('PUT /courses/:id', async () => {
     const res = await (await as('teacher')).put('/api/v1/courses/c1').send({ description: 'Updated' });
     expect(res.status).toBe(200);

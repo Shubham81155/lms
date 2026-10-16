@@ -63,14 +63,14 @@ describe('visibleSections', () => {
 });
 
 describe('role gating', () => {
-  const all = { builder: () => {}, grading: () => {}, questionbank: () => {}, live: () => {}, forum: () => {}, analytics: () => {}, lrs: () => {} };
+  const all = { builder: () => {}, grading: () => {}, questionbank: () => {}, calendar: () => {}, analytics: () => {} };
   const keys = (role?: string | null) => visibleSections('teacher', all, role).flatMap((s) => s.items.map((i) => i.key));
 
   it('hides tools the API would refuse from teaching assistants, keeps the course-level ones', () => {
     const ta = keys('TEACHING_ASSISTANT');
     expect(ta).not.toContain('builder');
     expect(ta).not.toContain('analytics');
-    expect(ta).toEqual(expect.arrayContaining(['grading', 'questionbank', 'live', 'forum', 'lrs']));
+    expect(ta).toEqual(expect.arrayContaining(['grading', 'questionbank', 'calendar']));
   });
 
   it('shows everything to instructors and administrators', () => {
@@ -95,7 +95,7 @@ describe('role gating', () => {
 
 describe('currentTab', () => {
   it('returns the active tab, else the area first tab', () => {
-    expect(currentTab('teacher', 'gradebook').label).toBe('Gradebook & Rubrics');
+    expect(currentTab('student', 'exams').label).toBe('To do');
     expect(currentTab('teacher', undefined).key).toBe('courses');
     expect(currentTab('admin', 'does-not-exist').key).toBe('overview');
   });

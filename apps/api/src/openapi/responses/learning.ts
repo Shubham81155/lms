@@ -233,6 +233,10 @@ const ForumFlagView = ForumFlagRecord.extend({
 export const RESPONSES: ResponseTable = {
   // ---- courses
   'POST /api/v1/courses': { response: data(CreatedCourse, 201), errors: [400, 409] },
+  'GET /api/v1/courses/departments': {
+    response: data(z.array(z.object({ id: z.string(), name: z.string(), code: z.string(), campus: z.string() }))),
+    errors: [403],
+  },
   'GET /api/v1/courses/:id': {
     response: { ...data(CourseDetail), description: 'Metadata for anyone who can see the course; modules only when content is not locked.' },
     errors: [404],

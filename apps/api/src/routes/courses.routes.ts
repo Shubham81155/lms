@@ -151,6 +151,24 @@ router.get(
 );
 
 /**
+ * GET /api/v1/courses/departments
+ * Departments to file a course under, for the people who create and edit courses.
+ */
+router.get(
+  '/departments',
+  authenticateJWT,
+  requireRole('INSTRUCTOR', 'TEACHING_ASSISTANT', 'TENANT_ADMIN', 'SUPER_ADMIN'),
+  route('Failed to load departments', async (req, res) => {
+    const departments = await prisma.department.findMany({
+      where: { campus: { tenantId: tenantIdOf(req) } },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, code: true, campus: { select: { name: true } } },
+    });
+    return res.json({ data: departments.map((d) => ({ id: d.id, name: d.name, code: d.code, campus: d.campus.name })) });
+  })
+);
+
+/**
  * GET /api/v1/courses/:id
  * Metadata for anyone who can see the course; modules and lessons only for enrolled learners,
  * assigned staff, admins and auditors.

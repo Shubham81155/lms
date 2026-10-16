@@ -9,6 +9,8 @@ export interface StaffCourse {
   code: string;
   title: string;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  enrollmentCount: number;
+  moduleCount: number;
 }
 
 /**
@@ -28,7 +30,7 @@ export function useStaffCourses(options: { editableOnly?: boolean } = {}) {
     if (editableOnly && !mayEdit) return [];
     return all
       .filter((c) => admin || (c.instructors ?? []).some((i: any) => i.user?.id === user?.id))
-      .map((c) => ({ id: c.id, code: c.code, title: c.title, status: c.status }));
+      .map((c) => ({ id: c.id, code: c.code, title: c.title, status: c.status, enrollmentCount: c.enrollmentCount ?? 0, moduleCount: c.moduleCount ?? 0 }));
   }, [data, user, editableOnly]);
 
   return { courses, isLoading, error, reload };
