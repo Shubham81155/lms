@@ -133,3 +133,19 @@ nextjs-portal,
   display: none !important;
   visibility: hidden !important;
 }
+
+/* Printing an open certificate prints the certificate alone (CertificateVerification). */
+@media print {
+  body:has(#certificate) * {
+    visibility: hidden;
+  }
+  body:has(#certificate) #certificate,
+  body:has(#certificate) #certificate * {
+    visibility: visible;
+  }
+  body:has(#certificate) #certificate {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+}

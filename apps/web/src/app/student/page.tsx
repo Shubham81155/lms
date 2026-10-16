@@ -57,7 +57,7 @@ export default function StudentDashboard() {
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const [assignmentsCourse, setAssignmentsCourse] = useState<string | undefined>(undefined);
   const [activeCodingLab, setActiveCodingLab] = useState<{ title: string; instructions: string } | null>(null);
-  const [certificate, setCertificate] = useState<{ studentName: string; courseTitle: string; certificateId: string } | null>(null);
+  const [certificate, setCertificate] = useState<string | null>(null);
   const [showCourseCatalog, setShowCourseCatalog] = useState(false);
   const [catalogQuery, setCatalogQuery] = useState("");
   const [showCalendar, setShowCalendar] = useState(false);
@@ -388,7 +388,7 @@ export default function StudentDashboard() {
                       ))}
                     {course.certificateNumber && (
                       <button
-                        onClick={() => setCertificate({ studentName: user?.name ?? "", courseTitle: course.title, certificateId: course.certificateNumber! })}
+                        onClick={() => setCertificate(course.certificateNumber!)}
                         className="w-full py-2 bg-accent/10 hover:bg-accent/10 text-accent border border-accent/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
                       >
                         <Award className="h-4 w-4" />
@@ -474,12 +474,7 @@ export default function StudentDashboard() {
       )}
 
       {certificate && (
-        <CertificateVerification
-          studentName={certificate.studentName}
-          courseTitle={certificate.courseTitle}
-          certificateId={certificate.certificateId}
-          onClose={() => setCertificate(null)}
-        />
+        <CertificateVerification certificateNumber={certificate} onClose={() => setCertificate(null)} />
       )}
 
       {/* Interactive Cloud Coding Sandbox Modal */}

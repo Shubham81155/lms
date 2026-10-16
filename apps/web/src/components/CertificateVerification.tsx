@@ -1,119 +1,130 @@
 "use client";
 
-import React from "react";
-import {
-  X,
-  Award,
-  ShieldCheck,
-  CheckCircle2,
-  Download,
-  Share2,
-  ExternalLink,
-  QrCode,
-} from "lucide-react";
+import React, { useState } from "react";
+import { X, Award, ShieldCheck, Printer, Link2, ExternalLink, AlertTriangle } from "lucide-react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { useApiData } from "@/hooks/useApiData";
+import { useAuth } from "@/context/AuthContext";
 
 interface CertificateVerificationProps {
-  studentName: string;
-  courseTitle: string;
-  certificateId: string;
+  certificateNumber: string;
   onClose: () => void;
 }
 
-export const CertificateVerification: React.FC<CertificateVerificationProps> = ({
-  studentName,
-  courseTitle,
-  certificateId,
-  onClose,
-}) => {
+interface Verified {
+  valid: boolean;
+  certificateNumber: string;
+  issuedAt: string;
+  expiresAt: string | null;
+  issuedTo: string;
+  course: { title: string; code: string };
+  institution: string;
+}
+
+const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+/**
+ * A learner's certificate, read from the same public endpoint anyone uses to verify it, so what is shown is
+ * exactly what a verifier sees. "Print" uses the browser's print dialog (which can save a PDF).
+ */
+export const CertificateVerification: React.FC<CertificateVerificationProps> = ({ certificateNumber, onClose }) => {
   useEscapeKey(onClose);
-  const issueDate = "October 8, 2026";
-  const signatureHash = "0x8f9c7a6e5d4c3b2a10f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7";
+  const { user } = useAuth();
+  const tenant = user?.tenantSlug ?? "";
+  const { data, isLoading, error } = useApiData<Verified>(`/api/v1/certificates/verify/${encodeURIComponent(certificateNumber)}`, tenant ? { tenant } : undefined);
+  const [copied, setCopied] = useState(false);
+
+  const verifyUrl =
+    typeof window === "undefined" ? "" : `${window.location.origin}/verify?number=${encodeURIComponent(certificateNumber)}${tenant ? `&tenant=${encodeURIComponent(tenant)}` : ""}`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(verifyUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      window.prompt("Copy this verification link:", verifyUrl);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Certificate">
-      <div className="bg-surface border border-line rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4 print:static print:bg-white print:p-0" role="dialog" aria-modal="true" aria-labelledby="cert-h">
+      <div className="bg-surface border border-line rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col print:border-0 print:shadow-none">
+        <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
               <Award className="h-5 w-5" />
             </div>
-            <div>
-              <h3 className="font-bold text-sm text-ink">W3C Verifiable Credential</h3>
-              <p className="text-[11px] text-ink-muted">1EdTech Open Badges 3.0 Standard</p>
-            </div>
+            <h3 id="cert-h" className="font-bold text-sm text-ink">Certificate of completion</h3>
           </div>
-
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink transition-colors"
-          >
+          <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Certificate Display Card */}
-        <div className="p-8 bg-gradient-to-b from-surface to-canvas flex flex-col items-center text-center space-y-6">
-          <div className="p-4 rounded-2xl bg-gradient-to-tr from-accent/10 via-brand/10 to-brand/10 border border-accent/30 w-full max-w-lg space-y-4">
-            <div className="text-[11px] uppercase tracking-widest font-bold text-accent">
-              Certificate of Academic Mastery
-            </div>
-
-            <h2 className="text-xl font-bold text-ink tracking-tight">{studentName}</h2>
-
-            <p className="text-xs text-ink">
-              has successfully fulfilled all requirements, proctored assessments, and rigorous laboratory coursework in
+        <div className="p-8 bg-gradient-to-b from-surface to-canvas flex flex-col items-center text-center space-y-6 print:bg-white">
+          {isLoading && <p className="text-xs text-ink-muted">Loading the certificate…</p>}
+          {error && (
+            <p role="alert" className="text-xs text-danger">
+              The certificate could not be loaded. {error}
             </p>
-
-            <div className="text-base font-semibold text-brand-fg py-1 border-y border-line/80">
-              {courseTitle}
+          )}
+          {data && (
+            <div id="certificate" className="w-full max-w-lg rounded-2xl border-2 border-accent/40 p-8 space-y-5 print:border-black">
+              <div className="text-[11px] uppercase tracking-[0.3em] font-bold text-accent print:text-black">{data.institution}</div>
+              <div className="text-xs text-ink-muted print:text-black">This certifies that</div>
+              <div className="text-3xl font-extrabold text-ink tracking-tight print:text-black">{data.issuedTo}</div>
+              <div className="text-xs text-ink-muted print:text-black">has completed</div>
+              <div className="text-lg font-bold text-ink print:text-black">
+                {data.course.title} <span className="text-ink-muted font-semibold">({data.course.code})</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-line text-left text-[11px] print:border-black">
+                <div>
+                  <div className="text-ink-subtle">Issued</div>
+                  <div className="font-semibold text-ink print:text-black">{day(data.issuedAt)}</div>
+                </div>
+                <div>
+                  <div className="text-ink-subtle">{data.expiresAt ? "Valid until" : "Expiry"}</div>
+                  <div className="font-semibold text-ink print:text-black">{data.expiresAt ? day(data.expiresAt) : "Does not expire"}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-ink-subtle">Certificate number</div>
+                  <div className="font-mono font-semibold text-ink print:text-black">{data.certificateNumber}</div>
+                </div>
+                <div className="col-span-2 break-all">
+                  <div className="text-ink-subtle">Verify at</div>
+                  <div className="font-mono text-ink print:text-black">{verifyUrl}</div>
+                </div>
+              </div>
+              <div className={`flex items-center justify-center gap-1.5 text-xs font-semibold print:hidden ${data.valid ? "text-success" : "text-danger"}`}>
+                {data.valid ? <ShieldCheck className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                <span>{data.valid ? "Verified by the institution's records" : "This certificate has expired"}</span>
+              </div>
             </div>
-
-            <div className="flex items-center justify-between text-[11px] text-ink-muted pt-2">
-              <span>Issued: {issueDate}</span>
-              <span className="font-mono text-ink">ID: {certificateId}</span>
-            </div>
-          </div>
-
-          {/* Verification Audit Proof */}
-          <div className="w-full max-w-lg bg-canvas border border-line rounded-xl p-4 text-left space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-success" />
-                <span>Cryptographic Proof Status</span>
-              </span>
-              <span className="text-[10px] bg-success/10 text-success border border-success/30 px-2 py-0.5 rounded-full font-bold">
-                VALID SIGNATURE
-              </span>
-            </div>
-
-            <div className="text-[10px] font-mono text-ink-muted break-all bg-surface p-2 rounded border border-line">
-              <span className="text-ink-subtle">SHA-256 Hash: </span>{signatureHash}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 w-full max-w-lg">
-            <button
-              onClick={() => {
-                alert(`Downloaded Open Badges 3.0 JSON-LD Credential for ${studentName}`);
-              }}
-              className="flex-1 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-brand/20 transition-all"
-            >
-              <Download className="h-4 w-4" />
-              <span>Export Open Badge JSON-LD</span>
-            </button>
-
-            <button
-              onClick={onClose}
-              className="px-5 py-2.5 bg-raised hover:bg-line text-ink rounded-xl text-xs font-semibold transition-colors"
-            >
-              Close
-            </button>
-          </div>
+          )}
         </div>
+
+        {data && (
+          <div className="bg-canvas border-t border-line px-6 py-3.5 flex flex-wrap items-center justify-end gap-2 print:hidden">
+            <button onClick={copy} className="px-3.5 py-2 rounded-xl border border-line bg-surface hover:bg-raised text-xs font-semibold text-ink flex items-center gap-1.5">
+              <Link2 className="h-3.5 w-3.5" />
+              {copied ? "Link copied" : "Copy verification link"}
+            </button>
+            <a
+              href={verifyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 rounded-xl border border-line bg-surface hover:bg-raised text-xs font-semibold text-ink flex items-center gap-1.5"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open verification page
+            </a>
+            <button onClick={() => window.print()} className="px-3.5 py-2 rounded-xl bg-brand hover:bg-brand-hover text-on-brand text-xs font-bold flex items-center gap-1.5">
+              <Printer className="h-3.5 w-3.5" />
+              Print or save as PDF
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

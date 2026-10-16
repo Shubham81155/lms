@@ -12,6 +12,8 @@ export interface UserSession {
   role: Role;
   tenantId: string;
   tenantName: string;
+  /** Used in public links, e.g. certificate verification. */
+  tenantSlug: string;
   targetRoute: string;
 }
 
@@ -22,7 +24,7 @@ interface ApiUser {
   lastName: string;
   role: Role;
   tenantId: string;
-  tenant?: { name?: string };
+  tenant?: { name?: string; slug?: string };
 }
 
 interface AuthContextType {
@@ -46,6 +48,7 @@ function toSession(u: ApiUser): UserSession {
     role: u.role,
     tenantId: u.tenantId,
     tenantName: u.tenant?.name ?? "",
+    tenantSlug: u.tenant?.slug ?? "",
     targetRoute: routeForRole(u.role),
   };
 }
