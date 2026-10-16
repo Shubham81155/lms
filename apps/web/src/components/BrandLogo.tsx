@@ -23,7 +23,6 @@ export function BrandLogo({ href = "/", compact = false, showTagline = true }: B
   if (branding?.logoUrl) {
     return (
       <Link href={href} aria-label={`${name ?? "Home"} home`} className="flex items-center gap-2.5 font-bold text-lg text-ink">
-        {/* eslint-disable-next-line @next/next/no-img-element -- an arbitrary external logo address */}
         <img src={branding.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-contain bg-surface" />
         {!compact && (
           <div className="flex flex-col min-w-0">
