@@ -7,6 +7,7 @@ import { HttpError, route } from '../lib/http';
 import { idSchema, parseBody } from '../lib/validate';
 import { isAdminRole, requireContentAccess, requireCourseEditor, requireCourseStaff } from '../lib/access';
 import { notify } from '../lib/notify';
+import { csvRow } from '../lib/csv';
 import {
   CurveMethod,
   ItemScore,
@@ -140,15 +141,20 @@ router.put(
   })
 );
 
-/** Scores of every active learner for every categorised quiz and assignment. */
-async function scoreItems(courseId: string, learnerIds: string[]) {
+/**
+ * Scores of the given learners for the course's quizzes and assignments: by default only the categorised
+ * ones (what the course grade counts); with `all`, every quiz that has questions and every assignment.
+ */
+async function scoreItems(courseId: string, learnerIds: string[], all = false) {
   const [quizzes, assignments] = await Promise.all([
     prisma.quiz.findMany({
-      where: { courseId, gradeCategoryId: { not: null } },
+      where: { courseId, ...(all ? { questions: { some: {} } } : { gradeCategoryId: { not: null } }) },
+      orderBy: { createdAt: 'asc' },
       select: { id: true, title: true, gradeCategoryId: true, submissions: { where: { submittedAt: { not: null }, userId: { in: learnerIds } }, select: { userId: true, score: true, maxScore: true, answersJson: true } } },
     }),
     prisma.assignment.findMany({
-      where: { courseId, gradeCategoryId: { not: null } },
+      where: { courseId, ...(all ? {} : { gradeCategoryId: { not: null } }) },
+      orderBy: { createdAt: 'asc' },
       select: { id: true, title: true, maxPoints: true, gradeCategoryId: true, submissions: { where: { userId: { in: learnerIds } }, select: { userId: true, grade: true } } },
     }),
   ]);
@@ -181,6 +187,80 @@ async function scoreItems(courseId: string, learnerIds: string[]) {
   }
   return byUser;
 }
+
+/** Every learner against every quiz and assignment, with their course grade: the gradebook grid. */
+async function gradeGrid(courseId: string) {
+  const enrollments = await prisma.enrollment.findMany({
+    where: { courseId, status: { in: [...ACTIVE] } },
+    select: { userId: true, user: { select: { firstName: true, lastName: true, email: true } } },
+    orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
+  });
+  const learnerIds = enrollments.map((e) => e.userId);
+  const [scores, grades, categories] = await Promise.all([
+    scoreItems(courseId, learnerIds, true),
+    prisma.courseGrade.findMany({ where: { courseId }, select: { userId: true, rawPercent: true, curvedPercent: true, letter: true, status: true } }),
+    prisma.gradeCategory.findMany({ where: { courseId }, select: { id: true, name: true } }),
+  ]);
+  const categoryName = new Map(categories.map((c) => [c.id, c.name]));
+  const first = learnerIds.length ? scores.get(learnerIds[0])! : [];
+  const gradeOf = new Map(grades.map((g) => [g.userId, g]));
+  return {
+    items: first.map((i) => ({ id: i.itemId, type: i.type, title: i.title, category: i.categoryId ? categoryName.get(i.categoryId) ?? null : null })),
+    learners: enrollments.map((e) => {
+      const g = gradeOf.get(e.userId);
+      return {
+        userId: e.userId,
+        name: `${e.user.firstName} ${e.user.lastName}`,
+        email: e.user.email,
+        scores: Object.fromEntries(
+          scores.get(e.userId)!.map((i) => [i.itemId, { percent: i.percent === null ? null : Math.round(i.percent * 10) / 10, pending: i.pending, missing: i.missing }])
+        ),
+        courseGrade: g ? { rawPercent: g.rawPercent, curvedPercent: g.curvedPercent, letter: g.letter, status: g.status } : null,
+      };
+    }),
+  };
+}
+
+/** GET /courses/:courseId/gradebook/grid: course staff see every learner's score on every item. */
+router.get(
+  '/courses/:courseId/gradebook/grid',
+  route('Failed to load the grade grid', async (req, res) => {
+    const access = await requireCourseStaff(req, idSchema.parse(req.params.courseId));
+    return res.json({ data: await gradeGrid(access.course.id) });
+  })
+);
+
+/**
+ * GET /courses/:courseId/gradebook/export.csv: the grid as CSV (one row per learner, a percentage column per
+ * item, then the course grade). Audited, since it is a bulk export of student records.
+ */
+router.get(
+  '/courses/:courseId/gradebook/export.csv',
+  route('Failed to export grades', async (req, res) => {
+    const access = await requireCourseStaff(req, idSchema.parse(req.params.courseId));
+    const course = await prisma.course.findUnique({ where: { id: access.course.id }, select: { code: true } });
+    const grid = await gradeGrid(access.course.id);
+    await audit(req, 'GRADES_EXPORTED', access.course.id, { learners: grid.learners.length, items: grid.items.length });
+
+    const cell = (sc: { percent: number | null; pending: boolean; missing: boolean } | undefined) =>
+      !sc ? '' : sc.pending ? 'pending' : sc.missing ? 'missing' : sc.percent;
+    let csv = '\uFEFF' + csvRow(['name', 'email', ...grid.items.map((i) => `${i.title} (%)`), 'course_raw_%', 'course_curved_%', 'letter', 'grade_status']);
+    for (const l of grid.learners) {
+      csv += csvRow([
+        l.name,
+        l.email,
+        ...grid.items.map((i) => cell(l.scores[i.id])),
+        l.courseGrade?.rawPercent ?? '',
+        l.courseGrade?.curvedPercent ?? '',
+        l.courseGrade?.letter ?? '',
+        l.courseGrade?.status ?? '',
+      ]);
+    }
+    res.setHeader('content-type', 'text/csv; charset=utf-8');
+    res.setHeader('content-disposition', `attachment; filename="grades-${(course?.code ?? 'course').replace(/[^\w.-]+/g, '_')}.csv"`);
+    return res.send(csv);
+  })
+);
 
 /**
  * POST /courses/:courseId/gradebook/calculate

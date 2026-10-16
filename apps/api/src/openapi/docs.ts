@@ -397,6 +397,31 @@ export const DOCS: Record<string, OperationDoc> = {
   'PUT /api/v1/courses/:courseId/gradebook/categories': { summary: 'Replace the weighted categories; weights must total 100. Items keep their category when re-saved by name.', body: categoriesSchema, response: ok(z.object({ data: z.array(GradebookCategory) })), errors: [400, 403, 404] },
   'PUT /api/v1/courses/:courseId/gradebook/items': { summary: 'Assign quizzes and assignments of this course to categories.', body: itemsSchema, response: ok(z.object({ data: z.object({ updated: z.number() }) })), errors: [400, 403, 404] },
   'PUT /api/v1/courses/:courseId/gradebook/curve': { summary: 'Set the curve applied to every learner.', body: curveSchema, response: ok(z.object({ data: z.object({ method: z.string(), value: z.number() }) })), errors: [400, 403, 404] },
+  'GET /api/v1/courses/:courseId/gradebook/grid': {
+    summary: 'Course staff: every active learner against every quiz and assignment (percent, pending or missing), with their course grade.',
+    response: ok(
+      z.object({
+        data: z.object({
+          items: z.array(z.object({ id: z.string(), type: z.enum(['QUIZ', 'ASSIGNMENT']), title: z.string(), category: z.string().nullable() })),
+          learners: z.array(
+            z.object({
+              userId: z.string(),
+              name: z.string(),
+              email: z.string(),
+              scores: z.record(z.string(), z.object({ percent: z.number().nullable(), pending: z.boolean(), missing: z.boolean() })),
+              courseGrade: z.object({ rawPercent: z.number().nullable(), curvedPercent: z.number().nullable(), letter: z.string().nullable(), status: z.string() }).nullable(),
+            })
+          ),
+        }),
+      })
+    ),
+    errors: [403, 404],
+  },
+  'GET /api/v1/courses/:courseId/gradebook/export.csv': {
+    summary: 'Course staff: the grade grid as CSV (one row per learner, a percentage column per item, then the course grade). Audited.',
+    response: { status: 200, contentType: 'text/csv', schema: z.string(), description: 'CSV attachment' },
+    errors: [403, 404],
+  },
   'POST /api/v1/courses/:courseId/gradebook/calculate': {
     summary: 'Compute draft grades for all active learners. Approved grades are left alone.',
     response: ok(z.object({ data: z.object({ learners: z.number(), calculated: z.number(), skippedApproved: z.number() }) })),

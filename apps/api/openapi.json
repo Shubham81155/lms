@@ -12868,6 +12868,263 @@
         }
       }
     },
+    "/api/v1/courses/{courseId}/gradebook/export.csv": {
+      "get": {
+        "operationId": "getCoursesCourseIdGradebookExportCsv",
+        "summary": "Course staff: the grade grid as CSV (one row per learner, a percentage column per item, then the course grade). Audited.",
+        "tags": [
+          "courses"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "courseId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV attachment",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses/{courseId}/gradebook/grid": {
+      "get": {
+        "operationId": "getCoursesCourseIdGradebookGrid",
+        "summary": "Course staff: every active learner against every quiz and assignment (percent, pending or missing), with their course grade.",
+        "tags": [
+          "courses"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "courseId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "QUIZ",
+                                  "ASSIGNMENT"
+                                ]
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "category": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "title",
+                              "category"
+                            ]
+                          }
+                        },
+                        "learners": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string"
+                              },
+                              "scores": {
+                                "type": "object",
+                                "additionalProperties": {
+                                  "type": "object",
+                                  "properties": {
+                                    "percent": {
+                                      "type": "number",
+                                      "nullable": true
+                                    },
+                                    "pending": {
+                                      "type": "boolean"
+                                    },
+                                    "missing": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "percent",
+                                    "pending",
+                                    "missing"
+                                  ]
+                                }
+                              },
+                              "courseGrade": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "rawPercent": {
+                                    "type": "number",
+                                    "nullable": true
+                                  },
+                                  "curvedPercent": {
+                                    "type": "number",
+                                    "nullable": true
+                                  },
+                                  "letter": {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "rawPercent",
+                                  "curvedPercent",
+                                  "letter",
+                                  "status"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "name",
+                              "email",
+                              "scores",
+                              "courseGrade"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "learners"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/courses/{courseId}/gradebook/items": {
       "put": {
         "operationId": "putCoursesCourseIdGradebookItems",
