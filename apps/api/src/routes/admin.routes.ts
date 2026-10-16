@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { csvRow } from '../lib/csv';
 import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { EnrollmentStatus } from '@enterprise-lms/database';
@@ -33,6 +34,9 @@ export const auditQuery = z
     action: z.string().trim().min(1).max(100).optional(),
     resourceType: z.string().trim().min(1).max(100).optional(),
     userId: idSchema.optional(),
+    /** Part of the acting person's e-mail address. */
+    actor: z.string().trim().min(1).max(254).optional(),
+    resourceId: z.string().trim().min(1).max(200).optional(),
     startDate: z.coerce.date().optional(),
     endDate: z.coerce.date().optional(),
   })
@@ -109,21 +113,84 @@ router.patch(
   })
 );
 
+function auditWhere(tenantId: string, q: z.infer<typeof auditQuery>) {
+  const where: any = { tenantId };
+  if (q.action) where.action = q.action;
+  if (q.resourceType) where.resourceType = q.resourceType;
+  if (q.resourceId) where.resourceId = q.resourceId;
+  if (q.userId) where.userId = q.userId;
+  if (q.actor) where.user = { email: { contains: q.actor, mode: 'insensitive' } };
+  if (q.startDate || q.endDate) {
+    where.createdAt = { ...(q.startDate ? { gte: q.startDate } : {}), ...(q.endDate ? { lte: q.endDate } : {}) };
+  }
+  return where;
+}
+
+const AUDITORS = ['SUPER_ADMIN', 'TENANT_ADMIN', 'AUDITOR'] as const;
+
+/** GET /api/v1/admin/audit-logs/actions: the action names recorded so far, for filtering. */
+router.get(
+  '/audit-logs/actions',
+  requireRole(...AUDITORS),
+  route('Failed to list audit actions', async (req, res) => {
+    const rows = await prisma.auditLog.groupBy({ by: ['action'], where: { tenantId: tenantIdOf(req) }, _count: { action: true }, orderBy: { action: 'asc' } });
+    return res.json({ data: rows.map((r) => ({ action: r.action, count: r._count.action })) });
+  })
+);
+
+const EXPORT_MAX = 50_000;
+const EXPORT_PAGE = 2_000;
+
+/**
+ * GET /api/v1/admin/audit-logs/export.csv: the filtered audit trail as CSV (newest first, at most 50,000
+ * rows), streamed in pages. The export itself is audited.
+ */
+router.get(
+  '/audit-logs/export.csv',
+  requireRole(...AUDITORS),
+  route('Failed to export audit logs', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const q = parseQuery(req, auditQuery);
+    const where = auditWhere(tenantId, q);
+    await logAuditEvent({
+      tenantId, userId: req.user!.id, action: 'AUDIT_LOG_EXPORTED', resourceType: 'AUDIT_LOG',
+      ipAddress: req.ip, userAgent: req.headers['user-agent'],
+      diffJson: { filters: { ...q, page: undefined, limit: undefined } },
+    });
+
+    res.setHeader('content-type', 'text/csv; charset=utf-8');
+    res.setHeader('content-disposition', `attachment; filename="audit-log-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.write('﻿');
+    res.write(csvRow(['time', 'action', 'resource_type', 'resource_id', 'user_email', 'user_role', 'ip_address', 'user_agent', 'details']));
+    let cursor: string | undefined;
+    for (let sent = 0; sent < EXPORT_MAX; ) {
+      const batch = await prisma.auditLog.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: Math.min(EXPORT_PAGE, EXPORT_MAX - sent),
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        include: { user: { select: { email: true, role: true } } },
+      });
+      for (const l of batch) {
+        res.write(csvRow([l.createdAt, l.action, l.resourceType, l.resourceId, l.user?.email, l.user?.role, l.ipAddress, l.userAgent, l.diffJson ? JSON.stringify(l.diffJson) : '']));
+      }
+      sent += batch.length;
+      if (batch.length < EXPORT_PAGE) break;
+      cursor = batch[batch.length - 1].id;
+    }
+    res.end();
+  })
+);
+
 /** GET /api/v1/admin/audit-logs - administrators and auditors */
 router.get(
   '/audit-logs',
   requireRole('SUPER_ADMIN', 'TENANT_ADMIN', 'AUDITOR'),
   route('Failed to retrieve audit logs', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const { page, limit, action, resourceType, userId, startDate, endDate } = parseQuery(req, auditQuery);
-
-    const where: any = { tenantId };
-    if (action) where.action = action;
-    if (resourceType) where.resourceType = resourceType;
-    if (userId) where.userId = userId;
-    if (startDate || endDate) {
-      where.createdAt = { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) };
-    }
+    const q = parseQuery(req, auditQuery);
+    const { page, limit } = q;
+    const where = auditWhere(tenantId, q);
 
     const [total, logs] = await Promise.all([
       prisma.auditLog.count({ where }),

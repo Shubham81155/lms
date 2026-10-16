@@ -342,6 +342,11 @@ export const RESPONSES: ResponseTable = {
   // ---- tenant settings, audit log, stats
   'GET /api/v1/admin/tenant': { response: ok(z.object({ data: TenantSettings })), errors: [404] },
   'PATCH /api/v1/admin/tenant': { response: ok(z.object({ data: TenantRecord })), errors: [400, 404] },
+  'GET /api/v1/admin/audit-logs/actions': { response: ok(z.object({ data: z.array(z.object({ action: z.string(), count: z.number() })) })) },
+  'GET /api/v1/admin/audit-logs/export.csv': {
+    response: { status: 200, contentType: 'text/csv', schema: z.string(), description: 'The filtered audit trail as CSV, newest first, at most 50,000 rows (sent as an attachment).' },
+    errors: [400],
+  },
   'GET /api/v1/admin/audit-logs': { response: ok(z.object({ data: z.array(AuditLogItem), pagination: Pagination })), errors: [400] },
   'GET /api/v1/admin/stats': { response: ok(z.object({ data: AdminStats })) },
 

@@ -20,7 +20,7 @@ import {
 import { routeForRole, type Role } from "@/lib/roles";
 
 /** The three signed-in areas. Which one a person lands in follows from their role (see roles.ts). */
-export type Area = "student" | "teacher" | "admin";
+export type Area = "student" | "teacher" | "admin" | "audit";
 
 export interface NavItem {
   key: string;
@@ -50,6 +50,7 @@ export const AREA_LABEL: Record<Area, string> = {
   student: "Student",
   teacher: "Teaching",
   admin: "Administration",
+  audit: "Audit",
 };
 
 const tab = (key: string, label: string, icon: LucideIcon, href: string): NavItem => ({ key, label, icon, kind: "tab", href });
@@ -117,11 +118,18 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
       items: [action("lrs", "Learning records (xAPI)", Activity)],
     },
   ],
+  audit: [
+    {
+      id: "review",
+      title: "Review",
+      items: [tab("log", "Audit log", ScrollText, "/audit")],
+    },
+  ],
 };
 
 export function areaForRole(role: string | null | undefined): Area {
   const route = routeForRole(role ?? "");
-  return route === "/admin" ? "admin" : route === "/teacher" ? "teacher" : "student";
+  return route === "/admin" ? "admin" : route === "/teacher" ? "teacher" : route === "/audit" ? "audit" : "student";
 }
 
 /**

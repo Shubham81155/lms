@@ -31,7 +31,7 @@ describe('resolveDeepLink', () => {
     expect(resolveDeepLink('/courses/c1/gradebook', 'STUDENT')).toBe('/student');
     expect(resolveDeepLink('/somewhere/else', 'INSTRUCTOR')).toBe('/teacher');
     expect(resolveDeepLink('/courses', 'STUDENT')).toBe('/student');
-    expect(resolveDeepLink('/', 'AUDITOR')).toBe('/student');
+    expect(resolveDeepLink('/', 'AUDITOR')).toBe('/audit');
   });
 
   it('ignores a query string and refuses odd ids', () => {

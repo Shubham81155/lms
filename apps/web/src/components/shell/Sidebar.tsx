@@ -11,6 +11,7 @@ const AVATAR: Record<Area, string> = {
   student: "bg-brand/15 text-brand-fg border-brand/40",
   teacher: "bg-orchid/15 text-orchid border-orchid/40",
   admin: "bg-accent/15 text-accent border-accent/40",
+  audit: "bg-success/15 text-success border-success/40",
 };
 
 interface SidebarProps {

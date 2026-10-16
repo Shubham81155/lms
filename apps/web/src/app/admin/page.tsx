@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { AppShell } from "@/components/shell/AppShell";
 import { Users, Key, Database, Terminal, Plus, UserCog } from "lucide-react";
-import { useAuditLogs } from "@/hooks/useAdmin";
 import { useAuth } from "@/context/AuthContext";
 import { useApiData } from "@/hooks/useApiData";
 import { SamlPanel, ScimPanel, SsoPanel } from "@/components/admin/IdentityPanels";
@@ -26,6 +25,7 @@ import { useOpenIntent } from "@/hooks/useOpenIntent";
 import { AssessmentManager } from "@/components/AssessmentManager";
 import { CalendarManager } from "@/components/CalendarManager";
 import { UserManager } from "@/components/UserManager";
+import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { createCourseWithCurriculum } from "@/hooks/useCourses";
 import { plural } from "@/lib/plural";
 
@@ -42,7 +42,6 @@ export default function AdminDashboard() {
   const show = (tool: CourseTool | "builder", courseId: string | null = null) => setOpen({ tool, courseId });
   const close = () => setOpen(null);
 
-  const { logs } = useAuditLogs();
   const { user } = useAuth();
 
   // A link from a notification or email can ask for a tool, on a particular course (see lib/deeplink).
@@ -206,25 +205,8 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === "audit" && (
-          <div className="bg-surface border border-line rounded-3xl p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between border-b border-line pb-3">
-              <div>
-                <h3 className="font-bold text-base text-ink">Audit log</h3>
-                <p className="text-xs text-ink-muted">Append-only for the application: it can add entries but not change or delete them.</p>
-              </div>
-            </div>
-
-            <div className="bg-canvas rounded-2xl p-4 font-mono text-[11px] text-ink space-y-2 overflow-x-auto">
-              {logs && logs.length > 0 ? (
-                logs.map((log) => (
-                  <p key={log.id} className="text-success">
-                    [{new Date(log.createdAt).toISOString()}] {log.action}: resource="{log.resourceType}" {log.resourceId ? `id="${log.resourceId}"` : ""} user="{log.userId || "system"}"
-                  </p>
-                ))
-              ) : (
-                <p className="text-ink-subtle">No audit events recorded yet.</p>
-              )}
-            </div>
+          <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
+            <AuditLogPanel />
           </div>
         )}
 

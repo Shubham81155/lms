@@ -24,6 +24,8 @@ import * as r_privacy from '../routes/privacy.routes';
 
 /** Keyed `METHOD /express/style/path`. */
 export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 'body'>> = {
+  "GET /api/v1/admin/audit-logs/actions": { summary: "The action names recorded in this organisation's audit trail, with counts, for filtering." },
+  "GET /api/v1/admin/audit-logs/export.csv": { summary: "The audit trail as CSV with the same filters as GET /admin/audit-logs (at most 50,000 rows). The export is itself audited.", query: r_admin.auditQuery as never },
   "GET /api/v1/admin/audit-logs": { summary: "administrators and auditors", query: r_admin.auditQuery as never },
   "GET /api/v1/admin/campuses": { summary: "the hierarchy, with how many courses each department runs." },
   "POST /api/v1/admin/campuses": { summary: "POST /api/v1/admin/campuses", body: r_org.campusSchema },

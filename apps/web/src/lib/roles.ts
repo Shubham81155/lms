@@ -10,7 +10,8 @@ export type Role =
 const AREAS: { prefix: string; roles: Role[] }[] = [
   { prefix: "/admin", roles: ["TENANT_ADMIN", "SUPER_ADMIN"] },
   { prefix: "/teacher", roles: ["INSTRUCTOR", "TEACHING_ASSISTANT"] },
-  { prefix: "/student", roles: ["STUDENT", "PARENT_GUARDIAN", "AUDITOR"] },
+  { prefix: "/audit", roles: ["AUDITOR"] },
+  { prefix: "/student", roles: ["STUDENT", "PARENT_GUARDIAN"] },
 ];
 
 /** Landing page for a role. */

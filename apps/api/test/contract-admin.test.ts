@@ -103,6 +103,29 @@ describe('tenant settings, audit log and stats', () => {
     expect((await (await as('teacher')).get('/api/v1/admin/tenant')).status).toBe(403);
   });
 
+  it('audit log: filters, action list and CSV export for auditors', async () => {
+    const aud = await as('auditor');
+    const actions = check('GET /api/v1/admin/audit-logs/actions', await aud.get('/api/v1/admin/audit-logs/actions'));
+    expect(actions.data.map((a: any) => a.action)).toContain('SEEDED_ORPHAN');
+
+    const byActor = await aud.get('/api/v1/admin/audit-logs?actor=AUDITOR@x.edu&limit=100');
+    expect(byActor.status).toBe(200);
+    expect(byActor.body.data.length).toBeGreaterThan(0);
+    expect(byActor.body.data.every((l: any) => l.user?.email === 'auditor@x.edu')).toBe(true);
+
+    const csv = await aud.get('/api/v1/admin/audit-logs/export.csv?action=SEEDED_ORPHAN');
+    check('GET /api/v1/admin/audit-logs/export.csv', { ...csv, body: csv.text } as any);
+    expect(csv.headers['content-type']).toContain('text/csv');
+    expect(csv.headers['content-disposition']).toContain('attachment');
+    const lines = csv.text.replace(/^\uFEFF/, '').trim().split('\r\n');
+    expect(lines[0]).toBe('time,action,resource_type,resource_id,user_email,user_role,ip_address,user_agent,details');
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain('SEEDED_ORPHAN');
+    expect(await admin.auditLog.count({ where: { action: 'AUDIT_LOG_EXPORTED' } })).toBe(1);
+
+    expect((await (await as('teacher')).get('/api/v1/admin/audit-logs/export.csv')).status).toBe(403);
+  });
+
   it('GET /admin/audit-logs (including an entry without a user)', async () => {
     const res = await (await as('auditor')).get('/api/v1/admin/audit-logs?limit=100');
     const body = check('GET /api/v1/admin/audit-logs', res);
