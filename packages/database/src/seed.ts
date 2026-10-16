@@ -178,7 +178,6 @@ async function main() {
       title: 'Advanced Distributed Systems & Microservices',
       status: 'PUBLISHED',
       passingGradePercent: 70.0,
-      enableProctoring: true,
     },
   });
 
@@ -198,7 +197,6 @@ async function main() {
       title: 'Enterprise Data Governance & FERPA Compliance',
       status: 'PUBLISHED',
       passingGradePercent: 75.0,
-      enableProctoring: false,
     },
   });
   console.log(`✓ Courses created: ${course1.code}, ${course2.code}`);

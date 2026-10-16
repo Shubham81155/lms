@@ -79,7 +79,6 @@ export const CourseListItem = z.object({
   thumbnailUrl: z.string().nullable(),
   status: CourseStatus,
   passingGradePercent: z.number(),
-  enableProctoring: z.boolean(),
   allowSelfEnroll: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),

@@ -31,7 +31,6 @@ export interface CourseDraft {
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   passingGradePercent: number;
   allowSelfEnroll: boolean;
-  enableProctoring: boolean;
   modules: BuilderModule[];
 }
 
@@ -46,8 +45,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
   const [courseCode, setCourseCode] = useState("");
   const [courseStatus, setCourseStatus] = useState<CourseDraft["status"]>("DRAFT");
   const [passingGradePercent, setPassingGradePercent] = useState(70);
-  const [allowSelfEnroll, setAllowSelfEnroll] = useState(true);
-  const [enableProctoring, setEnableProctoring] = useState(true);
+  const [allowSelfEnroll, setAllowSelfEnroll] = useState(false);
 
   const [modules, setModules] = useState<BuilderModule[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -134,7 +132,6 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
         status: courseStatus,
         passingGradePercent,
         allowSelfEnroll,
-        enableProctoring,
         modules,
       });
       onClose();
@@ -154,9 +151,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
               <Layers className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="course-builder-h" className="font-bold text-sm text-ink">Course & Curriculum Designer</h3>
+              <h3 id="course-builder-h" className="font-bold text-sm text-ink">New course</h3>
               <p className="text-[11px] text-ink-muted">
-                Full Lifecycle Management • SCORM / LTI / AI Bloom's Taxonomy
+                Set up the course, its modules and lessons
               </p>
             </div>
           </div>
@@ -257,15 +254,6 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                     className="rounded bg-surface border-line text-brand-fg"
                   />
                   <span className="text-ink">Allow Self-Enrollment</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={enableProctoring}
-                    onChange={(e) => setEnableProctoring(e.target.checked)}
-                    className="rounded bg-surface border-line text-brand-fg"
-                  />
-                  <span className="text-ink">Mandate AI Proctoring</span>
                 </label>
               </div>
             </div>

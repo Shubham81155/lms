@@ -2,6 +2,9 @@
 
 ## 1. Concurrency Benchmarks & Target SLAs
 
+> These are **targets** for a production deployment, not measured results. The repository does not contain
+> Kubernetes manifests, a Kafka queue or multi-region infrastructure yet (see `docs/ROADMAP.md`).
+
 | Metric | Target SLA | Architecture Strategy |
 | :--- | :--- | :--- |
 | **Simultaneous Exam Takers** | 50,000 active concurrent users | Redis state caching, batch submission queue (Kafka), read-replicas. |

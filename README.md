@@ -1,6 +1,7 @@
 # Enterprise Educational Learning Management System (LMS)
 
-> Enterprise-Grade, Multi-Tenant, Cloud-Native LMS with SCORM, xAPI, LTI 1.3 Advantage, AI Proctoring, and FERPA/SOC2 Compliance.
+> Multi-tenant LMS for universities and training organisations: courses, quizzes, assignments, gradebook,
+> live classes, LTI 1.3 launch, xAPI learning records, SSO/SCIM, and privacy tooling for FERPA and GDPR requests.
 
 ---
 
@@ -29,7 +30,6 @@ LMS/
 │   └── web/                 # Next.js Enterprise Student & Instructor Portal
 ├── packages/
 │   ├── database/            # Multi-Tenant Prisma Schema & PostgreSQL RLS Policies
-│   ├── standards/           # SCORM 1.2/2004, xAPI (Tin Can), & LTI 1.3 Advantage specs
 │   └── security/            # AES-256-GCM Field-Level Encryption & RBAC/ABAC engine
 ├── docs/
 │   └── architecture/        # In-depth architectural, compliance, and multi-tenancy guides
@@ -39,19 +39,28 @@ LMS/
 
 ---
 
-## Key Enterprise Highlights
+## What it does
 
-1. **Multi-Tenancy & White-Labeling**:
-   - Dynamic tenant resolution via custom domains (`learn.university.edu`) and subdomains.
-   - Database-level isolation with PostgreSQL Row-Level Security (RLS).
-2. **EdTech Interoperability Standards**:
-   - **SCORM 1.2 & 2004 (3rd & 4th Editions)** runtime engines.
-   - **xAPI (Tin Can API)** and Learning Record Store (LRS) event ingestion.
-   - **LTI 1.3 Advantage** (Assignments & Grades, Names & Roles, Deep Linking).
-3. **Security & Regulatory Compliance**:
-   - **FERPA**, **COPPA**, **GDPR**, and **SOC 2 Type II** audit trails.
-   - Field-Level Encryption (AES-256-GCM) for student PII.
-   - AI-powered anti-cheat proctoring & telemetry logging.
+1. **Multi-tenancy and white-labelling**
+   - Tenants are resolved by custom domain (`learn.university.edu`) or subdomain.
+   - Isolation is enforced in the database by PostgreSQL row-level security, as well as in queries.
+2. **Teaching and learning**
+   - Courses, modules and lessons; quizzes with timing, attempts, auto-grading and manual grading; assignments with
+     rubrics, grade appeals and plagiarism-provider callbacks; a weighted gradebook with two-person grade approval.
+   - Live classes on LiveKit, forums with moderation, a calendar with iCal export, notifications by e-mail.
+3. **Interoperability**
+   - **LTI 1.3** resource-link launch (signature-verified). Assignment and Grade Services, Names and Roles and Deep
+     Linking are not implemented yet.
+   - **xAPI** statements are stored and queryable in PostgreSQL. SCORM packages are not supported yet.
+   - **SCIM 2.0** user provisioning, **OIDC** and **SAML 2.0** single sign-on.
+4. **Security and privacy**
+   - Append-only audit trail enforced by the database, MFA (TOTP), server-side session revocation.
+   - Self-serve personal-data export, directory opt-out and erasure for FERPA and GDPR requests.
+   - Quiz proctoring records browser events (tab switches, leaving full screen, copy and paste). It does not use a
+     webcam and does not decide anything on its own: staff review the events.
+5. **AI assistance (optional)**
+   - With `GEMINI_API_KEY` set, learners get a study tutor and instructors get a draft course outline from a topic.
+     Without it, the AI features are switched off and say so.
 
 ---
 

@@ -3246,7 +3246,6 @@ export interface operations {
                             /** @enum {string} */
                             status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
                             passingGradePercent: number;
-                            enableProctoring: boolean;
                             allowSelfEnroll: boolean;
                             gradeCurveMethod: string;
                             gradeCurveValue: number;
@@ -4016,7 +4015,6 @@ export interface operations {
                             primaryColor: string | null;
                             secondaryColor: string | null;
                             faviconUrl: string | null;
-                            customCss: string | null;
                             dataRegion: string;
                             ferpaCompliant: boolean;
                             coppaCompliant: boolean;
@@ -4076,7 +4074,6 @@ export interface operations {
                     primaryColor?: string;
                     secondaryColor?: string;
                     faviconUrl?: string | "" | unknown;
-                    customCss?: string | null;
                     ferpaCompliant?: boolean;
                     coppaCompliant?: boolean;
                 };
@@ -4103,7 +4100,6 @@ export interface operations {
                             primaryColor: string | null;
                             secondaryColor: string | null;
                             faviconUrl: string | null;
-                            customCss: string | null;
                             dataRegion: string;
                             ferpaCompliant: boolean;
                             coppaCompliant: boolean;
@@ -7016,7 +7012,6 @@ export interface operations {
                             /** @enum {string} */
                             status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
                             passingGradePercent: number;
-                            enableProctoring: boolean;
                             allowSelfEnroll: boolean;
                             createdAt: string;
                             updatedAt: string;
@@ -7070,7 +7065,6 @@ export interface operations {
                     syllabus?: string;
                     thumbnailUrl?: string | "";
                     passingGradePercent?: number;
-                    enableProctoring?: boolean;
                     allowSelfEnroll?: boolean;
                     /** @enum {string} */
                     status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -7098,7 +7092,6 @@ export interface operations {
                             /** @enum {string} */
                             status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
                             passingGradePercent: number;
-                            enableProctoring: boolean;
                             allowSelfEnroll: boolean;
                             gradeCurveMethod: string;
                             gradeCurveValue: number;
@@ -8666,7 +8659,6 @@ export interface operations {
                             /** @enum {string} */
                             status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
                             passingGradePercent: number;
-                            enableProctoring: boolean;
                             allowSelfEnroll: boolean;
                             gradeCurveMethod: string;
                             gradeCurveValue: number;
@@ -8766,7 +8758,6 @@ export interface operations {
                     syllabus?: string;
                     thumbnailUrl?: string | "";
                     passingGradePercent?: number;
-                    enableProctoring?: boolean;
                     allowSelfEnroll?: boolean;
                     /** @enum {string} */
                     status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -8794,7 +8785,6 @@ export interface operations {
                             /** @enum {string} */
                             status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
                             passingGradePercent: number;
-                            enableProctoring: boolean;
                             allowSelfEnroll: boolean;
                             gradeCurveMethod: string;
                             gradeCurveValue: number;

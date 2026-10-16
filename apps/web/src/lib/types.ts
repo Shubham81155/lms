@@ -101,7 +101,6 @@ export interface Course {
   tenantId?: string;
   departmentId?: string | null;
   syllabus?: string | null;
-  enableProctoring?: boolean;
   allowSelfEnroll?: boolean;
   createdAt?: string;
   updatedAt?: string;

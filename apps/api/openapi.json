@@ -1700,9 +1700,6 @@
                           "passingGradePercent": {
                             "type": "number"
                           },
-                          "enableProctoring": {
-                            "type": "boolean"
-                          },
                           "allowSelfEnroll": {
                             "type": "boolean"
                           },
@@ -1849,7 +1846,6 @@
                           "thumbnailUrl",
                           "status",
                           "passingGradePercent",
-                          "enableProctoring",
                           "allowSelfEnroll",
                           "gradeCurveMethod",
                           "gradeCurveValue",
@@ -3324,10 +3320,6 @@
                           "type": "string",
                           "nullable": true
                         },
-                        "customCss": {
-                          "type": "string",
-                          "nullable": true
-                        },
                         "dataRegion": {
                           "type": "string"
                         },
@@ -3374,7 +3366,6 @@
                         "primaryColor",
                         "secondaryColor",
                         "faviconUrl",
-                        "customCss",
                         "dataRegion",
                         "ferpaCompliant",
                         "coppaCompliant",
@@ -3501,11 +3492,6 @@
                       }
                     ]
                   },
-                  "customCss": {
-                    "type": "string",
-                    "nullable": true,
-                    "maxLength": 20000
-                  },
                   "ferpaCompliant": {
                     "type": "boolean"
                   },
@@ -3574,10 +3560,6 @@
                           "type": "string",
                           "nullable": true
                         },
-                        "customCss": {
-                          "type": "string",
-                          "nullable": true
-                        },
                         "dataRegion": {
                           "type": "string"
                         },
@@ -3612,7 +3594,6 @@
                         "primaryColor",
                         "secondaryColor",
                         "faviconUrl",
-                        "customCss",
                         "dataRegion",
                         "ferpaCompliant",
                         "coppaCompliant",
@@ -9385,9 +9366,6 @@
                           "passingGradePercent": {
                             "type": "number"
                           },
-                          "enableProctoring": {
-                            "type": "boolean"
-                          },
                           "allowSelfEnroll": {
                             "type": "boolean"
                           },
@@ -9460,7 +9438,6 @@
                           "thumbnailUrl",
                           "status",
                           "passingGradePercent",
-                          "enableProctoring",
                           "allowSelfEnroll",
                           "createdAt",
                           "updatedAt",
@@ -9579,9 +9556,6 @@
                     "minimum": 0,
                     "maximum": 100
                   },
-                  "enableProctoring": {
-                    "type": "boolean"
-                  },
                   "allowSelfEnroll": {
                     "type": "boolean"
                   },
@@ -9657,9 +9631,6 @@
                         "passingGradePercent": {
                           "type": "number"
                         },
-                        "enableProctoring": {
-                          "type": "boolean"
-                        },
                         "allowSelfEnroll": {
                           "type": "boolean"
                         },
@@ -9733,7 +9704,6 @@
                         "thumbnailUrl",
                         "status",
                         "passingGradePercent",
-                        "enableProctoring",
                         "allowSelfEnroll",
                         "gradeCurveMethod",
                         "gradeCurveValue",
@@ -12983,9 +12953,6 @@
                         "passingGradePercent": {
                           "type": "number"
                         },
-                        "enableProctoring": {
-                          "type": "boolean"
-                        },
                         "allowSelfEnroll": {
                           "type": "boolean"
                         },
@@ -13230,7 +13197,6 @@
                         "thumbnailUrl",
                         "status",
                         "passingGradePercent",
-                        "enableProctoring",
                         "allowSelfEnroll",
                         "gradeCurveMethod",
                         "gradeCurveValue",
@@ -13346,9 +13312,6 @@
                     "minimum": 0,
                     "maximum": 100
                   },
-                  "enableProctoring": {
-                    "type": "boolean"
-                  },
                   "allowSelfEnroll": {
                     "type": "boolean"
                   },
@@ -13421,9 +13384,6 @@
                         "passingGradePercent": {
                           "type": "number"
                         },
-                        "enableProctoring": {
-                          "type": "boolean"
-                        },
                         "allowSelfEnroll": {
                           "type": "boolean"
                         },
@@ -13451,7 +13411,6 @@
                         "thumbnailUrl",
                         "status",
                         "passingGradePercent",
-                        "enableProctoring",
                         "allowSelfEnroll",
                         "gradeCurveMethod",
                         "gradeCurveValue",

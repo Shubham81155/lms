@@ -24,7 +24,7 @@
 ### Encryption at Rest & In Transit
 - **TLS 1.3** enforced with HSTS (HTTP Strict Transport Security, 1-year max age, includeSubDomains).
 - **Storage Tier**: All PostgreSQL volumes, Redis clusters, and S3 buckets encrypted with **AES-256**.
-- **Field-Level Encryption (FLE)**: PII fields (SSN, national identifiers, birthdays) are encrypted in application memory via **AES-256-GCM** with a master HSM/KMS-managed key before touching the database.
+- **Field-Level Encryption (FLE)**: secrets stored per user (the MFA TOTP secret) are encrypted in the application with **AES-256-GCM** before they reach the database. The key comes from `PII_ENCRYPTION_KEY`; an HSM/KMS-managed key is not wired up yet. The LMS does not collect SSNs or birth dates.
 
 ### Zero Trust & Defense in Depth
 - **Internal Service Mesh**: mTLS between all microservices (Istio / Linkerd).

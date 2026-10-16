@@ -14,7 +14,6 @@
     "baseUrl": ".",
     "paths": {
       "@enterprise-lms/database": ["packages/database/src/index.ts"],
-      "@enterprise-lms/standards": ["packages/standards/src/index.ts"],
       "@enterprise-lms/security": ["packages/security/src/index.ts"]
     }
   },

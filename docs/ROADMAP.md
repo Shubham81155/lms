@@ -43,7 +43,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 |---|---|---|
 | xAPI statements stored and queryable | Done | automatic statements for quizzes and completions |
 | LTI 1.3 launch (signature-verified, no auto-provisioning) | Done | |
-| SCORM 1.2 / 2004 runtime adapters | Partial | library code; no package upload/player route |
+| SCORM 1.2 / 2004 package upload and player | Open | needs object storage first; the unused adapter library was removed |
 | HLS/DASH video pipeline, DRM | Open | watermark overlay exists in the player |
 | Offline / PWA access | Open | |
 
@@ -83,8 +83,8 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | Tenant data export (portability) | Done | |
 | **Campus / department hierarchy**, white-label branding, compliance posture report (measured facts, declarations) | Done | admin screens included |
 | **Append-only audit trail** (database role cannot update or delete audit rows) | Done | enforced and tested at the database |
-| OneRoster / SIS-ERP connectors (Banner, PowerSchool, Workday, SAP, Salesforce) | Open | adapter library only |
-| Open Badges 3.0 issuance, PDF certificates | Partial | credential engine exists; certificate PDF not rendered |
+| OneRoster / SIS-ERP connectors (Banner, PowerSchool, Workday, SAP, Salesforce) | Open | |
+| Open Badges 3.0 issuance | Open | needs server-side signing keys |
 | GDPR access, erasure and FERPA directory opt-out | Done | self-serve JSON export, account erasure (anonymises the person, keeps grades; audit trail is append-only so it keeps ids/IPs) and directory opt-out under `/api/v1/privacy`; every user has a "Privacy & data" dialog in the header, administrators answer requests for others from the Security & Compliance tab. No request queue or retention scheduler yet |
 | Penetration test, SOC 2 / FERPA audit | Open | process, not code |
 | Load test (100k exam takers), multi-region HA / DR | Open | targets in `load_testing_sla.md` |

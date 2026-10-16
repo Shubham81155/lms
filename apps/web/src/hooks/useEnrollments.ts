@@ -75,48 +75,6 @@ export function useEnroll() {
   };
 }
 
-export function useUpdateProgress() {
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const updateProgress = useCallback(
-    async (
-      enrollmentId: string,
-      progressPercent: number,
-      status?: string
-    ): Promise<Enrollment> => {
-      setIsUpdating(true);
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await api.patch<any>(`/api/v1/enrollments/${enrollmentId}/progress`, {
-          progressPercent,
-          ...(status ? { status } : {}),
-        });
-        const updated: Enrollment = response.enrollment || response.data || response;
-        return updated;
-      } catch (err: any) {
-        const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to update progress');
-        setError(message);
-        throw err;
-      } finally {
-        setIsUpdating(false);
-        setIsLoading(false);
-      }
-    },
-    []
-  );
-
-  return {
-    updateProgress,
-    mutate: updateProgress,
-    isUpdating,
-    isLoading,
-    error,
-  };
-}
-
 export function useEnrollmentStats() {
   const [stats, setStats] = useState<EnrollmentStats | null>(null);
   const [data, setData] = useState<EnrollmentStats | null>(null);

@@ -24,7 +24,6 @@ export const CourseRecord = z.object({
   thumbnailUrl: z.string().nullable(),
   status: CourseStatus,
   passingGradePercent: z.number(),
-  enableProctoring: z.boolean(),
   allowSelfEnroll: z.boolean(),
   /** Gradebook curve: NONE, ADD_POINTS or SCALE_TO_MAX. */
   gradeCurveMethod: z.string(),

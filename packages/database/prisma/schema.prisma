@@ -43,7 +43,6 @@ model Tenant {
   primaryColor   String? @default("#0f172a")
   secondaryColor String? @default("#3b82f6")
   faviconUrl     String?
-  customCss      String? @db.Text
 
   // Compliance & Data Residency
   dataRegion     String  @default("us-east-1")
@@ -159,10 +158,6 @@ model User {
   // Identity Provider federation
   idpProvider  String? // "SAML", "OIDC", "AZURE_AD", "GOOGLE", "LOCAL"
   idpSubjectId String? // External SSO subject/sub
-
-  // Encrypted PII Fields (Field-Level Encryption)
-  ssnEncrypted   String? @db.Text
-  dateOfBirthEnc String? @db.Text
 
   // Security controls
   mfaEnabled        Boolean   @default(false)
@@ -289,7 +284,6 @@ model Course {
 
   // Settings
   passingGradePercent Float   @default(70.0)
-  enableProctoring    Boolean @default(false)
   allowSelfEnroll     Boolean @default(false)
 
   // Relations

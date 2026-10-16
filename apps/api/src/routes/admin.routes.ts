@@ -22,7 +22,6 @@ export const updateTenantSchema = z.object({
   secondaryColor: color.optional(),
   faviconUrl: httpUrl.or(z.literal('')).nullable().optional(),
   // Rendered into tenant pages, so it is bounded; sanitising it is tracked for the frontend phase.
-  customCss: z.string().max(20_000).nullable().optional(),
   ferpaCompliant: z.boolean().optional(),
   coppaCompliant: z.boolean().optional(),
 });
@@ -87,7 +86,6 @@ router.patch(
         primaryColor: input.primaryColor,
         secondaryColor: input.secondaryColor,
         faviconUrl: input.faviconUrl !== undefined ? input.faviconUrl || null : undefined,
-        customCss: input.customCss,
         ferpaCompliant: input.ferpaCompliant,
         coppaCompliant: input.coppaCompliant,
       },
@@ -104,7 +102,6 @@ router.patch(
       diffJson: {
         before: pick(existing, TENANT_AUDIT_FIELDS),
         after: pick(updated, TENANT_AUDIT_FIELDS),
-        customCssChanged: input.customCss !== undefined,
       },
     });
 

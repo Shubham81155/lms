@@ -13,7 +13,7 @@ import { canSeeAllCourses, requireContentAccess, requireCourseAccess, requireCou
 const router = Router();
 
 const COURSE_AUDIT_FIELDS = [
-  'code', 'title', 'status', 'departmentId', 'passingGradePercent', 'enableProctoring', 'allowSelfEnroll',
+  'code', 'title', 'status', 'departmentId', 'passingGradePercent', 'allowSelfEnroll',
 ] as const;
 
 const emptyToNull = (v: string | undefined | null) => (v === '' ? null : v);
@@ -25,7 +25,6 @@ const courseFields = {
   syllabus: z.string().max(50_000).optional(),
   thumbnailUrl: httpUrl.or(z.literal('')).optional(),
   passingGradePercent: z.number().min(0).max(100).optional(),
-  enableProctoring: z.boolean().optional(),
   allowSelfEnroll: z.boolean().optional(),
   status: z.nativeEnum(CourseStatus).optional(),
 };
@@ -195,7 +194,6 @@ router.post(
         thumbnailUrl: emptyToNull(input.thumbnailUrl) ?? null,
         departmentId: input.departmentId,
         passingGradePercent: input.passingGradePercent ?? 70.0,
-        enableProctoring: input.enableProctoring ?? false,
         allowSelfEnroll: input.allowSelfEnroll ?? false,
         status: input.status ?? CourseStatus.DRAFT,
         // An instructor who creates a course becomes its primary instructor.
@@ -242,7 +240,6 @@ router.put(
         thumbnailUrl: input.thumbnailUrl !== undefined ? emptyToNull(input.thumbnailUrl) : undefined,
         departmentId: input.departmentId,
         passingGradePercent: input.passingGradePercent,
-        enableProctoring: input.enableProctoring,
         allowSelfEnroll: input.allowSelfEnroll,
         status: input.status,
       },

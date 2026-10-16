@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node src/server.ts",
     "build": "tsc --noEmit -p ../../tsconfig.json",
-    "start": "node dist/server.js",
+    "start": "ts-node --transpile-only src/server.ts",
     "test": "vitest run",
     "openapi": "ts-node src/openapi/build.ts"
   },
@@ -13,7 +13,6 @@
     "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@enterprise-lms/database": "*",
     "@enterprise-lms/security": "*",
-    "@enterprise-lms/standards": "*",
     "@node-saml/node-saml": "^5.1.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",

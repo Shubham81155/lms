@@ -187,4 +187,3 @@ export class AuditSanitizer {
 
 // Submodule exports
 export * from './ai-generator';
-export * from './gdpr-ferpa-scrubber';

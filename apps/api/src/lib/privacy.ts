@@ -87,7 +87,7 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
     where: { id: userId },
     data: {
       email: erasedEmail(userId), firstName: ERASED_NAME, lastName: 'User', avatarUrl: null, passwordHash: null,
-      emailVerified: false, idpProvider: null, idpSubjectId: null, ssnEncrypted: null, dateOfBirthEnc: null,
+      emailVerified: false, idpProvider: null, idpSubjectId: null,
       mfaEnabled: false, mfaSecret: null, mfaRecoveryHashes: [], lockedUntil: null, directoryOptOut: true,
       status: 'SUSPENDED', erasedAt: new Date(),
     },
