@@ -9,7 +9,6 @@ import * as r_certificates from '../routes/certificates.routes';
 import * as r_courses from '../routes/courses.routes';
 import * as r_enrollments from '../routes/enrollments.routes';
 import * as r_forum from '../routes/forum.routes';
-import * as r_gamification from '../routes/gamification.routes';
 import * as r_gradebook from '../routes/gradebook.routes';
 import * as r_grading from '../routes/grading.routes';
 import * as r_intelligence from '../routes/intelligence.routes';
@@ -140,10 +139,7 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "GET /api/v1/enrollments/todo": { summary: "The caller's own upcoming work from the courses they are actively enrolled in (published courses only): assignments not yet submitted or still ungraded, and quizzes with attempts left (or an attempt in progress). Dated assignments come first, soonest due..." },
   "POST /api/v1/flags": { summary: "any participant reports a thread or reply to the course staff.", body: r_forum.flagSchema },
   "POST /api/v1/flags/:id/resolve": { summary: "POST /api/v1/flags/:id/resolve" },
-  "POST /api/v1/gamification/checkin": { summary: "claims today's streak. The first check-in of a UTC day extends (or restarts) the streak and awards the daily bonus once; repeating it is a no-op." },
-  "GET /api/v1/gamification/leaderboard": { summary: "Cohort standings for one course, visible to people with access to that course. Names are abbreviated (\"Alex C.\") and only enrolled learners appear.", query: r_gamification.boardQuery as never },
-  "GET /api/v1/gamification/mastery": { summary: "The caller's own Bloom's-taxonomy profile, from their graded answers to tagged quiz questions." },
-  "GET /api/v1/gamification/me": { summary: "GET /api/v1/gamification/me" },
+  "GET /api/v1/analytics/mastery": { summary: "The caller's own Bloom's-taxonomy profile, from their graded answers to tagged quiz questions." },
   "POST /api/v1/integrations/livekit": { summary: "Webhooks from the LiveKit media server. The Authorization header is a JWT signed with our API secret that commits to the exact body (see verifyWebhook), so only the media server can call this. Participant identities are our user ids (set when the join..." },
   "POST /api/v1/integrations/plagiarism/:tenantSlug": { summary: "Headers: x-lms-timestamp (unix seconds), x-lms-signature: sha256=HMAC_SHA256(secret, ts + \".\" + body). Records the score and report link on the assignment submission and alerts the course staff when the similarity is high. Answers 404 for anything it..." },
   "PATCH /api/v1/live-sessions/:id": { summary: "reschedule or retitle a class that has not started.", body: r_live.updateSchema },

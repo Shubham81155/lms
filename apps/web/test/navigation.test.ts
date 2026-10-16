@@ -43,7 +43,7 @@ describe('visibleSections', () => {
   it('always shows tabs and only the actions the page can handle', () => {
     const sections = visibleSections('student', { forum: () => {}, tutor: () => {} });
     const keys = sections.flatMap((s) => s.items.map((i) => i.key));
-    expect(keys).toEqual(expect.arrayContaining(['courses', 'exams', 'badges', 'forum', 'tutor']));
+    expect(keys).toEqual(expect.arrayContaining(['courses', 'exams', 'forum', 'tutor']));
     expect(keys).not.toContain('catalog');
     expect(keys).not.toContain('calendar');
   });

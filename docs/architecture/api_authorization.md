@@ -82,7 +82,7 @@ who is not assigned, an admin or an auditor.
 * The audit trail (`AuditLog`) stores whitelisted fields, never whole records. `AuditSanitizer`
   masks secrets in nested objects and arrays and keeps dates.
 
-## Engagement (notifications, forums, calendar, gamification)
+## Engagement (notifications, forums, calendar)
 
 * **Notifications** are private to their owner (another user gets 404). Users choose channels,
   muted categories, quiet hours and a time zone; a muted category or a disabled in-app channel
@@ -108,9 +108,8 @@ who is not assigned, an admin or an auditor.
 * **Calendar**: course events are created by the course's editors (admin / assigned instructor);
   tenant-wide events by admins. Learners see events of courses they are enrolled in plus tenant-wide
   ones. `GET /calendar/export.ics` returns the same set as RFC 5545 (UTC instants).
-* **Gamification**: XP is an append-only ledger with a unique `(user, source, refId)`, so a quiz pass
-  or a course completion pays out once. `POST /gamification/checkin` extends the UTC-day streak once
-  per day. The leaderboard is per course, only for people with access to it, with abbreviated names.
+* **Mastery**: `GET /analytics/mastery` returns the caller's own Bloom's-taxonomy profile, computed
+  from their graded answers to tagged quiz questions.
 
 ## Intelligence (xAPI LRS, proctoring, early warning)
 
@@ -336,7 +335,7 @@ who is not assigned, an admin or an auditor.
   Redis caching, native mobile apps. Suspending a user does not revoke an already-issued JWT; it
   lapses at `JWT_EXPIRES_IN`.
 * Web client: the student dashboard (courses, to-do list, real quiz taking with browser-side proctoring
-  events, assignments, certificates), notifications, forum, calendar, gamification, the LRS viewer, the gradebook and question
+  events, assignments, certificates), notifications, forum, calendar, the LRS viewer, the gradebook and question
   bank screens, the teacher dashboard (metrics, proctoring feed, pending submissions) and the admin
   panels for usage, features, SSO, SCIM tokens, webhooks and data-subject requests, and the "Privacy & data"
   dialog in the header, use the live API. Still built-in sample

@@ -10,7 +10,6 @@ import { CourseCatalog } from "@/components/CourseCatalog";
 import { LessonPlayer } from "@/components/LessonPlayer";
 import { AcademicCalendar } from "@/components/AcademicCalendar";
 import { DiscussionForum } from "@/components/DiscussionForum";
-import { GamificationHub } from "@/components/GamificationHub";
 import { MyAssignments } from "@/components/MyAssignments";
 import { useAuth } from "@/context/AuthContext";
 import { AiTutorModal } from "@/components/AiTutorModal";
@@ -28,7 +27,6 @@ import {
   TrendingUp,
   BarChart,
   ArrowRight,
-  Flame,
   Code,
   Wifi,
   Search,
@@ -36,7 +34,6 @@ import {
   Brain,
 } from "lucide-react";
 import { useMyEnrollments, useEnrollmentStats } from "@/hooks/useEnrollments";
-import { useGamification } from "@/hooks/useEngagement";
 import { api } from "@/lib/api";
 import { useOpenIntent } from "@/hooks/useOpenIntent";
 import { useApiData } from "@/hooks/useApiData";
@@ -65,7 +62,6 @@ export default function StudentDashboard() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [showForum, setShowForum] = useState(false);
   const [forumCourseId, setForumCourseId] = useState<string | null>(null);
-  const [showGamificationHub, setShowGamificationHub] = useState(false);
   const [showAssignments, setShowAssignments] = useState(false);
   const { user } = useAuth();
   const [showAiTutor, setShowAiTutor] = useState(false);
@@ -87,9 +83,6 @@ export default function StudentDashboard() {
         setActiveNavTab("exams");
         const el = document.getElementById("exams-section");
         if (el) el.scrollIntoView({ behavior: "smooth" });
-      } else if (hash === "#badges") {
-        setActiveNavTab("badges");
-        setShowGamificationHub(true);
       } else {
         setActiveNavTab("courses");
       }
@@ -116,14 +109,11 @@ export default function StudentDashboard() {
         const first = todo.data?.data.find((i) => i.type === "QUIZ");
         if (first) setActiveQuizId(first.id);
       }
-    } else if (tabKey === "badges") {
-      setShowGamificationHub(true);
     }
   };
 
   const { enrollments, isLoading: isLoadingEnrollments, refetch: refetchEnrollments } = useMyEnrollments();
   const { stats } = useEnrollmentStats();
-  const { state: gameState } = useGamification(null);
 
   const todo = useApiData<{ data: TodoItem[] }>("/api/v1/enrollments/todo");
 
@@ -222,7 +212,7 @@ export default function StudentDashboard() {
       )}
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-8">
-        {/* Welcome Banner with Streak & GPA */}
+        {/* Welcome banner */}
         <div className="bg-gradient-to-r from-brand/15 via-surface to-brand/10 border border-line rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
           <div className="space-y-2 z-10">
             <div className="flex items-center gap-2">
@@ -242,23 +232,6 @@ export default function StudentDashboard() {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 z-10 w-full md:w-auto">
-            {/* Streak Widget */}
-            <button
-              onClick={() => setShowGamificationHub(true)}
-              className="bg-surface/80 hover:bg-raised/80 border border-line hover:border-accent/40 rounded-2xl p-4 flex items-center gap-3 shadow-lg transition-all text-left group w-full sm:w-auto"
-            >
-              <div className="h-10 w-10 rounded-xl bg-accent/20 text-accent flex items-center justify-center border border-accent/30 group-hover:scale-105 transition-transform">
-                <Flame className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="text-xs text-ink-muted font-medium">Study Streak</div>
-                <div className="text-lg font-bold text-ink flex items-center gap-1.5">
-                  <span>{plural(gameState?.streakDays ?? 0, "Day")}</span>
-                  <span className="text-[10px] text-accent">🔥</span>
-                </div>
-              </div>
-            </button>
-
             {/* Assignments & average grade */}
             <button
               onClick={() => setShowAssignments(true)}
@@ -307,13 +280,6 @@ export default function StudentDashboard() {
                 >
                   <Search className="h-3.5 w-3.5" />
                   <span>Browse Catalog</span>
-                </button>
-                <button
-                  onClick={() => setShowGamificationHub(true)}
-                  className="text-xs font-semibold text-accent hover:text-accent flex items-center gap-1.5 px-2 py-1"
-                >
-                  <Award className="h-4 w-4" />
-                  <span>Badges & XP</span>
                 </button>
               </div>
             </div>
@@ -577,13 +543,6 @@ export default function StudentDashboard() {
 
       {showAssignments && <MyAssignments onClose={() => setShowAssignments(false)} />}
       {assignmentsCourse && <MyAssignments courseId={assignmentsCourse} onClose={() => { setAssignmentsCourse(undefined); todo.reload(); }} />}
-
-      {/* Gamification, Badges & XP Hub */}
-      {showGamificationHub && (
-        <GamificationHub
-          onClose={() => setShowGamificationHub(false)}
-        />
-      )}
 
       {/* AI Socratic Academic Tutor Modal */}
       {showAiTutor && (

@@ -10,7 +10,6 @@ import { COURSE_STAFF_ROLES, isAdminRole, canSeeAllCourses } from '../lib/access
 import { issueCertificate } from '../lib/certificates';
 import { config } from '../config';
 import { notify } from '../lib/notify';
-import { awardXp } from '../lib/gamification';
 import { VERBS, recordStatement } from '../lib/xapi';
 import { dispatchWebhook } from '../lib/webhooks';
 import { LEARNER_MAX_PROGRESS, progressFromLessons } from '../lib/lesson-progress';
@@ -431,7 +430,6 @@ router.patch(
       if (enrollment.status !== EnrollmentStatus.COMPLETED) {
         const learner = await prisma.user.findFirst({ where: { id: updated.userId }, select: { id: true, email: true, firstName: true, lastName: true } });
         await Promise.all([
-          awardXp({ tenantId, userId: updated.userId, source: 'COURSE_COMPLETE', refId: updated.courseId }),
           notify({
             tenantId,
             userId: updated.userId,

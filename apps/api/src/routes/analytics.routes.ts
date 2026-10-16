@@ -87,6 +87,26 @@ router.get(
 );
 
 /**
+ * GET /api/v1/analytics/mastery
+ * The caller's own Bloom's-taxonomy profile, from their graded answers to tagged quiz questions.
+ */
+router.get(
+  '/mastery',
+  authenticateJWT,
+  route('Failed to load mastery', async (req, res) => {
+    const userId = req.user!.id;
+    const quizzes = await prisma.quiz.findMany({
+      where: { tenantId: tenantIdOf(req), questions: { some: { bloomLevel: { not: null } } }, submissions: { some: { userId, submittedAt: { not: null } } } },
+      select: {
+        questions: { select: { id: true, bloomLevel: true } },
+        submissions: { where: { userId, submittedAt: { not: null } }, select: { answersJson: true } },
+      },
+    });
+    return res.json({ data: bloomsMastery(quizzes) });
+  })
+);
+
+/**
  * POST /api/v1/analytics/ai/tutor
  * Context-aware AI tutor adaptive explanation and drill generator
  */

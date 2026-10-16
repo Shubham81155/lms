@@ -306,41 +306,12 @@ describe('contract: calendar', () => {
   });
 });
 
-describe('contract: gamification', () => {
-  it('me, checkin, mastery, leaderboard', async () => {
-    const s1 = await as('s1');
-    const before = await s1.get('/api/v1/gamification/me');
-    expect(before.status).toBe(200);
-    check('GET /api/v1/gamification/me', before);
-    expect(before.body.data.lastActiveDate).toBeNull();
-
-    const first = await s1.post('/api/v1/gamification/checkin');
-    expect(first.status).toBe(200);
-    check('POST /api/v1/gamification/checkin', first);
-    expect(first.body.data.alreadyClaimed).toBe(false);
-    expect(first.body.data.awarded).toBeGreaterThan(0);
-    const again = await s1.post('/api/v1/gamification/checkin');
-    check('POST /api/v1/gamification/checkin', again);
-    expect(again.body.data.alreadyClaimed).toBe(true);
-
-    const after = await s1.get('/api/v1/gamification/me');
-    check('GET /api/v1/gamification/me', after);
-    expect(after.body.data.recent.length).toBeGreaterThan(0);
-
-    const mastery = await s1.get('/api/v1/gamification/mastery');
+describe('contract: mastery', () => {
+  it("returns the caller's own Bloom's profile", async () => {
+    const mastery = await (await as('s1')).get('/api/v1/analytics/mastery');
     expect(mastery.status).toBe(200);
-    check('GET /api/v1/gamification/mastery', mastery);
+    check('GET /api/v1/analytics/mastery', mastery);
     expect(mastery.body.data).toEqual([{ level: 'REMEMBER', score: 100 }]);
-
-    const board = await s1.get('/api/v1/gamification/leaderboard').query({ courseId: 'c1' });
-    expect(board.status).toBe(200);
-    check('GET /api/v1/gamification/leaderboard', board);
-    expect(board.body.data.length).toBe(3);
-    expect(board.body.data.filter((r: any) => r.isMe)).toHaveLength(1);
-    for (const r of board.body.data) {
-      expect(keys(r)).toEqual(['isMe', 'level', 'name', 'rank', 'streakDays', 'userId', 'xp']);
-      expect(r.name).toMatch(/^\S+ L\.$/);
-    }
   });
 });
 

@@ -20,7 +20,7 @@ export async function buildUserExport(userId: string, tenantId: string) {
   });
   if (!user) return null;
 
-  const [enrollments, quizAttempts, assignments, notifications, preferences, threads, posts, gamification, xp, grades, attendance, xapi, activity, guardians] =
+  const [enrollments, quizAttempts, assignments, notifications, preferences, threads, posts, grades, attendance, xapi, activity, guardians] =
     await Promise.all([
       prisma.enrollment.findMany({
         where: { userId, tenantId },
@@ -38,8 +38,6 @@ export async function buildUserExport(userId: string, tenantId: string) {
       prisma.notificationPreference.findFirst({ where: { userId } }),
       prisma.forumThread.findMany({ where: { authorId: userId, tenantId }, select: { id: true, courseId: true, title: true, body: true, createdAt: true } }),
       prisma.forumPost.findMany({ where: { authorId: userId, tenantId }, select: { id: true, threadId: true, body: true, createdAt: true } }),
-      prisma.userGamification.findFirst({ where: { userId } }),
-      prisma.xpEvent.findMany({ where: { userId, tenantId }, select: { source: true, points: true, createdAt: true } }),
       prisma.courseGrade.findMany({ where: { userId, tenantId }, select: { courseId: true, rawPercent: true, curvedPercent: true, letter: true, status: true, updatedAt: true } }),
       prisma.liveAttendance.findMany({ where: { userId, tenantId } }),
       prisma.xapiStatement.findMany({ where: { actorUserId: userId, tenantId }, select: { statementJson: true } }),
@@ -62,7 +60,6 @@ export async function buildUserExport(userId: string, tenantId: string) {
     notifications,
     notificationPreferences: preferences,
     forum: { threads, posts },
-    gamification: { summary: gamification, xpEvents: xp },
     liveAttendance: attendance,
     learningActivity: xapi.map((x) => x.statementJson),
     guardianLinks: guardians,

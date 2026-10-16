@@ -3,7 +3,7 @@ import type { ResponseTable } from './types';
 import { CourseListItem, ForumPostRecord, ForumThreadRecord, Pagination } from '../docs';
 
 // Responses of the learning-side routes: courses, enrollments, users, certificates, calendar,
-// gamification and forum moderation. Checked against the real API by test/contract-learning.test.ts.
+// learning analytics and forum moderation. Checked against the real API by test/contract-learning.test.ts.
 
 const body = <T extends z.ZodTypeAny>(schema: T, status = 200) => ({ status, schema });
 const data = <T extends z.ZodTypeAny>(schema: T, status = 200) => ({ status, schema: z.object({ data: schema }) });
@@ -213,28 +213,6 @@ export const CalendarEvent = z.object({
   createdAt: z.string(),
 });
 
-const GamificationView = z.object({
-  xp: z.number(),
-  level: z.number(),
-  xpIntoLevel: z.number(),
-  xpPerLevel: z.number(),
-  streakDays: z.number(),
-  longestStreak: z.number(),
-  /** UTC day (midnight), null before the first activity. */
-  lastActiveDate: z.string().nullable(),
-});
-
-const LeaderboardRow = z.object({
-  rank: z.number(),
-  userId: z.string(),
-  /** "First L." */
-  name: z.string(),
-  xp: z.number(),
-  level: z.number(),
-  streakDays: z.number(),
-  isMe: z.boolean(),
-});
-
 const ForumFlagRecord = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -331,31 +309,13 @@ export const RESPONSES: ResponseTable = {
     errors: [400],
   },
 
-  // ---- gamification
-  'GET /api/v1/gamification/me': {
-    response: data(
-      GamificationView.extend({
-        /** The ten latest XP events. */
-        recent: z.array(z.object({ source: z.string(), points: z.number(), createdAt: z.string() })),
-      })
-    ),
-  },
-  'POST /api/v1/gamification/checkin': {
-    response: data(
-      GamificationView.extend({
-        /** XP granted by this call; 0 when today was already claimed. */
-        awarded: z.number(),
-        alreadyClaimed: z.boolean(),
-      })
-    ),
-  },
-  'GET /api/v1/gamification/mastery': {
+  // ---- learning analytics
+  'GET /api/v1/analytics/mastery': {
     response: {
       ...data(z.array(z.object({ level: z.enum(['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE']), score: z.number() }))),
       description: "Average score (percent) per Bloom's level; levels without graded answers are omitted.",
     },
   },
-  'GET /api/v1/gamification/leaderboard': { response: data(z.array(LeaderboardRow)), errors: [400, 403, 404] },
 
   // ---- forum moderation
   'GET /api/v1/courses/:courseId/flags': { response: data(z.array(ForumFlagView)), errors: [400, 403, 404] },

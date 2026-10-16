@@ -58,7 +58,6 @@ const PersonalDataExport = z.object({
   notifications: z.array(z.unknown()),
   notificationPreferences: z.unknown(),
   forum: z.object({ threads: z.array(z.unknown()), posts: z.array(z.unknown()) }),
-  gamification: z.object({ summary: z.unknown(), xpEvents: z.array(z.unknown()) }),
   liveAttendance: z.array(z.unknown()),
   learningActivity: z.array(z.unknown()),
   guardianLinks: z.array(z.unknown()),

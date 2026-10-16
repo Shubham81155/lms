@@ -492,6 +492,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/mastery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's own Bloom's-taxonomy profile, from their graded answers to tagged quiz questions. */
+        get: operations["getAnalyticsMastery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/pending-grading": {
         parameters: {
             query?: never;
@@ -1589,74 +1606,6 @@ export interface paths {
         put?: never;
         /** POST /api/v1/flags/:id/resolve */
         post: operations["postFlagsIdResolve"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/gamification/checkin": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** claims today's streak. The first check-in of a UTC day extends (or restarts) the streak and awards the daily bonus once; repeating it is a no-op. */
-        post: operations["postGamificationCheckin"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/gamification/leaderboard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Cohort standings for one course, visible to people with access to that course. Names are abbreviated ("Alex C.") and only enrolled learners appear. */
-        get: operations["getGamificationLeaderboard"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/gamification/mastery": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** The caller's own Bloom's-taxonomy profile, from their graded answers to tagged quiz questions. */
-        get: operations["getGamificationMastery"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/gamification/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** GET /api/v1/gamification/me */
-        get: operations["getGamificationMe"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4962,6 +4911,41 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAnalyticsMastery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Average score (percent) per Bloom's level; levels without graded answers are omitted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            level: "REMEMBER" | "UNDERSTAND" | "APPLY" | "ANALYZE" | "EVALUATE" | "CREATE";
+                            score: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10303,195 +10287,6 @@ export interface operations {
             };
         };
     };
-    postGamificationCheckin: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Success */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            xp: number;
-                            level: number;
-                            xpIntoLevel: number;
-                            xpPerLevel: number;
-                            streakDays: number;
-                            longestStreak: number;
-                            lastActiveDate: string | null;
-                            awarded: number;
-                            alreadyClaimed: boolean;
-                        };
-                    };
-                };
-            };
-            /** @description Not signed in, or the session was revoked */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    getGamificationLeaderboard: {
-        parameters: {
-            query: {
-                courseId: string;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Success */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            rank: number;
-                            userId: string;
-                            name: string;
-                            xp: number;
-                            level: number;
-                            streakDays: number;
-                            isMe: boolean;
-                        }[];
-                    };
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not signed in, or the session was revoked */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not allowed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    getGamificationMastery: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Average score (percent) per Bloom's level; levels without graded answers are omitted. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            /** @enum {string} */
-                            level: "REMEMBER" | "UNDERSTAND" | "APPLY" | "ANALYZE" | "EVALUATE" | "CREATE";
-                            score: number;
-                        }[];
-                    };
-                };
-            };
-            /** @description Not signed in, or the session was revoked */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    getGamificationMe: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Success */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            xp: number;
-                            level: number;
-                            xpIntoLevel: number;
-                            xpPerLevel: number;
-                            streakDays: number;
-                            longestStreak: number;
-                            lastActiveDate: string | null;
-                            recent: {
-                                source: string;
-                                points: number;
-                                createdAt: string;
-                            }[];
-                        };
-                    };
-                };
-            };
-            /** @description Not signed in, or the session was revoked */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
     postIntegrationsLivekit: {
         parameters: {
             query?: never;
@@ -11823,10 +11618,6 @@ export interface operations {
                             threads: unknown[];
                             posts: unknown[];
                         };
-                        gamification: {
-                            summary?: unknown;
-                            xpEvents: unknown[];
-                        };
                         liveAttendance: unknown[];
                         learningActivity: unknown[];
                         guardianLinks: unknown[];
@@ -11960,10 +11751,6 @@ export interface operations {
                         forum: {
                             threads: unknown[];
                             posts: unknown[];
-                        };
-                        gamification: {
-                            summary?: unknown;
-                            xpEvents: unknown[];
                         };
                         liveAttendance: unknown[];
                         learningActivity: unknown[];

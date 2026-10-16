@@ -8,7 +8,7 @@ import { PrismaClient } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 import { totp, base32Decode } from '../src/lib/totp';
 
-// Engagement (notifications, forums, calendar, gamification), intelligence (xAPI LRS, proctoring,
+// Engagement (notifications, forums, calendar), intelligence (xAPI LRS, proctoring,
 // early warning) and scale (MFA, SCIM, webhooks, features, usage, export, LTI) against a real
 // PostgreSQL with the real migrations and the unprivileged lms_app role.
 
@@ -17,7 +17,6 @@ let db: TestDatabase;
 let admin: PrismaClient;
 let app: import('express').Express;
 // These modules create the Prisma client on import, so they load only once DATABASE_URL is set.
-let nextStreak: typeof import('../src/lib/gamification.js').nextStreak;
 let inQuietHours: typeof import('../src/lib/notify.js').inQuietHours;
 let scoreRisk: typeof import('../src/lib/risk.js').scoreRisk;
 let assessProctoring: typeof import('../src/lib/risk.js').assessProctoring;
@@ -67,7 +66,6 @@ beforeAll(async () => {
   await seed();
   process.env.DATABASE_URL = db.appUrl;
   app = (await import('../src/server.js')).app;
-  ({ nextStreak } = await import('../src/lib/gamification.js'));
   ({ inQuietHours } = await import('../src/lib/notify.js'));
   ({ scoreRisk, assessProctoring } = await import('../src/lib/risk.js'));
   ({ resolveFeatures } = await import('../src/lib/features.js'));
@@ -103,14 +101,6 @@ describe('pure helpers', () => {
     expect(base32Decode(secret).toString()).toBe('12345678901234567890');
     expect(totp(secret, 59_000)).toBe('287082');
     expect(totp(secret, 1_111_111_109_000)).toBe('081804');
-  });
-
-  it('extends, keeps or restarts a streak', () => {
-    const d = (s: string) => new Date(`${s}T12:00:00Z`);
-    expect(nextStreak(null, d('2026-01-05'), 0)).toBe(1);
-    expect(nextStreak(d('2026-01-05'), d('2026-01-05'), 4)).toBe(4);
-    expect(nextStreak(d('2026-01-04'), d('2026-01-05'), 4)).toBe(5);
-    expect(nextStreak(d('2026-01-02'), d('2026-01-05'), 4)).toBe(1);
   });
 
   it('handles quiet hours that wrap past midnight', () => {
@@ -350,46 +340,18 @@ describe('calendar', () => {
 });
 
 // ---------------------------------------------------------------------------
-describe('gamification', () => {
-  it('claims a daily streak once and awards XP', async () => {
-    const s4 = await as('s4');
-    const first = await s4.post('/api/v1/gamification/checkin');
-    expect(first.status).toBe(200);
-    expect(first.body.data).toMatchObject({ alreadyClaimed: false, streakDays: 1 });
-    expect(first.body.data.awarded).toBeGreaterThan(0);
-    const second = await s4.post('/api/v1/gamification/checkin');
-    expect(second.body.data).toMatchObject({ alreadyClaimed: true, awarded: 0, xp: first.body.data.xp });
-    const me = await s4.get('/api/v1/gamification/me');
-    expect(me.body.data.level).toBe(1);
-    expect(me.body.data.recent[0].source).toBe('DAILY_STREAK');
-  });
-
-  it('awards quiz XP exactly once and records xAPI for the attempt', async () => {
+describe('quiz learning records', () => {
+  it('records xAPI for every attempt', async () => {
     const s1 = await as('s1');
-    const before = (await s1.get('/api/v1/gamification/me')).body.data.xp;
     const r1 = await s1.post('/api/v1/quizzes/q-plain/submit').send({ answers: { qq2: 'a' } });
     expect(r1.status).toBe(201);
     expect(r1.body.data.passed).toBe(true);
     const r2 = await s1.post('/api/v1/quizzes/q-plain/submit').send({ answers: { qq2: 'a' } });
     expect(r2.status).toBe(201);
-    const after = (await s1.get('/api/v1/gamification/me')).body.data;
-    expect(after.xp - before).toBe(100 + 0); // quiz XP once; streak is claimed separately
-    expect(after.streakDays).toBeGreaterThanOrEqual(1);
 
     const stmts = await (await as('teacher')).get('/api/v1/analytics/xapi/stream?actorEmail=s1@x.edu&verb=http://adlnet.gov/expapi/verbs/passed');
     expect(stmts.body.total).toBeGreaterThanOrEqual(2);
     expect(stmts.body.statements[0].verb.display['en-US']).toBe('passed');
-  });
-
-  it('shows an abbreviated cohort leaderboard to course members only', async () => {
-    const board = await (await as('s4')).get('/api/v1/gamification/leaderboard?courseId=c1');
-    expect(board.status).toBe(200);
-    expect(board.body.data[0].rank).toBe(1);
-    expect(board.body.data.every((r: any) => /^s\d L\.$/.test(r.name))).toBe(true);
-    expect(board.body.data.some((r: any) => r.isMe)).toBe(true);
-    expect(JSON.stringify(board.body)).not.toContain('@x.edu');
-    expect((await (await as('s2')).get('/api/v1/gamification/leaderboard?courseId=c1')).status).toBe(403);
-    expect((await (await as('s4')).get('/api/v1/gamification/leaderboard')).status).toBe(400);
   });
 });
 
@@ -806,15 +768,14 @@ describe('webhooks', () => {
     const hit = received.find((r) => r.headers['x-lms-event'] === 'enrollment.completed')!;
     expect(JSON.parse(hit.body).data).toMatchObject({ userId: 's4', courseId: 'c1', finalGrade: 90 });
 
-    // The completion also produced a notification, XP, an xAPI statement.
+    // The completion also produced a notification and an xAPI statement.
     const s4 = await as('s4');
     expect((await s4.get('/api/v1/notifications?category=COURSE')).body.data.some((n: any) => n.title.includes('completed'))).toBe(true);
-    expect((await s4.get('/api/v1/gamification/me')).body.data.recent.some((r: any) => r.source === 'COURSE_COMPLETE')).toBe(true);
     expect((await s4.get('/api/v1/analytics/xapi/stream?verb=http://adlnet.gov/expapi/verbs/completed')).body.total).toBe(1);
 
-    // Re-sending progress does not re-notify or re-award.
+    // Re-sending progress does not re-notify.
     await (await as('teacher')).patch('/api/v1/enrollments/e-s4/progress').send({ progressPercent: 100 });
-    expect((await s4.get('/api/v1/gamification/me')).body.data.recent.filter((r: any) => r.source === 'COURSE_COMPLETE')).toHaveLength(1);
+    expect((await s4.get('/api/v1/notifications?category=COURSE')).body.data.filter((n: any) => n.title.includes('completed'))).toHaveLength(1);
   });
 
   it('records failures and survives an unreachable receiver', async () => {
@@ -961,7 +922,7 @@ describe('row-level security on the new tables', () => {
     const mit = new PrismaClient({ datasourceUrl: db.appUrl });
     try {
       // No tenant context set: the unprivileged role sees nothing, even though rows exist.
-      for (const table of ['notification', 'forumThread', 'forumPost', 'forumVote', 'forumFlag', 'calendarEvent', 'userGamification', 'xpEvent', 'xapiStatement', 'webhookEndpoint', 'webhookDelivery', 'notificationPreference'] as const) {
+      for (const table of ['notification', 'forumThread', 'forumPost', 'forumVote', 'forumFlag', 'calendarEvent', 'xapiStatement', 'webhookEndpoint', 'webhookDelivery', 'notificationPreference'] as const) {
         const adminCount = await (admin as any)[table].count();
         const appCount = await (mit as any)[table].count();
         expect(appCount, `${table} (admin sees ${adminCount})`).toBe(0);

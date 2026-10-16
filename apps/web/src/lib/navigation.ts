@@ -1,6 +1,5 @@
 import {
   Activity,
-  Award,
   BookOpen,
   BookPlus,
   Building,
@@ -70,7 +69,6 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
       items: [
         tab("courses", "My Courses", BookOpen, "/student"),
         tab("exams", "Assignments & Exams", FileCheck, "/student#exams"),
-        tab("badges", "Badges & XP", Award, "/student#badges"),
       ],
     },
     {

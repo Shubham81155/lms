@@ -386,10 +386,10 @@ describe('question bank', () => {
 // ---------------------------------------------------------------------------
 describe('learner Bloom mastery', () => {
   it('reports only the caller’s own graded, tagged answers', async () => {
-    expect((await (await as('s1')).get('/api/v1/gamification/mastery')).body.data).toEqual([{ level: 'APPLY', score: 100 }]);
-    expect((await (await as('s2')).get('/api/v1/gamification/mastery')).body.data).toEqual([{ level: 'APPLY', score: 0 }]);
-    expect((await (await as('s3')).get('/api/v1/gamification/mastery')).body.data).toEqual([]); // nothing submitted
-    expect((await request(app).get('/api/v1/gamification/mastery')).status).toBe(401);
+    expect((await (await as('s1')).get('/api/v1/analytics/mastery')).body.data).toEqual([{ level: 'APPLY', score: 100 }]);
+    expect((await (await as('s2')).get('/api/v1/analytics/mastery')).body.data).toEqual([{ level: 'APPLY', score: 0 }]);
+    expect((await (await as('s3')).get('/api/v1/analytics/mastery')).body.data).toEqual([]); // nothing submitted
+    expect((await request(app).get('/api/v1/analytics/mastery')).status).toBe(401);
   });
 });
 

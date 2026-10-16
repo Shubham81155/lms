@@ -11,7 +11,6 @@ import certificatesRoutes from './routes/certificates.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import forumRoutes from './routes/forum.routes';
 import calendarRoutes from './routes/calendar.routes';
-import gamificationRoutes from './routes/gamification.routes';
 import intelligenceRoutes from './routes/intelligence.routes';
 import mfaRoutes from './routes/mfa.routes';
 import platformRoutes from './routes/platform.routes';
@@ -52,7 +51,6 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1/admin', router: orgRoutes },
   { prefix: '/api/v1/notifications', router: notificationsRoutes },
   { prefix: '/api/v1/calendar', router: calendarRoutes },
-  { prefix: '/api/v1/gamification', router: gamificationRoutes },
   { prefix: '/api/v1/scim/v2', router: scimRoutes },
   { prefix: '/api/v1/lti', router: ltiRoutes },
   { prefix: '/api/v1', router: forumRoutes },

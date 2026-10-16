@@ -29,7 +29,6 @@ async function seed() {
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
   for (const s of ['s1', 's2', 's3']) {
     await admin.enrollment.create({ data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS', progressPercent: 50 } });
-    await admin.userGamification.create({ data: { tenantId: 't-h', userId: s, xp: 100 } });
   }
   await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 } });
   await admin.assignmentSubmission.create({ data: { id: 'as-1', assignmentId: 'a1', userId: 's1', submissionText: 'my private essay', fileUrl: 'https://files.example/s1.pdf', grade: 88, gradedAt: new Date() } });
@@ -38,6 +37,7 @@ async function seed() {
     data: { id: 'x-1', tenantId: 't-h', actorUserId: 's1', verbId: 'http://adlnet.gov/expapi/verbs/completed', objectId: 'urn:course:c1', timestamp: new Date(), statementJson: { actor: { name: 's1 Lovelace', mbox: 'mailto:s1@x.edu' }, verb: { id: 'completed' }, object: { id: 'urn:course:c1' } } },
   });
   await admin.forumThread.create({ data: { id: 'ft-1', tenantId: 't-h', courseId: 'c1', authorId: 's1', title: 'Help with my address 12 Elm St', body: 'Call me on 555-0100' } });
+  await admin.forumThread.create({ data: { id: 'ft-2', tenantId: 't-h', courseId: 'c1', authorId: 's2', title: 'Week 2 question', body: 'How does it work?' } });
 }
 
 beforeAll(async () => {
@@ -95,10 +95,11 @@ describe('personal data export', () => {
 });
 
 describe('FERPA directory opt-out', () => {
+  // Author names as each viewer sees them in the course forum.
   const board = async (who: string) => {
-    const res = await (await as(who)).get('/api/v1/gamification/leaderboard?courseId=c1');
+    const res = await (await as(who)).get('/api/v1/courses/c1/threads');
     expect(res.status).toBe(200);
-    return Object.fromEntries(res.body.data.map((r: any) => [r.userId, r.name]));
+    return Object.fromEntries(res.body.data.map((t: any) => [t.author.id, t.author.name]));
   };
 
   it('hides the name from classmates but not from staff or the person', async () => {
@@ -112,7 +113,7 @@ describe('FERPA directory opt-out', () => {
     expect((await board('s3')).s2).toBe('Anonymous learner');
     expect((await board('s3')).s1).toBe('s1 L.');
     expect((await board('s2')).s2).toBe('s2 L.');
-    expect((await board('teacher')).s2).toBe('s2 L.');
+    expect((await board('teacher')).s2).toBe('s2 Lovelace');
   });
 
   it('validates the body', async () => {
@@ -155,9 +156,9 @@ describe('erasure', () => {
 
     const audit = await admin.auditLog.findFirst({ where: { action: 'USER_ERASED', resourceId: 's1' } });
     expect(audit).toBeTruthy();
-    // Erased people vanish from classmates' view of the leaderboard names too.
-    const board = await (await as('s3')).get('/api/v1/gamification/leaderboard?courseId=c1');
-    expect(board.body.data.find((r: any) => r.userId === 's1').name).toBe('Anonymous learner');
+    // Erased people's forum posts are hidden from classmates.
+    const threads = await (await as('s3')).get('/api/v1/courses/c1/threads');
+    expect(threads.body.data.some((t: any) => t.author.id === 's1')).toBe(false);
   });
 
   it('lets an administrator erase someone on request, with guard rails', async () => {

@@ -60,7 +60,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **Rubrics** (per-criterion scoring, learner-visible breakdown) | Done | teacher editor and grading screen included |
 | **Grade appeals** (14-day window, instructor decision, reopens an approved course grade) | Done | assignments only; learner and teacher screens included |
 | Peer review | Open | |
-| Notifications (bell + unread badge), forums (+moderation, faculty-verified answers), calendar + real iCal download, XP / streaks / cohort leaderboard / Bloom profile | Done | backend and web screens on live data; moderation actions (hide, lock, pin) have API only |
+| Notifications (bell + unread badge), forums (+moderation, faculty-verified answers), calendar + real iCal download, Bloom's-taxonomy mastery profile | Done | backend and web screens on live data; moderation actions (hide, lock, pin) have API only |
 | **E-mail delivery of notifications** (SMTP, quiet hours in the user's time zone, retries, de-duplicated) + settings panel | Done | SMS and push remain open |
 | Live-class attendance | Done | from the media server's webhooks |
 | Waitlists, competency-based progression | Open | |

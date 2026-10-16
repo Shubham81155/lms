@@ -19,7 +19,6 @@ import { config } from '../config';
 import { commitGrade, resolveGradeInput } from '../lib/assignment-grade';
 import { validateQuestion, withOptionIds } from '../lib/questions';
 import { notify } from '../lib/notify';
-import { awardXp, touchStreak } from '../lib/gamification';
 import { VERBS, recordStatement } from '../lib/xapi';
 import { dispatchWebhook } from '../lib/webhooks';
 import { MANUAL_TYPES, QuestionType as GradingType, gradeQuiz, hasPassed, normalizeAnswers } from '../lib/grading';
@@ -536,8 +535,6 @@ const submitQuiz = route('Failed to submit and grade quiz', async (req: Request,
       object: { id: `${config.APP_URL}/xapi/quizzes/${quiz.id}`, name: quiz.title, type: 'http://adlnet.gov/expapi/activities/assessment' },
       result: { score: { raw: grade.score, max: grade.maxScore, scaled: grade.maxScore > 0 ? grade.score / grade.maxScore : 0 }, success: passed },
     }),
-    passed ? awardXp({ tenantId, userId, source: 'QUIZ_PASSED', refId: quiz.id }) : Promise.resolve(0),
-    touchStreak(tenantId, userId).catch(() => null),
   ]);
   // Not awaited: a slow receiver must not hold up the learner's response.
   void dispatchWebhook(tenantId, 'quiz.submitted', { quizId: quiz.id, submissionId, userId, score: grade.score, maxScore: grade.maxScore, passed });
@@ -663,17 +660,14 @@ router.patch(
     });
 
     if (pendingManual.length === 0) {
-      await Promise.all([
-        notify({
-          tenantId,
-          userId: submission.userId,
-          category: 'GRADE',
-          title: `Your quiz "${quiz.title}" has been graded`,
-          body: `Score: ${score} / ${submission.maxScore}${passed ? ' (passed)' : ''}`,
-          link: `/quizzes/${quiz.id}`,
-        }),
-        passed ? awardXp({ tenantId, userId: submission.userId, source: 'QUIZ_PASSED', refId: quiz.id }) : Promise.resolve(0),
-      ]);
+      await notify({
+        tenantId,
+        userId: submission.userId,
+        category: 'GRADE',
+        title: `Your quiz "${quiz.title}" has been graded`,
+        body: `Score: ${score} / ${submission.maxScore}${passed ? ' (passed)' : ''}`,
+        link: `/quizzes/${quiz.id}`,
+      });
     }
 
     await logAuditEvent({

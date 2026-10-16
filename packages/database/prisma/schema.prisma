@@ -66,8 +66,6 @@ model Tenant {
   forumVotes        ForumVote[]
   forumFlags        ForumFlag[]
   calendarEvents    CalendarEvent[]
-  gamification      UserGamification[]
-  xpEvents          XpEvent[]
   xapiStatements    XapiStatement[]
   webhookEndpoints  WebhookEndpoint[]
   webhookDeliveries WebhookDelivery[]
@@ -194,8 +192,6 @@ model User {
   notificationPref        NotificationPreference?
   forumThreads            ForumThread[]
   forumPosts              ForumPost[]
-  gamification            UserGamification?
-  xpEvents                XpEvent[]
   courseGrades            CourseGrade[]
   liveAttendance          LiveAttendance[]
   lessonProgress          LessonProgress[]
@@ -616,7 +612,7 @@ model AuditLog {
 }
 
 // ---------------------------------------------------------
-// 8. ENGAGEMENT: NOTIFICATIONS, FORUMS, CALENDAR, GAMIFICATION
+// 8. ENGAGEMENT: NOTIFICATIONS, FORUMS, CALENDAR
 // ---------------------------------------------------------
 
 model Notification {
@@ -744,37 +740,6 @@ model CalendarEvent {
 
   @@index([tenantId, startsAt])
   @@index([courseId])
-}
-
-model UserGamification {
-  id             String    @id @default(uuid())
-  tenantId       String
-  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  xp             Int       @default(0)
-  streakDays     Int       @default(0)
-  longestStreak  Int       @default(0)
-  lastActiveDate DateTime? @db.Date
-  updatedAt      DateTime  @updatedAt
-
-  @@index([tenantId, xp])
-}
-
-// Append-only ledger. (userId, source, refId) is unique so an award can never be granted twice.
-model XpEvent {
-  id        String   @id @default(uuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  source    String // "LESSON_COMPLETE", "QUIZ_PASSED", "DAILY_STREAK", ...
-  refId     String
-  points    Int
-  createdAt DateTime @default(now())
-
-  @@unique([userId, source, refId])
-  @@index([tenantId, userId, createdAt])
 }
 
 // ---------------------------------------------------------

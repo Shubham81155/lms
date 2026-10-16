@@ -5259,6 +5259,76 @@
         }
       }
     },
+    "/api/v1/analytics/mastery": {
+      "get": {
+        "operationId": "getAnalyticsMastery",
+        "summary": "The caller's own Bloom's-taxonomy profile, from their graded answers to tagged quiz questions.",
+        "tags": [
+          "analytics"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Average score (percent) per Bloom's level; levels without graded answers are omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "level": {
+                            "type": "string",
+                            "enum": [
+                              "REMEMBER",
+                              "UNDERSTAND",
+                              "APPLY",
+                              "ANALYZE",
+                              "EVALUATE",
+                              "CREATE"
+                            ]
+                          },
+                          "score": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "level",
+                          "score"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/analytics/pending-grading": {
       "get": {
         "operationId": "getAnalyticsPendingGrading",
@@ -16612,402 +16682,6 @@
         }
       }
     },
-    "/api/v1/gamification/checkin": {
-      "post": {
-        "operationId": "postGamificationCheckin",
-        "summary": "claims today's streak. The first check-in of a UTC day extends (or restarts) the streak and awards the daily bonus once; repeating it is a no-op.",
-        "tags": [
-          "gamification"
-        ],
-        "security": [
-          {
-            "cookieAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "xp": {
-                          "type": "number"
-                        },
-                        "level": {
-                          "type": "number"
-                        },
-                        "xpIntoLevel": {
-                          "type": "number"
-                        },
-                        "xpPerLevel": {
-                          "type": "number"
-                        },
-                        "streakDays": {
-                          "type": "number"
-                        },
-                        "longestStreak": {
-                          "type": "number"
-                        },
-                        "lastActiveDate": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "awarded": {
-                          "type": "number"
-                        },
-                        "alreadyClaimed": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "xp",
-                        "level",
-                        "xpIntoLevel",
-                        "xpPerLevel",
-                        "streakDays",
-                        "longestStreak",
-                        "lastActiveDate",
-                        "awarded",
-                        "alreadyClaimed"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the session was revoked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/gamification/leaderboard": {
-      "get": {
-        "operationId": "getGamificationLeaderboard",
-        "summary": "Cohort standings for one course, visible to people with access to that course. Names are abbreviated (\"Alex C.\") and only enrolled learners appear.",
-        "tags": [
-          "gamification"
-        ],
-        "security": [
-          {
-            "cookieAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 64
-            },
-            "required": true,
-            "name": "courseId",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 50,
-              "default": 10
-            },
-            "required": false,
-            "name": "limit",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "rank": {
-                            "type": "number"
-                          },
-                          "userId": {
-                            "type": "string"
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "xp": {
-                            "type": "number"
-                          },
-                          "level": {
-                            "type": "number"
-                          },
-                          "streakDays": {
-                            "type": "number"
-                          },
-                          "isMe": {
-                            "type": "boolean"
-                          }
-                        },
-                        "required": [
-                          "rank",
-                          "userId",
-                          "name",
-                          "xp",
-                          "level",
-                          "streakDays",
-                          "isMe"
-                        ]
-                      }
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the session was revoked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/gamification/mastery": {
-      "get": {
-        "operationId": "getGamificationMastery",
-        "summary": "The caller's own Bloom's-taxonomy profile, from their graded answers to tagged quiz questions.",
-        "tags": [
-          "gamification"
-        ],
-        "security": [
-          {
-            "cookieAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Average score (percent) per Bloom's level; levels without graded answers are omitted.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "level": {
-                            "type": "string",
-                            "enum": [
-                              "REMEMBER",
-                              "UNDERSTAND",
-                              "APPLY",
-                              "ANALYZE",
-                              "EVALUATE",
-                              "CREATE"
-                            ]
-                          },
-                          "score": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "level",
-                          "score"
-                        ]
-                      }
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the session was revoked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/gamification/me": {
-      "get": {
-        "operationId": "getGamificationMe",
-        "summary": "GET /api/v1/gamification/me",
-        "tags": [
-          "gamification"
-        ],
-        "security": [
-          {
-            "cookieAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "xp": {
-                          "type": "number"
-                        },
-                        "level": {
-                          "type": "number"
-                        },
-                        "xpIntoLevel": {
-                          "type": "number"
-                        },
-                        "xpPerLevel": {
-                          "type": "number"
-                        },
-                        "streakDays": {
-                          "type": "number"
-                        },
-                        "longestStreak": {
-                          "type": "number"
-                        },
-                        "lastActiveDate": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "recent": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "source": {
-                                "type": "string"
-                              },
-                              "points": {
-                                "type": "number"
-                              },
-                              "createdAt": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "source",
-                              "points",
-                              "createdAt"
-                            ]
-                          }
-                        }
-                      },
-                      "required": [
-                        "xp",
-                        "level",
-                        "xpIntoLevel",
-                        "xpPerLevel",
-                        "streakDays",
-                        "longestStreak",
-                        "lastActiveDate",
-                        "recent"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the session was revoked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/integrations/livekit": {
       "post": {
         "operationId": "postIntegrationsLivekit",
@@ -19518,23 +19192,6 @@
                         "posts"
                       ]
                     },
-                    "gamification": {
-                      "type": "object",
-                      "properties": {
-                        "summary": {
-                          "nullable": true
-                        },
-                        "xpEvents": {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
-                        }
-                      },
-                      "required": [
-                        "xpEvents"
-                      ]
-                    },
                     "liveAttendance": {
                       "type": "array",
                       "items": {
@@ -19569,7 +19226,6 @@
                     "courseGrades",
                     "notifications",
                     "forum",
-                    "gamification",
                     "liveAttendance",
                     "learningActivity",
                     "guardianLinks",
@@ -19856,23 +19512,6 @@
                         "posts"
                       ]
                     },
-                    "gamification": {
-                      "type": "object",
-                      "properties": {
-                        "summary": {
-                          "nullable": true
-                        },
-                        "xpEvents": {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
-                        }
-                      },
-                      "required": [
-                        "xpEvents"
-                      ]
-                    },
                     "liveAttendance": {
                       "type": "array",
                       "items": {
@@ -19907,7 +19546,6 @@
                     "courseGrades",
                     "notifications",
                     "forum",
-                    "gamification",
                     "liveAttendance",
                     "learningActivity",
                     "guardianLinks",
