@@ -34,6 +34,8 @@ const envSchema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
   DEFAULT_TENANT_SLUG: z.string().min(1).default('default-tenant'),
+  /** Slug of the organisation whose super administrators manage every organisation's plan. Unset: nobody can, through the API. */
+  PLATFORM_OPERATOR_TENANT: z.string().min(1).optional(),
   APP_URL: z.string().url().default('http://localhost:3000'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_REQUEST_BODIES: z

@@ -1983,7 +1983,7 @@
     "/api/v1/admin/features": {
       "get": {
         "operationId": "getAdminFeatures",
-        "summary": "GET /api/v1/admin/features",
+        "summary": "What this organisation's plan includes. Only the platform operator can change it (PATCH /operator/tenants/:id).",
         "tags": [
           "admin"
         ],
@@ -2054,137 +2054,6 @@
           },
           "403": {
             "description": "Not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "operationId": "putAdminFeatures",
-        "summary": "toggles features for this tenant (overrides the plan's defaults).",
-        "tags": [
-          "admin"
-        ],
-        "security": [
-          {
-            "cookieAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-required-roles": [
-          "SUPER_ADMIN",
-          "TENANT_ADMIN"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "lti13": {
-                    "type": "boolean"
-                  },
-                  "sso": {
-                    "type": "boolean"
-                  },
-                  "webhooks": {
-                    "type": "boolean"
-                  },
-                  "scim": {
-                    "type": "boolean"
-                  },
-                  "aiAssistant": {
-                    "type": "boolean"
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "lti13": {
-                          "type": "boolean"
-                        },
-                        "sso": {
-                          "type": "boolean"
-                        },
-                        "webhooks": {
-                          "type": "boolean"
-                        },
-                        "scim": {
-                          "type": "boolean"
-                        },
-                        "aiAssistant": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "lti13",
-                        "sso",
-                        "webhooks",
-                        "scim",
-                        "aiAssistant"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the session was revoked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -3761,117 +3630,6 @@
           },
           "403": {
             "description": "Not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/admin/usage/quota": {
-      "put": {
-        "operationId": "putAdminUsageQuota",
-        "summary": "PUT /api/v1/admin/usage/quota",
-        "tags": [
-          "admin"
-        ],
-        "security": [
-          {
-            "cookieAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-required-roles": [
-          "SUPER_ADMIN",
-          "TENANT_ADMIN"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "seatQuota": {
-                    "type": "integer",
-                    "nullable": true,
-                    "minimum": 1,
-                    "maximum": 10000000
-                  }
-                },
-                "required": [
-                  "seatQuota"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "seatQuota": {
-                          "type": "number",
-                          "nullable": true
-                        }
-                      },
-                      "required": [
-                        "seatQuota"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "data"
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in, or the session was revoked",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Not allowed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict with the current state",
             "content": {
               "application/json": {
                 "schema": {
@@ -19300,6 +19058,378 @@
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants": {
+      "get": {
+        "operationId": "getOperatorTenants",
+        "summary": "Platform operator: every organisation with its plan tier, features, seat quota and seats in use.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "customDomain": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "STARTER",
+                              "PROFESSIONAL",
+                              "ENTERPRISE"
+                            ]
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "seatQuota": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "seatsUsed": {
+                            "type": "number"
+                          },
+                          "features": {
+                            "type": "object",
+                            "properties": {
+                              "lti13": {
+                                "type": "boolean"
+                              },
+                              "sso": {
+                                "type": "boolean"
+                              },
+                              "webhooks": {
+                                "type": "boolean"
+                              },
+                              "scim": {
+                                "type": "boolean"
+                              },
+                              "aiAssistant": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "lti13",
+                              "sso",
+                              "webhooks",
+                              "scim",
+                              "aiAssistant"
+                            ]
+                          },
+                          "overrides": {
+                            "type": "object",
+                            "additionalProperties": {
+                              "type": "boolean"
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "slug",
+                          "name",
+                          "customDomain",
+                          "tier",
+                          "status",
+                          "seatQuota",
+                          "seatsUsed",
+                          "features",
+                          "overrides"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants/{id}": {
+      "patch": {
+        "operationId": "patchOperatorTenantsId",
+        "summary": "Platform operator: change an organisation's tier, seat quota (not below the seats in use) or feature overrides (null returns a feature to the tier's default). Audited in the operator's and the organisation's trail.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "STARTER",
+                      "PROFESSIONAL",
+                      "ENTERPRISE"
+                    ]
+                  },
+                  "seatQuota": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 1,
+                    "maximum": 10000000
+                  },
+                  "features": {
+                    "type": "object",
+                    "properties": {
+                      "lti13": {
+                        "type": "boolean",
+                        "nullable": true
+                      },
+                      "sso": {
+                        "type": "boolean",
+                        "nullable": true
+                      },
+                      "webhooks": {
+                        "type": "boolean",
+                        "nullable": true
+                      },
+                      "scim": {
+                        "type": "boolean",
+                        "nullable": true
+                      },
+                      "aiAssistant": {
+                        "type": "boolean",
+                        "nullable": true
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "tier": {
+                          "type": "string",
+                          "enum": [
+                            "STARTER",
+                            "PROFESSIONAL",
+                            "ENTERPRISE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "seatQuota": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "seatsUsed": {
+                          "type": "number"
+                        },
+                        "features": {
+                          "type": "object",
+                          "properties": {
+                            "lti13": {
+                              "type": "boolean"
+                            },
+                            "sso": {
+                              "type": "boolean"
+                            },
+                            "webhooks": {
+                              "type": "boolean"
+                            },
+                            "scim": {
+                              "type": "boolean"
+                            },
+                            "aiAssistant": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "lti13",
+                            "sso",
+                            "webhooks",
+                            "scim",
+                            "aiAssistant"
+                          ]
+                        },
+                        "overrides": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "slug",
+                        "name",
+                        "customDomain",
+                        "tier",
+                        "status",
+                        "seatQuota",
+                        "seatsUsed",
+                        "features",
+                        "overrides"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
             "content": {
               "application/json": {
                 "schema": {

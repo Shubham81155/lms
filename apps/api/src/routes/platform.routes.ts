@@ -8,7 +8,7 @@ import { HttpError, route } from '../lib/http';
 import { logger } from '../lib/logger';
 import { JsonObjectStream } from '../lib/json-stream';
 import { idSchema, parseBody } from '../lib/validate';
-import { FEATURE_KEYS, resolveFeatures, tenantFeatures } from '../lib/features';
+import { tenantFeatures } from '../lib/features';
 import { assertSafeWebhookUrl, deliverWebhook, WEBHOOK_EVENTS } from '../lib/webhooks';
 import { hashOneTimeToken } from '../lib/one-time-token';
 import { newScimToken } from './scim.routes';
@@ -31,34 +31,13 @@ const audit = (req: any, action: string, resourceType: string, resourceId?: stri
 
 // --------------------------------------------------------------------------- feature flags
 
-export const featuresSchema = z
-  .object(Object.fromEntries(FEATURE_KEYS.map((k) => [k, z.boolean().optional()])) as Record<(typeof FEATURE_KEYS)[number], z.ZodOptional<z.ZodBoolean>>)
-  .strict()
-  .refine((v) => Object.keys(v).length > 0, 'Nothing to change');
-
+/** GET /api/v1/admin/features: what this organisation's plan includes. Only the platform operator can change it (operator.routes.ts). */
 router.get(
   '/features',
   route('Failed to load features', async (req, res) => res.json({ data: await tenantFeatures(tenantIdOf(req)) }))
 );
 
-/** PUT /api/v1/admin/features: toggles features for this tenant (overrides the plan's defaults). */
-router.put(
-  '/features',
-  route('Failed to update features', async (req, res) => {
-    const tenantId = tenantIdOf(req);
-    const patch = parseBody(req, featuresSchema);
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { tier: true, featureFlags: true } });
-    if (!tenant) throw new HttpError(404, 'Tenant not found');
-    const merged = { ...((tenant.featureFlags as object) ?? {}), ...patch };
-    await prisma.tenant.update({ where: { id: tenantId }, data: { featureFlags: merged } });
-    await audit(req, 'TENANT_FEATURES_UPDATED', 'TENANT', tenantId, patch);
-    return res.json({ data: resolveFeatures(tenant.tier, merged) });
-  })
-);
-
 // --------------------------------------------------------------------------- usage metering
-
-export const quotaSchema = z.object({ seatQuota: z.number().int().min(1).max(10_000_000).nullable() });
 
 /** GET /api/v1/admin/usage: seats, activity and volume for billing and capacity planning. */
 router.get(
@@ -93,21 +72,6 @@ router.get(
         totals: { courses, enrollments, certificates },
       },
     });
-  })
-);
-
-router.put(
-  '/usage/quota',
-  route('Failed to update seat quota', async (req, res) => {
-    const tenantId = tenantIdOf(req);
-    const { seatQuota } = parseBody(req, quotaSchema);
-    if (seatQuota !== null) {
-      const used = await prisma.user.count({ where: { tenantId, status: { in: ['ACTIVE', 'INVITED'] } } });
-      if (seatQuota < used) throw new HttpError(409, `Quota cannot be below the ${used} seats already in use`);
-    }
-    await prisma.tenant.update({ where: { id: tenantId }, data: { seatQuota } });
-    await audit(req, 'TENANT_SEAT_QUOTA_UPDATED', 'TENANT', tenantId, { seatQuota });
-    return res.json({ data: { seatQuota } });
   })
 );
 

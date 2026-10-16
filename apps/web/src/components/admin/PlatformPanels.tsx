@@ -25,24 +25,16 @@ export const FEATURE_LABELS: Record<string, { label: string; hint: string }> = {
   aiAssistant: { label: "AI assistance", hint: "Study tutor for learners and course-outline drafts for instructors. Questions and course content are sent to Google Gemini." },
 };
 
-export const FeaturesPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) => {
-  const { data, isLoading, error, reload } = useApiData<{ data: Record<string, boolean> }>("/api/v1/admin/features");
-  const { busy, error: actionError, run } = useAction();
-
-  const toggle = (key: string, value: boolean) =>
-    run(async () => {
-      await api.put("/api/v1/admin/features", { [key]: value });
-      await reload();
-      onChanged?.();
-    });
+export const FeaturesPanel: React.FC = () => {
+  const { data, error } = useApiData<{ data: Record<string, boolean> }>("/api/v1/admin/features");
 
   return (
     <section className="space-y-4" aria-labelledby="features-heading">
       <div>
-        <h3 id="features-heading" className="font-bold text-base text-ink">Features</h3>
-        <p className="text-xs text-ink-muted">Switch capabilities on or off for your organisation.</p>
+        <h3 id="features-heading" className="font-bold text-base text-ink">Included in your plan</h3>
+        <p className="text-xs text-ink-muted">To change your plan, contact your platform provider.</p>
       </div>
-      {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
+      {error && <Banner kind="error">{error}</Banner>}
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {Object.entries(FEATURE_LABELS).map(([key, meta]) => {
           const on = !!data?.data?.[key];
@@ -52,16 +44,9 @@ export const FeaturesPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged 
                 <div className="text-sm font-semibold text-ink">{meta.label}</div>
                 <div className="text-[11px] text-ink-subtle">{meta.hint}</div>
               </div>
-              <button
-                role="switch"
-                aria-checked={on}
-                aria-label={meta.label}
-                disabled={busy || isLoading}
-                onClick={() => toggle(key, !on)}
-                className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${on ? "bg-brand" : "bg-raised"}`}
-              >
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
-              </button>
+              <span className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${on ? "bg-success/10 text-success border-success/30" : "bg-canvas text-ink-subtle border-line"}`}>
+                {on ? "Included" : "Not included"}
+              </span>
             </li>
           );
         })}
@@ -84,18 +69,8 @@ export interface Usage {
 export const UsagePanel: React.FC = () => {
   const { data, error, reload } = useApiData<{ data: Usage }>("/api/v1/admin/usage");
   const { busy, error: actionError, run } = useAction();
-  const [quota, setQuota] = useState("");
   const [exporting, setExporting] = useState(false);
   const u = data?.data;
-
-  const saveQuota = (e: React.FormEvent) => {
-    e.preventDefault();
-    run(async () => {
-      await api.put("/api/v1/admin/usage/quota", { seatQuota: quota.trim() === "" ? null : Number(quota) });
-      setQuota("");
-      await reload();
-    });
-  };
 
   const exportData = async () => {
     setExporting(true);
@@ -110,7 +85,7 @@ export const UsagePanel: React.FC = () => {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 id="usage-heading" className="font-bold text-base text-ink">Usage and seats</h3>
-          <p className="text-xs text-ink-muted">Plan: {u?.tier ?? "…"}. Seats count active and invited accounts.</p>
+          <p className="text-xs text-ink-muted">Plan: {u?.tier ?? "…"}. Seats count active and invited accounts{u?.seats.quota ? `; your plan allows ${u.seats.quota}` : ""}.</p>
         </div>
         <button className={ghostBtn} onClick={exportData} disabled={exporting}>
           <Download className="h-3.5 w-3.5 inline mr-1" />
@@ -155,13 +130,6 @@ export const UsagePanel: React.FC = () => {
         </>
       )}
 
-      <form onSubmit={saveQuota} className="flex items-end gap-3 max-w-md">
-        <label className="flex-1 space-y-1 text-xs text-ink-muted font-semibold">
-          Seat quota (blank for unlimited)
-          <input className={input} type="number" min={1} value={quota} onChange={(e) => setQuota(e.target.value)} placeholder={u?.seats.quota ? String(u.seats.quota) : "Unlimited"} />
-        </label>
-        <button className={primaryBtn} disabled={busy}>Set quota</button>
-      </form>
     </section>
   );
 };

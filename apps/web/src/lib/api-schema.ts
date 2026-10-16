@@ -201,10 +201,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** GET /api/v1/admin/features */
+        /** What this organisation's plan includes. Only the platform operator can change it (PATCH /operator/tenants/:id). */
         get: operations["getAdminFeatures"];
-        /** toggles features for this tenant (overrides the plan's defaults). */
-        put: operations["putAdminFeatures"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -330,23 +329,6 @@ export interface paths {
         /** seats, activity and volume for billing and capacity planning. */
         get: operations["getAdminUsage"];
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/usage/quota": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** PUT /api/v1/admin/usage/quota */
-        put: operations["putAdminUsageQuota"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1937,6 +1919,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: every organisation with its plan tier, features, seat quota and seats in use. */
+        get: operations["getOperatorTenants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Platform operator: change an organisation's tier, seat quota (not below the seats in use) or feature overrides (null returns a feature to the tier's default). Audited in the operator's and the organisation's trail. */
+        patch: operations["patchOperatorTenantsId"];
+        trace?: never;
+    };
     "/api/v1/posts/{id}/endorse": {
         parameters: {
             query?: never;
@@ -3436,80 +3452,6 @@ export interface operations {
             };
         };
     };
-    putAdminFeatures: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    lti13?: boolean;
-                    sso?: boolean;
-                    webhooks?: boolean;
-                    scim?: boolean;
-                    aiAssistant?: boolean;
-                };
-            };
-        };
-        responses: {
-            /** @description Success */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            lti13: boolean;
-                            sso: boolean;
-                            webhooks: boolean;
-                            scim: boolean;
-                            aiAssistant: boolean;
-                        };
-                    };
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not signed in, or the session was revoked */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not allowed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
     getAdminSaml: {
         parameters: {
             query?: never;
@@ -4265,72 +4207,6 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    putAdminUsageQuota: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    seatQuota: number | null;
-                };
-            };
-        };
-        responses: {
-            /** @description Success */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: {
-                            seatQuota: number | null;
-                        };
-                    };
-                };
-            };
-            /** @description Invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not signed in, or the session was revoked */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not allowed */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Conflict with the current state */
-            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11726,6 +11602,170 @@ export interface operations {
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOperatorTenants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            status: string;
+                            seatQuota: number | null;
+                            seatsUsed: number;
+                            features: {
+                                lti13: boolean;
+                                sso: boolean;
+                                webhooks: boolean;
+                                scim: boolean;
+                                aiAssistant: boolean;
+                            };
+                            overrides: {
+                                [key: string]: boolean;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchOperatorTenantsId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    tier?: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                    seatQuota?: number | null;
+                    features?: {
+                        lti13?: boolean | null;
+                        sso?: boolean | null;
+                        webhooks?: boolean | null;
+                        scim?: boolean | null;
+                        aiAssistant?: boolean | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            status: string;
+                            seatQuota: number | null;
+                            seatsUsed: number;
+                            features: {
+                                lti13: boolean;
+                                sso: boolean;
+                                webhooks: boolean;
+                                scim: boolean;
+                                aiAssistant: boolean;
+                            };
+                            overrides: {
+                                [key: string]: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

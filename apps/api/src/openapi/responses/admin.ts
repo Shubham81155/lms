@@ -81,6 +81,19 @@ export const FeatureFlags = z.object({
   aiAssistant: z.boolean(),
 });
 
+export const OperatorTenant = z.object({
+  id: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  customDomain: z.string().nullable(),
+  tier: Tier,
+  status: z.string(),
+  seatQuota: z.number().nullable(),
+  seatsUsed: z.number(),
+  features: FeatureFlags,
+  overrides: z.record(z.string(), z.boolean()),
+});
+
 export const UsageReport = z.object({
   /** Absent only if the tenant row vanished mid-request. */
   tier: Tier.optional(),
@@ -334,9 +347,9 @@ export const RESPONSES: ResponseTable = {
 
   // ---- plan, usage, export
   'GET /api/v1/admin/features': { response: ok(z.object({ data: FeatureFlags })) },
-  'PUT /api/v1/admin/features': { response: ok(z.object({ data: FeatureFlags })), errors: [400, 404] },
+  'GET /api/v1/operator/tenants': { response: ok(z.object({ data: z.array(OperatorTenant) })) },
+  'PATCH /api/v1/operator/tenants/:id': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
   'GET /api/v1/admin/usage': { response: ok(z.object({ data: UsageReport })) },
-  'PUT /api/v1/admin/usage/quota': { response: ok(z.object({ data: z.object({ seatQuota: z.number().nullable() }) })), errors: [400, 409] },
   'GET /api/v1/admin/export': {
     response: { status: 200, schema: TenantExport, description: 'Tenant data as a JSON download (Content-Disposition: attachment). No credentials or secrets. Streamed; if it fails midway the connection is cut and the file is truncated.' },
   },

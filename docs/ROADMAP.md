@@ -27,7 +27,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 |---|---|---|
 | Auth: cookie/JWT sessions, lockout, password reset, e-mail verification | Done | |
 | RBAC + per-course access rules | Done | `api_authorization.md` |
-| Tenant branding, feature flags by plan, seat quota, usage metering | Done | |
+| Tenant branding, feature flags by plan, seat quota, usage metering | Done | plans, quotas and feature overrides are set by the platform operator (`PLATFORM_OPERATOR_TENANT`), not by the organisation's own admins |
 | SCIM 2.0 provisioning | Done | |
 | MFA (TOTP + recovery codes) | Done | login page asks for the code |
 | **OIDC single sign-on** (PKCE, per-tenant provider, custom-domain aware, no auto-provisioning) + login button | Done | works with SCIM-provisioned users |

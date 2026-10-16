@@ -33,6 +33,7 @@ import {
 } from '../routes/forum.routes';
 import { statementSchema } from '../routes/intelligence.routes';
 import { aiSettingsSchema, outlineSchema, tutorSchema } from '../routes/ai.routes';
+import { planSchema } from '../routes/operator.routes';
 import { patchBody as scimPatchBody, userBody as scimUserBody } from '../routes/scim.routes';
 import { listQuery as notificationListQuery, prefsSchema } from '../routes/notifications.routes';
 import { enrollSchema, listQuery as enrollmentListQuery, updateProgressSchema } from '../routes/enrollments.routes';
@@ -438,6 +439,12 @@ export const DOCS: Record<string, OperationDoc> = {
   'PATCH /api/v1/posts/:id/moderate': { summary: 'Hide or restore a reply (course staff).', body: moderatePostSchema, errors: [400, 403, 404] },
 
   // ---- bodies the handlers read without parseBody
+  'GET /api/v1/operator/tenants': { summary: 'Platform operator: every organisation with its plan tier, features, seat quota and seats in use.' },
+  'PATCH /api/v1/operator/tenants/:id': {
+    summary: "Platform operator: change an organisation's tier, seat quota (not below the seats in use) or feature overrides (null returns a feature to the tier's default). Audited in the operator's and the organisation's trail.",
+    body: planSchema,
+    errors: [400, 404, 409],
+  },
   'GET /api/v1/ai/status': { summary: "Whether AI assistance can be used here: it is on the plan, not switched off, and a provider key applies (the organisation's own or the platform default)." },
   'GET /api/v1/ai/settings': { summary: "Administrators: this organisation's AI provider, model and whether a key is saved. The key is never returned." },
   'PUT /api/v1/ai/settings': {

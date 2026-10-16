@@ -23,6 +23,7 @@ import { FeaturesPanel, UsagePanel, WebhooksPanel, type Usage } from "@/componen
 import { BrandingPanel, CampusPanel, CompliancePanel } from "@/components/admin/OrgPanels";
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
 import { AiSettingsPanel } from "@/components/admin/AiSettingsPanel";
+import { OperatorPanel } from "@/components/admin/OperatorPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 import { CourseBuilder } from "@/components/CourseBuilder";
 import { CourseContentEditor } from "@/components/CourseContentEditor";
@@ -236,11 +237,12 @@ export default function AdminDashboard() {
 
         {activeTab === "platform" && (
           <div className="space-y-6">
+            {user?.role === "SUPER_ADMIN" && <OperatorPanel />}
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <UsagePanel />
             </div>
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
-              <FeaturesPanel onChanged={features.reload} />
+              <FeaturesPanel />
             </div>
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <AiSettingsPanel />

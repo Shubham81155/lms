@@ -573,18 +573,15 @@ describe('multi-factor authentication', () => {
 
 // ---------------------------------------------------------------------------
 describe('feature flags, usage metering and tenant export', () => {
-  it('derives features from the plan and lets admins override them', async () => {
+  it('derives features from the plan; organisation admins cannot change their own plan', async () => {
     const harvard = await as('admin');
     expect((await harvard.get('/api/v1/admin/features')).body.data).toMatchObject({ scim: true, webhooks: true, sso: true });
     const mit = await as('m-admin', 'mit');
     expect((await mit.get('/api/v1/admin/features')).body.data).toMatchObject({ scim: false, webhooks: false, lti13: false });
-
-    const put = await mit.put('/api/v1/admin/features').send({ webhooks: true });
-    expect(put.body.data.webhooks).toBe(true);
-    expect((await request(app).get('/api/v1/tenant/config').set('x-tenant-id', 'mit')).body.features.webhooks).toBe(true);
-    expect((await mit.put('/api/v1/admin/features').send({ bogus: true })).status).toBe(400);
-    expect((await mit.put('/api/v1/admin/features').send({})).status).toBe(400);
-    await mit.put('/api/v1/admin/features').send({ webhooks: false });
+    expect((await mit.put('/api/v1/admin/features').send({ webhooks: true })).status).toBe(404);
+    // No operator organisation is configured here, so nobody can change plans through the API.
+    expect((await mit.get('/api/v1/operator/tenants')).status).toBe(403);
+    expect((await request(app).get('/api/v1/tenant/config').set('x-tenant-id', 'mit')).body.features.webhooks).toBe(false);
   });
 
   it('is administrator-only', async () => {
@@ -596,15 +593,14 @@ describe('feature flags, usage metering and tenant export', () => {
     }
   });
 
-  it('reports usage and enforces a seat quota floor', async () => {
+  it('reports usage against the seat quota', async () => {
     const harvard = await as('admin');
     const usage = (await harvard.get('/api/v1/admin/usage')).body.data;
     expect(usage.seats.used).toBe(8);
     expect(usage.seats.byRole.STUDENT).toBe(4);
     expect(usage.totals.courses).toBe(1);
     expect(usage.last30Days.xapiStatements).toBeGreaterThan(0);
-    expect((await harvard.put('/api/v1/admin/usage/quota').send({ seatQuota: 3 })).status).toBe(409);
-    expect((await harvard.put('/api/v1/admin/usage/quota').send({ seatQuota: 8 })).body.data.seatQuota).toBe(8);
+    await admin.tenant.update({ where: { id: 't-h' }, data: { seatQuota: 8 } });
     expect((await harvard.get('/api/v1/admin/usage')).body.data.seats.remaining).toBe(0);
   });
 

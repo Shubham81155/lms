@@ -38,11 +38,15 @@ async function seed() {
   await admin.module.create({ data: { id: 'mod1', courseId: 'c1', title: 'Module 1', lessons: { create: [{ id: 'les1', title: 'Lesson 1' }] } } });
   await admin.enrollment.update({ where: { id: 'e-s1' }, data: { status: 'COMPLETED', completedAt: new Date(), finalGrade: 90 } });
   await admin.certificate.create({ data: { id: 'cert1', enrollmentId: 'e-s1', certificateNumber: 'CERT-1', verificationQr: 'https://x.example/verify/CERT-1' } });
+  // The platform operator's organisation, whose super administrators manage every plan.
+  await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator', tier: 'ENTERPRISE' } });
+  await admin.user.create({ data: { id: 'operator', tenantId: 't-op', email: 'operator@x.edu', firstName: 'Op', lastName: 'L', role: 'SUPER_ADMIN', passwordHash: bcrypt.hashSync(pw('ops'), 4), emailVerified: true } });
   // An audit row whose acting user no longer exists.
   await admin.auditLog.create({ data: { tenantId: 't-h', userId: null, action: 'SEEDED_ORPHAN', resourceType: 'TENANT', diffJson: { a: 1 } } });
 }
 
 beforeAll(async () => {
+  process.env.PLATFORM_OPERATOR_TENANT = 'ops';
   process.env.LIVEKIT_URL = LK_URL;
   process.env.LIVEKIT_API_KEY = 'APIkeyForTests';
   process.env.LIVEKIT_API_SECRET = LK_SECRET;
@@ -59,9 +63,9 @@ afterAll(async () => {
   await db?.stop();
 }, 60_000);
 
-async function as(who: string) {
+async function as(who: string, tenant = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: pw('harvard') });
+  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -118,25 +122,43 @@ describe('tenant settings, audit log and stats', () => {
 
 // ---------------------------------------------------------------------------
 describe('features, usage and export', () => {
-  it('GET/PUT /admin/features', async () => {
+  it('GET /admin/features: organisations read their plan but cannot change it', async () => {
     const a = await as('admin');
     const got = check('GET /api/v1/admin/features', await a.get('/api/v1/admin/features'));
     expect(got.data).toMatchObject({ sso: true, webhooks: true, scim: true });
     expect(keys(got.data)).toEqual(['aiAssistant', 'lti13', 'scim', 'sso', 'webhooks']);
-    const put = check('PUT /api/v1/admin/features', await a.put('/api/v1/admin/features').send({ aiAssistant: false }));
-    expect(put.data.aiAssistant).toBe(false);
-    expect((await a.put('/api/v1/admin/features').send({})).status).toBe(400);
+    expect((await a.put('/api/v1/admin/features').send({ aiAssistant: false })).status).toBe(404);
+    expect((await a.put('/api/v1/admin/usage/quota').send({ seatQuota: 50 })).status).toBe(404);
+    expect((await a.get('/api/v1/operator/tenants')).status).toBe(403);
   });
 
-  it('GET /admin/usage and PUT /admin/usage/quota', async () => {
+  it('the platform operator manages plans, quotas and feature overrides', async () => {
+    const op = await as('operator', 'ops');
+    const list = check('GET /api/v1/operator/tenants', await op.get('/api/v1/operator/tenants'));
+    const harvard = list.data.find((t: any) => t.slug === 'harvard');
+    expect(harvard).toMatchObject({ tier: 'ENTERPRISE', seatQuota: null, seatsUsed: 7, overrides: {} });
+
+    const set = check('PATCH /api/v1/operator/tenants/:id', await op.patch('/api/v1/operator/tenants/t-h').send({ seatQuota: 50, features: { aiAssistant: false } }));
+    expect(set.data).toMatchObject({ seatQuota: 50, features: { aiAssistant: false }, overrides: { aiAssistant: false } });
     const a = await as('admin');
-    const usage = check('GET /api/v1/admin/usage', await a.get('/api/v1/admin/usage'));
-    expect(usage.data).toMatchObject({ tier: 'ENTERPRISE', seats: { used: 7, quota: null, remaining: null }, totals: { courses: 1, enrollments: 2, certificates: 1 } });
-    const set = check('PUT /api/v1/admin/usage/quota', await a.put('/api/v1/admin/usage/quota').send({ seatQuota: 50 }));
-    expect(set.data).toEqual({ seatQuota: 50 });
     expect((await a.get('/api/v1/admin/usage')).body.data.seats).toMatchObject({ quota: 50, remaining: 43 });
-    expect((await a.put('/api/v1/admin/usage/quota').send({ seatQuota: 1 })).status).toBe(409);
-    expect((await a.put('/api/v1/admin/usage/quota').send({ seatQuota: null })).body.data).toEqual({ seatQuota: null });
+    expect((await a.get('/api/v1/admin/features')).body.data.aiAssistant).toBe(false);
+
+    expect((await op.patch('/api/v1/operator/tenants/t-h').send({ seatQuota: 1 })).status).toBe(409);
+    expect((await op.patch('/api/v1/operator/tenants/t-h').send({})).status).toBe(400);
+    expect((await op.patch('/api/v1/operator/tenants/t-h').send({ tier: 'GOLD' })).status).toBe(400);
+    expect((await op.patch('/api/v1/operator/tenants/nope').send({ seatQuota: 5 })).status).toBe(404);
+    const back = check('PATCH /api/v1/operator/tenants/:id', await op.patch('/api/v1/operator/tenants/t-h').send({ seatQuota: null, features: { aiAssistant: null } }));
+    expect(back.data).toMatchObject({ seatQuota: null, features: { aiAssistant: true }, overrides: {} });
+
+    // Both audit trails record the change.
+    expect(await admin.auditLog.count({ where: { action: 'TENANT_PLAN_UPDATED', tenantId: 't-h' } })).toBe(2);
+    expect(await admin.auditLog.count({ where: { action: 'TENANT_PLAN_UPDATED', tenantId: 't-op' } })).toBe(2);
+  });
+
+  it('GET /admin/usage', async () => {
+    const usage = check('GET /api/v1/admin/usage', await (await as('admin')).get('/api/v1/admin/usage'));
+    expect(usage.data).toMatchObject({ tier: 'ENTERPRISE', seats: { used: 7, quota: null, remaining: null }, totals: { courses: 1, enrollments: 2, certificates: 1 } });
   });
 
   it('GET /admin/export contains the documented sections and no credentials', async () => {

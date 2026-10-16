@@ -219,7 +219,7 @@ describe('the audit trail is append-only for the application', () => {
   it('lets the API add audit rows', async () => {
     const before = await admin.auditLog.count({ where: { tenantId: 't-h' } });
     await (await as('teacher')).get('/api/v1/auth/me');
-    await (await as('admin')).put('/api/v1/admin/features').send({ lti13: true });
+    await (await as('admin')).put('/api/v1/ai/settings').send({ provider: 'GEMINI' });
     expect(await admin.auditLog.count({ where: { tenantId: 't-h' } })).toBeGreaterThan(before);
   });
 

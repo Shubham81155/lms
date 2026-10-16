@@ -25,6 +25,7 @@ import gradingRoutes from './routes/grading.routes';
 import orgRoutes from './routes/org.routes';
 import liveRoutes from './routes/live.routes';
 import aiRoutes from './routes/ai.routes';
+import operatorRoutes from './routes/operator.routes';
 
 /** Where each router is mounted, in mounting order (order matters: see the notes in server.ts). */
 export interface Mount {
@@ -48,6 +49,7 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1/admin', router: adminRoutes },
   { prefix: '/api/v1/analytics', router: analyticsRoutes },
   { prefix: '/api/v1/ai', router: aiRoutes },
+  { prefix: '/api/v1/operator', router: operatorRoutes },
   { prefix: '/api/v1/certificates', router: certificatesRoutes },
   { prefix: '/api/v1/admin', router: platformRoutes },
   { prefix: '/api/v1/admin', router: orgRoutes },
