@@ -8,6 +8,7 @@ import { useAction, useApiData } from "@/hooks/useApiData";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { card, ghost, input, label, primary } from "@/components/assessments/ui";
+import { BulkImport } from "@/components/admin/BulkImport";
 
 const ROLES = ["SUPER_ADMIN", "TENANT_ADMIN", "INSTRUCTOR", "TEACHING_ASSISTANT", "STUDENT", "PARENT_GUARDIAN", "AUDITOR"] as const;
 const STATUSES = ["ACTIVE", "INVITED", "LOCKED", "SUSPENDED"] as const;
@@ -280,6 +281,7 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [inviting, setInviting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   useEffect(() => {
@@ -307,9 +309,14 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <h3 className="text-base font-bold text-ink">People</h3>
             <p className="text-xs text-ink-muted">Invite people by email, or let single sign-on and directory sync create accounts. Here you also correct names, change roles and suspend or restore access.</p>
           </div>
-          <button onClick={() => { setNotice(null); setInviting(true); }} className={primary} aria-label="Invite a person">
-            + Invite person
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button onClick={() => { setNotice(null); setImporting(false); setInviting(true); }} className={primary} aria-label="Invite a person">
+              + Invite person
+            </button>
+            <button onClick={() => { setNotice(null); setInviting(false); setImporting(true); }} className={ghost}>
+              Import CSV
+            </button>
+          </div>
           <button onClick={onClose} aria-label="Close" className="rounded-xl p-1 text-ink-muted transition-colors hover:bg-raised hover:text-ink">
             <X className="h-5 w-5" />
           </button>
@@ -338,6 +345,17 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
         <div className="flex-1 space-y-3 overflow-y-auto p-6">
           {notice && <Banner kind={notice.kind}>{notice.text}</Banner>}
+          {importing && (
+            <BulkImport
+              onCancel={() => setImporting(false)}
+              onDone={(text) => {
+                setNotice({ kind: "ok", text });
+                setImporting(false);
+                setPage(1);
+                list.reload();
+              }}
+            />
+          )}
           {inviting && (
             <InviteForm
               actorIsSuper={user?.role === "SUPER_ADMIN"}

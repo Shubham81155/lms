@@ -27297,6 +27297,207 @@
         }
       }
     },
+    "/api/v1/users/import": {
+      "post": {
+        "operationId": "postUsersImport",
+        "summary": "Invite many people from CSV (email, first_name, last_name, optional role and course_code). Every row is validated first; with dryRun (the default) nothing changes. Existing people are not changed but are enrolled in the given course. The seat quota is checked for the whole file.",
+        "tags": [
+          "users"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csv": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000000
+                  },
+                  "dryRun": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "defaultRole": {
+                    "type": "string",
+                    "enum": [
+                      "SUPER_ADMIN",
+                      "TENANT_ADMIN",
+                      "INSTRUCTOR",
+                      "TEACHING_ASSISTANT",
+                      "STUDENT",
+                      "PARENT_GUARDIAN",
+                      "AUDITOR"
+                    ],
+                    "default": "STUDENT"
+                  },
+                  "sendInvitations": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [
+                  "csv"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "dryRun": {
+                          "type": "boolean"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "rows": {
+                              "type": "number"
+                            },
+                            "toCreate": {
+                              "type": "number"
+                            },
+                            "created": {
+                              "type": "number"
+                            },
+                            "existing": {
+                              "type": "number"
+                            },
+                            "enrolled": {
+                              "type": "number"
+                            },
+                            "errors": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "rows",
+                            "toCreate",
+                            "created",
+                            "existing",
+                            "enrolled",
+                            "errors"
+                          ]
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "line": {
+                                "type": "number"
+                              },
+                              "email": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "CREATE",
+                                  "CREATED",
+                                  "EXISTS",
+                                  "ERROR"
+                                ]
+                              },
+                              "message": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "enrol": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "line",
+                              "email",
+                              "status",
+                              "message",
+                              "enrol"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "dryRun",
+                        "summary",
+                        "rows"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/votes": {
       "post": {
         "operationId": "postVotes",

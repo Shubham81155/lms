@@ -122,6 +122,13 @@ describe('contract: courses', () => {
     expect((await (await as('s2')).get('/api/v1/courses/nope')).status).toBe(404);
   });
 
+  it('POST /users/import (dry run)', async () => {
+    const res = await (await as('admin')).post('/api/v1/users/import').send({ csv: 'email,first_name,last_name\nnew@x.edu,New,Person\ns1@x.edu,S,One\n' });
+    expect(res.status).toBe(200);
+    check('POST /api/v1/users/import', res);
+    expect(res.body.data.summary).toMatchObject({ rows: 2, toCreate: 1, existing: 1, created: 0 });
+  });
+
   it('GET /courses/departments lists departments for staff only', async () => {
     const campus = await admin.campus.create({ data: { tenantId: 't-h', name: 'Main', code: 'MAIN' } });
     await admin.department.create({ data: { id: 'd-bio', campusId: campus.id, name: 'Biology', code: 'BIO' } });

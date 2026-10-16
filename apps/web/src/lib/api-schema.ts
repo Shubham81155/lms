@@ -2511,6 +2511,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite many people from CSV (email, first_name, last_name, optional role and course_code). Every row is validated first; with dryRun (the default) nothing changes. Existing people are not changed but are enrolled in the given course. The seat quota is checked for the whole file. */
+        post: operations["postUsersImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/votes": {
         parameters: {
             query?: never;
@@ -15276,6 +15293,97 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postUsersImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    csv: string;
+                    /** @default true */
+                    dryRun?: boolean;
+                    /**
+                     * @default STUDENT
+                     * @enum {string}
+                     */
+                    defaultRole?: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                    /** @default true */
+                    sendInvitations?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            dryRun: boolean;
+                            summary: {
+                                rows: number;
+                                toCreate: number;
+                                created: number;
+                                existing: number;
+                                enrolled: number;
+                                errors: number;
+                            };
+                            rows: {
+                                line: number;
+                                email: string;
+                                /** @enum {string} */
+                                status: "CREATE" | "CREATED" | "EXISTS" | "ERROR";
+                                message: string | null;
+                                enrol: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

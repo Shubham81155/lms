@@ -273,6 +273,25 @@ export const RESPONSES: ResponseTable = {
 
   // ---- users
   'GET /api/v1/users': { response: body(z.object({ data: z.array(UserListItem), pagination: Pagination })), errors: [400] },
+  'POST /api/v1/users/import': {
+    response: data(
+      z.object({
+        dryRun: z.boolean(),
+        summary: z.object({ rows: z.number(), toCreate: z.number(), created: z.number(), existing: z.number(), enrolled: z.number(), errors: z.number() }),
+        rows: z.array(
+          z.object({
+            /** Line in the file (the header is line 1). */
+            line: z.number(),
+            email: z.string(),
+            status: z.enum(['CREATE', 'CREATED', 'EXISTS', 'ERROR']),
+            message: z.string().nullable(),
+            enrol: z.string().nullable(),
+          })
+        ),
+      })
+    ),
+    errors: [400, 403, 409],
+  },
   'POST /api/v1/users': { response: body(z.object({ data: UserAccount, invitationSent: z.boolean(), emailConfigured: z.boolean() }), 201), errors: [400, 403, 409] },
   'POST /api/v1/users/:id/invite': { response: data(z.object({ id: z.string(), invitationSent: z.boolean(), emailConfigured: z.boolean() })), errors: [403, 404, 409] },
   'GET /api/v1/users/:id': { response: data(UserDetail), errors: [403, 404] },

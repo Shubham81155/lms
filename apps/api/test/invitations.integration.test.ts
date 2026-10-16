@@ -56,6 +56,69 @@ async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
 const tokenIn = (text: string) => /token=([^&\s]+)/.exec(text)?.[1] ?? '';
 const invite = (body: object) => as('admin').then((a) => a.post('/api/v1/users').send(body));
 
+describe('bulk import', () => {
+  const importCsv = (csv: string, extra: object = {}, who = 'admin', tenant: 'harvard' | 'mit' = 'harvard') =>
+    as(who, tenant).then((a) => a.post('/api/v1/users/import').send({ csv, ...extra }));
+
+  it('checks every row in a dry run without changing anything', async () => {
+    await admin.course.create({ data: { id: 'bio', tenantId: 't-h', code: 'BIO-101', title: 'Biology', status: 'PUBLISHED' } });
+    const csv = [
+      'Email,First Name,Last Name,Role,Course Code',
+      'ann@x.edu,Ann,Ames,,BIO-101',
+      'bob@x.edu,Bob,Bell,instructor,',
+      'student@x.edu,Already,There,,BIO-101',
+      'not-an-email,X,Y,,',
+      'ann@x.edu,Ann,Again,,',
+      'cy@x.edu,Cy,Cole,wizard,',
+      'di@x.edu,Di,Dunn,,NOPE-1',
+      'ed@x.edu,,Eve,,',
+      'boss@x.edu,Bo,Ss,super admin,',
+    ].join('\r\n');
+    const res = await importCsv(csv);
+    expect(res.status).toBe(200);
+    expect(res.body.data.dryRun).toBe(true);
+    expect(res.body.data.summary).toMatchObject({ rows: 9, toCreate: 2, existing: 1, errors: 6, created: 0, enrolled: 0 });
+    const byLine = Object.fromEntries(res.body.data.rows.map((r: any) => [r.line, r]));
+    expect(byLine[2]).toMatchObject({ status: 'CREATE', enrol: 'BIO-101' });
+    expect(byLine[4]).toMatchObject({ status: 'EXISTS', message: expect.stringContaining('enrolled') });
+    expect(byLine[5].message).toMatch(/e-mail/);
+    expect(byLine[6].message).toMatch(/more than once/);
+    expect(byLine[7].message).toMatch(/Unknown role/);
+    expect(byLine[8].message).toMatch(/No course/);
+    expect(byLine[9].message).toMatch(/name/);
+    expect(byLine[10].message).toMatch(/super administrator/);
+    expect(await admin.user.count({ where: { email: { in: ['ann@x.edu', 'bob@x.edu'] } } })).toBe(0);
+    expect(outbox).toHaveLength(0);
+  });
+
+  it('creates, invites and enrols for real, and audits it', async () => {
+    const res = await importCsv('email,first_name,last_name,role,course_code\nann@x.edu,Ann,Ames,,BIO-101\nbob@x.edu,Bob,Bell,INSTRUCTOR,\nstudent@x.edu,S,T,,BIO-101\nbad,X,Y,,', { dryRun: false });
+    expect(res.status).toBe(200);
+    expect(res.body.data.summary).toMatchObject({ created: 2, enrolled: 2, errors: 1, existing: 1 });
+    const ann = await admin.user.findFirstOrThrow({ where: { email: 'ann@x.edu' } });
+    expect(ann).toMatchObject({ status: 'INVITED', role: 'STUDENT', passwordHash: null });
+    expect((await admin.user.findFirstOrThrow({ where: { email: 'bob@x.edu' } })).role).toBe('INSTRUCTOR');
+    expect(await admin.enrollment.count({ where: { courseId: 'bio', userId: { in: [ann.id, 'student'] } } })).toBe(2);
+    expect(outbox.map((m) => m.to).sort()).toEqual(['ann@x.edu', 'bob@x.edu']);
+    const audit = await admin.auditLog.findFirstOrThrow({ where: { action: 'USERS_IMPORTED' } });
+    expect(audit.diffJson).toMatchObject({ created: 2, enrolled: 2, errors: 1 });
+
+    // Running the same file again creates nobody and enrols nobody twice.
+    const again = await importCsv('email,first_name,last_name,course_code\nann@x.edu,Ann,Ames,BIO-101', { dryRun: false });
+    expect(again.body.data.summary).toMatchObject({ created: 0, existing: 1, enrolled: 0 });
+  });
+
+  it('refuses a file that would exceed the seat quota, a bad header, and non-administrators', async () => {
+    const full = await importCsv('email,first_name,last_name\na1@x.edu,A,One\na2@x.edu,A,Two', { dryRun: true }, 'm-admin', 'mit');
+    expect(full.status).toBe(409);
+    expect(full.body.error).toMatch(/seats are free/);
+    expect((await importCsv('mail,name\na@x.edu,A')).status).toBe(400);
+    expect((await importCsv('email,first_name,last_name')).status).toBe(400);
+    expect((await importCsv('email,first_name,last_name\n"broken,A,B')).status).toBe(400);
+    expect((await importCsv('email,first_name,last_name\na@x.edu,A,B', {}, 'teacher')).status).toBe(403);
+  });
+});
+
 describe('inviting a person', () => {
   it('creates an invited account and emails a link, never exposing credentials', async () => {
     const res = await invite({ email: 'New.Person@X.edu', firstName: 'New', lastName: 'Person', role: 'INSTRUCTOR' });

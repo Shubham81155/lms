@@ -11,6 +11,7 @@ import { COURSE_STAFF_ROLES, canSeeAllCourses, isAdminRole } from '../lib/access
 import { assertSeatAvailable } from '../lib/features';
 import { sendInvitation } from '../lib/invitations';
 import { dispatchWebhook } from '../lib/webhooks';
+import { parseCsv } from '../lib/csv';
 
 const router = Router();
 
@@ -145,6 +146,185 @@ router.post(
     void dispatchWebhook(tenantId, 'user.provisioned', { userId: created.id, email: created.email });
 
     return res.status(201).json({ data: created, invitationSent, emailConfigured: result !== 'not_configured' });
+  })
+);
+
+// --------------------------------------------------------------------------- bulk import
+
+const IMPORT_MAX_ROWS = 2000;
+const HEADER_ALIASES: Record<string, 'email' | 'firstName' | 'lastName' | 'role' | 'courseCode'> = {
+  email: 'email',
+  'e-mail': 'email',
+  first_name: 'firstName',
+  firstname: 'firstName',
+  'first name': 'firstName',
+  given_name: 'firstName',
+  last_name: 'lastName',
+  lastname: 'lastName',
+  'last name': 'lastName',
+  family_name: 'lastName',
+  surname: 'lastName',
+  role: 'role',
+  course: 'courseCode',
+  course_code: 'courseCode',
+  'course code': 'courseCode',
+};
+
+export const importSchema = z.object({
+  /** CSV text with a header row: email, first_name, last_name, and optionally role and course_code. */
+  csv: z.string().min(1).max(2_000_000),
+  /** Check every row and report what would happen, without changing anything. */
+  dryRun: z.boolean().default(true),
+  /** Role for rows without one. */
+  defaultRole: z.nativeEnum(GlobalRole).default('STUDENT'),
+  sendInvitations: z.boolean().default(true),
+});
+
+type ImportStatus = 'CREATE' | 'CREATED' | 'EXISTS' | 'ERROR';
+interface ImportRow {
+  line: number;
+  email: string;
+  status: ImportStatus;
+  message?: string;
+  /** Course code the person is (or would be) enrolled in. */
+  enrol?: string;
+}
+
+/**
+ * POST /api/v1/users/import - invite many people from a CSV file (administrators only).
+ * Always validates every row first; with dryRun nothing changes. Otherwise new people are created as INVITED
+ * (and sent invitations), and anyone with a course_code is enrolled in that course. People who already exist
+ * are not changed, but are still enrolled. The seat quota is checked for the whole file before anything is created.
+ */
+router.post(
+  '/import',
+  authenticateJWT,
+  requireRole('SUPER_ADMIN', 'TENANT_ADMIN'),
+  route('Failed to import people', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const actor = req.user!;
+    const input = parseBody(req, importSchema);
+
+    let table: string[][];
+    try {
+      table = parseCsv(input.csv);
+    } catch (e: any) {
+      throw new HttpError(400, `The file is not valid CSV: ${e.message}`);
+    }
+    if (table.length < 2) throw new HttpError(400, 'The file needs a header row and at least one person');
+    if (table.length - 1 > IMPORT_MAX_ROWS) throw new HttpError(400, `At most ${IMPORT_MAX_ROWS} people can be imported at once`);
+
+    const columns = table[0].map((h) => HEADER_ALIASES[h.trim().toLowerCase()]);
+    for (const needed of ['email', 'firstName', 'lastName'] as const) {
+      if (!columns.includes(needed)) throw new HttpError(400, 'The header row needs the columns email, first_name and last_name');
+    }
+    const col = (row: string[], key: string) => {
+      const i = columns.indexOf(key as never);
+      return i >= 0 ? (row[i] ?? '').trim() : '';
+    };
+
+    const emails = table.slice(1).map((r) => col(r, 'email').toLowerCase());
+    const codes = Array.from(new Set(table.slice(1).map((r) => col(r, 'courseCode')).filter(Boolean)));
+    const [existing, courses] = await Promise.all([
+      prisma.user.findMany({ where: { tenantId, email: { in: emails.filter(Boolean) } }, select: { id: true, email: true } }),
+      codes.length ? prisma.course.findMany({ where: { tenantId, code: { in: codes } }, select: { id: true, code: true } }) : Promise.resolve([]),
+    ]);
+    const existingByEmail = new Map(existing.map((u) => [u.email, u.id]));
+    const courseByCode = new Map(courses.map((c) => [c.code, c.id]));
+
+    const seen = new Set<string>();
+    const rows: (ImportRow & { firstName: string; lastName: string; role: GlobalRole })[] = table.slice(1).map((r, i) => {
+      const line = i + 2;
+      const email = col(r, 'email').toLowerCase();
+      const firstName = col(r, 'firstName');
+      const lastName = col(r, 'lastName');
+      const roleText = col(r, 'role').toUpperCase().replace(/[\s-]+/g, '_');
+      const courseCode = col(r, 'courseCode');
+      const base = { line, email, firstName, lastName, role: input.defaultRole, ...(courseCode ? { enrol: courseCode } : {}) };
+      const error = (message: string) => ({ ...base, status: 'ERROR' as const, message });
+
+      if (!z.string().email().max(254).safeParse(email).success) return error('Not a valid e-mail address');
+      if (seen.has(email)) return error('This e-mail address appears more than once in the file');
+      seen.add(email);
+      const role = roleText ? (GlobalRole as Record<string, GlobalRole>)[roleText] : input.defaultRole;
+      if (!role) return error(`Unknown role "${col(r, 'role')}"`);
+      if (role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') return error('Only a super administrator can grant the super administrator role');
+      if (courseCode && !courseByCode.has(courseCode)) return error(`No course with the code "${courseCode}"`);
+      if (existingByEmail.has(email)) return { ...base, role, status: 'EXISTS' as const, message: courseCode ? 'Already has an account; will be enrolled' : 'Already has an account' };
+      if (!firstName || !lastName || firstName.length > 100 || lastName.length > 100) return error('First and last name are required (up to 100 characters each)');
+      return { ...base, role, status: 'CREATE' as const };
+    });
+
+    const toCreate = rows.filter((r) => r.status === 'CREATE');
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { seatQuota: true } });
+    if (tenant?.seatQuota != null && toCreate.length > 0) {
+      const used = await prisma.user.count({ where: { tenantId, status: { in: ['ACTIVE', 'INVITED'] } } });
+      if (used + toCreate.length > tenant.seatQuota) {
+        throw new HttpError(409, `This file adds ${toCreate.length} people, but only ${Math.max(0, tenant.seatQuota - used)} of ${tenant.seatQuota} seats are free`);
+      }
+    }
+
+    let created = 0;
+    let enrolled = 0;
+    if (!input.dryRun) {
+      for (const row of rows) {
+        if (row.status === 'ERROR') continue;
+        let userId = existingByEmail.get(row.email);
+        if (row.status === 'CREATE') {
+          try {
+            const user = await prisma.user.create({
+              data: { tenantId, email: row.email, firstName: row.firstName, lastName: row.lastName, role: row.role, status: 'INVITED', passwordHash: null, emailVerified: false },
+              select: { id: true },
+            });
+            userId = user.id;
+            row.status = 'CREATED';
+            created++;
+            if (input.sendInvitations) await sendInvitation({ id: user.id, tenantId, email: row.email, firstName: row.firstName });
+            void dispatchWebhook(tenantId, 'user.provisioned', { userId: user.id, email: row.email });
+          } catch (err: any) {
+            row.status = 'ERROR';
+            row.message = err?.code === 'P2002' ? 'Already has an account' : 'Could not be created';
+            continue;
+          }
+        }
+        const courseId = row.enrol ? courseByCode.get(row.enrol) : undefined;
+        if (userId && courseId) {
+          const before = await prisma.enrollment.findUnique({ where: { courseId_userId: { courseId, userId } }, select: { status: true } });
+          if (!before || before.status === 'DROPPED') {
+            await prisma.enrollment.upsert({
+              where: { courseId_userId: { courseId, userId } },
+              create: { tenantId, courseId, userId, status: 'ENROLLED' },
+              update: { status: 'ENROLLED', completedAt: null },
+            });
+            enrolled++;
+          }
+        }
+      }
+      await logAuditEvent({
+        tenantId,
+        userId: actor.id,
+        action: 'USERS_IMPORTED',
+        resourceType: 'USER',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        diffJson: { rows: rows.length, created, enrolled, errors: rows.filter((r) => r.status === 'ERROR').length, invitationsSent: input.sendInvitations },
+      });
+    }
+
+    return res.json({
+      data: {
+        dryRun: input.dryRun,
+        summary: {
+          rows: rows.length,
+          toCreate: toCreate.length,
+          created,
+          existing: rows.filter((r) => r.status === 'EXISTS').length,
+          enrolled,
+          errors: rows.filter((r) => r.status === 'ERROR').length,
+        },
+        rows: rows.map(({ line, email, status, message, enrol }) => ({ line, email, status, message: message ?? null, enrol: enrol ?? null })),
+      },
+    });
   })
 );
 

@@ -194,6 +194,7 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "POST /api/v1/privacy/users/:id/erase": { summary: "Administrators erase a person's data on request." },
   "GET /api/v1/privacy/users/:id/export": { summary: "Administrators export a person's data to answer an access request." },
   "GET /api/v1/users": { summary: "users of the tenant (admins only)", query: r_users.listQuery as never },
+  "POST /api/v1/users/import": { summary: "Invite many people from CSV (email, first_name, last_name, optional role and course_code). Every row is validated first; with dryRun (the default) nothing changes. Existing people are not changed but are enrolled in the given course. The seat quota is checked for the whole file.", body: r_users.importSchema },
   "POST /api/v1/users": { summary: "Invite a person (administrators only). Creates an INVITED account and emails a link to choose a password; using the link activates it. Counts against the seat quota.", body: r_users.inviteSchema },
   "POST /api/v1/users/:id/invite": { summary: "Send a fresh invitation link to someone who has not accepted yet." },
   "GET /api/v1/users/:id": { summary: "own profile, or any profile for admins" },
