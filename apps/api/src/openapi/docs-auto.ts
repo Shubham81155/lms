@@ -76,7 +76,7 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "POST /api/v1/auth/mfa/disable": { summary: "{password, code}: needs both factors.", body: r_mfa.disableSchema },
   "POST /api/v1/auth/mfa/enable": { summary: "{code}: confirms the authenticator and returns recovery codes once.", body: r_mfa.codeSchema },
   "POST /api/v1/auth/mfa/setup": { summary: "begins enrolment; returns the secret and otpauth:// URL once." },
-  "GET /api/v1/auth/mfa/status": { summary: "GET /api/v1/auth/mfa/status" },
+  "GET /api/v1/auth/mfa/status": { summary: "Whether the caller has two-step sign-in on, how many recovery codes remain, and whether the account has a password (single-sign-on accounts get their second factor from the identity provider)." },
   "POST /api/v1/auth/resend-verification": { summary: "Sends a fresh verification link to the signed-in user." },
   "POST /api/v1/auth/reset-password": { summary: "Consumes a reset token, sets the new password and clears any lockout." },
   "POST /api/v1/auth/saml/acs": { summary: "the assertion consumer service." },

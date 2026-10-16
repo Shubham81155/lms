@@ -439,7 +439,7 @@ describe('two-factor authentication', () => {
   it('shows the secret and recovery codes once each, and never in the status', async () => {
     const u = await as('mfauser');
     const before = check('GET /api/v1/auth/mfa/status', await u.get('/api/v1/auth/mfa/status'));
-    expect(before.data).toEqual({ enabled: false, recoveryCodesRemaining: 0 });
+    expect(before.data).toEqual({ enabled: false, recoveryCodesRemaining: 0, hasPassword: true });
 
     const setup = check('POST /api/v1/auth/mfa/setup', await u.post('/api/v1/auth/mfa/setup'));
     expect(keys(setup.data)).toEqual(['otpauthUrl', 'secret']);
@@ -454,7 +454,7 @@ describe('two-factor authentication', () => {
     expect(JSON.stringify(enable)).not.toContain(secret);
 
     const status = check('GET /api/v1/auth/mfa/status', await u.get('/api/v1/auth/mfa/status'));
-    expect(status.data).toEqual({ enabled: true, recoveryCodesRemaining: 8 });
+    expect(status.data).toEqual({ enabled: true, recoveryCodesRemaining: 8, hasPassword: true });
     const me = JSON.stringify((await u.get('/api/v1/auth/me')).body);
     expect(me).not.toContain(secret);
     for (const c of enable.data.recoveryCodes) expect(me).not.toContain(c);

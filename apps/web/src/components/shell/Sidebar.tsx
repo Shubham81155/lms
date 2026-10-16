@@ -126,9 +126,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        <button type="button" onClick={onOpenPrivacy} title={compact ? "Privacy & data" : undefined} className={clsx(rowBase, footerRow, compact && "justify-center px-0")}>
+        <button type="button" onClick={onOpenPrivacy} title={compact ? "Security & privacy" : undefined} className={clsx(rowBase, footerRow, compact && "justify-center px-0")}>
           <UserCog className="h-[18px] w-[18px] shrink-0" />
-          <span className={compact ? "sr-only" : "truncate"}>Privacy & data</span>
+          <span className={compact ? "sr-only" : "truncate"}>Security & privacy</span>
         </button>
         <button type="button" onClick={onSignOut} title={compact ? "Sign out" : undefined} className={clsx(rowBase, "text-ink-muted hover:bg-danger/10 hover:text-danger", compact && "justify-center px-0")}>
           <LogOut className="h-[18px] w-[18px] shrink-0" />

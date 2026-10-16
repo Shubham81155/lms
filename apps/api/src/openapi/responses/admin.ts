@@ -433,7 +433,7 @@ export const RESPONSES: ResponseTable = {
   },
 
   // ---- two-factor authentication
-  'GET /api/v1/auth/mfa/status': { response: ok(z.object({ data: z.object({ enabled: z.boolean(), recoveryCodesRemaining: z.number() }) })) },
+  'GET /api/v1/auth/mfa/status': { response: ok(z.object({ data: z.object({ enabled: z.boolean(), recoveryCodesRemaining: z.number(), hasPassword: z.boolean() }) })) },
   'POST /api/v1/auth/mfa/setup': {
     response: {
       status: 200,

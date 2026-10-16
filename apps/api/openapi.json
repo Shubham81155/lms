@@ -8580,7 +8580,7 @@
     "/api/v1/auth/mfa/status": {
       "get": {
         "operationId": "getAuthMfaStatus",
-        "summary": "GET /api/v1/auth/mfa/status",
+        "summary": "Whether the caller has two-step sign-in on, how many recovery codes remain, and whether the account has a password (single-sign-on accounts get their second factor from the identity provider).",
         "tags": [
           "auth"
         ],
@@ -8608,11 +8608,15 @@
                         },
                         "recoveryCodesRemaining": {
                           "type": "number"
+                        },
+                        "hasPassword": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "enabled",
-                        "recoveryCodesRemaining"
+                        "recoveryCodesRemaining",
+                        "hasPassword"
                       ]
                     }
                   },

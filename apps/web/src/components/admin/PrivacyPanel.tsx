@@ -24,7 +24,7 @@ interface TenantUser {
 /**
  * Data-subject requests answered by an administrator on someone else's behalf (GDPR Art. 15/17,
  * FERPA 34 CFR 99.10), backed by /api/v1/privacy/users/:id/*. People can do the same for
- * themselves from "Privacy & data" in the header.
+ * themselves from "Security & privacy" in the sidebar.
  */
 export const PrivacyPanel: React.FC = () => {
   const { user: me } = useAuth();
@@ -102,7 +102,7 @@ export const PrivacyPanel: React.FC = () => {
                     <button
                       className={`${ghostBtn} hover:text-danger hover:border-danger/30`}
                       disabled={busy || isSelf}
-                      title={isSelf ? "Use Privacy & data in the header to erase your own account" : undefined}
+                      title={isSelf ? "Use Security & privacy in the sidebar to erase your own account" : undefined}
                       onClick={() => {
                         setErasing(erasing?.id === u.id ? null : u);
                         setConfirm("");

@@ -858,7 +858,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** GET /api/v1/auth/mfa/status */
+        /** Whether the caller has two-step sign-in on, how many recovery codes remain, and whether the account has a password (single-sign-on accounts get their second factor from the identity provider). */
         get: operations["getAuthMfaStatus"];
         put?: never;
         post?: never;
@@ -6630,6 +6630,7 @@ export interface operations {
                         data: {
                             enabled: boolean;
                             recoveryCodesRemaining: number;
+                            hasPassword: boolean;
                         };
                     };
                 };

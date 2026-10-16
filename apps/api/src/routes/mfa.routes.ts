@@ -31,7 +31,14 @@ router.get(
   '/status',
   route('Failed to load MFA status', async (req, res) => {
     const u = await me(req);
-    return res.json({ data: { enabled: !!u?.mfaEnabled, recoveryCodesRemaining: u?.mfaRecoveryHashes.length ?? 0 } });
+    return res.json({
+      data: {
+        enabled: !!u?.mfaEnabled,
+        recoveryCodesRemaining: u?.mfaRecoveryHashes.length ?? 0,
+        // Accounts that only sign in through the organisation's identity provider get their second factor there.
+        hasPassword: !!u?.passwordHash,
+      },
+    });
   })
 );
 

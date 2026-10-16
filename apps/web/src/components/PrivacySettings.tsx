@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useAction, useApiData, downloadFile } from "@/hooks/useApiData";
 import { useAuth } from "@/context/AuthContext";
 import { Banner } from "@/components/admin/IdentityPanels";
+import { MfaSettings } from "@/components/MfaSettings";
 
 const card = "bg-canvas border border-line rounded-2xl p-5 space-y-3";
 const input =
@@ -56,8 +57,8 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="privacy-h" className="font-bold text-base text-ink">Privacy & your data</h3>
-              <p className="text-xs text-ink-muted">Your rights under GDPR and FERPA. Each action is recorded in the audit trail.</p>
+              <h3 id="privacy-h" className="font-bold text-base text-ink">Account security and privacy</h3>
+              <p className="text-xs text-ink-muted">Two-step sign-in, and your rights under GDPR and FERPA. Each action is recorded in the audit trail.</p>
             </div>
           </div>
           <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors">
@@ -66,6 +67,8 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          <MfaSettings />
+
           {/* Access and portability */}
           <section className={card} aria-labelledby="export-h">
             <div className="flex items-center gap-2">
