@@ -185,7 +185,7 @@ describe('tutor on the platform default (Gemini)', () => {
 
   it('turns provider failures into clear errors', async () => {
     next = { status: 429 };
-    let res = await ask();
+    const res = await ask();
     expect(res.status).toBe(502);
     expect(res.body.error).toContain('busy');
 
