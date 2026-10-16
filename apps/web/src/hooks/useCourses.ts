@@ -1,51 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { api, ApiError } from '@/lib/api';
-import { typedGet } from '@/lib/typed-api';
-import { Course, PaginatedResponse, PaginationMeta } from '@/lib/types';
-
-export function useCourses(page: number = 1, limit: number = 10) {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [data, setData] = useState<PaginatedResponse<Course> | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchCourses = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await typedGet('/api/v1/courses', { page, limit });
-      // The API's list item and the web's Course type describe the same record.
-      const paginatedData: PaginatedResponse<Course> = { data: response.data as Course[], pagination: response.pagination };
-      setData(paginatedData);
-      setCourses(paginatedData.data);
-      setPagination(paginatedData.pagination);
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to fetch courses');
-      setError(message);
-      setCourses([]);
-      setData(null);
-      setPagination(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, limit]);
-
-  useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
-
-  return {
-    courses,
-    pagination,
-    data,
-    isLoading,
-    error,
-    refetch: fetchCourses,
-  };
-}
+import { api } from '@/lib/api';
+import { Course } from '@/lib/types';
 
 /**
  * Creates a course and then its modules and lessons, in order. Throws with a message that says

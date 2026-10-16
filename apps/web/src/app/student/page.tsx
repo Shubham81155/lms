@@ -243,8 +243,8 @@ export default function StudentDashboard() {
                 <Award className="h-6 w-6" />
               </div>
               <div>
-                <div className="text-xs text-ink-muted font-medium">Assignments · Average grade</div>
-                <div className="text-lg font-bold text-ink">{stats && stats.averageGrade ? `${Math.round(stats.averageGrade)}%` : "–"}</div>
+                <div className="text-xs text-ink-muted font-medium">Assignments and exams to do</div>
+                <div className="text-lg font-bold text-ink">{todo.data ? todo.data.data.filter((i) => !i.submitted).length : "–"}</div>
               </div>
             </button>
           </div>
@@ -492,8 +492,9 @@ export default function StudentDashboard() {
         <CourseCatalog
           initialQuery={catalogQuery}
           onClose={() => setShowCourseCatalog(false)}
-          onEnrolled={(courseId) => {
-            triggerXApi(`enrolled in course ${courseId}`, "Catalog");
+          onEnrolled={() => {
+            refetchEnrollments();
+            todo.reload();
           }}
         />
       )}

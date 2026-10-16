@@ -7360,6 +7360,12 @@ export interface operations {
                             instructorCount: number;
                             enrollmentCount: number;
                             moduleCount: number;
+                            lessonCount: number;
+                            estimatedMinutes: number;
+                            department: {
+                                id: string;
+                                name: string;
+                            } | null;
                             instructors: {
                                 isPrimary: boolean;
                                 user: {

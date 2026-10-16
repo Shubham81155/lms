@@ -120,16 +120,30 @@ router.get(
         include: {
           _count: { select: { instructors: true, enrollments: true, modules: true } },
           instructors: { select: { isPrimary: true, user: { select: instructorSelect(req) } } },
+          department: { select: { id: true, name: true } },
         },
       }),
     ]);
 
+    // Lesson count and total estimated study time per course, for the catalogue.
+    const lessonRows = await prisma.lesson.findMany({
+      where: { module: { courseId: { in: courses.map((c) => c.id) } } },
+      select: { estimatedMinutes: true, module: { select: { courseId: true } } },
+    });
+    const study = new Map<string, { lessons: number; minutes: number }>();
+    for (const l of lessonRows) {
+      const s = study.get(l.module.courseId) ?? { lessons: 0, minutes: 0 };
+      study.set(l.module.courseId, { lessons: s.lessons + 1, minutes: s.minutes + l.estimatedMinutes });
+    }
+
     return res.status(200).json({
-      data: courses.map((course) => ({
+      data: courses.map(({ _count, ...course }) => ({
         ...course,
-        instructorCount: course._count.instructors,
-        enrollmentCount: course._count.enrollments,
-        moduleCount: course._count.modules,
+        instructorCount: _count.instructors,
+        enrollmentCount: _count.enrollments,
+        moduleCount: _count.modules,
+        lessonCount: study.get(course.id)?.lessons ?? 0,
+        estimatedMinutes: study.get(course.id)?.minutes ?? 0,
       })),
       pagination: pageMeta(page, limit, total),
     });

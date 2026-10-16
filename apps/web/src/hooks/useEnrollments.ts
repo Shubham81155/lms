@@ -43,38 +43,6 @@ export function useMyEnrollments() {
   };
 }
 
-export function useEnroll() {
-  const [isEnrolling, setIsEnrolling] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const enroll = useCallback(async (courseId: string): Promise<Enrollment> => {
-    setIsEnrolling(true);
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.post<any>('/api/v1/enrollments', { courseId });
-      const enrollment: Enrollment = response.enrollment || response.data || response;
-      return enrollment;
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to enroll in course');
-      setError(message);
-      throw err;
-    } finally {
-      setIsEnrolling(false);
-      setIsLoading(false);
-    }
-  }, []);
-
-  return {
-    enroll,
-    mutate: enroll,
-    isEnrolling,
-    isLoading,
-    error,
-  };
-}
-
 export function useEnrollmentStats() {
   const [stats, setStats] = useState<EnrollmentStats | null>(null);
   const [data, setData] = useState<EnrollmentStats | null>(null);

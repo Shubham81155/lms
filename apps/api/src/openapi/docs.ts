@@ -87,6 +87,10 @@ export const CourseListItem = z.object({
   instructorCount: z.number(),
   enrollmentCount: z.number(),
   moduleCount: z.number(),
+  lessonCount: z.number(),
+  /** Sum of the lessons' estimated study minutes. */
+  estimatedMinutes: z.number(),
+  department: z.object({ id: z.string(), name: z.string() }).nullable(),
   instructors: z.array(
     z.object({
       isPrimary: z.boolean(),

@@ -9942,6 +9942,28 @@
                           "moduleCount": {
                             "type": "number"
                           },
+                          "lessonCount": {
+                            "type": "number"
+                          },
+                          "estimatedMinutes": {
+                            "type": "number"
+                          },
+                          "department": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ]
+                          },
                           "instructors": {
                             "type": "array",
                             "items": {
@@ -10002,6 +10024,9 @@
                           "instructorCount",
                           "enrollmentCount",
                           "moduleCount",
+                          "lessonCount",
+                          "estimatedMinutes",
+                          "department",
                           "instructors"
                         ]
                       }
