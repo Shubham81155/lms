@@ -55,6 +55,7 @@ export async function createCourseWithCurriculum(draft: import('@/components/Cou
   const res = await api.post<any>('/api/v1/courses', {
     title: draft.title,
     code: draft.code,
+    ...(draft.description ? { description: draft.description } : {}),
     status: draft.status,
     passingGradePercent: draft.passingGradePercent,
     allowSelfEnroll: draft.allowSelfEnroll,

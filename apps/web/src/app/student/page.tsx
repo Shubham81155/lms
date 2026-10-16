@@ -13,6 +13,7 @@ import { DiscussionForum } from "@/components/DiscussionForum";
 import { MyAssignments } from "@/components/MyAssignments";
 import { useAuth } from "@/context/AuthContext";
 import { AiTutorModal } from "@/components/AiTutorModal";
+import { useAiStatus } from "@/hooks/useAi";
 import {
   BookOpen,
   GraduationCap,
@@ -114,6 +115,7 @@ export default function StudentDashboard() {
 
   const { enrollments, isLoading: isLoadingEnrollments, refetch: refetchEnrollments } = useMyEnrollments();
   const { stats } = useEnrollmentStats();
+  const ai = useAiStatus();
 
   const todo = useApiData<{ data: TodoItem[] }>("/api/v1/enrollments/todo");
 
@@ -199,7 +201,7 @@ export default function StudentDashboard() {
         catalog: () => openCatalog(""),
         forum: () => setShowForum(true),
         calendar: () => setShowCalendar(true),
-        tutor: () => setShowAiTutor(true),
+        ...(ai.enabled ? { tutor: () => setShowAiTutor(true) } : {}),
       }}
     >
 
@@ -441,26 +443,24 @@ export default function StudentDashboard() {
               </div>
             </div>
 
-            {/* AI Learning Assistant */}
-            <div className="bg-gradient-to-br from-brand/15 via-brand/10 to-surface border border-brand/30 rounded-2xl p-5 space-y-3 shadow-lg">
-              <div className="flex items-center gap-2 text-brand-fg font-bold text-sm">
-                <Sparkles className="h-4 w-4 text-brand-fg" />
-                <span>AI Personalized Tutor</span>
+            {ai.enabled && (
+              <div className="bg-gradient-to-br from-brand/15 via-brand/10 to-surface border border-brand/30 rounded-2xl p-5 space-y-3 shadow-lg">
+                <div className="flex items-center gap-2 text-brand-fg font-bold text-sm">
+                  <Sparkles className="h-4 w-4 text-brand-fg" />
+                  <span>Study tutor</span>
+                </div>
+                <p className="text-xs text-ink leading-relaxed">
+                  Ask about anything in your courses. The tutor reads your lessons, explains step by step and can quiz you.
+                </p>
+                <button
+                  onClick={() => setShowAiTutor(true)}
+                  className="w-full py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold transition-all shadow-md shadow-brand/20 flex items-center justify-center gap-1.5"
+                >
+                  <Brain className="h-4 w-4" />
+                  <span>Ask the tutor</span>
+                </button>
               </div>
-              <p className="text-xs text-ink leading-relaxed">
-                Ask the tutor to explain a topic you are studying and it will walk you through it step by step, then give you a short practice drill.
-              </p>
-              <button
-                onClick={() => {
-                  triggerXApi("opened", "the AI tutor");
-                  setShowAiTutor(true);
-                }}
-                className="w-full py-2.5 bg-gradient-to-r from-brand to-brand-hover hover:from-brand-hover hover:to-brand text-on-brand rounded-xl text-xs font-bold transition-all shadow-md shadow-brand/20 flex items-center justify-center gap-1.5"
-              >
-                <Brain className="h-4 w-4" />
-                <span>Launch AI Socratic Tutor</span>
-              </button>
-            </div>
+            )}
           </div>
         </div>
       </main>
@@ -544,15 +544,10 @@ export default function StudentDashboard() {
       {showAssignments && <MyAssignments onClose={() => setShowAssignments(false)} />}
       {assignmentsCourse && <MyAssignments courseId={assignmentsCourse} onClose={() => { setAssignmentsCourse(undefined); todo.reload(); }} />}
 
-      {/* AI Socratic Academic Tutor Modal */}
       {showAiTutor && (
         <AiTutorModal
-          courseTitle={displayCourses[0] ? `${displayCourses[0].title} (${displayCourses[0].code})` : "your courses"}
-          initialTopic="Raft Consensus & Split-Brain Quorum"
+          courses={displayCourses.filter((c) => c.open || c.status === "completed").map((c) => ({ id: c.id, code: c.code, title: c.title }))}
           onClose={() => setShowAiTutor(false)}
-          onDrillCompleted={(score, boost) => {
-            triggerXApi(`completed adaptive drill with score ${score}% (+${boost}% readiness boost)`, "AI Tutor");
-          }}
         />
       )}
     </AppShell>

@@ -1,17 +1,17 @@
 import { prisma } from './prisma';
 import { HttpError } from './http';
 
-export const FEATURE_KEYS = ['scorm', 'xapi', 'lti13', 'aiProctoring', 'sso', 'webhooks', 'scim'] as const;
+export const FEATURE_KEYS = ['lti13', 'sso', 'webhooks', 'scim', 'aiAssistant'] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
-const BASE: FeatureFlags = { scorm: true, xapi: true, lti13: false, aiProctoring: false, sso: false, webhooks: false, scim: false };
+const BASE: FeatureFlags = { lti13: false, sso: false, webhooks: false, scim: false, aiAssistant: false };
 
 /** What each plan includes before a tenant admin toggles anything. */
 export const TIER_DEFAULTS: Record<string, FeatureFlags> = {
   STARTER: BASE,
-  PROFESSIONAL: { ...BASE, lti13: true, aiProctoring: true, webhooks: true },
-  ENTERPRISE: { scorm: true, xapi: true, lti13: true, aiProctoring: true, sso: true, webhooks: true, scim: true },
+  PROFESSIONAL: { ...BASE, lti13: true, webhooks: true, aiAssistant: true },
+  ENTERPRISE: { lti13: true, sso: true, webhooks: true, scim: true, aiAssistant: true },
 };
 
 /** Stored overrides win over the tier default; unknown keys in storage are ignored. */

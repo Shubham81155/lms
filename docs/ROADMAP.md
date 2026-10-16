@@ -74,7 +74,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **Live classes** (LiveKit: scheduling, calendar, notifications, signed join tokens, role-limited publishing, webhook-driven attendance) + room, teacher panel and student banner | Done | needs a LiveKit server; room UI not exercised against one |
 | Breakout rooms, whiteboard, recording, hand-raising | Open | |
 | Native mobile apps | Open | |
-| AI tutor, quiz generation, essay grading hints | Partial | templated responses, no model behind them |
+| AI study tutor (course-grounded) and course-outline drafts | Done | Claude, Gemini or Grok; per-organisation provider, model and encrypted key, or a platform default; per-person hourly limit; quiz generation and grading hints still open |
 
 ## Phase 5 - Enterprise integrations, hardening, launch
 

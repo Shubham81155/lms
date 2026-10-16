@@ -22,6 +22,7 @@ import { SamlPanel, ScimPanel, SsoPanel } from "@/components/admin/IdentityPanel
 import { FeaturesPanel, UsagePanel, WebhooksPanel, type Usage } from "@/components/admin/PlatformPanels";
 import { BrandingPanel, CampusPanel, CompliancePanel } from "@/components/admin/OrgPanels";
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
+import { AiSettingsPanel } from "@/components/admin/AiSettingsPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 import { CourseBuilder } from "@/components/CourseBuilder";
 import { CourseContentEditor } from "@/components/CourseContentEditor";
@@ -240,6 +241,9 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <FeaturesPanel onChanged={features.reload} />
+            </div>
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
+              <AiSettingsPanel />
             </div>
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <WebhooksPanel available={!!flags.webhooks} />

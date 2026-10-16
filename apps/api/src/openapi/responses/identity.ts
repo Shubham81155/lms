@@ -14,13 +14,11 @@ const Ready = z.object({ status: z.literal('ready'), timestamp: z.string() });
 const Unavailable = z.object({ status: z.literal('unavailable') });
 
 const FeatureFlags = z.object({
-  scorm: z.boolean(),
-  xapi: z.boolean(),
   lti13: z.boolean(),
-  aiProctoring: z.boolean(),
   sso: z.boolean(),
   webhooks: z.boolean(),
   scim: z.boolean(),
+  aiAssistant: z.boolean(),
 });
 
 const TenantConfig = z.object({

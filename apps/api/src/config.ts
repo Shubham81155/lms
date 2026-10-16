@@ -69,6 +69,21 @@ const envSchema = z.object({
   API_PUBLIC_URL: z.string().url().optional(),
   /** Seconds between outbound plagiarism submission sweeps; 0 turns the background worker off. */
   PLAGIARISM_SUBMIT_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(30),
+  /**
+   * Platform-wide AI provider for the study tutor and course-outline drafts. Organisations can enter their own
+   * provider and key in the admin screen instead; without either, the AI features are off.
+   */
+  AI_PROVIDER: z.enum(['ANTHROPIC', 'GEMINI', 'XAI']).optional(),
+  AI_API_KEY: z.string().min(20, 'AI_API_KEY looks too short').optional(),
+  /** Defaults to the provider's recommended model (lib/ai.ts). */
+  AI_MODEL: z.string().min(3).optional(),
+  AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300_000).default(60_000),
+  /** AI requests each person may make per hour (they cost money). */
+  AI_REQUESTS_PER_HOUR: z.coerce.number().int().positive().default(60),
+  /** Provider endpoints; override only for a proxy or a test stand-in. */
+  ANTHROPIC_API_URL: z.string().url().default('https://api.anthropic.com'),
+  GEMINI_API_URL: z.string().url().default('https://generativelanguage.googleapis.com/v1beta'),
+  XAI_API_URL: z.string().url().default('https://api.x.ai/v1'),
 });
 
 export type AppConfig = z.infer<typeof envSchema> & { corsOrigins: string[] };

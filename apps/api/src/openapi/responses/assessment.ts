@@ -267,22 +267,6 @@ const CohortAnalytics = z.object({
   bloomsMastery: z.array(z.object({ level: Bloom, score: z.number() })),
 });
 
-const TutorResponse = z.object({
-  topic: z.string(),
-  explanation: z.string(),
-  keyTakeaways: z.array(z.string()),
-  recommendedDrill: z.array(
-    z.object({
-      questionText: z.string(),
-      taxonomyLevel: z.string(),
-      points: z.number(),
-      options: z.array(z.object({ text: z.string(), isCorrect: z.boolean() })),
-      explanation: z.string(),
-    })
-  ),
-  readinessBoostPercent: z.number(),
-});
-
 const XapiRecorded = z.object({
   message: z.string(),
   statementIds: z.array(z.string()),
@@ -460,5 +444,4 @@ export const RESPONSES: ResponseTable = {
 
   // ---- analytics
   'GET /api/v1/analytics/cohort': { response: { status: 200, schema: CohortAnalytics } },
-  'POST /api/v1/analytics/ai/tutor': { response: { status: 200, schema: TutorResponse }, errors: [400] },
 };

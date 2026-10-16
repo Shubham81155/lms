@@ -10,6 +10,7 @@
     "openapi": "ts-node src/openapi/build.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@enterprise-lms/database": "*",
     "@enterprise-lms/security": "*",

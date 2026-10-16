@@ -32,6 +32,7 @@ import {
   voteSchema,
 } from '../routes/forum.routes';
 import { statementSchema } from '../routes/intelligence.routes';
+import { aiSettingsSchema, outlineSchema, tutorSchema } from '../routes/ai.routes';
 import { patchBody as scimPatchBody, userBody as scimUserBody } from '../routes/scim.routes';
 import { listQuery as notificationListQuery, prefsSchema } from '../routes/notifications.routes';
 import { enrollSchema, listQuery as enrollmentListQuery, updateProgressSchema } from '../routes/enrollments.routes';
@@ -437,10 +438,24 @@ export const DOCS: Record<string, OperationDoc> = {
   'PATCH /api/v1/posts/:id/moderate': { summary: 'Hide or restore a reply (course staff).', body: moderatePostSchema, errors: [400, 403, 404] },
 
   // ---- bodies the handlers read without parseBody
-  'POST /api/v1/analytics/ai/tutor': {
-    summary: 'Ask the study tutor for an explanation and practice drill on a topic. Template-based today: no AI model is behind it.',
-    body: z.object({ topic: z.string().trim().min(1).max(200) }),
+  'GET /api/v1/ai/status': { summary: "Whether AI assistance can be used here: it is on the plan, not switched off, and a provider key applies (the organisation's own or the platform default)." },
+  'GET /api/v1/ai/settings': { summary: "Administrators: this organisation's AI provider, model and whether a key is saved. The key is never returned." },
+  'PUT /api/v1/ai/settings': {
+    summary: 'Administrators: choose the AI provider (Claude, Gemini or Grok) and model, and save, keep or remove the API key. The key is stored encrypted. Audited without the key.',
+    body: aiSettingsSchema,
     errors: [400],
+  },
+  'POST /api/v1/ai/settings/test': { summary: 'Administrators: send a tiny request with the settings that apply and report whether it worked.', errors: [429] },
+  'POST /api/v1/ai/tutor': {
+    summary:
+      "One turn of a study-tutor conversation. With courseId, the answer is grounded in that course's outline and lesson text; the caller must be able to open the course. The conversation is kept by the client, not stored. 503 when no provider key applies or AI is switched off, 403 when it is not on the plan, 429 over the hourly budget, 502 when the model fails.",
+    body: tutorSchema,
+    errors: [400, 403, 404, 422, 429, 502, 503],
+  },
+  'POST /api/v1/ai/course-outline': {
+    summary: 'Draft a course outline (modules, lessons, objectives) from a topic, for the instructor to review in the course builder. Nothing is saved.',
+    body: outlineSchema,
+    errors: [400, 403, 422, 429, 502, 503],
   },
   'POST /api/v1/xapi/statements': {
     summary: 'Record one xAPI statement, or a batch of up to 50 (send an array). 201 for a single statement, 200 for a batch.',

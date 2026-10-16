@@ -74,13 +74,11 @@ export const AdminStats = z.object({
 // ---- features, usage, export
 
 export const FeatureFlags = z.object({
-  scorm: z.boolean(),
-  xapi: z.boolean(),
   lti13: z.boolean(),
-  aiProctoring: z.boolean(),
   sso: z.boolean(),
   webhooks: z.boolean(),
   scim: z.boolean(),
+  aiAssistant: z.boolean(),
 });
 
 export const UsageReport = z.object({

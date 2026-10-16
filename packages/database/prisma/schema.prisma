@@ -75,6 +75,7 @@ model Tenant {
   ssoConnection     SsoConnection?
   samlConnection    SamlConnection?
   liveSessions      LiveSession[]
+  aiConfig          TenantAiConfig?
   liveAttendance    LiveAttendance[]
   lessonProgress    LessonProgress[]
   gradeAppeals      GradeAppeal[]
@@ -974,4 +975,21 @@ model LiveAttendance {
 
   @@unique([sessionId, userId])
   @@index([tenantId, userId])
+}
+
+// An organisation's own AI provider for the study tutor and course-outline drafts. The key is encrypted
+// with PII_ENCRYPTION_KEY (AES-256-GCM) and is never returned by the API.
+model TenantAiConfig {
+  id          String   @id @default(uuid())
+  tenantId    String   @unique
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider    String // ANTHROPIC | GEMINI | XAI
+  model       String
+  apiKeyEnc   String?  @db.Text
+  keyHint     String?
+  // Off means no AI for this organisation, even when the platform has a default key.
+  enabled     Boolean  @default(true)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }

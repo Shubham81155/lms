@@ -185,5 +185,3 @@ export class AuditSanitizer {
   }
 }
 
-// Submodule exports
-export * from './ai-generator';

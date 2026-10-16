@@ -59,8 +59,10 @@ LMS/
    - Quiz proctoring records browser events (tab switches, leaving full screen, copy and paste). It does not use a
      webcam and does not decide anything on its own: staff review the events.
 5. **AI assistance (optional)**
-   - With `GEMINI_API_KEY` set, learners get a study tutor and instructors get a draft course outline from a topic.
-     Without it, the AI features are switched off and say so.
+   - A study tutor for learners, grounded in the course's lessons, and draft course outlines for instructors.
+   - Each organisation's administrators choose the provider (Claude, Gemini or Grok), the model and the API key under
+     Administration › Plan & Integrations; the key is stored encrypted and never shown again. A platform-wide default
+     can be set with `AI_PROVIDER` / `AI_API_KEY`. Without a key the AI features are hidden.
 
 ---
 

@@ -206,16 +206,7 @@
                     "features": {
                       "type": "object",
                       "properties": {
-                        "scorm": {
-                          "type": "boolean"
-                        },
-                        "xapi": {
-                          "type": "boolean"
-                        },
                         "lti13": {
-                          "type": "boolean"
-                        },
-                        "aiProctoring": {
                           "type": "boolean"
                         },
                         "sso": {
@@ -226,16 +217,17 @@
                         },
                         "scim": {
                           "type": "boolean"
+                        },
+                        "aiAssistant": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
-                        "scorm",
-                        "xapi",
                         "lti13",
-                        "aiProctoring",
                         "sso",
                         "webhooks",
-                        "scim"
+                        "scim",
+                        "aiAssistant"
                       ]
                     }
                   },
@@ -2018,16 +2010,7 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "scorm": {
-                          "type": "boolean"
-                        },
-                        "xapi": {
-                          "type": "boolean"
-                        },
                         "lti13": {
-                          "type": "boolean"
-                        },
-                        "aiProctoring": {
                           "type": "boolean"
                         },
                         "sso": {
@@ -2038,16 +2021,17 @@
                         },
                         "scim": {
                           "type": "boolean"
+                        },
+                        "aiAssistant": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
-                        "scorm",
-                        "xapi",
                         "lti13",
-                        "aiProctoring",
                         "sso",
                         "webhooks",
-                        "scim"
+                        "scim",
+                        "aiAssistant"
                       ]
                     }
                   },
@@ -2105,16 +2089,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "scorm": {
-                    "type": "boolean"
-                  },
-                  "xapi": {
-                    "type": "boolean"
-                  },
                   "lti13": {
-                    "type": "boolean"
-                  },
-                  "aiProctoring": {
                     "type": "boolean"
                   },
                   "sso": {
@@ -2124,6 +2099,9 @@
                     "type": "boolean"
                   },
                   "scim": {
+                    "type": "boolean"
+                  },
+                  "aiAssistant": {
                     "type": "boolean"
                   }
                 },
@@ -2143,16 +2121,7 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "scorm": {
-                          "type": "boolean"
-                        },
-                        "xapi": {
-                          "type": "boolean"
-                        },
                         "lti13": {
-                          "type": "boolean"
-                        },
-                        "aiProctoring": {
                           "type": "boolean"
                         },
                         "sso": {
@@ -2163,16 +2132,17 @@
                         },
                         "scim": {
                           "type": "boolean"
+                        },
+                        "aiAssistant": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
-                        "scorm",
-                        "xapi",
                         "lti13",
-                        "aiProctoring",
                         "sso",
                         "webhooks",
-                        "scim"
+                        "scim",
+                        "aiAssistant"
                       ]
                     }
                   },
@@ -4604,12 +4574,12 @@
         }
       }
     },
-    "/api/v1/analytics/ai/tutor": {
+    "/api/v1/ai/course-outline": {
       "post": {
-        "operationId": "postAnalyticsAiTutor",
-        "summary": "Ask the study tutor for an explanation and practice drill on a topic. Template-based today: no AI model is behind it.",
+        "operationId": "postAiCourseOutline",
+        "summary": "Draft a course outline (modules, lessons, objectives) from a topic, for the instructor to review in the course builder. Nothing is saved.",
         "tags": [
-          "analytics"
+          "ai"
         ],
         "security": [
           {
@@ -4618,6 +4588,11 @@
           {
             "bearerAuth": []
           }
+        ],
+        "x-required-roles": [
+          "INSTRUCTOR",
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
         ],
         "requestBody": {
           "required": true,
@@ -4628,8 +4603,24 @@
                 "properties": {
                   "topic": {
                     "type": "string",
-                    "minLength": 1,
+                    "minLength": 3,
+                    "maxLength": 300
+                  },
+                  "audience": {
+                    "type": "string",
                     "maxLength": 200
+                  },
+                  "moduleCount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12,
+                    "default": 4
+                  },
+                  "lessonsPerModule": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8,
+                    "default": 3
                   }
                 },
                 "required": [
@@ -4647,73 +4638,62 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "topic": {
-                      "type": "string"
-                    },
-                    "explanation": {
-                      "type": "string"
-                    },
-                    "keyTakeaways": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "recommendedDrill": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "questionText": {
-                            "type": "string"
-                          },
-                          "taxonomyLevel": {
-                            "type": "string"
-                          },
-                          "points": {
-                            "type": "number"
-                          },
-                          "options": {
-                            "type": "array",
-                            "items": {
-                              "type": "object",
-                              "properties": {
-                                "text": {
-                                  "type": "string"
-                                },
-                                "isCorrect": {
-                                  "type": "boolean"
-                                }
-                              },
-                              "required": [
-                                "text",
-                                "isCorrect"
-                              ]
-                            }
-                          },
-                          "explanation": {
-                            "type": "string"
-                          }
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
                         },
-                        "required": [
-                          "questionText",
-                          "taxonomyLevel",
-                          "points",
-                          "options",
-                          "explanation"
-                        ]
-                      }
-                    },
-                    "readinessBoostPercent": {
-                      "type": "number"
+                        "description": {
+                          "type": "string"
+                        },
+                        "modules": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "lessons": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "minutes": {
+                                      "type": "number"
+                                    },
+                                    "body": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "title",
+                                    "minutes",
+                                    "body"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "lessons"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "description",
+                        "modules"
+                      ]
                     }
                   },
                   "required": [
-                    "topic",
-                    "explanation",
-                    "keyTakeaways",
-                    "recommendedDrill",
-                    "readinessBoostPercent"
+                    "data"
                   ]
                 }
               }
@@ -4731,6 +4711,826 @@
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/settings": {
+      "get": {
+        "operationId": "getAiSettings",
+        "summary": "Administrators: this organisation's AI provider, model and whether a key is saved. The key is never returned.",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "provider": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "ANTHROPIC",
+                            "GEMINI",
+                            "XAI"
+                          ]
+                        },
+                        "model": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "hasKey": {
+                          "type": "boolean"
+                        },
+                        "keyHint": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "onPlan": {
+                          "type": "boolean"
+                        },
+                        "effectiveSource": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "TENANT",
+                            "PLATFORM"
+                          ]
+                        },
+                        "platformDefault": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "provider": {
+                              "type": "string",
+                              "enum": [
+                                "ANTHROPIC",
+                                "GEMINI",
+                                "XAI"
+                              ]
+                            },
+                            "model": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "provider",
+                            "model"
+                          ]
+                        },
+                        "providers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "enum": [
+                                  "ANTHROPIC",
+                                  "GEMINI",
+                                  "XAI"
+                                ]
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "defaultModel": {
+                                "type": "string"
+                              },
+                              "suggestedModels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "keyHelp": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "label",
+                              "defaultModel",
+                              "suggestedModels",
+                              "keyHelp"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "provider",
+                        "model",
+                        "enabled",
+                        "hasKey",
+                        "keyHint",
+                        "updatedAt",
+                        "onPlan",
+                        "effectiveSource",
+                        "platformDefault",
+                        "providers"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putAiSettings",
+        "summary": "Administrators: choose the AI provider (Claude, Gemini or Grok) and model, and save, keep or remove the API key. The key is stored encrypted. Audited without the key.",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "ANTHROPIC",
+                      "GEMINI",
+                      "XAI"
+                    ]
+                  },
+                  "model": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "pattern": "^[A-Za-z0-9._:/-]*$"
+                  },
+                  "apiKey": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 20,
+                    "maxLength": 500
+                  },
+                  "enabled": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [
+                  "provider"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "provider": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "ANTHROPIC",
+                            "GEMINI",
+                            "XAI"
+                          ]
+                        },
+                        "model": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "hasKey": {
+                          "type": "boolean"
+                        },
+                        "keyHint": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "onPlan": {
+                          "type": "boolean"
+                        },
+                        "effectiveSource": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "TENANT",
+                            "PLATFORM"
+                          ]
+                        },
+                        "platformDefault": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "provider": {
+                              "type": "string",
+                              "enum": [
+                                "ANTHROPIC",
+                                "GEMINI",
+                                "XAI"
+                              ]
+                            },
+                            "model": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "provider",
+                            "model"
+                          ]
+                        },
+                        "providers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "enum": [
+                                  "ANTHROPIC",
+                                  "GEMINI",
+                                  "XAI"
+                                ]
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "defaultModel": {
+                                "type": "string"
+                              },
+                              "suggestedModels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "keyHelp": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "label",
+                              "defaultModel",
+                              "suggestedModels",
+                              "keyHelp"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "provider",
+                        "model",
+                        "enabled",
+                        "hasKey",
+                        "keyHint",
+                        "updatedAt",
+                        "onPlan",
+                        "effectiveSource",
+                        "platformDefault",
+                        "providers"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/settings/test": {
+      "post": {
+        "operationId": "postAiSettingsTest",
+        "summary": "Administrators: send a tiny request with the settings that apply and report whether it worked.",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "error": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "provider": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "ANTHROPIC",
+                            "GEMINI",
+                            "XAI"
+                          ]
+                        },
+                        "model": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "ms": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "error",
+                        "provider",
+                        "model",
+                        "ms"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/status": {
+      "get": {
+        "operationId": "getAiStatus",
+        "summary": "Whether AI assistance can be used here: it is on the plan, not switched off, and a provider key applies (the organisation's own or the platform default).",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "NOT_ON_PLAN",
+                            "TURNED_OFF",
+                            "NOT_CONFIGURED"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "reason"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/tutor": {
+      "post": {
+        "operationId": "postAiTutor",
+        "summary": "One turn of a study-tutor conversation. With courseId, the answer is grounded in that course's outline and lesson text; the caller must be able to open the course. The conversation is kept by the client, not stored. 503 when no provider key applies or AI is switched off, 403 when it is not on the plan, 429 over the hourly budget, 502 when the model fails.",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "courseId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "history": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "tutor"
+                          ]
+                        },
+                        "text": {
+                          "type": "string",
+                          "maxLength": 4000
+                        }
+                      },
+                      "required": [
+                        "role",
+                        "text"
+                      ]
+                    },
+                    "maxItems": 20,
+                    "default": []
+                  },
+                  "wantPractice": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "reply": {
+                          "type": "string"
+                        },
+                        "practice": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "question": {
+                              "type": "string"
+                            },
+                            "options": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "correctIndex": {
+                              "type": "number"
+                            },
+                            "explanation": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "question",
+                            "options",
+                            "correctIndex",
+                            "explanation"
+                          ]
+                        },
+                        "groundedInCourse": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "reply",
+                        "practice",
+                        "groundedInCourse"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {

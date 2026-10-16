@@ -112,7 +112,7 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
           <h4 className="text-sm font-bold text-ink">Cohort Mastery Across Bloom&apos;s Cognitive Taxonomy</h4>
-          <p className="mt-1 text-xs text-ink-muted">Synthesized across MCQ assessments, open code lab unit tests, and rubric grading criteria.</p>
+          <p className="mt-1 text-xs text-ink-muted">Average score on graded quiz questions tagged with a Bloom's level.</p>
         </div>
         {bloom.length === 0 ? (
           <EmptyState title="No Bloom's taxonomy data yet">

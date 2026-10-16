@@ -424,7 +424,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/analytics/ai/tutor": {
+    "/api/v1/ai/course-outline": {
         parameters: {
             query?: never;
             header?: never;
@@ -433,8 +433,77 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Ask the study tutor for an explanation and practice drill on a topic. Template-based today: no AI model is behind it. */
-        post: operations["postAnalyticsAiTutor"];
+        /** Draft a course outline (modules, lessons, objectives) from a topic, for the instructor to review in the course builder. Nothing is saved. */
+        post: operations["postAiCourseOutline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: this organisation's AI provider, model and whether a key is saved. The key is never returned. */
+        get: operations["getAiSettings"];
+        /** Administrators: choose the AI provider (Claude, Gemini or Grok) and model, and save, keep or remove the API key. The key is stored encrypted. Audited without the key. */
+        put: operations["putAiSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/settings/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: send a tiny request with the settings that apply and report whether it worked. */
+        post: operations["postAiSettingsTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether AI assistance can be used here: it is on the plan, not switched off, and a provider key applies (the organisation's own or the platform default). */
+        get: operations["getAiStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/tutor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One turn of a study-tutor conversation. With courseId, the answer is grounded in that course's outline and lesson text; the caller must be able to open the course. The conversation is kept by the client, not stored. 503 when no provider key applies or AI is switched off, 403 when it is not on the plan, 429 over the hourly budget, 502 when the model fails. */
+        post: operations["postAiTutor"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2514,13 +2583,11 @@ export interface operations {
                             faviconUrl: string | null;
                         };
                         features: {
-                            scorm: boolean;
-                            xapi: boolean;
                             lti13: boolean;
-                            aiProctoring: boolean;
                             sso: boolean;
                             webhooks: boolean;
                             scim: boolean;
+                            aiAssistant: boolean;
                         };
                     };
                 };
@@ -3340,13 +3407,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            scorm: boolean;
-                            xapi: boolean;
                             lti13: boolean;
-                            aiProctoring: boolean;
                             sso: boolean;
                             webhooks: boolean;
                             scim: boolean;
+                            aiAssistant: boolean;
                         };
                     };
                 };
@@ -3381,13 +3446,11 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    scorm?: boolean;
-                    xapi?: boolean;
                     lti13?: boolean;
-                    aiProctoring?: boolean;
                     sso?: boolean;
                     webhooks?: boolean;
                     scim?: boolean;
+                    aiAssistant?: boolean;
                 };
             };
         };
@@ -3400,13 +3463,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: {
-                            scorm: boolean;
-                            xapi: boolean;
                             lti13: boolean;
-                            aiProctoring: boolean;
                             sso: boolean;
                             webhooks: boolean;
                             scim: boolean;
+                            aiAssistant: boolean;
                         };
                     };
                 };
@@ -4638,7 +4699,7 @@ export interface operations {
             };
         };
     };
-    postAnalyticsAiTutor: {
+    postAiCourseOutline: {
         parameters: {
             query?: never;
             header?: never;
@@ -4649,6 +4710,11 @@ export interface operations {
             content: {
                 "application/json": {
                     topic: string;
+                    audience?: string;
+                    /** @default 4 */
+                    moduleCount?: number;
+                    /** @default 3 */
+                    lessonsPerModule?: number;
                 };
             };
         };
@@ -4660,20 +4726,18 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        topic: string;
-                        explanation: string;
-                        keyTakeaways: string[];
-                        recommendedDrill: {
-                            questionText: string;
-                            taxonomyLevel: string;
-                            points: number;
-                            options: {
-                                text: string;
-                                isCorrect: boolean;
+                        data: {
+                            title: string;
+                            description: string;
+                            modules: {
+                                title: string;
+                                lessons: {
+                                    title: string;
+                                    minutes: number;
+                                    body: string;
+                                }[];
                             }[];
-                            explanation: string;
-                        }[];
-                        readinessBoostPercent: number;
+                        };
                     };
                 };
             };
@@ -4688,6 +4752,408 @@ export interface operations {
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAiSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string|null} */
+                            provider: "ANTHROPIC" | "GEMINI" | "XAI" | null;
+                            model: string | null;
+                            enabled: boolean;
+                            hasKey: boolean;
+                            keyHint: string | null;
+                            updatedAt: string | null;
+                            onPlan: boolean;
+                            /** @enum {string|null} */
+                            effectiveSource: "TENANT" | "PLATFORM" | null;
+                            platformDefault: {
+                                /** @enum {string} */
+                                provider: "ANTHROPIC" | "GEMINI" | "XAI";
+                                model: string;
+                            } | null;
+                            providers: {
+                                /** @enum {string} */
+                                id: "ANTHROPIC" | "GEMINI" | "XAI";
+                                label: string;
+                                defaultModel: string;
+                                suggestedModels: string[];
+                                keyHelp: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putAiSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    provider: "ANTHROPIC" | "GEMINI" | "XAI";
+                    model?: string;
+                    apiKey?: string | null;
+                    /** @default true */
+                    enabled?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string|null} */
+                            provider: "ANTHROPIC" | "GEMINI" | "XAI" | null;
+                            model: string | null;
+                            enabled: boolean;
+                            hasKey: boolean;
+                            keyHint: string | null;
+                            updatedAt: string | null;
+                            onPlan: boolean;
+                            /** @enum {string|null} */
+                            effectiveSource: "TENANT" | "PLATFORM" | null;
+                            platformDefault: {
+                                /** @enum {string} */
+                                provider: "ANTHROPIC" | "GEMINI" | "XAI";
+                                model: string;
+                            } | null;
+                            providers: {
+                                /** @enum {string} */
+                                id: "ANTHROPIC" | "GEMINI" | "XAI";
+                                label: string;
+                                defaultModel: string;
+                                suggestedModels: string[];
+                                keyHelp: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postAiSettingsTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            ok: boolean;
+                            error: string | null;
+                            /** @enum {string|null} */
+                            provider: "ANTHROPIC" | "GEMINI" | "XAI" | null;
+                            model: string | null;
+                            ms: number;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAiStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            enabled: boolean;
+                            /** @enum {string|null} */
+                            reason: "NOT_ON_PLAN" | "TURNED_OFF" | "NOT_CONFIGURED" | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postAiTutor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    courseId?: string;
+                    message: string;
+                    /** @default [] */
+                    history?: {
+                        /** @enum {string} */
+                        role: "user" | "tutor";
+                        text: string;
+                    }[];
+                    /** @default false */
+                    wantPractice?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            reply: string;
+                            practice: {
+                                question: string;
+                                options: string[];
+                                correctIndex: number;
+                                explanation: string;
+                            } | null;
+                            groundedInCourse: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

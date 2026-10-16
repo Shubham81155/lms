@@ -56,7 +56,6 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "PATCH /api/v1/admin/webhooks/:id": { summary: "PATCH /api/v1/admin/webhooks/:id", body: r_platform.endpointSchema },
   "GET /api/v1/admin/webhooks/:id/deliveries": { summary: "GET /api/v1/admin/webhooks/:id/deliveries" },
   "POST /api/v1/admin/webhooks/:id/test": { summary: "sends a signed `webhook.test` event and reports the result." },
-  "POST /api/v1/analytics/ai/tutor": { summary: "Context-aware AI tutor adaptive explanation and drill generator" },
   "GET /api/v1/analytics/at-risk": { summary: "staff only; learners at MEDIUM or HIGH risk.", query: r_intelligence.atRiskQuery as never },
   "POST /api/v1/analytics/at-risk/nudge": { summary: "course staff send an enrolled learner a nudge.", body: r_intelligence.nudgeSchema },
   "GET /api/v1/analytics/cohort": { summary: "Faculty analytics computed from live data: enrolment / completion metrics, assessment item analysis and early-warning learners. Instructors see only the courses they are assigned to; admins see the whole tenant." },

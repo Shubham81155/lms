@@ -121,37 +121,3 @@ export function useXApiStream(limit: number = 20) {
   };
 }
 
-export function useAiTutorDrill() {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const requestDrill = useCallback(
-    async (topic: string, message?: string) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await api.post<{
-          topic: string;
-          explanation: string;
-          keyTakeaways: string[];
-          recommendedDrill: any[];
-          readinessBoostPercent: number;
-        }>("/api/v1/analytics/ai/tutor", { topic, message });
-        return response;
-      } catch (err: any) {
-        const message = err instanceof ApiError ? err.message : (err?.message || "Failed to generate AI tutor drill");
-        setError(message);
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
-
-  return {
-    requestDrill,
-    isLoading,
-    error,
-  };
-}

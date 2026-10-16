@@ -122,9 +122,9 @@ describe('features, usage and export', () => {
     const a = await as('admin');
     const got = check('GET /api/v1/admin/features', await a.get('/api/v1/admin/features'));
     expect(got.data).toMatchObject({ sso: true, webhooks: true, scim: true });
-    expect(keys(got.data)).toEqual(['aiProctoring', 'lti13', 'scim', 'scorm', 'sso', 'webhooks', 'xapi']);
-    const put = check('PUT /api/v1/admin/features', await a.put('/api/v1/admin/features').send({ aiProctoring: false }));
-    expect(put.data.aiProctoring).toBe(false);
+    expect(keys(got.data)).toEqual(['aiAssistant', 'lti13', 'scim', 'sso', 'webhooks']);
+    const put = check('PUT /api/v1/admin/features', await a.put('/api/v1/admin/features').send({ aiAssistant: false }));
+    expect(put.data.aiAssistant).toBe(false);
     expect((await a.put('/api/v1/admin/features').send({})).status).toBe(400);
   });
 

@@ -158,7 +158,7 @@ export default function TeacherDashboard() {
               className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-brand/20 transition-all"
             >
               <Plus className="h-4 w-4" />
-              <span>Create Course (AI)</span>
+              <span>Create course</span>
             </button>
             )}
 
@@ -306,7 +306,7 @@ export default function TeacherDashboard() {
 
         {/* Two-Column Section: Active Proctoring Feed & Courses Taught */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Active Proctoring Anomaly Radar */}
+          {/* Proctoring events reported by the quiz screen */}
           <div id="proctoring-radar" className="lg:col-span-2 bg-surface border border-line rounded-3xl p-6 space-y-5 shadow-xl scroll-mt-20">
             <div className="flex items-center justify-between border-b border-line pb-4">
               <div className="flex items-center gap-2.5">
@@ -314,7 +314,7 @@ export default function TeacherDashboard() {
                   <AlertTriangle className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-ink">Live AI Proctoring Anomaly Radar</h3>
+                  <h3 className="font-bold text-base text-ink">Proctoring events</h3>
                   <p className="text-xs text-ink-muted">Integrity events reported by exam takers' browsers</p>
                 </div>
               </div>

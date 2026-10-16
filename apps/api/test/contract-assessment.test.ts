@@ -263,7 +263,6 @@ describe('intelligence and analytics', () => {
     expect(cohort.body.bloomsMastery.length).toBeGreaterThan(0);
     contract('GET /api/v1/analytics/cohort', await adminA.get(`${V1}/analytics/cohort`), 200);
 
-    contract('POST /api/v1/analytics/ai/tutor', await s1.post(`${V1}/analytics/ai/tutor`).send({ topic: 'Raft' }), 200);
   });
 
   it('describes every operation that was assigned', () => {

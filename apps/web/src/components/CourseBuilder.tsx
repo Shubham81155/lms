@@ -14,7 +14,9 @@ import {
   Shield,
   Eye,
 } from "lucide-react";
-import { AiCurriculumGenerator } from "@enterprise-lms/security";
+import { api } from "@/lib/api";
+import { errorMessage } from "@/hooks/useApiData";
+import { AI_OFF_TEXT, useAiStatus } from "@/hooks/useAi";
 import { LessonFields, blankLesson, isHttpUrl, type LessonDraft } from "./LessonFields";
 
 export type BuilderLesson = LessonDraft;
@@ -28,6 +30,7 @@ export interface BuilderModule {
 export interface CourseDraft {
   title: string;
   code: string;
+  description: string;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   passingGradePercent: number;
   allowSelfEnroll: boolean;
@@ -43,6 +46,7 @@ interface CourseBuilderProps {
 export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave }) => {
   const [courseTitle, setCourseTitle] = useState("");
   const [courseCode, setCourseCode] = useState("");
+  const [description, setDescription] = useState("");
   const [courseStatus, setCourseStatus] = useState<CourseDraft["status"]>("DRAFT");
   const [passingGradePercent, setPassingGradePercent] = useState(70);
   const [allowSelfEnroll, setAllowSelfEnroll] = useState(false);
@@ -50,39 +54,46 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
   const [modules, setModules] = useState<BuilderModule[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [aiNotice, setAiNotice] = useState<string | null>(null);
+  const ai = useAiStatus();
   const [aiTopic, setAiTopic] = useState("");
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
-  const [aiGeneratedItems, setAiGeneratedItems] = useState<any | null>(null);
+  const [aiAudience, setAiAudience] = useState("");
+  const [aiModules, setAiModules] = useState(4);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiNotice, setAiNotice] = useState<string | null>(null);
+  const [outline, setOutline] = useState<Outline | null>(null);
 
-  const handleGenerateAiCurriculum = () => {
-    if (!aiTopic) return;
-    setIsGeneratingAi(true);
-    setTimeout(() => {
-      const summary = AiCurriculumGenerator.generateAssessmentFromTopic(aiTopic);
-      setAiGeneratedItems(summary);
-      setIsGeneratingAi(false);
-    }, 800);
+  const draftOutline = async () => {
+    setAiBusy(true);
+    setAiError(null);
+    setAiNotice(null);
+    try {
+      const res = await api.post<{ data: Outline }>("/api/v1/ai/course-outline", {
+        topic: aiTopic.trim(),
+        audience: aiAudience.trim() || undefined,
+        moduleCount: aiModules,
+      });
+      setOutline(res.data);
+    } catch (e) {
+      setAiError(errorMessage(e, "Could not draft an outline."));
+    } finally {
+      setAiBusy(false);
+    }
   };
 
-  const handleApplyAiToModules = () => {
-    if (!aiGeneratedItems) return;
-
-    const takeaways: string[] = aiGeneratedItems.keyTakeaways ?? [];
-    const newLessons: BuilderLesson[] = [
-      blankLesson({ title: `${aiTopic}: key ideas`, minutes: 20, body: takeaways.join("\n\n") }),
-      ...takeaways.slice(0, 2).map((takeaway) => blankLesson({ title: `Deep dive: ${takeaway.slice(0, 45)}${takeaway.length > 45 ? "…" : ""}`, minutes: 20, body: takeaway })),
-      blankLesson({ title: `Hands-on lab: ${aiTopic}`, type: "INTERACTIVE_CODE", minutes: 45, body: `Write code that demonstrates the main idea of ${aiTopic}, and print the result with console.log.` }),
-    ];
-
-    const newModule: BuilderModule = {
-      id: `mod_ai_${Date.now()}`,
-      title: aiTopic,
-      lessons: newLessons,
-    };
-
-    setModules([...modules, newModule]);
-    setAiNotice(`Added Module ${modules.length + 1} with ${newLessons.length} lessons.`);
+  /** Adds the drafted modules after any the instructor already has, and fills empty course fields. */
+  const addOutline = () => {
+    if (!outline) return;
+    const added: BuilderModule[] = outline.modules.map((m, i) => ({
+      id: `mod_ai_${Date.now()}_${i}`,
+      title: m.title,
+      lessons: m.lessons.map((l) => blankLesson({ title: l.title, minutes: l.minutes, body: l.body })),
+    }));
+    setModules((prev) => [...prev, ...added]);
+    if (!courseTitle.trim()) setCourseTitle(outline.title);
+    if (!description.trim()) setDescription(outline.description);
+    setAiNotice(`Added ${added.length} module${added.length === 1 ? "" : "s"}. Review and edit them before you save.`);
+    setOutline(null);
   };
 
   const addModule = () => {
@@ -129,6 +140,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
       await onSave({
         title: courseTitle.trim(),
         code: courseCode.trim(),
+        description: description.trim(),
         status: courseStatus,
         passingGradePercent,
         allowSelfEnroll,
@@ -215,6 +227,21 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <label htmlFor="course-description" className="text-xs font-semibold text-ink-muted">
+                Description <span className="font-normal text-ink-subtle">(shown in the course catalogue)</span>
+              </label>
+              <textarea
+                id="course-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                maxLength={20000}
+                placeholder="What learners will study and what they will be able to do afterwards."
+                className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-brand"
+              />
+            </div>
+
             {/* Course Settings Bar */}
             <div className="bg-canvas border border-line rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div>
@@ -275,7 +302,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
 
               {modules.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-xs text-ink-muted">
-                  No modules yet. Add one, or generate a module from a topic with the AI synthesizer.
+                  No modules yet. Add one{ai.enabled ? ", or draft an outline with AI" : ""}.
                 </p>
               )}
 
@@ -331,67 +358,97 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
             </div>
           </div>
 
-          {/* AI Curriculum Assistant Sidebar */}
+          {/* AI outline drafts */}
           <div className="border-t md:border-t-0 md:border-l border-line pt-6 md:pt-0 md:pl-6 space-y-4">
             <div className="flex items-center gap-2 text-xs font-bold text-brand-fg uppercase tracking-wider">
               <Sparkles className="h-4 w-4" />
-              <span>AI Curriculum Synthesizer</span>
+              <span>Draft with AI</span>
             </div>
 
-            <p className="text-xs text-ink-muted">
-              Enter any lecture topic to automatically synthesize Bloom's Taxonomy-aligned quiz items and key takeaways.
-            </p>
+            {!ai.enabled ? (
+              <p className="text-xs text-ink-muted">{ai.isLoading ? "Checking…" : ai.reason ? AI_OFF_TEXT[ai.reason] : "AI assistance is not available."}</p>
+            ) : (
+              <>
+                <p className="text-xs text-ink-muted">
+                  Describe the course and get a draft outline: modules, lessons and learning objectives. Nothing is saved until you add it and save the course.
+                </p>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="Topic, e.g. Introduction to cell biology"
+                    aria-label="Course topic"
+                    value={aiTopic}
+                    maxLength={300}
+                    onChange={(e) => setAiTopic(e.target.value)}
+                    className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Audience (optional), e.g. first-year undergraduates"
+                    aria-label="Audience"
+                    value={aiAudience}
+                    maxLength={200}
+                    onChange={(e) => setAiAudience(e.target.value)}
+                    className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
+                  />
+                  <label className="flex items-center justify-between text-xs text-ink-muted">
+                    <span>Modules</span>
+                    <select value={aiModules} onChange={(e) => setAiModules(Number(e.target.value))} className="bg-canvas border border-line rounded-lg px-2 py-1 text-xs text-ink">
+                      {[2, 3, 4, 5, 6, 8, 10, 12].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    disabled={aiTopic.trim().length < 3 || aiBusy}
+                    onClick={draftOutline}
+                    className="w-full py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-semibold shadow-md shadow-brand/20 transition-all"
+                  >
+                    {aiBusy ? "Drafting… this can take up to a minute" : "Draft an outline"}
+                  </button>
+                </div>
+              </>
+            )}
 
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="e.g. Raft Consensus & Byzantine Faults"
-                value={aiTopic}
-                onChange={(e) => setAiTopic(e.target.value)}
-                className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
-              />
-              <button
-                disabled={!aiTopic || isGeneratingAi}
-                onClick={handleGenerateAiCurriculum}
-                className="w-full py-2 bg-gradient-to-r from-brand to-brand-hover hover:from-brand-hover hover:to-brand disabled:opacity-50 text-on-brand rounded-xl text-xs font-semibold shadow-md shadow-brand/20 transition-all"
-              >
-                {isGeneratingAi ? "Synthesizing with AI..." : "Generate Syllabus & Quizzes"}
-              </button>
-            </div>
-
+            {aiError && (
+              <p role="alert" className="text-[11px] font-semibold text-danger">
+                {aiError}
+              </p>
+            )}
             {aiNotice && (
               <p role="status" className="text-[11px] font-semibold text-success">
                 {aiNotice}
               </p>
             )}
 
-            {aiGeneratedItems && (
-              <div className="bg-canvas border border-line rounded-xl p-3.5 text-xs space-y-3 max-h-80 overflow-y-auto">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-ink">Generated Takeaways</div>
-                  <button
-                    onClick={handleApplyAiToModules}
-                    className="px-2.5 py-1 bg-brand hover:bg-brand-hover text-on-brand rounded-lg text-[10px] font-bold transition-all shadow-md"
-                  >
-                    + Inject as Module
+            {outline && (
+              <div className="bg-canvas border border-line rounded-xl p-3.5 text-xs space-y-3 max-h-[28rem] overflow-y-auto">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-ink">{outline.title}</div>
+                    <p className="text-[11px] text-ink-muted mt-0.5">{outline.description}</p>
+                  </div>
+                  <button onClick={addOutline} className="shrink-0 px-2.5 py-1 bg-brand hover:bg-brand-hover text-on-brand rounded-lg text-[10px] font-bold shadow-md">
+                    Add to course
                   </button>
                 </div>
-
-                <ul className="space-y-1 text-[11px] text-ink-muted list-disc list-inside">
-                  {aiGeneratedItems.keyTakeaways.map((k: string, idx: number) => (
-                    <li key={idx}>{k}</li>
+                <ol className="space-y-2 list-decimal list-inside">
+                  {outline.modules.map((m, i) => (
+                    <li key={i} className="text-ink font-medium">
+                      {m.title}
+                      <ul className="mt-1 ml-4 space-y-0.5 list-disc text-[11px] font-normal text-ink-muted">
+                        {m.lessons.map((l, j) => (
+                          <li key={j}>
+                            {l.title} <span className="text-ink-subtle">· {l.minutes} min</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
                   ))}
-                </ul>
-
-                <div className="font-semibold text-ink pt-2 border-t border-line">
-                  Synthesized Quiz Questions ({aiGeneratedItems.recommendedQuiz.length})
-                </div>
-                {aiGeneratedItems.recommendedQuiz.map((q: any, idx: number) => (
-                  <div key={idx} className="bg-surface p-2 rounded border border-line/80 text-[11px] space-y-1">
-                    <span className="text-accent font-bold uppercase text-[9px]">{q.taxonomyLevel}</span>
-                    <p className="text-ink font-medium">{q.questionText}</p>
-                  </div>
-                ))}
+                </ol>
+                <p className="text-[10px] text-ink-subtle">AI drafts can contain mistakes. Check every lesson before publishing.</p>
               </div>
             )}
           </div>
@@ -400,3 +457,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
     </div>
   );
 };
+
+interface Outline {
+  title: string;
+  description: string;
+  modules: { title: string; lessons: { title: string; minutes: number; body: string }[] }[];
+}

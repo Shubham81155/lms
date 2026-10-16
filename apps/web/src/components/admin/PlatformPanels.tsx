@@ -18,13 +18,11 @@ const ghostBtn =
 // ---------------------------------------------------------------------------
 
 export const FEATURE_LABELS: Record<string, { label: string; hint: string }> = {
-  scorm: { label: "SCORM packages", hint: "Run SCORM 1.2 / 2004 content." },
-  xapi: { label: "xAPI learning record store", hint: "Collect and browse learning statements." },
   lti13: { label: "LTI 1.3 launches", hint: "Let external tools sign learners in." },
-  aiProctoring: { label: "Exam proctoring", hint: "Integrity events and review flags." },
-  sso: { label: "Single sign-on (OIDC)", hint: "Sign in with your identity provider." },
+  sso: { label: "Single sign-on (OIDC / SAML)", hint: "Sign in with your identity provider." },
   webhooks: { label: "Webhooks", hint: "Send signed events to your systems." },
   scim: { label: "SCIM provisioning", hint: "Sync accounts from your directory." },
+  aiAssistant: { label: "AI assistance", hint: "Study tutor for learners and course-outline drafts for instructors. Questions and course content are sent to Google Gemini." },
 };
 
 export const FeaturesPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) => {

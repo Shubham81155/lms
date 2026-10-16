@@ -1,11 +1,10 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { handleError, route } from '../lib/http';
+import { route } from '../lib/http';
 import { isAdminRole } from '../lib/access';
 import { computeAtRisk } from '../lib/risk';
 import { bloomsMastery } from '../lib/bloom';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
-import { AiCurriculumGenerator } from '@enterprise-lms/security';
 
 const router = Router();
 
@@ -105,31 +104,5 @@ router.get(
     return res.json({ data: bloomsMastery(quizzes) });
   })
 );
-
-/**
- * POST /api/v1/analytics/ai/tutor
- * Context-aware AI tutor adaptive explanation and drill generator
- */
-router.post('/ai/tutor', authenticateJWT, async (req: Request, res: Response) => {
-  try {
-    const { topic } = req.body ?? {};
-
-    if (typeof topic !== 'string' || !topic.trim() || topic.length > 200) {
-      return res.status(400).json({ error: 'A topic of up to 200 characters is required for AI Tutor assistance' });
-    }
-
-    const curriculum = AiCurriculumGenerator.generateAssessmentFromTopic(topic);
-
-    return res.json({
-      topic,
-      explanation: `In the study of ${topic}, the core challenge is balancing safety and liveness across asynchronous communication channels.`,
-      keyTakeaways: curriculum.keyTakeaways,
-      recommendedDrill: curriculum.recommendedQuiz,
-      readinessBoostPercent: 18,
-    });
-  } catch (error: any) {
-    return handleError(req, res, error, 'Failed to generate AI tutor assistance');
-  }
-});
 
 export default router;
