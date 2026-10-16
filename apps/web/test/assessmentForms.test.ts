@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { assignmentProblem, eventProblem, quizSettingsProblem, toLocalInput } from '../src/lib/assessmentForms';
 import { blankQuestion, questionBody } from '../src/lib/questionDraft';
 
-const quiz = { title: 'Midterm', timed: false, minutes: '30', attempts: '2', passing: '70', randomize: false, proctoring: false };
+const quiz = { title: 'Midterm', timed: false, minutes: '30', attempts: '2', passing: '70', randomize: false, proctoring: false, opens: '', closes: '', review: 'RESPONSES' as const };
 
 describe('quizSettingsProblem', () => {
   it('accepts sensible settings', () => {
@@ -11,6 +11,11 @@ describe('quizSettingsProblem', () => {
   });
   it('needs a title', () => {
     expect(quizSettingsProblem({ ...quiz, title: '   ' })).toMatch(/title/);
+  });
+  it('needs the quiz to open before it closes', () => {
+    expect(quizSettingsProblem({ ...quiz, opens: '2026-11-02T09:00', closes: '2026-11-01T09:00' })).toMatch(/open before/);
+    expect(quizSettingsProblem({ ...quiz, opens: '2026-11-01T09:00', closes: '2026-11-02T09:00' })).toBeNull();
+    expect(quizSettingsProblem({ ...quiz, closes: '2026-11-02T09:00' })).toBeNull();
   });
   it('keeps attempts and the passing score inside the API limits', () => {
     expect(quizSettingsProblem({ ...quiz, attempts: '0' })).toMatch(/Attempts/);
@@ -27,7 +32,7 @@ describe('quizSettingsProblem', () => {
 });
 
 describe('assignmentProblem', () => {
-  const ok = { title: 'Essay', instructions: 'Write it.', maxPoints: '100', due: '' };
+  const ok = { title: 'Essay', instructions: 'Write it.', maxPoints: '100', due: '', lateUntil: '' };
   it('accepts a complete draft, with or without a due date', () => {
     expect(assignmentProblem(ok)).toBeNull();
     expect(assignmentProblem({ ...ok, due: '2027-01-15T10:30' })).toBeNull();
@@ -38,6 +43,11 @@ describe('assignmentProblem', () => {
     expect(assignmentProblem({ ...ok, maxPoints: '0' })).toMatch(/Points/);
     expect(assignmentProblem({ ...ok, maxPoints: '10001' })).toMatch(/Points/);
     expect(assignmentProblem({ ...ok, maxPoints: 'x' })).toMatch(/Points/);
+  });
+  it('keeps the late-work cutoff after the due date', () => {
+    expect(assignmentProblem({ ...ok, lateUntil: '2027-01-20T10:30' })).toMatch(/due date before/);
+    expect(assignmentProblem({ ...ok, due: '2027-01-15T10:30', lateUntil: '2027-01-14T10:30' })).toMatch(/after the due date/);
+    expect(assignmentProblem({ ...ok, due: '2027-01-15T10:30', lateUntil: '2027-01-20T10:30' })).toBeNull();
   });
 });
 

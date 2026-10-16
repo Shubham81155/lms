@@ -122,7 +122,9 @@ const TodoItem = z.discriminatedUnion('type', [
     id: z.string(),
     title: z.string(),
     course: TodoCourse,
+    /** The learner's own due date: an extension replaces the course-wide one. */
     dueAt: z.string().nullable(),
+    extended: z.boolean(),
     overdue: z.boolean(),
     submitted: z.boolean(),
   }),
@@ -131,7 +133,11 @@ const TodoItem = z.discriminatedUnion('type', [
     id: z.string(),
     title: z.string(),
     course: TodoCourse,
-    dueAt: z.null(),
+    /** When the quiz closes for this learner (extension included); null: no close. */
+    dueAt: z.string().nullable(),
+    extended: z.boolean(),
+    /** Set while the quiz has not opened yet. */
+    opensAt: z.string().nullable(),
     timeLimitMins: z.number().nullable(),
     requireProctoring: z.boolean(),
     attemptsRemaining: z.number(),

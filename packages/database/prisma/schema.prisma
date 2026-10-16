@@ -76,6 +76,7 @@ model Tenant {
   samlConnection    SamlConnection?
   liveSessions      LiveSession[]
   aiConfig          TenantAiConfig?
+  extensions        DeadlineExtension[]
   liveAttendance    LiveAttendance[]
   lessonProgress    LessonProgress[]
   gradeAppeals      GradeAppeal[]
@@ -191,6 +192,7 @@ model User {
   courseGrades            CourseGrade[]
   liveAttendance          LiveAttendance[]
   lessonProgress          LessonProgress[]
+  extensions              DeadlineExtension[]
 
   // Guardian Relations
   guardians UserGuardian[] @relation("StudentRelation")
@@ -442,6 +444,13 @@ model Quiz {
   randomizeQuestions Boolean @default(true)
   requireProctoring  Boolean @default(false)
   passingPercent     Float   @default(70.0)
+  // Availability window; null means no limit on that side. Per-learner extensions can move the close.
+  availableFrom      DateTime?
+  dueAt              DateTime?
+  // What a learner sees after submitting: SCORE_ONLY, RESPONSES (own answers marked right or wrong), or
+  // ANSWERS (also the correct answers and explanations, once no attempts are left or the quiz has closed).
+  reviewPolicy       String  @default("RESPONSES")
+  extensions         DeadlineExtension[]
   gradeCategoryId    String?
   gradeCategory      GradeCategory? @relation(fields: [gradeCategoryId], references: [id], onDelete: SetNull)
 
@@ -518,6 +527,9 @@ model Assignment {
   instructions String    @db.Text
   maxPoints    Float     @default(100.0)
   dueDate      DateTime?
+  // Late work is accepted until this time (null: always accepted, and flagged as late after the due date).
+  acceptLateUntil DateTime?
+  extensions      DeadlineExtension[]
   gradeCategoryId String?
   gradeCategory   GradeCategory? @relation(fields: [gradeCategoryId], references: [id], onDelete: SetNull)
   rubricJson      Json? // [{ id, name, description?, maxPoints }]; maxPoints of the assignment is their sum
@@ -553,6 +565,8 @@ model AssignmentSubmission {
   appeal              GradeAppeal?
 
   submittedAt DateTime  @default(now())
+  // Submitted after the learner's due date (their extension if they have one).
+  isLate      Boolean   @default(false)
   gradedAt    DateTime?
 
   @@unique([assignmentId, userId])
@@ -992,4 +1006,26 @@ model TenantAiConfig {
   updatedById String?
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
+}
+
+// A later due date for one learner on one assignment or quiz, granted by course staff.
+model DeadlineExtension {
+  id           String      @id @default(uuid())
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignmentId String?
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  quizId       String?
+  quiz         Quiz?       @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  dueAt        DateTime
+  reason       String?     @db.Text
+  grantedById  String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([assignmentId, userId])
+  @@unique([quizId, userId])
+  @@index([tenantId, userId])
 }

@@ -19,6 +19,7 @@ import { config } from '../config';
 import { commitGrade, resolveGradeInput } from '../lib/assignment-grade';
 import { validateQuestion, withOptionIds } from '../lib/questions';
 import { notify } from '../lib/notify';
+import { answersRevealed, assertQuizOpen, assignmentSubmissionTiming, extensionFor, personalDue, REVIEW_POLICIES } from '../lib/deadlines';
 import { VERBS, recordStatement } from '../lib/xapi';
 import { dispatchWebhook } from '../lib/webhooks';
 import { MANUAL_TYPES, QuestionType as GradingType, gradeQuiz, hasPassed, normalizeAnswers } from '../lib/grading';
@@ -39,9 +40,15 @@ const quizFields = {
   randomizeQuestions: z.boolean().optional(),
   requireProctoring: z.boolean().optional(),
   passingPercent: z.number().min(0).max(100).optional(),
+  /** Learners can start the quiz from this time (null: any time). */
+  availableFrom: z.coerce.date().nullable().optional(),
+  /** Learners cannot start an attempt after this time, unless they have an extension (null: no close). */
+  dueAt: z.coerce.date().nullable().optional(),
+  reviewPolicy: z.enum(REVIEW_POLICIES).optional(),
 };
-export const createQuizSchema = z.object(quizFields);
-export const updateQuizSchema = z.object(quizFields).partial();
+const windowInOrder = (q: { availableFrom?: Date | null; dueAt?: Date | null }) => !q.availableFrom || !q.dueAt || q.availableFrom < q.dueAt;
+export const createQuizSchema = z.object(quizFields).refine(windowInOrder, { message: 'The quiz must open before it closes', path: ['dueAt'] });
+export const updateQuizSchema = z.object(quizFields).partial().refine(windowInOrder, { message: 'The quiz must open before it closes', path: ['dueAt'] });
 
 const optionSchema = z.object({
   id: idSchema.optional(),
@@ -79,9 +86,12 @@ const assignmentFields = {
   instructions: z.string().min(1).max(50_000),
   maxPoints: z.number().positive().max(10_000).optional(),
   dueDate: z.coerce.date().nullable().optional(),
+  /** Late work is accepted until this time (null: always accepted, flagged as late after the due date). */
+  acceptLateUntil: z.coerce.date().nullable().optional(),
 };
-export const createAssignmentSchema = z.object(assignmentFields);
-export const updateAssignmentSchema = z.object(assignmentFields).partial();
+const cutoffAfterDue = (a: { dueDate?: Date | null; acceptLateUntil?: Date | null }) => !a.acceptLateUntil || !a.dueDate || a.acceptLateUntil >= a.dueDate;
+export const createAssignmentSchema = z.object(assignmentFields).refine(cutoffAfterDue, { message: 'Late work must be accepted until a time after the due date', path: ['acceptLateUntil'] });
+export const updateAssignmentSchema = z.object(assignmentFields).partial().refine(cutoffAfterDue, { message: 'Late work must be accepted until a time after the due date', path: ['acceptLateUntil'] });
 
 export const assignmentSubmissionSchema = z
   .object({
@@ -159,6 +169,9 @@ router.get(
         maxAttempts: q.maxAttempts,
         passingPercent: q.passingPercent,
         requireProctoring: q.requireProctoring,
+        availableFrom: q.availableFrom,
+        dueAt: q.dueAt,
+        reviewPolicy: q.reviewPolicy,
         questionCount: q._count.questions,
         submissionCount: q._count.submissions,
         createdAt: q.createdAt,
@@ -409,6 +422,8 @@ router.post(
     assertCanTake(await requireContentAccess(req, quiz.courseId));
 
     const open = await prisma.quizSubmission.findFirst({ where: { quizId: quiz.id, userId, submittedAt: null } });
+    // An attempt already under way may be resumed; a new one needs the quiz to be open.
+    if (!open) assertQuizOpen(quiz, await extensionFor(userId, { quizId: quiz.id }));
     if (open) {
       const expiresAt = expiryOf(open.startedAt, quiz.timeLimitMins);
       if (!expiresAt || expiresAt > new Date()) {
@@ -417,6 +432,7 @@ router.post(
         });
       }
       await closeExpiredAttempt(open.id);
+      assertQuizOpen(quiz, await extensionFor(userId, { quizId: quiz.id }));
     }
 
     const used = await prisma.quizSubmission.count({ where: { quizId: quiz.id, userId } });
@@ -465,6 +481,8 @@ const submitQuiz = route('Failed to submit and grade quiz', async (req: Request,
   const submitted = normalizeAnswers(parseBody(req, submitSchema).answers as any);
 
   const open = await prisma.quizSubmission.findFirst({ where: { quizId: quiz.id, userId, submittedAt: null } });
+  // Finishing an attempt that was started in time is always allowed; answering in one request needs the quiz open.
+  if (!open) assertQuizOpen(quiz, await extensionFor(userId, { quizId: quiz.id }));
 
   if (quiz.timeLimitMins) {
     if (!open) throw new HttpError(400, 'This quiz is timed: start an attempt before submitting');
@@ -612,6 +630,72 @@ router.get(
 );
 
 /**
+ * GET /api/v1/quizzes/:id/submissions/:subId/review
+ * One finished attempt, question by question. Staff see everything. A learner sees their own attempt as the
+ * quiz's review policy allows: SCORE_ONLY (no questions), RESPONSES (their answers, marked right or wrong), or
+ * ANSWERS (also the correct answers and explanations, once they have no attempts left or the quiz has closed).
+ */
+router.get(
+  '/quizzes/:id/submissions/:subId/review',
+  authenticateJWT,
+  route('Failed to load the attempt', async (req, res) => {
+    const quiz = await loadQuiz(req, String(req.params.id));
+    const access = await requireContentAccess(req, quiz.courseId);
+    const staff = seesAnswerKeys(req, access);
+    const sub = await prisma.quizSubmission.findFirst({ where: { id: idSchema.parse(req.params.subId), quizId: quiz.id } });
+    if (!sub || (!staff && sub.userId !== req.user!.id)) throw new HttpError(404, 'Attempt not found');
+    if (!sub.submittedAt) throw new HttpError(400, 'This attempt has not been submitted yet');
+
+    const used = await prisma.quizSubmission.count({ where: { quizId: quiz.id, userId: sub.userId } });
+    const closesAt = personalDue(quiz.dueAt, await extensionFor(sub.userId, { quizId: quiz.id }));
+    const policy = staff ? 'ANSWERS' : quiz.reviewPolicy;
+    const reveal = staff || answersRevealed(quiz.reviewPolicy, quiz.maxAttempts - used, closesAt);
+    const stored = (sub.answersJson ?? {}) as { submittedAnswers?: Record<string, unknown>; grading?: Record<string, any>; pendingManual?: string[] };
+
+    const questions =
+      policy === 'SCORE_ONLY'
+        ? []
+        : quiz.questions.map((q) => {
+            const result = stored.grading?.[q.id];
+            const options = Array.isArray(q.optionsJson) ? (q.optionsJson as { id?: string; text?: string; isCorrect?: boolean }[]) : [];
+            return {
+              id: q.id,
+              questionText: q.questionText,
+              questionType: q.questionType,
+              options: options.map((o) => ({ id: o.id ?? null, text: o.text ?? '' })),
+              yourAnswer: stored.submittedAnswers?.[q.id] ?? null,
+              awardedPoints: result?.awardedPoints ?? 0,
+              maxPoints: result?.maxPoints ?? q.points,
+              isCorrect: result?.isCorrect ?? null,
+              needsManualGrading: !!result?.needsManualGrading,
+              ...(reveal
+                ? {
+                    correctOptionIds: options.filter((o) => o.isCorrect).map((o) => o.id ?? null),
+                    correctAnswer: MANUAL_TYPES.includes(q.questionType as GradingType) ? null : q.correctAnswer,
+                    explanation: q.explanation,
+                  }
+                : {}),
+            };
+          });
+
+    return res.json({
+      data: {
+        submissionId: sub.id,
+        attemptNumber: sub.attemptNumber,
+        submittedAt: sub.submittedAt,
+        score: sub.score,
+        maxScore: sub.maxScore,
+        passed: sub.passed,
+        pendingManualGrading: (stored.pendingManual ?? []).length > 0,
+        reviewPolicy: quiz.reviewPolicy,
+        answersRevealed: reveal,
+        questions,
+      },
+    });
+  })
+);
+
+/**
  * PATCH /api/v1/quizzes/:id/submissions/:subId/grade
  * Staff award points for essay / code questions; the verdict is computed once none are pending.
  */
@@ -710,9 +794,15 @@ router.get(
       orderBy: { createdAt: 'asc' },
       include: { _count: { select: { submissions: true } } },
     });
-    // Submission counts are staff information.
+    // Submission counts are staff information; a learner instead sees their own due date (extension included).
+    if (seesAnswerKeys(req, access)) return res.status(200).json({ data: assignments });
+    const extensions = await prisma.deadlineExtension.findMany({
+      where: { userId: req.user!.id, assignmentId: { in: assignments.map((a) => a.id) } },
+      select: { assignmentId: true, dueAt: true },
+    });
+    const extended = new Map(extensions.map((e) => [e.assignmentId!, e.dueAt]));
     return res.status(200).json({
-      data: assignments.map(({ _count, ...a }) => (seesAnswerKeys(req, access) ? { ...a, _count } : a)),
+      data: assignments.map(({ _count, ...a }) => ({ ...a, myDueAt: personalDue(a.dueDate, extended.get(a.id) ?? null), extended: extended.has(a.id) })),
     });
   })
 );
@@ -792,12 +882,14 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
   if (existing?.gradedAt) throw new HttpError(409, 'This submission has already been graded and can no longer be changed');
 
   const now = new Date();
+  const { isLate } = assignmentSubmissionTiming(assignment, await extensionFor(userId, { assignmentId: assignment.id }), now);
   const check = shouldCheckPlagiarism(submissionText);
   // A new or changed text invalidates any earlier similarity result.
   const data = {
     fileUrl: fileUrl || null,
     submissionText: submissionText || null,
     submittedAt: now,
+    isLate,
     plagiarismScore: null,
     plagiarismReportUrl: null,
     plagiarismStatus: check ? 'PENDING' : null,
@@ -809,8 +901,6 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
     create: { assignmentId: assignment.id, userId, ...data },
     update: data,
   });
-  const isLate = !!assignment.dueDate && now > assignment.dueDate;
-
   await logAuditEvent({
     tenantId,
     userId,
@@ -822,7 +912,7 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
     diffJson: { assignmentId: assignment.id, isLate, resubmission: !!existing },
   });
 
-  return res.status(201).json({ data: { ...submission, isLate } });
+  return res.status(201).json({ data: submission });
 });
 router.post('/assignments/:id/submit', authenticateJWT, submitAssignment);
 router.post('/assignments/:id/submissions', authenticateJWT, submitAssignment);

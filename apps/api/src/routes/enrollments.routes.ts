@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { personalDue } from '../lib/deadlines';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { EnrollmentStatus } from '@enterprise-lms/database';
@@ -86,7 +87,7 @@ router.get(
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
         select: {
           id: true, title: true, courseId: true, maxPoints: true, dueDate: true,
-          submissions: { where: { userId }, select: { submittedAt: true, grade: true, feedback: true, gradedAt: true, appeal: { select: { status: true } } } },
+          submissions: { where: { userId }, select: { submittedAt: true, isLate: true, grade: true, feedback: true, gradedAt: true, appeal: { select: { status: true } } } },
         },
       }),
       prisma.quiz.findMany({
@@ -118,7 +119,7 @@ router.get(
                 maxPoints: a.maxPoints,
                 dueDate: a.dueDate,
                 submittedAt: s?.submittedAt ?? null,
-                late: !!(s && a.dueDate && s.submittedAt > a.dueDate),
+                late: !!s?.isLate,
                 grade: s?.gradedAt ? s.grade : null,
                 feedback: s?.gradedAt ? s.feedback : null,
                 gradedAt: s?.gradedAt ?? null,
@@ -178,11 +179,13 @@ router.get(
       prisma.quiz.findMany({
         where: { courseId: { in: courseIds }, questions: { some: {} } },
         select: {
-          id: true, title: true, courseId: true, timeLimitMins: true, maxAttempts: true, requireProctoring: true,
+          id: true, title: true, courseId: true, timeLimitMins: true, maxAttempts: true, requireProctoring: true, availableFrom: true, dueAt: true,
           submissions: { where: { userId }, select: { submittedAt: true } },
         },
       }),
     ]);
+    const extensions = await prisma.deadlineExtension.findMany({ where: { tenantId, userId }, select: { assignmentId: true, quizId: true, dueAt: true } });
+    const extended = new Map(extensions.map((e) => [(e.assignmentId ?? e.quizId)!, e.dueAt]));
 
     const now = Date.now();
     const work = assignments.map((a) => ({
@@ -190,8 +193,12 @@ router.get(
       id: a.id,
       title: a.title,
       course: courses.get(a.courseId)!,
-      dueAt: a.dueDate,
-      overdue: !!a.dueDate && a.dueDate.getTime() < now && a.submissions.length === 0,
+      dueAt: personalDue(a.dueDate, extended.get(a.id) ?? null),
+      extended: extended.has(a.id),
+      overdue: (() => {
+        const due = personalDue(a.dueDate, extended.get(a.id) ?? null);
+        return !!due && due.getTime() < now && a.submissions.length === 0;
+      })(),
       submitted: a.submissions.length > 0,
     }));
     const tests = quizzes
@@ -200,13 +207,17 @@ router.get(
         id: q.id,
         title: q.title,
         course: courses.get(q.courseId)!,
-        dueAt: null as Date | null,
+        dueAt: personalDue(q.dueAt, extended.get(q.id) ?? null),
+        extended: extended.has(q.id),
+        /** Set while the quiz has not opened yet. */
+        opensAt: q.availableFrom && q.availableFrom.getTime() > now ? q.availableFrom : null,
         timeLimitMins: q.timeLimitMins,
         requireProctoring: q.requireProctoring,
         attemptsRemaining: Math.max(0, q.maxAttempts - q.submissions.length),
         hasOpenAttempt: q.submissions.some((s) => s.submittedAt === null),
       }))
-      .filter((q) => q.attemptsRemaining > 0 || q.hasOpenAttempt);
+      // A quiz that has closed for this learner is no longer something to do, unless an attempt is still open.
+      .filter((q) => q.hasOpenAttempt || (q.attemptsRemaining > 0 && !(q.dueAt && q.dueAt.getTime() < now)));
 
     const byDue = (a: { dueAt: Date | null; title: string }, b: { dueAt: Date | null; title: string }) =>
       (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity) || a.title.localeCompare(b.title);

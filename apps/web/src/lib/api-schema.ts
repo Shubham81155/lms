@@ -1697,6 +1697,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/extensions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Course staff: the deadline extensions granted on one assignment or quiz. */
+        get: operations["getExtensions"];
+        /** Course staff: give one enrolled learner a later due date on an assignment or quiz (later than the course-wide date, in the future). The learner is notified; audited. */
+        put: operations["putExtensions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/extensions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Course staff: withdraw an extension; the course-wide due date applies again. */
+        delete: operations["deleteExtensionsId"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/flags": {
         parameters: {
             query?: never;
@@ -2299,6 +2334,23 @@ export interface paths {
         head?: never;
         /** Manually grade the essay/code questions of a submission (points per question id). */
         patch: operations["patchQuizzesIdSubmissionsSubIdGrade"];
+        trace?: never;
+    };
+    "/api/v1/quizzes/{id}/submissions/{subId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One finished attempt, question by question, as the quiz's review policy allows (staff see everything; correct answers are shown to learners only under ANSWERS, once they have no attempts left or the quiz has closed). */
+        get: operations["getQuizzesIdSubmissionsSubIdReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/quizzes/{id}/submit": {
@@ -5804,6 +5856,7 @@ export interface operations {
                     instructions?: string;
                     maxPoints?: number;
                     dueDate?: string | null;
+                    acceptLateUntil?: string | null;
                 };
             };
         };
@@ -5823,6 +5876,7 @@ export interface operations {
                             instructions: string;
                             maxPoints: number;
                             dueDate: string | null;
+                            acceptLateUntil: string | null;
                             gradeCategoryId: string | null;
                             rubricJson?: unknown;
                             createdAt: string;
@@ -5990,6 +6044,7 @@ export interface operations {
                             plagiarismNextAttemptAt: string | null;
                             rubricScoresJson?: unknown;
                             submittedAt: string;
+                            isLate: boolean;
                             gradedAt: string | null;
                             user?: {
                                 id: string;
@@ -6086,8 +6141,8 @@ export interface operations {
                             plagiarismNextAttemptAt: string | null;
                             rubricScoresJson?: unknown;
                             submittedAt: string;
-                            gradedAt: string | null;
                             isLate: boolean;
+                            gradedAt: string | null;
                         };
                     };
                 };
@@ -6273,6 +6328,7 @@ export interface operations {
                             plagiarismNextAttemptAt: string | null;
                             rubricScoresJson?: unknown;
                             submittedAt: string;
+                            isLate: boolean;
                             gradedAt: string | null;
                         };
                         courseGradeReopened: boolean;
@@ -6358,8 +6414,8 @@ export interface operations {
                             plagiarismNextAttemptAt: string | null;
                             rubricScoresJson?: unknown;
                             submittedAt: string;
-                            gradedAt: string | null;
                             isLate: boolean;
+                            gradedAt: string | null;
                         };
                     };
                 };
@@ -7796,6 +7852,7 @@ export interface operations {
                             instructions: string;
                             maxPoints: number;
                             dueDate: string | null;
+                            acceptLateUntil: string | null;
                             gradeCategoryId: string | null;
                             rubricJson?: unknown;
                             createdAt: string;
@@ -7803,6 +7860,8 @@ export interface operations {
                             _count?: {
                                 submissions: number;
                             };
+                            myDueAt?: string | null;
+                            extended?: boolean;
                         }[];
                     };
                 };
@@ -7852,6 +7911,7 @@ export interface operations {
                     instructions: string;
                     maxPoints?: number;
                     dueDate?: string | null;
+                    acceptLateUntil?: string | null;
                 };
             };
         };
@@ -7871,6 +7931,7 @@ export interface operations {
                             instructions: string;
                             maxPoints: number;
                             dueDate: string | null;
+                            acceptLateUntil: string | null;
                             gradeCategoryId: string | null;
                             rubricJson?: unknown;
                             createdAt: string;
@@ -8883,6 +8944,10 @@ export interface operations {
                             maxAttempts: number;
                             passingPercent: number;
                             requireProctoring: boolean;
+                            availableFrom: string | null;
+                            dueAt: string | null;
+                            /** @enum {string} */
+                            reviewPolicy: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
                             questionCount: number;
                             submissionCount: number;
                             createdAt: string;
@@ -8937,6 +9002,10 @@ export interface operations {
                     randomizeQuestions?: boolean;
                     requireProctoring?: boolean;
                     passingPercent?: number;
+                    availableFrom?: string | null;
+                    dueAt?: string | null;
+                    /** @enum {string} */
+                    reviewPolicy?: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
                 };
             };
         };
@@ -8958,6 +9027,10 @@ export interface operations {
                             randomizeQuestions: boolean;
                             requireProctoring: boolean;
                             passingPercent: number;
+                            availableFrom: string | null;
+                            dueAt: string | null;
+                            /** @enum {string} */
+                            reviewPolicy: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
                             gradeCategoryId: string | null;
                             createdAt: string;
                             updatedAt: string;
@@ -10762,6 +10835,7 @@ export interface operations {
                                 title: string;
                             };
                             dueAt: string | null;
+                            extended: boolean;
                             overdue: boolean;
                             submitted: boolean;
                         } | {
@@ -10774,7 +10848,9 @@ export interface operations {
                                 code: string;
                                 title: string;
                             };
-                            dueAt: unknown;
+                            dueAt: string | null;
+                            extended: boolean;
+                            opensAt: string | null;
                             timeLimitMins: number | null;
                             requireProctoring: boolean;
                             attemptsRemaining: number;
@@ -10785,6 +10861,199 @@ export interface operations {
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getExtensions: {
+        parameters: {
+            query: {
+                itemType: "ASSIGNMENT" | "QUIZ";
+                itemId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            userId: string;
+                            name: string;
+                            email: string;
+                            dueAt: string;
+                            reason: string | null;
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putExtensions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    itemType: "ASSIGNMENT" | "QUIZ";
+                    itemId: string;
+                    userId: string;
+                    dueAt: string | null;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            userId: string;
+                            name: string;
+                            email: string;
+                            dueAt: string;
+                            reason: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteExtensionsId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13064,6 +13333,10 @@ export interface operations {
                             randomizeQuestions: boolean;
                             requireProctoring: boolean;
                             passingPercent: number;
+                            availableFrom: string | null;
+                            dueAt: string | null;
+                            /** @enum {string} */
+                            reviewPolicy: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
                             gradeCategoryId: string | null;
                             createdAt: string;
                             updatedAt: string;
@@ -13225,6 +13498,10 @@ export interface operations {
                     randomizeQuestions?: boolean;
                     requireProctoring?: boolean;
                     passingPercent?: number;
+                    availableFrom?: string | null;
+                    dueAt?: string | null;
+                    /** @enum {string} */
+                    reviewPolicy?: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
                 };
             };
         };
@@ -13246,6 +13523,10 @@ export interface operations {
                             randomizeQuestions: boolean;
                             requireProctoring: boolean;
                             passingPercent: number;
+                            availableFrom: string | null;
+                            dueAt: string | null;
+                            /** @enum {string} */
+                            reviewPolicy: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
                             gradeCategoryId: string | null;
                             createdAt: string;
                             updatedAt: string;
@@ -13832,6 +14113,95 @@ export interface operations {
                             maxScore: number;
                             passed: boolean;
                             pendingManualGrading: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getQuizzesIdSubmissionsSubIdReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                subId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            submissionId: string;
+                            attemptNumber: number;
+                            submittedAt: string;
+                            score: number | null;
+                            maxScore: number;
+                            passed: boolean;
+                            pendingManualGrading: boolean;
+                            /** @enum {string} */
+                            reviewPolicy: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
+                            answersRevealed: boolean;
+                            questions: {
+                                id: string;
+                                questionText: string;
+                                questionType: string;
+                                options: {
+                                    id: string | null;
+                                    text: string;
+                                }[];
+                                yourAnswer?: unknown;
+                                awardedPoints: number;
+                                maxPoints: number;
+                                isCorrect: boolean | null;
+                                needsManualGrading: boolean;
+                                correctOptionIds?: (string | null)[];
+                                correctAnswer?: string | null;
+                                explanation?: string | null;
+                            }[];
                         };
                     };
                 };

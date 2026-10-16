@@ -9,6 +9,10 @@ export interface QuizSettings {
   passing: string;
   randomize: boolean;
   proctoring: boolean;
+  /** datetime-local values; empty means no limit. */
+  opens: string;
+  closes: string;
+  review: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
 }
 
 /** Why a quiz's settings cannot be saved yet, or null. */
@@ -22,6 +26,7 @@ export function quizSettingsProblem(s: QuizSettings): string | null {
     const mins = Number(s.minutes);
     if (!Number.isInteger(mins) || mins < 1 || mins > 1440) return "Time limit must be a whole number of minutes from 1 to 1440.";
   }
+  if (s.opens && s.closes && new Date(s.closes) <= new Date(s.opens)) return "The quiz must open before it closes.";
   return null;
 }
 
@@ -30,6 +35,8 @@ export interface AssignmentDraft {
   instructions: string;
   maxPoints: string;
   due: string;
+  /** datetime-local; empty means late work is always accepted. */
+  lateUntil: string;
 }
 
 /** Why an assignment cannot be saved yet, or null. */
@@ -39,6 +46,8 @@ export function assignmentProblem(d: AssignmentDraft): string | null {
   const pts = Number(d.maxPoints);
   if (!Number.isFinite(pts) || pts <= 0 || pts > 10000) return "Points must be more than 0 and at most 10,000.";
   if (d.due && Number.isNaN(new Date(d.due).getTime())) return "The due date is not valid.";
+  if (d.lateUntil && !d.due) return "Set a due date before a late-work cutoff.";
+  if (d.lateUntil && new Date(d.lateUntil) < new Date(d.due)) return "Late work must be accepted until a time after the due date.";
   return null;
 }
 

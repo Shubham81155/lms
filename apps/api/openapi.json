@@ -6773,6 +6773,10 @@
                   "dueDate": {
                     "type": "string",
                     "nullable": true
+                  },
+                  "acceptLateUntil": {
+                    "type": "string",
+                    "nullable": true
                   }
                 }
               }
@@ -6812,6 +6816,10 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "acceptLateUntil": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "gradeCategoryId": {
                           "type": "string",
                           "nullable": true
@@ -6834,6 +6842,7 @@
                         "instructions",
                         "maxPoints",
                         "dueDate",
+                        "acceptLateUntil",
                         "gradeCategoryId",
                         "createdAt",
                         "updatedAt"
@@ -7173,6 +7182,9 @@
                           "submittedAt": {
                             "type": "string"
                           },
+                          "isLate": {
+                            "type": "boolean"
+                          },
                           "gradedAt": {
                             "type": "string",
                             "nullable": true
@@ -7215,6 +7227,7 @@
                           "plagiarismAttempts",
                           "plagiarismNextAttemptAt",
                           "submittedAt",
+                          "isLate",
                           "gradedAt"
                         ]
                       }
@@ -7415,12 +7428,12 @@
                         "submittedAt": {
                           "type": "string"
                         },
+                        "isLate": {
+                          "type": "boolean"
+                        },
                         "gradedAt": {
                           "type": "string",
                           "nullable": true
-                        },
-                        "isLate": {
-                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -7437,8 +7450,8 @@
                         "plagiarismAttempts",
                         "plagiarismNextAttemptAt",
                         "submittedAt",
-                        "gradedAt",
-                        "isLate"
+                        "isLate",
+                        "gradedAt"
                       ]
                     }
                   },
@@ -7811,6 +7824,9 @@
                         "submittedAt": {
                           "type": "string"
                         },
+                        "isLate": {
+                          "type": "boolean"
+                        },
                         "gradedAt": {
                           "type": "string",
                           "nullable": true
@@ -7830,6 +7846,7 @@
                         "plagiarismAttempts",
                         "plagiarismNextAttemptAt",
                         "submittedAt",
+                        "isLate",
                         "gradedAt"
                       ]
                     },
@@ -8011,12 +8028,12 @@
                         "submittedAt": {
                           "type": "string"
                         },
+                        "isLate": {
+                          "type": "boolean"
+                        },
                         "gradedAt": {
                           "type": "string",
                           "nullable": true
-                        },
-                        "isLate": {
-                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -8033,8 +8050,8 @@
                         "plagiarismAttempts",
                         "plagiarismNextAttemptAt",
                         "submittedAt",
-                        "gradedAt",
-                        "isLate"
+                        "isLate",
+                        "gradedAt"
                       ]
                     }
                   },
@@ -10826,6 +10843,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "acceptLateUntil": {
+                            "type": "string",
+                            "nullable": true
+                          },
                           "gradeCategoryId": {
                             "type": "string",
                             "nullable": true
@@ -10849,6 +10870,13 @@
                             "required": [
                               "submissions"
                             ]
+                          },
+                          "myDueAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "extended": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -10859,6 +10887,7 @@
                           "instructions",
                           "maxPoints",
                           "dueDate",
+                          "acceptLateUntil",
                           "gradeCategoryId",
                           "createdAt",
                           "updatedAt"
@@ -10955,6 +10984,10 @@
                   "dueDate": {
                     "type": "string",
                     "nullable": true
+                  },
+                  "acceptLateUntil": {
+                    "type": "string",
+                    "nullable": true
                   }
                 },
                 "required": [
@@ -10998,6 +11031,10 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "acceptLateUntil": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "gradeCategoryId": {
                           "type": "string",
                           "nullable": true
@@ -11020,6 +11057,7 @@
                         "instructions",
                         "maxPoints",
                         "dueDate",
+                        "acceptLateUntil",
                         "gradeCategoryId",
                         "createdAt",
                         "updatedAt"
@@ -12967,6 +13005,22 @@
                           "requireProctoring": {
                             "type": "boolean"
                           },
+                          "availableFrom": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "dueAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "reviewPolicy": {
+                            "type": "string",
+                            "enum": [
+                              "SCORE_ONLY",
+                              "RESPONSES",
+                              "ANSWERS"
+                            ]
+                          },
                           "questionCount": {
                             "type": "number"
                           },
@@ -12985,6 +13039,9 @@
                           "maxAttempts",
                           "passingPercent",
                           "requireProctoring",
+                          "availableFrom",
+                          "dueAt",
+                          "reviewPolicy",
                           "questionCount",
                           "submissionCount",
                           "createdAt"
@@ -13088,6 +13145,22 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 100
+                  },
+                  "availableFrom": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dueAt": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "reviewPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "SCORE_ONLY",
+                      "RESPONSES",
+                      "ANSWERS"
+                    ]
                   }
                 },
                 "required": [
@@ -13136,6 +13209,22 @@
                         "passingPercent": {
                           "type": "number"
                         },
+                        "availableFrom": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "dueAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "reviewPolicy": {
+                          "type": "string",
+                          "enum": [
+                            "SCORE_ONLY",
+                            "RESPONSES",
+                            "ANSWERS"
+                          ]
+                        },
                         "gradeCategoryId": {
                           "type": "string",
                           "nullable": true
@@ -13157,6 +13246,9 @@
                         "randomizeQuestions",
                         "requireProctoring",
                         "passingPercent",
+                        "availableFrom",
+                        "dueAt",
+                        "reviewPolicy",
                         "gradeCategoryId",
                         "createdAt",
                         "updatedAt"
@@ -17440,6 +17532,9 @@
                                 "type": "string",
                                 "nullable": true
                               },
+                              "extended": {
+                                "type": "boolean"
+                              },
                               "overdue": {
                                 "type": "boolean"
                               },
@@ -17453,6 +17548,7 @@
                               "title",
                               "course",
                               "dueAt",
+                              "extended",
                               "overdue",
                               "submitted"
                             ]
@@ -17492,6 +17588,14 @@
                                 ]
                               },
                               "dueAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "extended": {
+                                "type": "boolean"
+                              },
+                              "opensAt": {
+                                "type": "string",
                                 "nullable": true
                               },
                               "timeLimitMins": {
@@ -17514,6 +17618,8 @@
                               "title",
                               "course",
                               "dueAt",
+                              "extended",
+                              "opensAt",
                               "timeLimitMins",
                               "requireProctoring",
                               "attemptsRemaining",
@@ -17533,6 +17639,356 @@
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/extensions": {
+      "get": {
+        "operationId": "getExtensions",
+        "summary": "Course staff: the deadline extensions granted on one assignment or quiz.",
+        "tags": [
+          "extensions"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ASSIGNMENT",
+                "QUIZ"
+              ]
+            },
+            "required": true,
+            "name": "itemType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "itemId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "dueAt": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "userId",
+                          "name",
+                          "email",
+                          "dueAt",
+                          "reason",
+                          "createdAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putExtensions",
+        "summary": "Course staff: give one enrolled learner a later due date on an assignment or quiz (later than the course-wide date, in the future). The learner is notified; audited.",
+        "tags": [
+          "extensions"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "itemType": {
+                    "type": "string",
+                    "enum": [
+                      "ASSIGNMENT",
+                      "QUIZ"
+                    ]
+                  },
+                  "itemId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "userId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "dueAt": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "itemType",
+                  "itemId",
+                  "userId",
+                  "dueAt"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "dueAt": {
+                          "type": "string"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "name",
+                        "email",
+                        "dueAt",
+                        "reason",
+                        "createdAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/extensions/{id}": {
+      "delete": {
+        "operationId": "deleteExtensionsId",
+        "summary": "Course staff: withdraw an extension; the course-wide due date applies again.",
+        "tags": [
+          "extensions"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -22308,6 +22764,22 @@
                             "passingPercent": {
                               "type": "number"
                             },
+                            "availableFrom": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "dueAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "reviewPolicy": {
+                              "type": "string",
+                              "enum": [
+                                "SCORE_ONLY",
+                                "RESPONSES",
+                                "ANSWERS"
+                              ]
+                            },
                             "gradeCategoryId": {
                               "type": "string",
                               "nullable": true
@@ -22410,6 +22882,9 @@
                             "randomizeQuestions",
                             "requireProctoring",
                             "passingPercent",
+                            "availableFrom",
+                            "dueAt",
+                            "reviewPolicy",
                             "gradeCategoryId",
                             "createdAt",
                             "updatedAt",
@@ -22641,6 +23116,22 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 100
+                  },
+                  "availableFrom": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dueAt": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "reviewPolicy": {
+                    "type": "string",
+                    "enum": [
+                      "SCORE_ONLY",
+                      "RESPONSES",
+                      "ANSWERS"
+                    ]
                   }
                 }
               }
@@ -22686,6 +23177,22 @@
                         "passingPercent": {
                           "type": "number"
                         },
+                        "availableFrom": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "dueAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "reviewPolicy": {
+                          "type": "string",
+                          "enum": [
+                            "SCORE_ONLY",
+                            "RESPONSES",
+                            "ANSWERS"
+                          ]
+                        },
                         "gradeCategoryId": {
                           "type": "string",
                           "nullable": true
@@ -22707,6 +23214,9 @@
                         "randomizeQuestions",
                         "requireProctoring",
                         "passingPercent",
+                        "availableFrom",
+                        "dueAt",
+                        "reviewPolicy",
                         "gradeCategoryId",
                         "createdAt",
                         "updatedAt"
@@ -24043,6 +24553,225 @@
                         "maxScore",
                         "passed",
                         "pendingManualGrading"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/quizzes/{id}/submissions/{subId}/review": {
+      "get": {
+        "operationId": "getQuizzesIdSubmissionsSubIdReview",
+        "summary": "One finished attempt, question by question, as the quiz's review policy allows (staff see everything; correct answers are shown to learners only under ANSWERS, once they have no attempts left or the quiz has closed).",
+        "tags": [
+          "quizzes"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "subId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "submissionId": {
+                          "type": "string"
+                        },
+                        "attemptNumber": {
+                          "type": "number"
+                        },
+                        "submittedAt": {
+                          "type": "string"
+                        },
+                        "score": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "maxScore": {
+                          "type": "number"
+                        },
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "pendingManualGrading": {
+                          "type": "boolean"
+                        },
+                        "reviewPolicy": {
+                          "type": "string",
+                          "enum": [
+                            "SCORE_ONLY",
+                            "RESPONSES",
+                            "ANSWERS"
+                          ]
+                        },
+                        "answersRevealed": {
+                          "type": "boolean"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "questionText": {
+                                "type": "string"
+                              },
+                              "questionType": {
+                                "type": "string"
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "nullable": true
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ]
+                                }
+                              },
+                              "yourAnswer": {
+                                "nullable": true
+                              },
+                              "awardedPoints": {
+                                "type": "number"
+                              },
+                              "maxPoints": {
+                                "type": "number"
+                              },
+                              "isCorrect": {
+                                "type": "boolean",
+                                "nullable": true
+                              },
+                              "needsManualGrading": {
+                                "type": "boolean"
+                              },
+                              "correctOptionIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "nullable": true
+                                }
+                              },
+                              "correctAnswer": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "explanation": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "questionText",
+                              "questionType",
+                              "options",
+                              "awardedPoints",
+                              "maxPoints",
+                              "isCorrect",
+                              "needsManualGrading"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "submissionId",
+                        "attemptNumber",
+                        "submittedAt",
+                        "score",
+                        "maxScore",
+                        "passed",
+                        "pendingManualGrading",
+                        "reviewPolicy",
+                        "answersRevealed",
+                        "questions"
                       ]
                     }
                   },

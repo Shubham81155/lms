@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { AttemptReview } from "./AttemptReview";
 import { AlertTriangle, CheckCircle2, Clock, ShieldAlert, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { errorMessage, useAction } from "@/hooks/useApiData";
@@ -22,7 +23,7 @@ interface QuizView {
   questions: QuizQuestionView[];
 }
 interface Attempt { submissionId: string; expiresAt: string | null; resumed: boolean }
-interface Result { score: number; maxScore: number; percentage: number; passed: boolean; attemptsRemaining: number; pendingManualGrading: boolean }
+interface Result { submissionId: string; score: number; maxScore: number; percentage: number; passed: boolean; attemptsRemaining: number; pendingManualGrading: boolean }
 
 const btn = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all";
 const ghost = "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
@@ -43,6 +44,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
   const [result, setResult] = useState<Result | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [events, setEvents] = useState(0);
+  const [showReview, setShowReview] = useState(false);
   const { busy, error, run, clearError } = useAction();
 
   // Refs let the long-lived event listeners see current values without being re-registered.
@@ -284,7 +286,13 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                 {result.pendingManualGrading ? "Submitted. Some answers need a person to grade them, so the final result will follow." : result.passed ? "You passed." : "You did not reach the passing mark."}
               </p>
               {result.attemptsRemaining > 0 && !result.passed && <p className="text-[11px] text-ink-subtle">{result.attemptsRemaining} attempt{result.attemptsRemaining === 1 ? "" : "s"} remaining.</p>}
-              <button className={btn} onClick={onClose}>Done</button>
+              <div className="flex justify-center gap-2">
+                <button className="px-4 py-2 rounded-xl border border-line bg-surface hover:bg-raised text-xs font-semibold text-ink" onClick={() => setShowReview((v) => !v)} aria-expanded={showReview}>
+                  {showReview ? "Hide my answers" : "Review my answers"}
+                </button>
+                <button className={btn} onClick={onClose}>Done</button>
+              </div>
+              {showReview && quiz && <AttemptReview quizId={quiz.id} submissionId={result.submissionId} />}
             </div>
           )}
         </div>

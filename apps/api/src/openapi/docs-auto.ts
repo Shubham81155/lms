@@ -7,6 +7,7 @@ import * as r_assessments from '../routes/assessments.routes';
 import * as r_calendar from '../routes/calendar.routes';
 import * as r_certificates from '../routes/certificates.routes';
 import * as r_courses from '../routes/courses.routes';
+import * as r_deadlines from '../routes/deadlines.routes';
 import * as r_enrollments from '../routes/enrollments.routes';
 import * as r_forum from '../routes/forum.routes';
 import * as r_gradebook from '../routes/gradebook.routes';
@@ -24,6 +25,10 @@ import * as r_privacy from '../routes/privacy.routes';
 
 /** Keyed `METHOD /express/style/path`. */
 export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 'body'>> = {
+  "GET /api/v1/extensions": { summary: "Course staff: the deadline extensions granted on one assignment or quiz.", query: r_deadlines.extensionListQuery as never },
+  "PUT /api/v1/extensions": { summary: "Course staff: give one enrolled learner a later due date on an assignment or quiz (later than the course-wide date, in the future). The learner is notified; audited.", body: r_deadlines.extensionSchema },
+  "DELETE /api/v1/extensions/:id": { summary: "Course staff: withdraw an extension; the course-wide due date applies again." },
+  "GET /api/v1/quizzes/:id/submissions/:subId/review": { summary: "One finished attempt, question by question, as the quiz's review policy allows (staff see everything; correct answers are shown to learners only under ANSWERS, once they have no attempts left or the quiz has closed)." },
   "GET /api/v1/admin/audit-logs/actions": { summary: "The action names recorded in this organisation's audit trail, with counts, for filtering." },
   "GET /api/v1/admin/audit-logs/export.csv": { summary: "The audit trail as CSV with the same filters as GET /admin/audit-logs (at most 50,000 rows). The export is itself audited.", query: r_admin.auditQuery as never },
   "GET /api/v1/admin/audit-logs": { summary: "administrators and auditors", query: r_admin.auditQuery as never },

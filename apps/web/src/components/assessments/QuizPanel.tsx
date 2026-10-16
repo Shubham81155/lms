@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { api } from "@/lib/api";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
-import { quizSettingsProblem, type QuizSettings as Settings } from "@/lib/assessmentForms";
+import { quizSettingsProblem, toLocalInput, type QuizSettings as Settings } from "@/lib/assessmentForms";
+import { ExtensionsPanel } from "./ExtensionsPanel";
 import { QuizQuestions } from "./QuizQuestions";
 import { QuizResults } from "./QuizResults";
 import { card, danger, ghost, input, primary } from "./ui";
@@ -18,6 +19,8 @@ interface QuizRow {
   requireProctoring: boolean;
   questionCount: number;
   submissionCount: number;
+  availableFrom?: string | null;
+  dueAt?: string | null;
 }
 
 interface QuizDetail {
@@ -27,9 +30,12 @@ interface QuizDetail {
   passingPercent: number;
   requireProctoring: boolean;
   randomizeQuestions: boolean;
+  availableFrom: string | null;
+  dueAt: string | null;
+  reviewPolicy: Settings["review"];
 }
 
-const defaults: Settings = { title: "", timed: false, minutes: "30", attempts: "1", passing: "70", randomize: false, proctoring: false };
+const defaults: Settings = { title: "", timed: false, minutes: "30", attempts: "1", passing: "70", randomize: false, proctoring: false, opens: "", closes: "", review: "RESPONSES" };
 
 const fromDetail = (q: QuizDetail): Settings => ({
   title: q.title,
@@ -39,6 +45,9 @@ const fromDetail = (q: QuizDetail): Settings => ({
   passing: String(q.passingPercent),
   randomize: q.randomizeQuestions,
   proctoring: q.requireProctoring,
+  opens: toLocalInput(q.availableFrom),
+  closes: toLocalInput(q.dueAt),
+  review: q.reviewPolicy,
 });
 
 const toBody = (s: Settings) => ({
@@ -48,6 +57,9 @@ const toBody = (s: Settings) => ({
   passingPercent: Number(s.passing),
   randomizeQuestions: s.randomize,
   requireProctoring: s.proctoring,
+  availableFrom: s.opens ? new Date(s.opens).toISOString() : null,
+  dueAt: s.closes ? new Date(s.closes).toISOString() : null,
+  reviewPolicy: s.review,
 });
 
 const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boolean; onSave: (s: Settings) => void; onCancel: () => void }> = ({ initial, saveLabel, busy, onSave, onCancel }) => {
@@ -93,6 +105,24 @@ const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boole
           </label>
         </div>
       </div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <label className="space-y-1 text-xs font-semibold text-ink-muted">
+          Opens (optional)
+          <input className={`${input} w-full`} type="datetime-local" value={s.opens} onChange={(e) => set({ opens: e.target.value })} />
+        </label>
+        <label className="space-y-1 text-xs font-semibold text-ink-muted">
+          Closes (optional)
+          <input className={`${input} w-full`} type="datetime-local" value={s.closes} onChange={(e) => set({ closes: e.target.value })} />
+        </label>
+        <label className="space-y-1 text-xs font-semibold text-ink-muted">
+          After submitting, learners see
+          <select className={`${input} w-full`} value={s.review} onChange={(e) => set({ review: e.target.value as Settings["review"] })}>
+            <option value="SCORE_ONLY">Their score only</option>
+            <option value="RESPONSES">Which answers were right</option>
+            <option value="ANSWERS">Correct answers, after their last attempt</option>
+          </select>
+        </label>
+      </div>
       <div className="flex items-center gap-3">
         <button className={primary} disabled={busy || !!problem}>
           {busy ? "Saving…" : saveLabel}
@@ -114,7 +144,7 @@ const EditSettings: React.FC<{ quizId: string; busy: boolean; onSave: (s: Settin
   return <SettingsForm initial={fromDetail(detail.data.data)} saveLabel="Save settings" busy={busy} onSave={onSave} onCancel={onCancel} />;
 };
 
-type Section = "questions" | "results" | "settings" | "delete";
+type Section = "questions" | "results" | "extensions" | "settings" | "delete";
 
 export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, canEdit }) => {
   const list = useApiData<{ data: QuizRow[] }>(`/api/v1/courses/${courseId}/quizzes`);
@@ -168,6 +198,8 @@ export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ co
                   {q.questionCount} question{q.questionCount === 1 ? "" : "s"} · {q.submissionCount} attempt{q.submissionCount === 1 ? "" : "s"} · pass at {q.passingPercent}% · {q.maxAttempts} attempt
                   {q.maxAttempts === 1 ? "" : "s"} allowed · {q.timeLimitMins ? `${q.timeLimitMins} min` : "untimed"}
                   {q.requireProctoring ? " · proctored" : ""}
+                  {q.availableFrom ? ` · opens ${new Date(q.availableFrom).toLocaleString()}` : ""}
+                  {q.dueAt ? ` · closes ${new Date(q.dueAt).toLocaleString()}` : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -176,6 +208,9 @@ export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ co
                 </button>
                 <button className={ghost} onClick={() => toggle(q.id, "results")} aria-expanded={open?.id === q.id && open.section === "results"} aria-label={`Results of ${q.title}`}>
                   Results
+                </button>
+                <button className={ghost} onClick={() => toggle(q.id, "extensions")} aria-expanded={open?.id === q.id && open.section === "extensions"} aria-label={`Extensions on ${q.title}`}>
+                  Extensions
                 </button>
                 {canEdit && (
                   <>
@@ -192,6 +227,7 @@ export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ co
 
             {open?.id === q.id && open.section === "questions" && <QuizQuestions quizId={q.id} canEdit={canEdit} onChanged={list.reload} />}
             {open?.id === q.id && open.section === "results" && <QuizResults quizId={q.id} onChanged={list.reload} />}
+            {open?.id === q.id && open.section === "extensions" && <ExtensionsPanel courseId={courseId} itemType="QUIZ" itemId={q.id} courseDue={q.dueAt ?? null} />}
             {open?.id === q.id && open.section === "settings" && <EditSettings quizId={q.id} busy={busy} onSave={(s) => update(q.id, s)} onCancel={() => setOpen(null)} />}
             {open?.id === q.id && open.section === "delete" && (
               <div className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5 text-xs">

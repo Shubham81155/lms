@@ -32,6 +32,8 @@ interface TodoItem {
   requireProctoring?: boolean;
   attemptsRemaining?: number;
   hasOpenAttempt?: boolean;
+  extended?: boolean;
+  opensAt?: string | null;
 }
 
 export default function StudentDashboard() {
@@ -384,7 +386,7 @@ export default function StudentDashboard() {
                       <div className="flex items-center justify-between text-[11px] text-ink-muted">
                         <span>{item.course.code} · {item.course.title}</span>
                         <span className={item.overdue ? "text-danger font-medium" : "text-accent font-medium"}>
-                          {item.submitted ? "Submitted" : item.overdue ? "Overdue" : item.dueAt ? `Due ${new Date(item.dueAt).toLocaleDateString()}` : quiz ? (item.hasOpenAttempt ? "In progress" : `${item.attemptsRemaining} attempt${item.attemptsRemaining === 1 ? "" : "s"} left`) : ""}
+                          {item.submitted ? "Submitted" : item.overdue ? "Overdue" : item.opensAt ? `Opens ${new Date(item.opensAt).toLocaleDateString()}` : item.dueAt ? `Due ${new Date(item.dueAt).toLocaleDateString()}${item.extended ? " (extended)" : ""}` : quiz ? (item.hasOpenAttempt ? "In progress" : `${item.attemptsRemaining} attempt${item.attemptsRemaining === 1 ? "" : "s"} left`) : ""}
                         </span>
                       </div>
                     </button>

@@ -15,6 +15,16 @@ const deleted = (what: string) => ({ status: 200, schema: z.object({ message: z.
 // ---- quizzes ---------------------------------------------------------------
 
 /** A quiz as stored. */
+const ExtensionView = z.object({
+  id: z.string(),
+  userId: z.string(),
+  name: z.string(),
+  email: z.string(),
+  dueAt: z.string(),
+  reason: z.string().nullable(),
+  createdAt: z.string(),
+});
+
 const QuizRecord = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -26,6 +36,11 @@ const QuizRecord = z.object({
   randomizeQuestions: z.boolean(),
   requireProctoring: z.boolean(),
   passingPercent: z.number(),
+  /** Learners can start from this time; null: any time. */
+  availableFrom: z.string().nullable(),
+  /** No new attempts after this time, except with an extension; null: no close. */
+  dueAt: z.string().nullable(),
+  reviewPolicy: z.enum(['SCORE_ONLY', 'RESPONSES', 'ANSWERS']),
   gradeCategoryId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -39,6 +54,9 @@ const QuizListItem = z.object({
   maxAttempts: z.number(),
   passingPercent: z.number(),
   requireProctoring: z.boolean(),
+  availableFrom: z.string().nullable(),
+  dueAt: z.string().nullable(),
+  reviewPolicy: z.enum(['SCORE_ONLY', 'RESPONSES', 'ANSWERS']),
   questionCount: z.number(),
   submissionCount: z.number(),
   createdAt: z.string(),
@@ -121,6 +139,8 @@ const AssignmentRecord = z.object({
   instructions: z.string(),
   maxPoints: z.number(),
   dueDate: z.string().nullable(),
+  /** Late work accepted until this time; null: always accepted. */
+  acceptLateUntil: z.string().nullable(),
   gradeCategoryId: z.string().nullable(),
   /** Array of {id, name, description?, maxPoints}, or null when there is no rubric. */
   rubricJson: z.unknown(),
@@ -129,7 +149,12 @@ const AssignmentRecord = z.object({
 });
 
 /** `_count` (submission count) is only included for staff and auditors. */
-const AssignmentListItem = AssignmentRecord.extend({ _count: z.object({ submissions: z.number() }).optional() });
+const AssignmentListItem = AssignmentRecord.extend({
+  _count: z.object({ submissions: z.number() }).optional(),
+  /** Learners only: their own due date, an extension included. */
+  myDueAt: z.string().nullable().optional(),
+  extended: z.boolean().optional(),
+});
 
 const AssignmentSubmissionRecord = z.object({
   id: z.string(),
@@ -148,6 +173,8 @@ const AssignmentSubmissionRecord = z.object({
   /** {criterionId: points} when the assignment has a rubric. */
   rubricScoresJson: z.unknown(),
   submittedAt: z.string(),
+  /** Arrived after the learner's due date (their extension, if any). */
+  isLate: z.boolean(),
   gradedAt: z.string().nullable(),
 });
 
@@ -282,6 +309,42 @@ export const RESPONSES: ResponseTable = {
     response: wrap(z.array(QuizListItem)),
     errors: [403, 404],
   },
+  'GET /api/v1/quizzes/:id/submissions/:subId/review': {
+    response: wrap(
+      z.object({
+        submissionId: z.string(),
+        attemptNumber: z.number(),
+        submittedAt: z.string(),
+        score: z.number().nullable(),
+        maxScore: z.number(),
+        passed: z.boolean(),
+        pendingManualGrading: z.boolean(),
+        reviewPolicy: z.enum(['SCORE_ONLY', 'RESPONSES', 'ANSWERS']),
+        answersRevealed: z.boolean(),
+        /** Empty under SCORE_ONLY. The correct* and explanation fields only appear once answers are revealed. */
+        questions: z.array(
+          z.object({
+            id: z.string(),
+            questionText: z.string(),
+            questionType: z.string(),
+            options: z.array(z.object({ id: z.string().nullable(), text: z.string() })),
+            yourAnswer: z.unknown(),
+            awardedPoints: z.number(),
+            maxPoints: z.number(),
+            isCorrect: z.boolean().nullable(),
+            needsManualGrading: z.boolean(),
+            correctOptionIds: z.array(z.string().nullable()).optional(),
+            correctAnswer: z.string().nullable().optional(),
+            explanation: z.string().nullable().optional(),
+          })
+        ),
+      })
+    ),
+    errors: [400, 403, 404],
+  },
+  'GET /api/v1/extensions': { response: wrap(z.array(ExtensionView)), errors: [400, 403, 404] },
+  'PUT /api/v1/extensions': { response: wrap(ExtensionView), errors: [400, 403, 404] },
+  'DELETE /api/v1/extensions/:id': { response: { status: 204, description: 'Removed' }, errors: [403, 404] },
   'POST /api/v1/courses/:courseId/quizzes': { response: wrap(QuizRecord, 201), errors: [400, 403, 404] },
   'GET /api/v1/quizzes/:id': {
     response: {
@@ -314,11 +377,11 @@ export const RESPONSES: ResponseTable = {
   'PATCH /api/v1/assignments/:id': { response: wrap(AssignmentRecord), errors: [400, 403, 404] },
   'DELETE /api/v1/assignments/:id': { response: deleted('Assignment'), errors: [403, 404, 409] },
   'POST /api/v1/assignments/:id/submissions': {
-    response: wrap(AssignmentSubmissionRecord.extend({ isLate: z.boolean() }), 201),
+    response: wrap(AssignmentSubmissionRecord, 201),
     errors: [400, 403, 404, 409],
   },
   'POST /api/v1/assignments/:id/submit': {
-    response: wrap(AssignmentSubmissionRecord.extend({ isLate: z.boolean() }), 201),
+    response: wrap(AssignmentSubmissionRecord, 201),
     errors: [400, 403, 404, 409],
   },
   'GET /api/v1/assignments/:id/submissions': {

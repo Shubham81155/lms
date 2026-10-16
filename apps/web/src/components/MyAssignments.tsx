@@ -8,10 +8,14 @@ import { useAction, useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { appealDaysLeft, type Criterion } from "@/lib/forms";
 
-interface Assignment { id: string; title: string; instructions: string; maxPoints: number; dueDate: string | null; rubricJson: Criterion[] | null }
+interface Assignment {
+  id: string; title: string; instructions: string; maxPoints: number; dueDate: string | null; rubricJson: Criterion[] | null;
+  /** This learner's own due date (an extension included) and whether late work is still accepted. */
+  myDueAt?: string | null; extended?: boolean; acceptLateUntil?: string | null;
+}
 interface Submission {
   id: string; fileUrl: string | null; submissionText: string | null; grade: number | null; feedback: string | null;
-  rubricScoresJson: Record<string, number> | null; submittedAt: string; gradedAt: string | null;
+  rubricScoresJson: Record<string, number> | null; submittedAt: string; gradedAt: string | null; isLate?: boolean;
 }
 interface Appeal { id: string; status: "OPEN" | "UPHELD" | "DENIED"; response: string | null; submission: { id: string } }
 
@@ -57,7 +61,9 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
   const [file, setFile] = useState("");
   const [editing, setEditing] = useState(false);
   const graded = !!sub?.gradedAt;
-  const late = a.dueDate && !sub && new Date(a.dueDate) < new Date();
+  const due = a.myDueAt !== undefined ? a.myDueAt : a.dueDate;
+  const late = due && !sub && new Date(due) < new Date();
+  const closed = !!a.acceptLateUntil && !a.extended && new Date(a.acceptLateUntil) < new Date();
 
   useEffect(() => { if (sub) { setText(sub.submissionText ?? ""); setFile(sub.fileUrl ?? ""); } }, [sub?.id]);
 
@@ -75,7 +81,12 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="text-sm font-bold text-ink">{a.title}</h4>
-          <div className="text-[11px] text-ink-subtle">{a.maxPoints} points{a.dueDate ? ` · due ${new Date(a.dueDate).toLocaleString()}` : ""}{late ? " · past due" : ""}</div>
+          <div className="text-[11px] text-ink-subtle">
+            {a.maxPoints} points{due ? ` · due ${new Date(due).toLocaleString()}` : ""}
+            {a.extended ? " (extended for you)" : ""}
+            {late ? (closed ? " · closed" : a.acceptLateUntil ? ` · past due, late work accepted until ${new Date(a.acceptLateUntil).toLocaleString()}` : " · past due, late work accepted") : ""}
+            {sub?.isLate ? <span className="ml-1 font-semibold text-danger">· submitted late</span> : null}
+          </div>
         </div>
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${graded ? "bg-success/10 text-success border-success/30" : sub ? "bg-brand/15 text-brand-fg border-brand/30" : "bg-raised text-ink border-line"}`}>
           {graded ? `${sub!.grade} / ${a.maxPoints}` : sub ? "Submitted" : "Not submitted"}

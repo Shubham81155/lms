@@ -265,6 +265,21 @@ describe('intelligence and analytics', () => {
 
   });
 
+  it('deadlines: extensions and attempt review', async () => {
+    const review = contract('GET /api/v1/quizzes/:id/submissions/:subId/review', await s1.get(`${V1}/quizzes/${quizId}/submissions/${quizSubId}/review`), 200);
+    expect(review.data.reviewPolicy).toBe('RESPONSES');
+    expect(review.data.questions[0].correctOptionIds).toBeUndefined();
+    const staffView = contract('GET /api/v1/quizzes/:id/submissions/:subId/review', await teacher.get(`${V1}/quizzes/${quizId}/submissions/${quizSubId}/review`), 200);
+    expect(staffView.data.answersRevealed).toBe(true);
+
+    const dueAt = '2100-01-01T00:00:00.000Z'; // after the assignment's 2099 due date
+    const ext = contract('PUT /api/v1/extensions', await teacher.put(`${V1}/extensions`).send({ itemType: 'ASSIGNMENT', itemId: assignId, userId: 's2', dueAt, reason: 'Illness' }), 200);
+    expect(ext.data).toMatchObject({ userId: 's2', reason: 'Illness' });
+    const list = contract('GET /api/v1/extensions', await teacher.get(`${V1}/extensions?itemType=ASSIGNMENT&itemId=${assignId}`), 200);
+    expect(list.data).toHaveLength(1);
+    contract('DELETE /api/v1/extensions/:id', await teacher.delete(`${V1}/extensions/${ext.data.id}`), 204);
+  });
+
   it('describes every operation that was assigned', () => {
     const missing = Object.keys(R).filter((k) => !covered.has(k));
     expect(missing, 'described but not exercised').toEqual([]);
