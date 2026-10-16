@@ -111,6 +111,20 @@ export const UsageReport = z.object({
 /** The tenant export file. Credentials and secrets are never included. */
 export const TenantExport = z.object({
   exportedAt: z.string(),
+  // Assessment, grade, forum, calendar, live-class and audit records, as stored.
+  quizzes: z.array(z.unknown()),
+  quizAttempts: z.array(z.unknown()),
+  assignments: z.array(z.unknown()),
+  assignmentSubmissions: z.array(z.unknown()),
+  gradeAppeals: z.array(z.unknown()),
+  gradeCategories: z.array(z.unknown()),
+  courseGrades: z.array(z.unknown()),
+  forumThreads: z.array(z.unknown()),
+  forumPosts: z.array(z.unknown()),
+  calendarEvents: z.array(z.unknown()),
+  liveSessions: z.array(z.unknown()),
+  liveAttendance: z.array(z.unknown()),
+  auditLog: z.array(z.unknown()),
   tenant: z.object({
     id: z.string(),
     slug: z.string(),

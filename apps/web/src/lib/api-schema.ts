@@ -3437,6 +3437,19 @@ export interface operations {
                 content: {
                     "application/json": {
                         exportedAt: string;
+                        quizzes: unknown[];
+                        quizAttempts: unknown[];
+                        assignments: unknown[];
+                        assignmentSubmissions: unknown[];
+                        gradeAppeals: unknown[];
+                        gradeCategories: unknown[];
+                        courseGrades: unknown[];
+                        forumThreads: unknown[];
+                        forumPosts: unknown[];
+                        calendarEvents: unknown[];
+                        liveSessions: unknown[];
+                        liveAttendance: unknown[];
+                        auditLog: unknown[];
                         tenant: {
                             id: string;
                             slug: string;

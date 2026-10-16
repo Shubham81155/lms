@@ -105,6 +105,21 @@ router.get(
         prisma.course.findMany({ where: { tenantId }, include: { modules: { include: { lessons: true } }, instructors: { select: { userId: true, isPrimary: true } } }, ...pageArgs(c) }), EXPORT_PAGE);
       await out.array('enrollments', (c) => prisma.enrollment.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
       await out.array('certificates', (c) => prisma.certificate.findMany({ where: { enrollment: { tenantId } }, ...pageArgs(c) }), EXPORT_PAGE);
+      // Teaching and assessment records: what a successor system needs to keep academic history.
+      await out.array('quizzes', (c) => prisma.quiz.findMany({ where: { tenantId }, include: { questions: true }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('quizAttempts', (c) => prisma.quizSubmission.findMany({ where: { quiz: { tenantId } }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('assignments', (c) => prisma.assignment.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('assignmentSubmissions', (c) => prisma.assignmentSubmission.findMany({ where: { assignment: { tenantId } }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('gradeAppeals', (c) => prisma.gradeAppeal.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('gradeCategories', (c) => prisma.gradeCategory.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('courseGrades', (c) => prisma.courseGrade.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('forumThreads', (c) => prisma.forumThread.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('forumPosts', (c) => prisma.forumPost.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('calendarEvents', (c) => prisma.calendarEvent.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('liveSessions', (c) => prisma.liveSession.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('liveAttendance', (c) => prisma.liveAttendance.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array('auditLog', (c) =>
+        prisma.auditLog.findMany({ where: { tenantId }, select: { id: true, userId: true, action: true, resourceType: true, resourceId: true, ipAddress: true, userAgent: true, diffJson: true, createdAt: true }, ...pageArgs(c) }), EXPORT_PAGE);
       // Recorded before the response ends, so a client that has the whole file can already find the audit entry.
       await audit(req, 'TENANT_DATA_EXPORTED', 'TENANT', tenantId, { users, courses });
       await out.end();

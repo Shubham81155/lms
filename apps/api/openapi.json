@@ -1621,6 +1621,84 @@
                     "exportedAt": {
                       "type": "string"
                     },
+                    "quizzes": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "quizAttempts": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "assignments": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "assignmentSubmissions": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "gradeAppeals": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "gradeCategories": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "courseGrades": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "forumThreads": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "forumPosts": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "calendarEvents": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "liveSessions": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "liveAttendance": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
+                    "auditLog": {
+                      "type": "array",
+                      "items": {
+                        "nullable": true
+                      }
+                    },
                     "tenant": {
                       "type": "object",
                       "properties": {
@@ -2087,6 +2165,19 @@
                   },
                   "required": [
                     "exportedAt",
+                    "quizzes",
+                    "quizAttempts",
+                    "assignments",
+                    "assignmentSubmissions",
+                    "gradeAppeals",
+                    "gradeCategories",
+                    "courseGrades",
+                    "forumThreads",
+                    "forumPosts",
+                    "calendarEvents",
+                    "liveSessions",
+                    "liveAttendance",
+                    "auditLog",
                     "tenant",
                     "users",
                     "campuses",

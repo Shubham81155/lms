@@ -188,7 +188,11 @@ describe('features, usage and export', () => {
     const res = await (await as('admin')).get('/api/v1/admin/export');
     const body = check('GET /api/v1/admin/export', res);
     expect(res.headers['content-disposition']).toContain('tenant-export-harvard.json');
-    expect(keys(body)).toEqual(['campuses', 'certificates', 'courses', 'enrollments', 'exportedAt', 'tenant', 'users']);
+    expect(keys(body)).toEqual([
+      'assignmentSubmissions', 'assignments', 'auditLog', 'calendarEvents', 'campuses', 'certificates', 'courseGrades', 'courses', 'enrollments', 'exportedAt',
+      'forumPosts', 'forumThreads', 'gradeAppeals', 'gradeCategories', 'liveAttendance', 'liveSessions', 'quizAttempts', 'quizzes', 'tenant', 'users',
+    ]);
+    expect(body.auditLog.length).toBeGreaterThan(0);
     expect(body.users).toHaveLength(7);
     expect(body.courses[0].modules[0].lessons).toHaveLength(1);
     expect(body.certificates).toHaveLength(1);
