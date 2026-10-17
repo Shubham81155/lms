@@ -30,6 +30,7 @@ import deadlinesRoutes from './routes/deadlines.routes';
 import announcementsRoutes from './routes/announcements.routes';
 import filesRoutes from './routes/files.routes';
 import termsRoutes from './routes/terms.routes';
+import courseReviewRoutes from './routes/course-review.routes';
 
 /** Where each router is mounted, in mounting order (order matters: see the notes in server.ts). */
 export interface Mount {
@@ -71,4 +72,5 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1', router: intelligenceRoutes },
   { prefix: '/api/v1', router: deadlinesRoutes },
   { prefix: '/api/v1', router: announcementsRoutes },
+  { prefix: '/api/v1', router: courseReviewRoutes },
 ];

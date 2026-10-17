@@ -11,7 +11,8 @@ import { autoComplete } from '../lib/completion';
 import { assertAttachable, linkOrUpload } from '../lib/stored-files';
 import { recomputeCourseProgress } from '../lib/course-progress';
 import { copyCourse } from '../lib/course-copy';
-import { canSeeAllCourses, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
+import { approvalRequired, assertMayPublish } from './course-review.routes';
+import { canSeeAllCourses, isAdminRole, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
 
 const router = Router();
 
@@ -224,6 +225,8 @@ router.get(
     return res.status(200).json({
       data: {
         ...course,
+        /** True when this caller cannot publish the course themselves and must submit it for review. */
+        publishNeedsApproval: !isAdminRole(req.user!.role) && (await approvalRequired(tenantIdOf(req))),
         modules: course.modules ?? [],
         contentLocked: !access.canAccessContent,
         isEnrolled: access.isEnrolled,
@@ -245,6 +248,7 @@ router.post(
     const input = parseBody(req, createCourseSchema);
     await assertDepartmentInTenant(input.departmentId);
     await assertTermInTenant(input.termId);
+    await assertMayPublish(req, input.status, null);
 
     const course = await prisma.course.create({
       data: {
@@ -322,6 +326,9 @@ router.put(
     await assertTermInTenant(input.termId);
 
     const before = await prisma.course.findFirstOrThrow({ where: { id, tenantId } });
+    await assertMayPublish(req, input.status, before.status);
+    // Publishing or unpublishing settles any review in progress.
+    const settlesReview = input.status !== undefined && input.status !== before.status && before.reviewStatus !== null;
     const updated = await prisma.course.update({
       where: { id },
       data: {
@@ -335,6 +342,7 @@ router.put(
         passingGradePercent: input.passingGradePercent,
         allowSelfEnroll: input.allowSelfEnroll,
         status: input.status,
+        ...(settlesReview ? { reviewStatus: null, reviewNote: null } : {}),
       },
     });
 

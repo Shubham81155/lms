@@ -11,6 +11,9 @@ export interface StaffCourse {
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   enrollmentCount: number;
   moduleCount: number;
+  /** Publishing review: null, PENDING or CHANGES_REQUESTED (with the reviewer's note). */
+  reviewStatus: "PENDING" | "CHANGES_REQUESTED" | null;
+  reviewNote: string | null;
 }
 
 /**
@@ -30,7 +33,10 @@ export function useStaffCourses(options: { editableOnly?: boolean } = {}) {
     if (editableOnly && !mayEdit) return [];
     return all
       .filter((c) => admin || (c.instructors ?? []).some((i: any) => i.user?.id === user?.id))
-      .map((c) => ({ id: c.id, code: c.code, title: c.title, status: c.status, enrollmentCount: c.enrollmentCount ?? 0, moduleCount: c.moduleCount ?? 0 }));
+      .map((c) => ({
+        id: c.id, code: c.code, title: c.title, status: c.status, enrollmentCount: c.enrollmentCount ?? 0, moduleCount: c.moduleCount ?? 0,
+        reviewStatus: c.reviewStatus ?? null, reviewNote: c.reviewNote ?? null,
+      }));
   }, [data, user, editableOnly]);
 
   return { courses, isLoading, error, reload };

@@ -88,6 +88,8 @@ model Tenant {
   // Per-tenant feature toggles (scorm, xapi, lti13, aiProctoring, sso). Null = tier defaults.
   featureFlags Json?
   seatQuota    Int?
+  /// When true, only administrators publish courses; instructors submit them for review first.
+  requireCourseApproval Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -316,6 +318,15 @@ model Course {
   passingGradePercent Float   @default(70.0)
   allowSelfEnroll     Boolean @default(false)
 
+  // Publishing review (Tenant.requireCourseApproval): null | PENDING | CHANGES_REQUESTED
+  reviewStatus        String?
+  /// The submitter's message while PENDING; the reviewer's reasons when CHANGES_REQUESTED.
+  reviewNote          String?   @db.Text
+  reviewSubmittedById String?
+  reviewSubmittedAt   DateTime?
+  reviewedById        String?
+  reviewedAt          DateTime?
+
   // Relations
   instructors CourseInstructor[]
   modules     Module[]
@@ -329,6 +340,7 @@ model Course {
   @@unique([tenantId, code])
   @@index([tenantId, status])
   @@index([termId])
+  @@index([tenantId, reviewStatus])
 }
 
 model CourseInstructor {

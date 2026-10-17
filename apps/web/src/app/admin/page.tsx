@@ -28,6 +28,7 @@ import { AssessmentManager } from "@/components/AssessmentManager";
 import { CalendarManager } from "@/components/CalendarManager";
 import { UserManager } from "@/components/UserManager";
 import { AuditLogPanel } from "@/components/AuditLogPanel";
+import { CourseReviewPanel } from "@/components/admin/CourseReviewPanel";
 import { createCourseWithCurriculum } from "@/hooks/useCourses";
 import { plural } from "@/lib/plural";
 
@@ -157,6 +158,8 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === "courses" && (
+          <div className="space-y-6">
+          <CourseReviewPanel onDecided={() => setCoursesVersion((v) => v + 1)} />
           <StaffCourseList
             title="All courses"
             canEdit
@@ -165,6 +168,7 @@ export default function AdminDashboard() {
             emptyText="No courses yet. Create one, or ask an instructor to."
             refreshKey={coursesVersion}
           />
+          </div>
         )}
 
         {activeTab === "compliance" && (

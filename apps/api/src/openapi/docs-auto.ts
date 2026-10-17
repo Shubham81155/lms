@@ -10,6 +10,7 @@ import * as r_courses from '../routes/courses.routes';
 import * as r_announcements from '../routes/announcements.routes';
 import * as r_files from '../routes/files.routes';
 import * as r_terms from '../routes/terms.routes';
+import * as r_review from '../routes/course-review.routes';
 import * as r_deadlines from '../routes/deadlines.routes';
 import * as r_enrollments from '../routes/enrollments.routes';
 import * as r_forum from '../routes/forum.routes';
@@ -145,6 +146,12 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "GET /api/v1/enrollments/my": { summary: "GET /api/v1/enrollments/my" },
   "GET /api/v1/enrollments/stats": { summary: "Aggregates for the caller; admins and auditors may pass ?userId=.", query: r_enrollments.statsQuery as never },
   "GET /api/v1/courses/:courseId/announcements": { summary: "A course's announcements, pinned first then newest, for anyone who can open the course.", query: r_announcements.announcementListQuery as never },
+  "GET /api/v1/admin/course-approval": { summary: "Whether publishing a course needs an administrator's approval in this organisation (administrators)." },
+  "PUT /api/v1/admin/course-approval": { summary: "Turn publishing review on or off (administrators). Off, instructors publish themselves. Audited.", body: r_review.approvalSettingSchema },
+  "GET /api/v1/course-reviews": { summary: "Courses waiting for publishing review, oldest first (administrators)." },
+  "POST /api/v1/courses/:id/review/submit": { summary: "Submit a draft course for publishing review (the course's editors, while review is on). Administrators are notified. Audited.", body: r_review.submitReviewSchema },
+  "POST /api/v1/courses/:id/review/approve": { summary: "Approve a course waiting for review: it is published and its instructors are told (administrators). Audited." },
+  "POST /api/v1/courses/:id/review/request-changes": { summary: "Send a course waiting for review back to its instructors with reasons (administrators). Audited.", body: r_review.requestChangesSchema },
   "GET /api/v1/terms": { summary: "The organisation's academic terms, newest first, with how many courses each has." },
   "POST /api/v1/terms": { summary: "Create a term (administrators). Names are unique within the organisation. Audited.", body: r_terms.termSchema },
   "PATCH /api/v1/terms/:id": { summary: "Rename a term or move its dates (administrators). Audited.", body: r_terms.termUpdateSchema },

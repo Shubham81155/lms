@@ -295,6 +295,16 @@ export const CourseContentEditor: React.FC<{ onClose: () => void; /** Open on th
   };
 
   const course = courses.find((c) => c.id === courseId);
+  const detail = useApiData<{ data: { publishNeedsApproval: boolean } }>(courseId ? `/api/v1/courses/${courseId}` : null);
+  const needsApproval = !!detail.data?.data.publishNeedsApproval && course?.status !== "PUBLISHED";
+  const [reviewMessage, setReviewMessage] = useState("");
+
+  const submitForReview = () =>
+    act(async () => {
+      await api.post(`${base}/review/submit`, reviewMessage.trim() ? { message: reviewMessage.trim() } : {});
+      setReviewMessage("");
+      await reloadCourses();
+    }, "Submitted for review. An administrator will publish it or send it back.");
 
   const changeStatus = async (status: StaffCourse["status"]) => {
     setPendingStatus(null);
@@ -327,13 +337,37 @@ export const CourseContentEditor: React.FC<{ onClose: () => void; /** Open on th
                   disabled={busy}
                   className="rounded-lg border border-line bg-surface px-2 py-1 text-xs text-ink focus:border-brand focus:outline-none"
                 >
-                  {(Object.keys(STATUS_LABEL) as StaffCourse["status"][]).map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_LABEL[s]}
-                    </option>
-                  ))}
+                  {(Object.keys(STATUS_LABEL) as StaffCourse["status"][])
+                    .filter((s) => !(needsApproval && s === "PUBLISHED"))
+                    .map((s) => (
+                      <option key={s} value={s}>
+                        {STATUS_LABEL[s]}
+                      </option>
+                    ))}
                 </select>
                 {course.status !== "PUBLISHED" && <span className="text-ink-subtle">Learners cannot see this course.</span>}
+                {needsApproval && course.status === "DRAFT" && (
+                  course.reviewStatus === "PENDING" ? (
+                    <span className="rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 font-semibold text-accent">Waiting for review</span>
+                  ) : (
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      {course.reviewStatus === "CHANGES_REQUESTED" && (
+                        <span className="text-danger">Changes requested{course.reviewNote ? `: ${course.reviewNote}` : ""}</span>
+                      )}
+                      <input
+                        value={reviewMessage}
+                        onChange={(e) => setReviewMessage(e.target.value)}
+                        maxLength={2000}
+                        placeholder="Note for the reviewer (optional)"
+                        aria-label="Note for the reviewer"
+                        className="w-52 rounded-lg border border-line bg-surface px-2 py-1 text-xs text-ink focus:border-brand focus:outline-none"
+                      />
+                      <button onClick={submitForReview} disabled={busy} className="rounded-lg bg-brand px-2 py-1 font-bold text-on-brand disabled:opacity-50">
+                        {course.reviewStatus === "CHANGES_REQUESTED" ? "Submit again" : "Submit for review"}
+                      </button>
+                    </span>
+                  )
+                )}
                 {pendingStatus === "ARCHIVED" && (
                   <span className="flex items-center gap-1.5">
                     <span className="text-danger">Archive it? Learners lose access.</span>

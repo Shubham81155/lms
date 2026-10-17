@@ -319,6 +319,27 @@ export const RESPONSES: ResponseTable = {
   'PATCH /api/v1/enrollments/:id/progress': { response: data(ProgressResult), errors: [400, 403, 404, 409] },
   'GET /api/v1/enrollments/stats': { response: data(EnrollmentStats), errors: [400, 403] },
   'GET /api/v1/courses/:courseId/announcements': { response: body(z.object({ data: z.array(AnnouncementView), pagination: Pagination })), errors: [400, 403, 404] },
+  'GET /api/v1/admin/course-approval': { response: data(z.object({ required: z.boolean() })) },
+  'PUT /api/v1/admin/course-approval': { response: data(z.object({ required: z.boolean() })), errors: [400] },
+  'GET /api/v1/course-reviews': {
+    response: data(
+      z.array(
+        z.object({
+          id: z.string(), code: z.string(), title: z.string(), term: z.string().nullable(),
+          /** The submitter's message, if any. */
+          message: z.string().nullable(),
+          submittedAt: z.string().nullable(), submittedBy: z.string().nullable(),
+          counts: z.object({ modules: z.number(), quizzes: z.number(), assignments: z.number() }),
+        })
+      )
+    ),
+  },
+  'POST /api/v1/courses/:id/review/submit': { response: data(z.object({ id: z.string(), reviewStatus: z.literal('PENDING'), submittedAt: z.string() })), errors: [400, 403, 404, 409] },
+  'POST /api/v1/courses/:id/review/approve': { response: data(z.object({ id: z.string(), status: z.literal('PUBLISHED'), reviewedAt: z.string() })), errors: [400, 404, 409] },
+  'POST /api/v1/courses/:id/review/request-changes': {
+    response: data(z.object({ id: z.string(), reviewStatus: z.literal('CHANGES_REQUESTED'), note: z.string(), reviewedAt: z.string() })),
+    errors: [400, 404, 409],
+  },
   'GET /api/v1/terms': { response: data(z.array(TermView)) },
   'POST /api/v1/terms': { response: data(TermView, 201), errors: [400, 409] },
   'PATCH /api/v1/terms/:id': { response: data(TermView), errors: [400, 404, 409] },
