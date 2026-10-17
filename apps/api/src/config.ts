@@ -86,7 +86,29 @@ const envSchema = z.object({
   ANTHROPIC_API_URL: z.string().url().default('https://api.anthropic.com'),
   GEMINI_API_URL: z.string().url().default('https://generativelanguage.googleapis.com/v1beta'),
   XAI_API_URL: z.string().url().default('https://api.x.ai/v1'),
-});
+  /**
+   * Where uploaded files are kept: "local" (a folder on this server; fine for development and single-server
+   * installs) or "s3" (any S3-compatible service: AWS S3, Cloudflare R2, MinIO, Backblaze B2).
+   */
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  /** Folder for the local driver; relative paths are resolved from the repository root. */
+  STORAGE_LOCAL_DIR: z.string().min(1).default('storage'),
+  S3_BUCKET: z.string().min(3).optional(),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  /** For services other than AWS, e.g. https://<account>.r2.cloudflarestorage.com or http://localhost:9000 (MinIO). */
+  S3_ENDPOINT: z.string().url().optional(),
+  /** Without these the AWS default credential chain is used (instance role, AWS_* variables). */
+  S3_ACCESS_KEY_ID: z.string().min(3).optional(),
+  S3_SECRET_ACCESS_KEY: z.string().min(8).optional(),
+  /** MinIO and some others need path-style URLs (endpoint/bucket/key). */
+  S3_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /** Largest upload accepted, in megabytes. The web app's proxy limit (next.config.ts) must be at least this. */
+  UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(5120).default(100),
+}).refine((c) => c.STORAGE_DRIVER !== 's3' || !!c.S3_BUCKET, { message: 'STORAGE_DRIVER=s3 needs S3_BUCKET' })
+  .refine((c) => !c.S3_ACCESS_KEY_ID === !c.S3_SECRET_ACCESS_KEY, { message: 'Set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither' });
 
 export type AppConfig = z.infer<typeof envSchema> & { corsOrigins: string[] };
 

@@ -79,6 +79,7 @@ model Tenant {
   extensions        DeadlineExtension[]
   announcements     Announcement[]
   submissionVersions AssignmentSubmissionVersion[]
+  storedFiles        StoredFile[]
   liveAttendance    LiveAttendance[]
   lessonProgress    LessonProgress[]
   gradeAppeals      GradeAppeal[]
@@ -145,6 +146,7 @@ enum UserStatus {
 }
 
 model User {
+  storedFiles StoredFile[] @relation("StoredFileOwner")
   id       String @id @default(uuid())
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -267,6 +269,7 @@ enum ContentType {
 }
 
 model Course {
+  storedFiles     StoredFile[]
   liveSessions    LiveSession[]
   lessonProgress  LessonProgress[]
   announcements   Announcement[]
@@ -853,6 +856,30 @@ model GradeCategory {
 
 // A learner's computed course grade and its approval state. Only APPROVED grades reach
 // Enrollment.finalGrade and become visible to the learner.
+/// An uploaded file. The bytes live in the storage driver (local folder or S3) under `storageKey`; the
+/// app links to it as /api/v1/files/<id>, and who may download it follows from `purpose` and `courseId`.
+model StoredFile {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Who uploaded it; null once that account is erased.
+  ownerId     String?
+  owner       User?    @relation("StoredFileOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  courseId    String?
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  /// ASSIGNMENT_SUBMISSION (the learner and course staff may read it) | LESSON_MEDIA (anyone who can read the course)
+  purpose     String
+  storageKey  String   @unique
+  filename    String
+  contentType String
+  sizeBytes   Int
+  sha256      String
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, ownerId])
+  @@index([courseId])
+}
+
 /// An immutable copy of what a learner handed in, written on every submit and resubmit.
 model AssignmentSubmissionVersion {
   id             String               @id @default(uuid())

@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FileText, X } from "lucide-react";
+import { FileText, Upload, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useMyEnrollments } from "@/hooks/useEnrollments";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { SubmissionHistory } from "@/components/SubmissionHistory";
+import { MAX_UPLOAD_MB, UPLOAD_ACCEPT, formatBytes, isUploadLink, uploadFile } from "@/lib/upload";
 import { appealDaysLeft, type Criterion } from "@/lib/forms";
 
 interface Assignment {
-  id: string; title: string; instructions: string; maxPoints: number; dueDate: string | null; rubricJson: Criterion[] | null;
+  id: string; courseId: string; title: string; instructions: string; maxPoints: number; dueDate: string | null; rubricJson: Criterion[] | null;
   /** This learner's own due date (an extension included) and whether late work is still accepted. */
   myDueAt?: string | null; extended?: boolean; acceptLateUntil?: string | null;
 }
@@ -61,7 +62,25 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
   const [text, setText] = useState("");
   const [file, setFile] = useState("");
   const [editing, setEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
   const graded = !!sub?.gradedAt;
+
+  const pickFile = async (f: File | undefined) => {
+    if (!f) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const up = await uploadFile(f, "ASSIGNMENT_SUBMISSION", a.courseId);
+      setFile(up.url);
+      setUploadedName(`${up.filename} (${formatBytes(up.sizeBytes)})`);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "The upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
   const due = a.myDueAt !== undefined ? a.myDueAt : a.dueDate;
   const late = due && !sub && new Date(due) < new Date();
   const closed = !!a.acceptLateUntil && !a.extended && new Date(a.acceptLateUntil) < new Date();
@@ -114,8 +133,26 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
         <form onSubmit={submit} className="space-y-2" onChange={clearError}>
           {error && <Banner kind="error">{error}</Banner>}
           <textarea className={`${input} w-full`} rows={4} aria-label={`Your answer for ${a.title}`} placeholder="Type your answer…" value={text} onChange={(e) => setText(e.target.value)} />
-          <input className={`${input} w-full`} type="url" aria-label="Link to your file (optional)" placeholder="…or a link to your file (https://…)" value={file} onChange={(e) => setFile(e.target.value)} />
-          <button className={primary} disabled={busy || (!text.trim() && !file.trim())}>{busy ? "Submitting…" : sub ? "Resubmit" : "Submit"}</button>
+          <div className="flex items-center gap-2">
+            <input
+              className={`${input} min-w-0 flex-1`}
+              type="text"
+              inputMode="url"
+              aria-label="Link to your file (optional)"
+              placeholder={isUploadLink(file) ? `Attached: ${uploadedName ?? "your uploaded file"}` : "…or a link to your file (https://…)"}
+              value={isUploadLink(file) ? "" : file}
+              onChange={(e) => { setUploadedName(null); setFile(e.target.value); }}
+            />
+            <label className={`${ghost} inline-flex shrink-0 cursor-pointer items-center gap-1 ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+              <Upload className="h-3 w-3" />
+              {uploading ? "Uploading…" : "Upload a file"}
+              <input type="file" className="sr-only" accept={UPLOAD_ACCEPT.document} disabled={uploading} aria-label={`Upload a file for ${a.title}`} onChange={(e) => pickFile(e.target.files?.[0])} />
+            </label>
+            {isUploadLink(file) && <button type="button" className="text-[11px] text-ink-subtle underline" onClick={() => { setFile(""); setUploadedName(null); }}>Remove</button>}
+          </div>
+          {uploadError && <Banner kind="error">{uploadError}</Banner>}
+          <p className="text-[10px] text-ink-subtle">Up to {MAX_UPLOAD_MB} MB: PDF, Office documents, images, text or a zip.</p>
+          <button className={primary} disabled={busy || uploading || (!text.trim() && !file.trim())}>{busy ? "Submitting…" : sub ? "Resubmit" : "Submit"}</button>
         </form>
       )}
       {!graded && sub && !editing && <button className={ghost} onClick={() => setEditing(true)}>Edit my submission</button>}

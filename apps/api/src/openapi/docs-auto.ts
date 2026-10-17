@@ -8,6 +8,7 @@ import * as r_calendar from '../routes/calendar.routes';
 import * as r_certificates from '../routes/certificates.routes';
 import * as r_courses from '../routes/courses.routes';
 import * as r_announcements from '../routes/announcements.routes';
+import * as r_files from '../routes/files.routes';
 import * as r_deadlines from '../routes/deadlines.routes';
 import * as r_enrollments from '../routes/enrollments.routes';
 import * as r_forum from '../routes/forum.routes';
@@ -143,6 +144,8 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "GET /api/v1/enrollments/my": { summary: "GET /api/v1/enrollments/my" },
   "GET /api/v1/enrollments/stats": { summary: "Aggregates for the caller; admins and auditors may pass ?userId=.", query: r_enrollments.statsQuery as never },
   "GET /api/v1/courses/:courseId/announcements": { summary: "A course's announcements, pinned first then newest, for anyone who can open the course.", query: r_announcements.announcementListQuery as never },
+  "POST /api/v1/files": { summary: "Upload a file: the request body is the file itself (not multipart) with its Content-Type, at most UPLOAD_MAX_MB. Submission files: enrolled learners; lesson media: course editors. Link it as data.url. Audited.", query: r_files.uploadQuery },
+  "GET /api/v1/files/:id": { summary: "Download an uploaded file: streamed (local storage) or a 302 to a five-minute link (S3). Submission files: the uploader and course staff; lesson media: anyone who can read the course." },
   "GET /api/v1/announcements/recent": { summary: "The latest announcements across the courses the caller is actively enrolled in.", query: r_announcements.recentQuery as never },
   "POST /api/v1/courses/:courseId/announcements": { summary: "Course staff post an announcement; unless notify is false, every active learner gets a notification (and an e-mail, by their settings). Audited.", body: r_announcements.announcementSchema },
   "PATCH /api/v1/announcements/:id": { summary: "Course staff correct or pin an announcement (no new notification).", body: r_announcements.announcementUpdateSchema },

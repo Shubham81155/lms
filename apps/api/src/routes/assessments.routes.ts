@@ -7,7 +7,8 @@ import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
-import { httpUrl, idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
+import { assertAttachable, linkOrUpload } from '../lib/stored-files';
+import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import {
   CourseAccess,
   canSeeAllCourses,
@@ -95,7 +96,8 @@ export const updateAssignmentSchema = z.object(assignmentFields).partial().refin
 
 export const assignmentSubmissionSchema = z
   .object({
-    fileUrl: httpUrl.or(z.literal('')).optional(),
+    /** An http(s) URL, or a file the learner uploaded for this course (/api/v1/files/<id>). */
+    fileUrl: linkOrUpload.or(z.literal('')).optional(),
     submissionText: z.string().max(100_000).optional(),
   })
   .refine((d) => d.fileUrl || d.submissionText, { message: 'Either fileUrl or submissionText must be provided' });
@@ -875,6 +877,7 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
   const assignment = await loadAssignment(req, String(req.params.id));
   assertCanTake(await requireContentAccess(req, assignment.courseId));
   const { fileUrl, submissionText } = parseBody(req, assignmentSubmissionSchema);
+  await assertAttachable(fileUrl, { tenantId, courseId: assignment.courseId, purpose: 'ASSIGNMENT_SUBMISSION', ownerId: userId });
 
   const existing = await prisma.assignmentSubmission.findUnique({
     where: { assignmentId_userId: { assignmentId: assignment.id, userId } },

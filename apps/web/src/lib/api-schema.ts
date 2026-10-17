@@ -1836,6 +1836,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a file: the request body is the file itself (not multipart) with its Content-Type, at most UPLOAD_MAX_MB. Submission files: enrolled learners; lesson media: course editors. Link it as data.url. Audited. */
+        post: operations["postFiles"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/files/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download an uploaded file: streamed (local storage) or a 302 to a five-minute link (S3). Submission files: the uploader and course staff; lesson media: anyone who can read the course. */
+        get: operations["getFilesId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/flags": {
         parameters: {
             query?: never;
@@ -10221,7 +10255,6 @@ export interface operations {
                     /** @enum {string} */
                     contentType?: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
                     bodyContent?: string | null;
-                    /** Format: uri */
                     mediaUrl?: string | null;
                     scormPackageId?: string | null;
                     /** Format: uri */
@@ -10755,7 +10788,6 @@ export interface operations {
                     /** @enum {string} */
                     contentType?: "RICHTEXT" | "VIDEO" | "SCORM_PACKAGE" | "PDF_DOCUMENT" | "INTERACTIVE_CODE" | "EXTERNAL_LTI_TOOL";
                     bodyContent?: string | null;
-                    /** Format: uri */
                     mediaUrl?: string | null;
                     scormPackageId?: string | null;
                     /** Format: uri */
@@ -11724,6 +11756,159 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postFiles: {
+        parameters: {
+            query: {
+                purpose: "ASSIGNMENT_SUBMISSION" | "LESSON_MEDIA";
+                courseId: string;
+                filename: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            url: string;
+                            filename: string;
+                            contentType: string;
+                            sizeBytes: number;
+                            sha256: string;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFilesId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file, with its own Content-Type (local storage). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description Redirect to a signed link valid for five minutes (S3 storage). */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description Not signed in, or the session was revoked */
             401: {

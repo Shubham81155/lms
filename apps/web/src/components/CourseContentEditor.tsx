@@ -98,9 +98,10 @@ interface LessonRowProps {
   onSave: (draft: LessonDraft) => void;
   onMove: (delta: number) => void;
   onDelete: () => void;
+  courseId: string;
 }
 
-const LessonRow: React.FC<LessonRowProps> = ({ lesson, label, busy, canUp, canDown, onSave, onMove, onDelete }) => {
+const LessonRow: React.FC<LessonRowProps> = ({ lesson, label, busy, canUp, canDown, onSave, onMove, onDelete, courseId }) => {
   const saved = toDraft(lesson);
   const [draft, setDraft] = useState(saved);
   const dirty = !sameDraft(draft, saved);
@@ -108,7 +109,7 @@ const LessonRow: React.FC<LessonRowProps> = ({ lesson, label, busy, canUp, canDo
 
   return (
     <div className="space-y-1.5">
-      <LessonFields lesson={draft} label={label} disabled={busy} onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))} onDelete={() => undefined} hideDelete />
+      <LessonFields lesson={draft} label={label} disabled={busy} courseId={courseId} onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))} onDelete={() => undefined} hideDelete />
       <div className="flex items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-1">
           <button onClick={() => onMove(-1)} disabled={busy || !canUp || dirty} aria-label={`Move ${label} up`} className={iconBtn}>
@@ -199,6 +200,7 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, count, busy, act
       <div className="space-y-4">
         {module.lessons.map((lesson, i) => (
           <LessonRow
+            courseId={courseId}
             key={`${lesson.id}:${lesson.updatedAt}`}
             lesson={lesson}
             label={`lesson ${i + 1} in ${name}`}
@@ -215,7 +217,7 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, count, busy, act
       {adding ? (
         <div className="space-y-2 rounded-xl border border-dashed border-brand/50 p-2">
           <p className="px-1 text-[11px] font-bold text-brand-fg">New lesson</p>
-          <LessonFields lesson={adding} label={`new lesson in ${name}`} disabled={busy} onChange={(patch) => setAdding((d) => (d ? { ...d, ...patch } : d))} onDelete={() => setAdding(null)} />
+          <LessonFields lesson={adding} label={`new lesson in ${name}`} disabled={busy} courseId={courseId} onChange={(patch) => setAdding((d) => (d ? { ...d, ...patch } : d))} onDelete={() => setAdding(null)} />
           <div className="flex items-center justify-end gap-2">
             {lessonProblem(adding) && adding.title.length > 0 && <span className="text-[11px] font-semibold text-accent">{lessonProblem(adding)}</span>}
             <button onClick={() => setAdding(null)} className={smallBtn}>

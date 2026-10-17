@@ -37,6 +37,8 @@ export async function startTestDatabase(): Promise<TestDatabase> {
     password: 'pw',
     port,
     persistent: false,
+    // Like production: UTF-8 whatever the machine's code page (Windows would otherwise pick WIN1252).
+    initdbFlags: ['--encoding=UTF8', '--locale=C'],
   });
   await pg.initialise();
   await pg.start();

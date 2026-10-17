@@ -8,6 +8,7 @@ import { HttpError, route } from '../lib/http';
 import { httpUrl, idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { progressFromLessons } from '../lib/lesson-progress';
 import { autoComplete } from '../lib/completion';
+import { assertAttachable, linkOrUpload } from '../lib/stored-files';
 import { recomputeCourseProgress } from '../lib/course-progress';
 import { canSeeAllCourses, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
 
@@ -45,7 +46,8 @@ const lessonFields = {
   orderIndex: z.number().int().min(0).max(10_000).optional(),
   contentType: z.nativeEnum(ContentType).optional(),
   bodyContent: z.string().max(200_000).nullable().optional(),
-  mediaUrl: httpUrl.nullable().optional(),
+  /** An http(s) URL, or an uploaded LESSON_MEDIA file of this course (/api/v1/files/<id>). */
+  mediaUrl: linkOrUpload.nullable().optional(),
   scormPackageId: idSchema.nullable().optional(),
   ltiToolLaunchUrl: httpUrl.nullable().optional(),
   estimatedMinutes: z.number().int().min(1).max(1440).optional(),
@@ -547,6 +549,7 @@ router.post(
     const id = String(req.params.id);
     await requireCourseEditor(req, id);
     const input = parseBody(req, createLessonSchema);
+    await assertAttachable(input.mediaUrl, { tenantId: tenantIdOf(req), courseId: id, purpose: 'LESSON_MEDIA' });
 
     const moduleRecord = await prisma.module.findFirst({ where: { id: String(req.params.moduleId), courseId: id } });
     if (!moduleRecord) throw new HttpError(404, 'Module not found');
@@ -582,6 +585,7 @@ router.patch(
     const id = String(req.params.id);
     await requireCourseEditor(req, id);
     const input = parseBody(req, updateLessonSchema);
+    await assertAttachable(input.mediaUrl, { tenantId: tenantIdOf(req), courseId: id, purpose: 'LESSON_MEDIA' });
 
     const lesson = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } } });
     if (!lesson) throw new HttpError(404, 'Lesson not found');

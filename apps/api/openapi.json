@@ -7001,8 +7001,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "maxLength": 2048,
-                        "format": "uri"
+                        "maxLength": 2048
                       },
                       {
                         "type": "string",
@@ -7704,8 +7703,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "maxLength": 2048,
-                        "format": "uri"
+                        "maxLength": 2048
                       },
                       {
                         "type": "string",
@@ -8432,8 +8430,7 @@
                     "anyOf": [
                       {
                         "type": "string",
-                        "maxLength": 2048,
-                        "format": "uri"
+                        "maxLength": 2048
                       },
                       {
                         "type": "string",
@@ -15690,8 +15687,7 @@
                   "mediaUrl": {
                     "type": "string",
                     "nullable": true,
-                    "maxLength": 2048,
-                    "format": "uri"
+                    "maxLength": 2048
                   },
                   "scormPackageId": {
                     "type": "string",
@@ -16884,8 +16880,7 @@
                   "mediaUrl": {
                     "type": "string",
                     "nullable": true,
-                    "maxLength": 2048,
-                    "format": "uri"
+                    "maxLength": 2048
                   },
                   "scormPackageId": {
                     "type": "string",
@@ -19244,6 +19239,251 @@
         "responses": {
           "204": {
             "description": "Removed"
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files": {
+      "post": {
+        "operationId": "postFiles",
+        "summary": "Upload a file: the request body is the file itself (not multipart) with its Content-Type, at most UPLOAD_MAX_MB. Submission files: enrolled learners; lesson media: course editors. Link it as data.url. Audited.",
+        "tags": [
+          "files"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ASSIGNMENT_SUBMISSION",
+                "LESSON_MEDIA"
+              ]
+            },
+            "required": true,
+            "name": "purpose",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "courseId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "filename",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        },
+                        "filename": {
+                          "type": "string"
+                        },
+                        "contentType": {
+                          "type": "string"
+                        },
+                        "sizeBytes": {
+                          "type": "number"
+                        },
+                        "sha256": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "url",
+                        "filename",
+                        "contentType",
+                        "sizeBytes",
+                        "sha256",
+                        "createdAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/files/{id}": {
+      "get": {
+        "operationId": "getFilesId",
+        "summary": "Download an uploaded file: streamed (local storage) or a 302 to a five-minute link (S3). Submission files: the uploader and course staff; lesson media: anyone who can read the course.",
+        "tags": [
+          "files"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file, with its own Content-Type (local storage).",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Redirect to a signed link valid for five minutes (S3 storage)."
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Not signed in, or the session was revoked",

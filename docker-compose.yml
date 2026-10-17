@@ -40,6 +40,11 @@ services:
       CORS_ORIGINS: http://localhost:3000
       APP_URL: http://localhost:3000
       DEFAULT_TENANT_SLUG: ${DEFAULT_TENANT_SLUG:-harvard}
+      # Uploads are kept in the uploads volume. For S3-compatible storage set STORAGE_DRIVER=s3 and S3_* instead.
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_DIR: /app/storage
+    volumes:
+      - uploads:/app/storage
     ports: ["4000:4000"]
 
   web:
@@ -51,3 +56,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

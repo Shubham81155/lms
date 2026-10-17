@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@enterprise-lms/security"],
   devIndicators: false,
+  experimental: {
+    // Uploads go through the /api/v1 proxy; Next cuts request bodies at 10 MB by default. Keep this above
+    // the API's UPLOAD_MAX_MB (100 by default).
+    middlewareClientMaxBodySize: "110mb",
+  },
   async rewrites() {
     return [{ source: "/api/v1/:path*", destination: `${API_URL}/api/v1/:path*` }];
   },

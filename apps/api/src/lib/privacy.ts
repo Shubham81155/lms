@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { eraseUploadsOf } from './stored-files';
 import { revokeSessions } from './session';
 
 // Per-person data rights: a portable export of everything held about a user (GDPR Art. 15/20) and
@@ -107,6 +108,7 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
   // Free text the person wrote can contain anything; scores and grades are kept for the record.
   await prisma.assignmentSubmission.updateMany({ where: { userId, assignment: { tenantId } }, data: { submissionText: null, fileUrl: null } });
   await prisma.assignmentSubmissionVersion.updateMany({ where: { tenantId, submission: { userId } }, data: { submissionText: null, fileUrl: null } });
+  await eraseUploadsOf(userId, tenantId);
   await prisma.proctoringLog.updateMany({ where: { submission: { userId } }, data: { snapshotUrl: null } });
   await prisma.forumThread.updateMany({ where: { authorId: userId, tenantId }, data: { title: '[removed]', body: '[removed]', hidden: true } });
   await prisma.forumPost.updateMany({ where: { authorId: userId, tenantId }, data: { body: '[removed]', hidden: true } });

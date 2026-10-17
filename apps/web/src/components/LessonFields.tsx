@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
-import { Trash2 } from "lucide-react";
+import React, { useState } from "react";
+import { Trash2, Upload } from "lucide-react";
+import { UPLOAD_ACCEPT, isUploadLink, uploadFile } from "@/lib/upload";
 
 export type LessonType = "RICHTEXT" | "VIDEO" | "INTERACTIVE_CODE" | "PDF_DOCUMENT" | "EXTERNAL_LTI_TOOL" | "SCORM_PACKAGE";
 
@@ -26,12 +27,14 @@ export const LESSON_TYPES: { value: LessonType; label: string }[] = [
 ];
 
 export const URL_LABEL: Partial<Record<LessonType, string>> = {
-  VIDEO: "Video address (https)",
-  PDF_DOCUMENT: "Document address (https)",
+  VIDEO: "Video address (https), or upload one",
+  PDF_DOCUMENT: "Document address (https), or upload one",
   EXTERNAL_LTI_TOOL: "Tool launch address (https)",
 };
 
+/** An http(s) address, or a file uploaded here (/api/v1/files/<id>). */
 export const isHttpUrl = (v: string) => {
+  if (isUploadLink(v)) return true;
   try {
     return ["http:", "https:"].includes(new URL(v).protocol);
   } catch {
@@ -51,7 +54,7 @@ export const blankLesson = (patch: Partial<LessonDraft> = {}): LessonDraft => ({
 
 /** Why a lesson cannot be saved yet, or null. */
 export const lessonProblem = (l: LessonDraft): string | null =>
-  !l.title.trim() ? "Every lesson needs a title." : l.url.trim() && !isHttpUrl(l.url.trim()) ? "Addresses must start with http:// or https://." : null;
+  !l.title.trim() ? "Every lesson needs a title." : l.url.trim() && !isHttpUrl(l.url.trim()) ? "Addresses must start with http:// or https://, or be an uploaded file." : null;
 
 interface LessonFieldsProps {
   lesson: LessonDraft;
@@ -61,11 +64,34 @@ interface LessonFieldsProps {
   disabled?: boolean;
   /** Hide the built-in delete button when the parent supplies its own. */
   hideDelete?: boolean;
+  /** When set, videos and documents can be uploaded to this course instead of linked. */
+  courseId?: string;
 }
 
+const UPLOADABLE: Partial<Record<LessonType, keyof typeof UPLOAD_ACCEPT>> = { VIDEO: "video", PDF_DOCUMENT: "document" };
+
 /** The editable fields of one lesson, shared by the course builder and the content editor. */
-export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onChange, onDelete, disabled, hideDelete }) => {
+export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onChange, onDelete, disabled, hideDelete, courseId }) => {
   const isScorm = lesson.type === "SCORM_PACKAGE";
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
+  const accept = UPLOADABLE[lesson.type];
+
+  const pick = async (file: File | undefined) => {
+    if (!file || !courseId) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const up = await uploadFile(file, "LESSON_MEDIA", courseId);
+      setUploadedName(up.filename);
+      onChange({ url: up.url });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "The upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
   return (
     <div className="bg-surface border border-line/80 p-3 rounded-xl space-y-2 text-xs">
       <div className="flex items-center gap-2">
@@ -127,17 +153,36 @@ export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onCha
         className="w-full bg-canvas border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
       />
       {URL_LABEL[lesson.type] && (
-        <input
-          type="url"
-          value={lesson.url}
-          onChange={(e) => onChange({ url: e.target.value })}
-          placeholder={URL_LABEL[lesson.type]}
-          maxLength={2048}
-          aria-label={`${URL_LABEL[lesson.type]} for ${label}`}
-          disabled={disabled}
-          className="w-full bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            inputMode="url"
+            value={isUploadLink(lesson.url) ? "" : lesson.url}
+            onChange={(e) => {
+              setUploadedName(null);
+              onChange({ url: e.target.value });
+            }}
+            placeholder={isUploadLink(lesson.url) ? `Uploaded file${uploadedName ? `: ${uploadedName}` : ""}` : URL_LABEL[lesson.type]}
+            maxLength={2048}
+            aria-label={`${URL_LABEL[lesson.type]} for ${label}`}
+            disabled={disabled}
+            className="min-w-0 flex-1 bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
+          />
+          {courseId && accept && (
+            <label className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-[11px] font-semibold text-ink hover:bg-raised ${disabled || uploading ? "pointer-events-none opacity-50" : ""}`}>
+              <Upload className="h-3 w-3" />
+              {uploading ? "Uploading…" : "Upload"}
+              <input type="file" className="sr-only" accept={UPLOAD_ACCEPT[accept]} disabled={disabled || uploading} aria-label={`Upload a file for ${label}`} onChange={(e) => pick(e.target.files?.[0])} />
+            </label>
+          )}
+          {isUploadLink(lesson.url) && (
+            <a href={lesson.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[11px] text-brand-fg underline">
+              View
+            </a>
+          )}
+        </div>
       )}
+      {uploadError && <p role="alert" className="text-[11px] text-danger">{uploadError}</p>}
     </div>
   );
 };

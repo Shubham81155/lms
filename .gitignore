@@ -19,3 +19,6 @@ packages/*/test/**/*.d.ts
 packages/*/test/**/*.map
 .DS_Store
 *.log
+
+# Uploaded files (STORAGE_DRIVER=local)
+/storage/

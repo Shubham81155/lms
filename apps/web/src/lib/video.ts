@@ -8,9 +8,13 @@ export type VideoSource =
   | { kind: "file"; src: string }
   | { kind: "link"; src: string };
 
+import { isUploadLink } from "./upload";
+
 const FILE_EXT = /\.(mp4|m4v|webm|ogv|ogg|mov)(\?|#|$)/i;
 
 export function videoSource(raw: string): VideoSource | null {
+  // A video uploaded here plays natively from the API.
+  if (isUploadLink(raw)) return { kind: "file", src: raw.trim() };
   let url: URL;
   try {
     url = new URL(raw.trim());
