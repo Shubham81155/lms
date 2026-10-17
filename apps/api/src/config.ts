@@ -105,6 +105,13 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /**
+   * Where SCORM packages are served from: an origin of its own (e.g. https://content.example.org) pointing
+   * at this API, never the web app's origin, so a package's scripts cannot act as the signed-in learner. It
+   * must not share a cookie domain with the web app. Unset: SCORM is off in production; in development
+   * http://127.0.0.1:<PORT> is used (a different origin from localhost).
+   */
+  SCORM_CONTENT_ORIGIN: z.string().url().optional(),
   /** Largest upload accepted, in megabytes. The web app's proxy limit (next.config.ts) must be at least this. */
   UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(5120).default(100),
 }).refine((c) => c.STORAGE_DRIVER !== 's3' || !!c.S3_BUCKET, { message: 'STORAGE_DRIVER=s3 needs S3_BUCKET' })

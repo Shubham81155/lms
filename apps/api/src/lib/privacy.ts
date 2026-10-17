@@ -21,7 +21,7 @@ export async function buildUserExport(userId: string, tenantId: string) {
   });
   if (!user) return null;
 
-  const [enrollments, quizAttempts, assignments, notifications, preferences, threads, posts, grades, attendance, xapi, activity, guardians] =
+  const [enrollments, quizAttempts, assignments, notifications, preferences, threads, posts, grades, attendance, xapi, activity, guardians, scorm] =
     await Promise.all([
       prisma.enrollment.findMany({
         where: { userId, tenantId },
@@ -53,6 +53,7 @@ export async function buildUserExport(userId: string, tenantId: string) {
         select: { action: true, resourceType: true, resourceId: true, ipAddress: true, userAgent: true, createdAt: true },
       }),
       prisma.userGuardian.findMany({ where: { OR: [{ studentId: userId }, { guardianId: userId }] }, select: { studentId: true, guardianId: true, relation: true } }),
+      prisma.scormAttempt.findMany({ where: { userId, tenantId }, select: { packageId: true, status: true, scorePercent: true, completedAt: true, cmiJson: true, updatedAt: true } }),
     ]);
 
   return {
@@ -61,6 +62,7 @@ export async function buildUserExport(userId: string, tenantId: string) {
     enrollments,
     quizAttempts,
     assignmentSubmissions: assignments,
+    scormAttempts: scorm,
     courseGrades: grades,
     notifications,
     notificationPreferences: preferences,
@@ -109,6 +111,8 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
   await prisma.assignmentSubmission.updateMany({ where: { userId, assignment: { tenantId } }, data: { submissionText: null, fileUrl: null } });
   await prisma.assignmentSubmissionVersion.updateMany({ where: { tenantId, submission: { userId } }, data: { submissionText: null, fileUrl: null } });
   await eraseUploadsOf(userId, tenantId);
+  // SCORM run-time data can hold anything the package stored (names, answers); status and score are kept.
+  await prisma.scormAttempt.updateMany({ where: { userId, tenantId }, data: { cmiJson: {} } });
   await prisma.proctoringLog.updateMany({ where: { submission: { userId } }, data: { snapshotUrl: null } });
   await prisma.forumThread.updateMany({ where: { authorId: userId, tenantId }, data: { title: '[removed]', body: '[removed]', hidden: true } });
   await prisma.forumPost.updateMany({ where: { authorId: userId, tenantId }, data: { body: '[removed]', hidden: true } });

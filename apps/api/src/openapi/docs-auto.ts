@@ -11,6 +11,7 @@ import * as r_announcements from '../routes/announcements.routes';
 import * as r_files from '../routes/files.routes';
 import * as r_terms from '../routes/terms.routes';
 import * as r_review from '../routes/course-review.routes';
+import * as r_scorm from '../routes/scorm.routes';
 import * as r_deadlines from '../routes/deadlines.routes';
 import * as r_enrollments from '../routes/enrollments.routes';
 import * as r_forum from '../routes/forum.routes';
@@ -146,6 +147,14 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "GET /api/v1/enrollments/my": { summary: "GET /api/v1/enrollments/my" },
   "GET /api/v1/enrollments/stats": { summary: "Aggregates for the caller; admins and auditors may pass ?userId=.", query: r_enrollments.statsQuery as never },
   "GET /api/v1/courses/:courseId/announcements": { summary: "A course's announcements, pinned first then newest, for anyone who can open the course.", query: r_announcements.announcementListQuery as never },
+  "GET /scorm-content/:token/__launch": { summary: "SCORM player page (on SCORM_CONTENT_ORIGIN, no session: the signed token in the path is for one learner and one package). Provides the SCORM 1.2/2004 run-time API and frames the package; only APP_URL may embed it." },
+  "GET /scorm-content/:token/__state": { summary: "The learner's saved SCORM data for the package, with the read-only values (learner id and name, mode, entry). Token-guarded, no session." },
+  "POST /scorm-content/:token/__commit": { summary: "Saves the learner's SCORM data (read-only values are ignored). The first completion finishes the lessons that play this package. Token-guarded, no session." },
+  "GET /scorm-content/:token/*": { summary: "A file of the package (paths as in the zip). Token-guarded, no session." },
+  "POST /api/v1/courses/:id/scorm-packages": { summary: "Unpack an uploaded SCORM 1.2/2004 zip (POST /files, purpose SCORM_PACKAGE) into a package lessons can play (course editors). Paths, file count and unpacked size are checked; imsmanifest.xml gives the version and start page. Audited.", body: r_scorm.createPackageSchema },
+  "GET /api/v1/courses/:id/scorm-packages": { summary: "The course's SCORM packages (course staff)." },
+  "GET /api/v1/scorm-packages/:id/launch": { summary: "A four-hour link to play the package as the caller, on SCORM_CONTENT_ORIGIN; embed it in an iframe. Anyone who can read the course." },
+  "GET /api/v1/scorm-packages/:id/attempts": { summary: "Every learner's status and score in a SCORM package (course staff)." },
   "GET /api/v1/admin/course-approval": { summary: "Whether publishing a course needs an administrator's approval in this organisation (administrators)." },
   "PUT /api/v1/admin/course-approval": { summary: "Turn publishing review on or off (administrators). Off, instructors publish themselves. Audited.", body: r_review.approvalSettingSchema },
   "GET /api/v1/course-reviews": { summary: "Courses waiting for publishing review, oldest first (administrators)." },

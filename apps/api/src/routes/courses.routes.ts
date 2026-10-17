@@ -7,7 +7,7 @@ import { CourseStatus, ContentType, EnrollmentStatus } from '@enterprise-lms/dat
 import { HttpError, route } from '../lib/http';
 import { httpUrl, idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { progressFromLessons } from '../lib/lesson-progress';
-import { autoComplete } from '../lib/completion';
+import { recordLessonsDone } from '../lib/completion';
 import { assertAttachable, linkOrUpload } from '../lib/stored-files';
 import { recomputeCourseProgress } from '../lib/course-progress';
 import { copyCourse } from '../lib/course-copy';
@@ -81,6 +81,13 @@ export const copyCourseSchema = z.object({
 });
 
 /** A department must exist inside the caller's tenant (row-level security scopes this lookup). */
+async function assertScormPackageOfCourse(scormPackageId: string | null | undefined, courseId: string) {
+  if (!scormPackageId) return;
+  if (!(await prisma.scormPackage.findFirst({ where: { id: scormPackageId, courseId }, select: { id: true } }))) {
+    throw new HttpError(400, 'SCORM package not found in this course');
+  }
+}
+
 async function assertTermInTenant(termId: string | null | undefined) {
   if (!termId) return;
   if (!(await prisma.term.findFirst({ where: { id: termId }, select: { id: true } }))) throw new HttpError(400, 'Term not found');
@@ -460,31 +467,8 @@ router.post(
     const lesson = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } }, select: { id: true } });
     if (!lesson) throw new HttpError(404, 'Lesson not found');
 
-    await prisma.lessonProgress.upsert({
-      where: { userId_lessonId: { userId, lessonId: lesson.id } },
-      update: {},
-      create: { tenantId, courseId: id, userId, lessonId: lesson.id },
-    });
-
-    const [totalLessons, completed] = await Promise.all([
-      prisma.lesson.count({ where: { module: { courseId: id } } }),
-      prisma.lessonProgress.count({ where: { courseId: id, userId } }),
-    ]);
-    const progressPercent = progressFromLessons(completed, totalLessons);
-
-    // A finished or failed course keeps the result staff recorded; only live enrollments are recomputed.
-    const live = enrollment.status === EnrollmentStatus.ENROLLED || enrollment.status === EnrollmentStatus.IN_PROGRESS;
-    if (live) {
-      await prisma.enrollment.update({
-        where: { id: enrollment.id },
-        data: { progressPercent, status: progressPercent > 0 ? EnrollmentStatus.IN_PROGRESS : enrollment.status },
-      });
-    }
-
-    const completion = await autoComplete(id, userId);
-    return res.status(201).json({
-      data: { lessonId: lesson.id, completedLessons: completed, totalLessons, progressPercent: live ? progressPercent : enrollment.progressPercent, completion },
-    });
+    const r = await recordLessonsDone(tenantId, id, userId, [lesson.id]);
+    return res.status(201).json({ data: { lessonId: lesson.id, ...r } });
   })
 );
 
@@ -616,6 +600,8 @@ router.post(
     await requireCourseEditor(req, id);
     const input = parseBody(req, createLessonSchema);
     await assertAttachable(input.mediaUrl, { tenantId: tenantIdOf(req), courseId: id, purpose: 'LESSON_MEDIA' });
+    await assertScormPackageOfCourse(input.scormPackageId, id);
+    if (input.contentType === ContentType.SCORM_PACKAGE && !input.scormPackageId) throw new HttpError(400, 'A SCORM lesson needs scormPackageId');
 
     const moduleRecord = await prisma.module.findFirst({ where: { id: String(req.params.moduleId), courseId: id } });
     if (!moduleRecord) throw new HttpError(404, 'Module not found');
@@ -652,6 +638,11 @@ router.patch(
     await requireCourseEditor(req, id);
     const input = parseBody(req, updateLessonSchema);
     await assertAttachable(input.mediaUrl, { tenantId: tenantIdOf(req), courseId: id, purpose: 'LESSON_MEDIA' });
+    await assertScormPackageOfCourse(input.scormPackageId, id);
+    if (input.contentType === ContentType.SCORM_PACKAGE && !input.scormPackageId) {
+      const current = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } }, select: { scormPackageId: true } });
+      if (current && !current.scormPackageId) throw new HttpError(400, 'A SCORM lesson needs scormPackageId');
+    }
 
     const lesson = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } } });
     if (!lesson) throw new HttpError(404, 'Lesson not found');

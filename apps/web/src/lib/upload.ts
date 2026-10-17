@@ -11,9 +11,10 @@ export const UPLOAD_ACCEPT = {
   document:
     ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.txt,.csv,.zip,.png,.jpg,.jpeg,.gif,.webp,application/pdf,image/png,image/jpeg,image/gif,image/webp",
   video: ".mp4,.webm,video/mp4,video/webm",
+  scorm: ".zip,application/zip",
 } as const;
 
-export type UploadPurpose = "ASSIGNMENT_SUBMISSION" | "LESSON_MEDIA";
+export type UploadPurpose = "ASSIGNMENT_SUBMISSION" | "LESSON_MEDIA" | "SCORM_PACKAGE";
 
 export interface UploadedFile {
   id: string;
@@ -31,10 +32,13 @@ export async function uploadFile(file: File, purpose: UploadPurpose, courseId: s
   if (file.size > MAX_UPLOAD_MB * 1024 * 1024) throw new Error(`Files can be at most ${MAX_UPLOAD_MB} MB.`);
   if (file.size === 0) throw new Error("That file is empty.");
   const qs = new URLSearchParams({ purpose, courseId, filename: file.name });
+  // Browsers name zips inconsistently (Windows: x-zip-compressed, sometimes nothing at all).
+  const zipish = /\.zip$/i.test(file.name) && ["", "application/x-zip-compressed", "application/octet-stream"].includes(file.type);
+  const contentType = zipish ? "application/zip" : file.type || "application/octet-stream";
   const res = await fetch(`/api/v1/files?${qs}`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
+    headers: { "Content-Type": contentType },
     body: file,
   });
   const json = await res.json().catch(() => null);

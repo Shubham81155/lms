@@ -30,6 +30,7 @@ export const ALLOWED_TYPES: Record<string, { inline: boolean }> = {
   'text/plain': { inline: false },
   'text/csv': { inline: false },
   'application/zip': { inline: false },
+  'application/x-zip-compressed': { inline: false }, // what Windows browsers call a .zip
   'application/msword': { inline: false },
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { inline: false },
   'application/vnd.ms-excel': { inline: false },

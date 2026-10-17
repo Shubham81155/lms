@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, ArrowUp, ArrowDown, Trash2, Plus, Save, CheckCircle2, AlertTriangle } from "lucide-react";
+import { X, ArrowUp, ArrowDown, Trash2, Plus, Save, CheckCircle2, AlertTriangle, Package } from "lucide-react";
+import { UPLOAD_ACCEPT, uploadFile } from "@/lib/upload";
 import { api } from "@/lib/api";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { errorMessage, useApiData } from "@/hooks/useApiData";
@@ -146,6 +147,22 @@ interface ModuleCardProps {
 const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, count, busy, act, courseId, onMoveModule }) => {
   const [title, setTitle] = useState(module.title);
   const [adding, setAdding] = useState<LessonDraft | null>(null);
+  const [uploadingScorm, setUploadingScorm] = useState(false);
+
+  /** Upload a SCORM zip, unpack it into a package, and add a lesson that plays it. */
+  const addScorm = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingScorm(true);
+    try {
+      await act(async () => {
+        const up = await uploadFile(file, "SCORM_PACKAGE", courseId);
+        const pkg = await api.post<{ data: { id: string; title: string } }>(`/api/v1/courses/${courseId}/scorm-packages`, { fileId: up.id });
+        await api.post(`${base}/modules/${module.id}/lessons`, { title: pkg.data.title, contentType: "SCORM_PACKAGE", scormPackageId: pkg.data.id });
+      }, "SCORM package added as a lesson.");
+    } finally {
+      setUploadingScorm(false);
+    }
+  };
   const base = `/api/v1/courses/${courseId}`;
   const name = `module ${index + 1}`;
   const titleDirty = title.trim() !== module.title && title.trim().length > 0;
@@ -239,9 +256,26 @@ const ModuleCard: React.FC<ModuleCardProps> = ({ module, index, count, busy, act
           </div>
         </div>
       ) : (
-        <button onClick={() => setAdding(blankLesson())} disabled={busy} className="text-[11px] font-semibold text-brand-fg hover:underline disabled:opacity-50">
-          + New lesson
-        </button>
+        <div className="flex items-center gap-4">
+          <button onClick={() => setAdding(blankLesson())} disabled={busy} className="text-[11px] font-semibold text-brand-fg hover:underline disabled:opacity-50">
+            + New lesson
+          </button>
+          <label className={`inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-brand-fg hover:underline ${busy || uploadingScorm ? "pointer-events-none opacity-50" : ""}`}>
+            <Package className="h-3 w-3" />
+            {uploadingScorm ? "Uploading…" : "Add SCORM package"}
+            <input
+              type="file"
+              className="sr-only"
+              accept={UPLOAD_ACCEPT.scorm}
+              disabled={busy || uploadingScorm}
+              aria-label={`Add a SCORM package to ${name}`}
+              onChange={(e) => {
+                addScorm(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { EnrollmentStatus } from '@enterprise-lms/database';
 import { prisma } from './prisma';
+import { progressFromLessons } from './lesson-progress';
 import { config } from '../config';
 import { issueCertificate } from './certificates';
 import { notify } from './notify';
@@ -108,4 +109,35 @@ export async function autoComplete(courseId: string, userId: string): Promise<Co
   if (finalGrade !== null && finalGrade < course.passingGradePercent) return 'BELOW_PASS_MARK';
   await recordCourseResult(enrollment.id, finalGrade);
   return 'COMPLETED';
+}
+
+/**
+ * Records lessons as finished for an enrolled learner (idempotent), recomputes their progress, and lets the
+ * course complete (autoComplete). Used by "Mark as complete" and by SCORM packages reporting completion.
+ * A finished or failed enrollment keeps the result staff recorded; only live enrollments are recomputed.
+ */
+export async function recordLessonsDone(tenantId: string, courseId: string, userId: string, lessonIds: string[]) {
+  const enrollment = await prisma.enrollment.findUnique({ where: { courseId_userId: { courseId, userId } } });
+  if (!enrollment || enrollment.status === EnrollmentStatus.DROPPED) throw new Error('recordLessonsDone needs an enrolled learner');
+  for (const lessonId of lessonIds) {
+    await prisma.lessonProgress.upsert({
+      where: { userId_lessonId: { userId, lessonId } },
+      update: {},
+      create: { tenantId, courseId, userId, lessonId },
+    });
+  }
+  const [totalLessons, completedLessons] = await Promise.all([
+    prisma.lesson.count({ where: { module: { courseId } } }),
+    prisma.lessonProgress.count({ where: { courseId, userId } }),
+  ]);
+  const progressPercent = progressFromLessons(completedLessons, totalLessons);
+  const live = enrollment.status === EnrollmentStatus.ENROLLED || enrollment.status === EnrollmentStatus.IN_PROGRESS;
+  if (live) {
+    await prisma.enrollment.update({
+      where: { id: enrollment.id },
+      data: { progressPercent, status: progressPercent > 0 ? EnrollmentStatus.IN_PROGRESS : enrollment.status },
+    });
+  }
+  const completion = await autoComplete(courseId, userId);
+  return { completedLessons, totalLessons, progressPercent: live ? progressPercent : enrollment.progressPercent, completion };
 }

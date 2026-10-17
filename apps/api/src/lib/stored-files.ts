@@ -5,7 +5,7 @@ import { httpUrl } from './validate';
 import { storage } from './storage';
 import { logger } from './logger';
 
-export const FILE_PURPOSES = ['ASSIGNMENT_SUBMISSION', 'LESSON_MEDIA'] as const;
+export const FILE_PURPOSES = ['ASSIGNMENT_SUBMISSION', 'LESSON_MEDIA', 'SCORM_PACKAGE'] as const;
 export type FilePurpose = (typeof FILE_PURPOSES)[number];
 
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';

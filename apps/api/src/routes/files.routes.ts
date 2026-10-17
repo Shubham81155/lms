@@ -66,7 +66,10 @@ async function handleUpload(req: Request, res: Response) {
     .toLowerCase();
   if (!ALLOWED_TYPES[contentType]) throw new HttpError(415, 'This kind of file cannot be uploaded');
 
-  if (purpose === 'LESSON_MEDIA') await requireCourseEditor(req, courseId);
+  if (purpose === 'SCORM_PACKAGE' && contentType !== 'application/zip' && contentType !== 'application/x-zip-compressed') {
+    throw new HttpError(415, 'A SCORM package must be a .zip file');
+  }
+  if (purpose === 'LESSON_MEDIA' || purpose === 'SCORM_PACKAGE') await requireCourseEditor(req, courseId);
   else if (!(await requireContentAccess(req, courseId)).isEnrolled)
     throw new HttpError(403, 'Forbidden: only enrolled learners can upload work for this course');
 
@@ -126,7 +129,9 @@ router.get(
     if (!file || !file.courseId) throw new HttpError(404, 'File not found');
     const access = await requireContentAccess(req, file.courseId);
     const user = req.user!;
-    if (file.purpose === 'ASSIGNMENT_SUBMISSION' && file.ownerId !== user.id && !access.isStaff && !canSeeAllCourses(user.role)) {
+    // Submission files: their learner and the staff. A SCORM zip: the staff (learners play the unpacked package).
+    const staffOnly = file.purpose === 'SCORM_PACKAGE' || (file.purpose === 'ASSIGNMENT_SUBMISSION' && file.ownerId !== user.id);
+    if (staffOnly && !access.isStaff && !canSeeAllCourses(user.role)) {
       throw new HttpError(404, 'File not found');
     }
 

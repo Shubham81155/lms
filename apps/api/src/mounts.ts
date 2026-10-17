@@ -31,6 +31,8 @@ import announcementsRoutes from './routes/announcements.routes';
 import filesRoutes from './routes/files.routes';
 import termsRoutes from './routes/terms.routes';
 import courseReviewRoutes from './routes/course-review.routes';
+import scormRoutes from './routes/scorm.routes';
+import scormContentRoutes from './routes/scorm-content.routes';
 
 /** Where each router is mounted, in mounting order (order matters: see the notes in server.ts). */
 export interface Mount {
@@ -73,4 +75,7 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1', router: deadlinesRoutes },
   { prefix: '/api/v1', router: announcementsRoutes },
   { prefix: '/api/v1', router: courseReviewRoutes },
+  { prefix: '/api/v1', router: scormRoutes },
+  // Not an API route: SCORM package pages, meant for SCORM_CONTENT_ORIGIN only (see server.ts).
+  { prefix: '/scorm-content', router: scormContentRoutes },
 ];

@@ -215,6 +215,13 @@ const CertificateVerification = z.object({
   institution: z.string(),
 });
 
+export const ScormPackageView = z.object({
+  id: z.string(), courseId: z.string(), title: z.string(), version: z.enum(['1.2', '2004']),
+  /** The start page, relative to the package root. */
+  launchPath: z.string(),
+  fileCount: z.number(), sizeBytes: z.number(), createdAt: z.string(),
+});
+
 export const TermView = z.object({ id: z.string(), name: z.string(), startsOn: z.string(), endsOn: z.string(), courseCount: z.number() });
 
 export const CalendarEvent = z.object({
@@ -319,6 +326,38 @@ export const RESPONSES: ResponseTable = {
   'PATCH /api/v1/enrollments/:id/progress': { response: data(ProgressResult), errors: [400, 403, 404, 409] },
   'GET /api/v1/enrollments/stats': { response: data(EnrollmentStats), errors: [400, 403] },
   'GET /api/v1/courses/:courseId/announcements': { response: body(z.object({ data: z.array(AnnouncementView), pagination: Pagination })), errors: [400, 403, 404] },
+  'GET /scorm-content/:token/__launch': {
+    response: { status: 200, contentType: 'text/html', schema: z.string(), description: 'The player page.' },
+    errors: [403, 404],
+  },
+  'GET /scorm-content/:token/__state': { response: body(z.object({ cmi: z.record(z.string()) })), errors: [403, 404] },
+  'POST /scorm-content/:token/__commit': {
+    response: body(z.object({ status: z.string(), scorePercent: z.number().nullable(), completed: z.boolean() })),
+    errors: [400, 403, 404],
+  },
+  'GET /scorm-content/:token/*': {
+    response: { status: 200, contentType: 'application/octet-stream', schema: z.string(), description: 'The file, with its own Content-Type.' },
+    errors: [403, 404],
+  },
+  'POST /api/v1/courses/:id/scorm-packages': { response: data(ScormPackageView, 201), errors: [400, 403, 404, 409] },
+  'GET /api/v1/courses/:id/scorm-packages': { response: data(z.array(ScormPackageView)), errors: [403, 404] },
+  'GET /api/v1/scorm-packages/:id/launch': {
+    response: data(z.object({ url: z.string(), origin: z.string(), version: z.enum(['1.2', '2004']) })),
+    errors: [400, 403, 404, 409],
+  },
+  'GET /api/v1/scorm-packages/:id/attempts': {
+    response: data(
+      z.array(
+        z.object({
+          userId: z.string(), name: z.string(), email: z.string(),
+          /** not attempted | incomplete | completed | passed | failed | unknown */
+          status: z.string(),
+          scorePercent: z.number().nullable(), completedAt: z.string().nullable(), updatedAt: z.string(),
+        })
+      )
+    ),
+    errors: [400, 403, 404],
+  },
   'GET /api/v1/admin/course-approval': { response: data(z.object({ required: z.boolean() })) },
   'PUT /api/v1/admin/course-approval': { response: data(z.object({ required: z.boolean() })), errors: [400] },
   'GET /api/v1/course-reviews': {

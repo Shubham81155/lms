@@ -81,6 +81,8 @@ model Tenant {
   submissionVersions AssignmentSubmissionVersion[]
   storedFiles        StoredFile[]
   terms              Term[]
+  scormPackages      ScormPackage[]
+  scormAttempts      ScormAttempt[]
   liveAttendance    LiveAttendance[]
   lessonProgress    LessonProgress[]
   gradeAppeals      GradeAppeal[]
@@ -111,6 +113,50 @@ model Campus {
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+/// A SCORM 1.2 / 2004 package uploaded to a course, unpacked into storage. Lessons play it by scormPackageId.
+model ScormPackage {
+  id           String         @id @default(uuid())
+  tenantId     String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  courseId     String
+  course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  uploadedById String?
+  title        String
+  /// "1.2" or "2004"
+  version      String
+  /// The page to start, relative to the package root (from imsmanifest.xml).
+  launchPath   String
+  /// { "<path in the package>": { "key": "<storage key>", "size": <bytes>, "type": "<content type>" } }
+  filesJson    Json
+  fileCount    Int
+  sizeBytes    Int
+  attempts     ScormAttempt[]
+  createdAt    DateTime       @default(now())
+
+  @@index([tenantId, courseId])
+}
+
+/// One learner's run-time data for a SCORM package (the cmi.* values the package saved).
+model ScormAttempt {
+  id           String       @id @default(uuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  packageId    String
+  package      ScormPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cmiJson      Json
+  /// Normalised: not attempted | incomplete | completed | passed | failed | unknown
+  status       String       @default("not attempted")
+  scorePercent Float?
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([packageId, userId])
+  @@index([tenantId, userId])
 }
 
 /// An academic term (semester, quarter, cohort) courses can be grouped by, e.g. "Fall 2026".
@@ -165,6 +211,7 @@ enum UserStatus {
 }
 
 model User {
+  scormAttempts ScormAttempt[]
   storedFiles StoredFile[] @relation("StoredFileOwner")
   id       String @id @default(uuid())
   tenantId String
@@ -288,6 +335,7 @@ enum ContentType {
 }
 
 model Course {
+  scormPackages   ScormPackage[]
   storedFiles     StoredFile[]
   liveSessions    LiveSession[]
   lessonProgress  LessonProgress[]

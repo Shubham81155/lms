@@ -97,6 +97,18 @@ const tenantResolver = (req: Request, _res: Response, next: NextFunction) => {
 
 app.use(tenantResolver);
 
+// With a SCORM content origin configured, that host answers only /scorm-content (and health checks), and
+// other hosts never serve /scorm-content: package scripts stay on an origin with no session and no API.
+if (config.SCORM_CONTENT_ORIGIN) {
+  const contentHost = new URL(config.SCORM_CONTENT_ORIGIN).host.toLowerCase();
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const onContentHost = (req.publicHost ?? '') === contentHost;
+    const contentPath = req.path.startsWith('/scorm-content/');
+    if (onContentHost !== contentPath && !['/health', '/ready'].includes(req.path)) return res.status(404).json({ error: 'Not found' });
+    next();
+  });
+}
+
 // Baseline abuse protection for every API call; login and token flows have stricter limits of their
 // own (auth.routes.ts). Signed provider callbacks are mounted above and are not limited here.
 const apiLimiterOptions = { windowMs: 60_000, standardHeaders: 'draft-7', legacyHeaders: false } as const;
@@ -130,7 +142,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         tenantId: req.tenantId,
         userId: req.user?.id,
         method: req.method,
-        path: req.originalUrl.split('?')[0],
+        // SCORM content URLs carry a learner's token; it is not logged.
+        path: req.originalUrl.split('?')[0].replace(/^\/scorm-content\/[^/]+/, '/scorm-content/<token>'),
         statusCode: res.statusCode,
         durationMs: Date.now() - start,
         ip: req.ip,
@@ -231,7 +244,7 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   if (err?.type === 'entity.parse.failed') return sendError(req, res, 400, 'Request body is not valid JSON');
   if (err?.type === 'entity.too.large') return sendError(req, res, 413, 'Request body is too large');
 
-  logger.error({ err, requestId: req.id, method: req.method, path: req.originalUrl }, 'unhandled error');
+  logger.error({ err, requestId: req.id, method: req.method, path: req.originalUrl.replace(/^\/scorm-content\/[^/?]+/, '/scorm-content/<token>') }, 'unhandled error');
   const body: Record<string, unknown> = { error: 'Internal Server Error', requestId: req.id };
   if (config.NODE_ENV === 'development') body.detail = err?.message;
   res.status(500).json(body);

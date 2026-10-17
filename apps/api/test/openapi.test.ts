@@ -103,6 +103,11 @@ describe('authentication coverage', () => {
     'POST /api/v1/lti/launch',
     'POST /api/v1/scim/v2/Users',
     'PUT /api/v1/scim/v2/Users/:id',
+    // SCORM package pages: guarded by a signed per-learner token in the path, on their own origin.
+    'GET /scorm-content/:token/__launch',
+    'GET /scorm-content/:token/__state',
+    'POST /scorm-content/:token/__commit',
+    'GET /scorm-content/:token/*',
   ].sort();
 
   it('only the intended routes are reachable without a session', () => {

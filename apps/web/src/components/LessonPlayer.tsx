@@ -15,6 +15,7 @@ import {
   Clock,
 } from "lucide-react";
 import { VideoPlayer } from "./VideoPlayer";
+import { ScormFrame } from "./ScormFrame";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { errorMessage, useApiData } from "@/hooks/useApiData";
@@ -58,6 +59,7 @@ interface Lesson {
   bodyContent: string | null;
   mediaUrl: string | null;
   ltiToolLaunchUrl: string | null;
+  scormPackageId: string | null;
   estimatedMinutes: number;
 }
 
@@ -250,7 +252,28 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     }
   };
 
+  /** A SCORM package reported completion: the API has recorded the lesson, so catch up with its progress. */
+  const scormCompleted = async (lessonId: string) => {
+    setDone((d) => new Set(d).add(lessonId));
+    try {
+      const res = await api.get<ProgressResponse>(`/api/v1/courses/${courseId}/progress`);
+      setDone(new Set(res.data.completedLessonIds));
+      setPercent(res.data.progressPercent);
+      onProgressUpdated?.(res.data.progressPercent);
+    } catch {
+      /* the next visit shows it */
+    }
+  };
+
   const body = (lesson: Lesson) => {
+    if (lesson.contentType === "SCORM_PACKAGE") {
+      return lesson.scormPackageId ? (
+        <ScormFrame key={lesson.id} packageId={lesson.scormPackageId} title={lesson.title} onCompleted={() => scormCompleted(lesson.id)} />
+      ) : (
+        <NoContent />
+      );
+    }
+
     const text = lesson.bodyContent?.trim();
     const link = lesson.contentType === "EXTERNAL_LTI_TOOL" ? lesson.ltiToolLaunchUrl : lesson.mediaUrl;
     const paragraphs = text ? text.split(/\n{2,}/) : [];
@@ -394,6 +417,12 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                       <h2 className="text-xl font-extrabold text-ink">{current.title}</h2>
                     </div>
 
+                    {current.contentType === "SCORM_PACKAGE" ? (
+                      <span className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold ${isDone ? "border border-success/30 bg-success/10 text-success" : "text-ink-muted"}`}>
+                        {isDone && <CheckCircle2 className="h-4 w-4" />}
+                        <span>{isDone ? "Completed" : "Completes when you finish the activity"}</span>
+                      </span>
+                    ) : (
                     <button
                       onClick={markComplete}
                       disabled={isDone || saving}
@@ -404,6 +433,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                       <CheckCircle2 className="h-4 w-4" />
                       <span>{isDone ? "Completed" : saving ? "Saving…" : "Mark as complete"}</span>
                     </button>
+                    )}
                   </div>
 
                   {lessons.length > 0 && done.size === lessons.length && (
