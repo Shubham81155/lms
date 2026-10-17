@@ -133,6 +133,10 @@ export const EnrollmentItem = z.object({
     .object({ id: z.string(), certificateNumber: z.string(), issuedAt: z.string(), pdfUrl: z.string().nullable(), verificationQr: z.string() })
     .nullable()
     .optional(),
+  /** On a learner's own list only: lessons in the course and how many they have finished. */
+  lessons: z.object({ total: z.number(), completed: z.number() }).optional(),
+  /** On a learner's own list only: the first lesson, in course order, they have not finished (null when all are done). */
+  nextLesson: z.object({ id: z.string(), title: z.string(), moduleTitle: z.string() }).nullable().optional(),
   /** Present on rosters (a ?courseId= or another ?userId=), not on a learner's own list. */
   user: z.object({ id: z.string(), firstName: z.string(), lastName: z.string(), email: z.string() }).optional(),
 });

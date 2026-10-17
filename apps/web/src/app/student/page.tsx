@@ -55,6 +55,7 @@ export default function StudentDashboard() {
     id: string;
     code: string;
     title: string;
+    startOn?: "home" | "lesson";
   } | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<string | null>(null);
@@ -141,6 +142,8 @@ export default function StudentDashboard() {
       progress: Math.round(e.progressPercent || 0),
       status: String(e.status).replace(/_/g, " ").toLowerCase(),
       finalGrade: e.finalGrade ?? null,
+      lessons: e.lessons ?? { total: 0, completed: 0 },
+      nextLesson: e.nextLesson ?? null,
       certificateNumber: (e as any).certificate?.certificateNumber as string | undefined,
     }));
 
@@ -148,7 +151,7 @@ export default function StudentDashboard() {
   useOpenIntent(!isLoadingEnrollments, {
     course: (id) => {
       const c = displayCourses.find((x) => x.id === id && x.open);
-      if (c) setActiveLessonCourse({ id: c.id, code: c.code, title: c.title });
+      if (c) setActiveLessonCourse({ id: c.id, code: c.code, title: c.title, startOn: "home" });
     },
     forum: (id) => {
       setForumCourseId(id);
@@ -269,8 +272,14 @@ export default function StudentDashboard() {
                     </div>
 
                     <div>
-                      <h3 className="font-bold text-base text-ink group-hover:text-brand-fg transition-colors">
-                        {course.title}
+                      <h3 className="font-bold text-base text-ink">
+                        <button
+                          onClick={() => setActiveLessonCourse({ id: course.id, code: course.code, title: course.title, startOn: "home" })}
+                          className="text-left hover:text-brand-fg hover:underline transition-colors"
+                          title="Open the course home"
+                        >
+                          {course.title}
+                        </button>
                       </h3>
                       {course.finalGrade !== null && <p className="text-xs text-success mt-0.5">Final grade: {Math.round(course.finalGrade)}%</p>}
                     </div>
@@ -286,12 +295,23 @@ export default function StudentDashboard() {
                       className="w-full text-left bg-canvas hover:bg-surface rounded-xl p-2.5 border border-line/80 hover:border-brand/50 text-xs transition-colors group/les"
                     >
                       <div className="flex items-center justify-between text-[10px] text-ink-subtle uppercase font-semibold">
-                        <span>Continue Lesson</span>
+                        <span>
+                          {course.lessons.total === 0
+                            ? "Course"
+                            : !course.nextLesson
+                              ? "All lessons finished"
+                              : course.lessons.completed === 0
+                                ? "Start"
+                                : "Continue"}
+                        </span>
                         <span className="text-brand-fg group-hover/les:translate-x-0.5 transition-transform flex items-center gap-0.5 font-bold">
-                          Start →
+                          {course.nextLesson ? "Open →" : "Review →"}
                         </span>
                       </div>
-                      <div className="text-ink font-medium truncate mt-0.5">Open the course lessons</div>
+                      <div className="text-ink font-medium truncate mt-0.5">
+                        {course.nextLesson ? course.nextLesson.title : course.lessons.total === 0 ? "No lessons yet" : "Go through the lessons again"}
+                      </div>
+                      {course.nextLesson && <div className="text-[10px] text-ink-subtle truncate">{course.nextLesson.moduleTitle} · {course.lessons.completed} of {course.lessons.total} done</div>}
                     </button>
                   </div>
 
@@ -487,6 +507,13 @@ export default function StudentDashboard() {
           courseId={activeLessonCourse.id}
           courseCode={activeLessonCourse.code}
           courseTitle={activeLessonCourse.title}
+          startOn={activeLessonCourse.startOn}
+          upcoming={(todo.data?.data ?? []).filter((i) => i.course.id === activeLessonCourse.id && !i.submitted)}
+          onOpenWork={(item) => {
+            if (item.type === "QUIZ") setActiveQuizId(item.id);
+            else setAssignmentsCourse(activeLessonCourse.id);
+            setActiveLessonCourse(null);
+          }}
           onClose={() => {
             setActiveLessonCourse(null);
             refetchEnrollments();

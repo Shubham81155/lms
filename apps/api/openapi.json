@@ -17265,6 +17265,41 @@
                               "verificationQr"
                             ]
                           },
+                          "lessons": {
+                            "type": "object",
+                            "properties": {
+                              "total": {
+                                "type": "number"
+                              },
+                              "completed": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "total",
+                              "completed"
+                            ]
+                          },
+                          "nextLesson": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "moduleTitle": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "moduleTitle"
+                            ]
+                          },
                           "user": {
                             "type": "object",
                             "properties": {
@@ -17446,6 +17481,41 @@
                         "completedAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "lessons": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "number"
+                            },
+                            "completed": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "completed"
+                          ]
+                        },
+                        "nextLesson": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "moduleTitle": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "title",
+                            "moduleTitle"
+                          ]
                         },
                         "user": {
                           "type": "object",
@@ -18296,6 +18366,41 @@
                               "issuedAt",
                               "pdfUrl",
                               "verificationQr"
+                            ]
+                          },
+                          "lessons": {
+                            "type": "object",
+                            "properties": {
+                              "total": {
+                                "type": "number"
+                              },
+                              "completed": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "total",
+                              "completed"
+                            ]
+                          },
+                          "nextLesson": {
+                            "type": "object",
+                            "nullable": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "moduleTitle": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "moduleTitle"
                             ]
                           },
                           "user": {

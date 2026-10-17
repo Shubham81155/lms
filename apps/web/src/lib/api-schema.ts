@@ -10889,6 +10889,15 @@ export interface operations {
                                 pdfUrl: string | null;
                                 verificationQr: string;
                             } | null;
+                            lessons?: {
+                                total: number;
+                                completed: number;
+                            };
+                            nextLesson?: {
+                                id: string;
+                                title: string;
+                                moduleTitle: string;
+                            } | null;
                             user?: {
                                 id: string;
                                 firstName: string;
@@ -10961,6 +10970,15 @@ export interface operations {
                             progressPercent: number;
                             enrolledAt: string;
                             completedAt: string | null;
+                            lessons?: {
+                                total: number;
+                                completed: number;
+                            };
+                            nextLesson?: {
+                                id: string;
+                                title: string;
+                                moduleTitle: string;
+                            } | null;
                             user?: {
                                 id: string;
                                 firstName: string;
@@ -11296,6 +11314,15 @@ export interface operations {
                                 issuedAt: string;
                                 pdfUrl: string | null;
                                 verificationQr: string;
+                            } | null;
+                            lessons?: {
+                                total: number;
+                                completed: number;
+                            };
+                            nextLesson?: {
+                                id: string;
+                                title: string;
+                                moduleTitle: string;
                             } | null;
                             user?: {
                                 id: string;

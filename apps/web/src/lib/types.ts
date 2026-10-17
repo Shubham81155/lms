@@ -117,6 +117,10 @@ export interface Enrollment {
   finalGrade?: number | null;
   enrolledAt: string;
   completedAt?: string | null;
+  /** On the learner's own list: lessons in the course and how many they have finished. */
+  lessons?: { total: number; completed: number };
+  /** On the learner's own list: the first lesson they have not finished (null when all are done). */
+  nextLesson?: { id: string; title: string; moduleTitle: string } | null;
 }
 
 export interface QuizQuestionOption {

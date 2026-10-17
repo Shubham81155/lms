@@ -11,6 +11,8 @@ import {
   ArrowLeft,
   ExternalLink,
   Award,
+  Home,
+  Clock,
 } from "lucide-react";
 import { VideoPlayer } from "./VideoPlayer";
 import { useAuth } from "@/context/AuthContext";
@@ -26,6 +28,25 @@ interface LessonPlayerProps {
   onProgressUpdated?: (newPercent: number) => void;
   onOpenExam?: () => void;
   onOpenCodeLab?: (lesson: { title: string; instructions: string }) => void;
+  /** "home" opens on the course home (overview, syllabus, upcoming work); default is the next lesson. */
+  startOn?: "home" | "lesson";
+  /** The learner's upcoming work in this course, shown on the course home. */
+  upcoming?: UpcomingWork[];
+  onOpenWork?: (item: UpcomingWork) => void;
+}
+
+export interface UpcomingWork {
+  type: "ASSIGNMENT" | "QUIZ";
+  id: string;
+  title: string;
+  dueAt: string | null;
+  overdue?: boolean;
+}
+
+interface CourseDetail {
+  description: string | null;
+  syllabus: string | null;
+  instructors: { isPrimary: boolean; user: { id: string; firstName: string; lastName: string } }[];
 }
 
 interface Lesson {
@@ -63,6 +84,90 @@ const NoContent: React.FC = () => (
   </p>
 );
 
+const dueLabel = (iso: string | null) =>
+  iso ? new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso)) : "No due date";
+
+/** The course's front page: where the learner is, what to do next, and what the course is about. */
+const CourseHome: React.FC<{
+  detail: CourseDetail | null;
+  detailError: string | null;
+  completed: number;
+  total: number;
+  next: Lesson | null;
+  first: Lesson | undefined;
+  upcoming: UpcomingWork[];
+  onOpenLesson: (id: string) => void;
+  onOpenWork?: (item: UpcomingWork) => void;
+}> = ({ detail, detailError, completed, total, next, first, upcoming, onOpenLesson, onOpenWork }) => {
+  const target = next ?? first;
+  const instructors = detail?.instructors ?? [];
+  return (
+    <div className="space-y-6">
+      <div className="space-y-3 rounded-2xl border border-line bg-canvas p-6">
+        <p className="text-xs text-ink-muted">
+          {total === 0 ? "No lessons yet." : completed === total ? `You have finished all ${total} lessons.` : `${completed} of ${total} lessons finished.`}
+        </p>
+        {target && (
+          <button
+            onClick={() => onOpenLesson(target.id)}
+            className="flex w-full items-center justify-between gap-3 rounded-xl bg-brand px-5 py-3 text-left text-sm font-bold text-on-brand shadow-lg shadow-brand/20 transition-all hover:bg-brand-hover"
+          >
+            <span className="min-w-0 truncate">{!next ? "Review from the start" : completed === 0 ? `Start: ${next.title}` : `Continue: ${next.title}`}</span>
+            <ArrowRight className="h-4 w-4 shrink-0" />
+          </button>
+        )}
+      </div>
+
+      {upcoming.length > 0 && (
+        <section aria-labelledby="home-upcoming" className="space-y-2">
+          <h4 id="home-upcoming" className="text-xs font-bold uppercase tracking-wider text-ink-muted">Coming up</h4>
+          {upcoming.map((w) => (
+            <button
+              key={`${w.type}:${w.id}`}
+              onClick={() => onOpenWork?.(w)}
+              disabled={!onOpenWork}
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-canvas px-4 py-2.5 text-left text-xs transition-colors hover:bg-raised disabled:hover:bg-canvas"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                {w.type === "QUIZ" ? <Award className="h-4 w-4 shrink-0 text-accent" /> : <FileText className="h-4 w-4 shrink-0 text-success" />}
+                <span className="truncate text-ink">{w.title}</span>
+              </span>
+              <span className={`flex shrink-0 items-center gap-1 ${w.overdue ? "font-bold text-danger" : "text-ink-subtle"}`}>
+                <Clock className="h-3 w-3" />
+                {w.overdue ? "Overdue · " : ""}{dueLabel(w.dueAt)}
+              </span>
+            </button>
+          ))}
+        </section>
+      )}
+
+      {detailError && <p role="alert" className="text-xs text-danger">{detailError}</p>}
+      {detail?.description && (
+        <section aria-labelledby="home-about" className="space-y-2">
+          <h4 id="home-about" className="text-xs font-bold uppercase tracking-wider text-ink-muted">About this course</h4>
+          <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{detail.description}</p>
+        </section>
+      )}
+      {instructors.length > 0 && (
+        <p className="text-xs text-ink-muted">
+          Taught by{" "}
+          <span className="text-ink">
+            {[...instructors].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)).map((i) => `${i.user.firstName} ${i.user.lastName}`).join(", ")}
+          </span>
+        </p>
+      )}
+      <section aria-labelledby="home-syllabus" className="space-y-2">
+        <h4 id="home-syllabus" className="text-xs font-bold uppercase tracking-wider text-ink-muted">Syllabus</h4>
+        {detail?.syllabus?.trim() ? (
+          <div className="whitespace-pre-line rounded-2xl border border-line bg-canvas p-6 text-sm leading-relaxed text-ink">{detail.syllabus}</div>
+        ) : (
+          <p className="text-xs text-ink-subtle">{detail ? "Your instructor has not added a syllabus yet." : "Loading…"}</p>
+        )}
+      </section>
+    </div>
+  );
+};
+
 export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   courseId,
   courseCode,
@@ -71,8 +176,13 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   onProgressUpdated,
   onOpenExam,
   onOpenCodeLab,
+  startOn = "lesson",
+  upcoming = [],
+  onOpenWork,
 }) => {
   const { user } = useAuth();
+  const [view, setView] = useState<"home" | "lesson">(startOn);
+  const courseReq = useApiData<{ data: CourseDetail }>(`/api/v1/courses/${courseId}`);
   const modulesReq = useApiData<{ data: CourseModule[] }>(`/api/v1/courses/${courseId}/modules`);
   const progressReq = useApiData<ProgressResponse>(`/api/v1/courses/${courseId}/progress`);
 
@@ -104,6 +214,12 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   const current = lessons.find((l) => l.id === activeLessonId) ?? null;
   const index = current ? lessons.indexOf(current) : -1;
   const isDone = !!current && done.has(current.id);
+  const nextLesson = lessons.find((l) => !done.has(l.id)) ?? null;
+  const openLesson = (id: string) => {
+    setActiveLessonId(id);
+    setSaveError(null);
+    setView("lesson");
+  };
 
   const markComplete = async () => {
     if (!current || isDone || saving) return;
@@ -250,7 +366,19 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
             <div className="flex flex-1 flex-col justify-between space-y-6 overflow-y-auto p-6 md:p-8">
-              {current && (
+              {view === "home" ? (
+                <CourseHome
+                  detail={courseReq.data?.data ?? null}
+                  detailError={courseReq.error}
+                  completed={done.size}
+                  total={lessons.length}
+                  next={nextLesson}
+                  first={lessons[0]}
+                  upcoming={upcoming}
+                  onOpenLesson={openLesson}
+                  onOpenWork={onOpenWork}
+                />
+              ) : current && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between gap-4 border-b border-line pb-4">
                     <div>
@@ -289,7 +417,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center justify-between border-t border-line pt-6">
+              {view === "lesson" && <div className="flex items-center justify-between border-t border-line pt-6">
                 <button
                   onClick={() => go(-1)}
                   disabled={index <= 0}
@@ -306,12 +434,23 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                   <span>Next lesson</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
-              </div>
+              </div>}
             </div>
 
             <div className="w-full space-y-5 overflow-y-auto border-t border-line bg-canvas/60 p-4 md:w-80 md:border-l md:border-t-0">
+              <button
+                onClick={() => setView("home")}
+                aria-current={view === "home"}
+                className={`flex w-full items-center gap-2 rounded-xl p-2.5 text-left text-xs font-bold transition-all ${
+                  view === "home" ? "border border-brand/40 bg-brand/20 text-brand-fg" : "border border-line bg-surface text-ink hover:bg-raised"
+                }`}
+              >
+                <Home className="h-4 w-4 shrink-0" />
+                <span>Course home</span>
+              </button>
+
               <div>
-                <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-ink-muted">Course syllabus</h4>
+                <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-ink-muted">Lessons</h4>
                 <p className="text-[11px] text-ink-subtle">Select any lesson to open it</p>
               </div>
 
@@ -324,13 +463,10 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                       {module.lessons.map((lesson) => (
                         <button
                           key={lesson.id}
-                          onClick={() => {
-                            setActiveLessonId(lesson.id);
-                            setSaveError(null);
-                          }}
-                          aria-current={lesson.id === activeLessonId}
+                          onClick={() => openLesson(lesson.id)}
+                          aria-current={view === "lesson" && lesson.id === activeLessonId}
                           className={`flex w-full items-center justify-between rounded-xl p-2.5 text-left text-xs transition-all ${
-                            lesson.id === activeLessonId ? "border border-brand/40 bg-brand/20 text-brand-fg" : "text-ink-muted hover:bg-surface hover:text-ink"
+                            view === "lesson" && lesson.id === activeLessonId ? "border border-brand/40 bg-brand/20 text-brand-fg" : "text-ink-muted hover:bg-surface hover:text-ink"
                           }`}
                         >
                           <div className="flex min-w-0 items-center gap-2 pr-2">

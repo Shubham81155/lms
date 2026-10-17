@@ -310,8 +310,41 @@ const listEnrollments = route('Failed to retrieve enrollments', async (req: Requ
     }),
   ]);
 
-  return res.status(200).json({ data: enrollments, pagination: pageMeta(page, limit, total) });
+  if (rosterMode) return res.status(200).json({ data: enrollments, pagination: pageMeta(page, limit, total) });
+  const lessons = await lessonsToContinue(user.id, enrollments.map((e) => e.courseId));
+  return res.status(200).json({
+    data: enrollments.map((e) => ({ ...e, ...lessons.get(e.courseId)! })),
+    pagination: pageMeta(page, limit, total),
+  });
 });
+
+/**
+ * Per course: how many lessons the learner has finished, and the first one (in course order) they have
+ * not, which is where "Continue" takes them. nextLesson is null when every lesson is done or there are none.
+ */
+async function lessonsToContinue(userId: string, courseIds: string[]) {
+  const [modules, finished] = await Promise.all([
+    prisma.module.findMany({
+      where: { courseId: { in: courseIds } },
+      orderBy: { orderIndex: 'asc' },
+      select: { courseId: true, title: true, lessons: { orderBy: { orderIndex: 'asc' }, select: { id: true, title: true } } },
+    }),
+    prisma.lessonProgress.findMany({ where: { userId, courseId: { in: courseIds } }, select: { lessonId: true } }),
+  ]);
+  const done = new Set(finished.map((f) => f.lessonId));
+  const out = new Map(
+    courseIds.map((id) => [id, { lessons: { total: 0, completed: 0 }, nextLesson: null as { id: string; title: string; moduleTitle: string } | null }])
+  );
+  for (const m of modules) {
+    const entry = out.get(m.courseId)!;
+    for (const l of m.lessons) {
+      entry.lessons.total++;
+      if (done.has(l.id)) entry.lessons.completed++;
+      else if (!entry.nextLesson) entry.nextLesson = { id: l.id, title: l.title, moduleTitle: m.title };
+    }
+  }
+  return out;
+}
 
 router.get('/', authenticateJWT, listEnrollments);
 router.get('/my', authenticateJWT, listEnrollments);
