@@ -5,6 +5,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { CourseBuilder } from "@/components/CourseBuilder";
 import { CourseContentEditor } from "@/components/CourseContentEditor";
 import { CourseSettings } from "@/components/CourseSettings";
+import { CourseCopy } from "@/components/CourseCopy";
 import { CourseAnnouncements } from "@/components/CourseAnnouncements";
 import { CourseRoster } from "@/components/CourseRoster";
 import { useOpenIntent } from "@/hooks/useOpenIntent";
@@ -127,7 +128,7 @@ export default function TeacherDashboard() {
             <StaffCourseList
               title="My courses"
               canEdit={canEditCourses}
-              tools={["content", "settings", "announcements", "learners", "assessments", "grading", "gradebook", "forum", "live"]}
+              tools={["content", "settings", "copy", "announcements", "learners", "assessments", "grading", "gradebook", "forum", "live"]}
               onOpen={(tool, id) => show(tool, id)}
               emptyText={user?.role === "INSTRUCTOR" ? "You do not teach any course yet. Create one, or ask an administrator to assign you." : "You are not assigned to any course yet."}
               refreshKey={coursesVersion}
@@ -205,6 +206,7 @@ export default function TeacherDashboard() {
       {open?.tool === "content" && <CourseContentEditor initialCourseId={open.courseId} onClose={onClose(() => setCoursesVersion((v) => v + 1))} />}
       {open?.tool === "announcements" && open.courseId && <CourseAnnouncements courseId={open.courseId} canPost onClose={close} />}
       {open?.tool === "settings" && open.courseId && <CourseSettings courseId={open.courseId} onClose={close} onSaved={() => setCoursesVersion((v) => v + 1)} />}
+      {open?.tool === "copy" && open.courseId && <CourseCopy courseId={open.courseId} onClose={close} onCopied={() => setCoursesVersion((v) => v + 1)} />}
       {open?.tool === "assessments" && <AssessmentManager initialCourseId={open.courseId} onClose={onClose(pending.reload)} />}
       {open?.tool === "calendar" && <CalendarManager onClose={close} />}
       {open?.tool === "learners" && <CourseRoster initialCourseId={open.courseId} onClose={onClose(() => { analyticsReload(); setCoursesVersion((v) => v + 1); })} />}

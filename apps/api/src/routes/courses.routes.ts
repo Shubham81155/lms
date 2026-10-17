@@ -10,12 +10,13 @@ import { progressFromLessons } from '../lib/lesson-progress';
 import { autoComplete } from '../lib/completion';
 import { assertAttachable, linkOrUpload } from '../lib/stored-files';
 import { recomputeCourseProgress } from '../lib/course-progress';
+import { copyCourse } from '../lib/course-copy';
 import { canSeeAllCourses, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
 
 const router = Router();
 
 const COURSE_AUDIT_FIELDS = [
-  'code', 'title', 'status', 'departmentId', 'passingGradePercent', 'allowSelfEnroll',
+  'code', 'title', 'status', 'departmentId', 'termId', 'passingGradePercent', 'allowSelfEnroll',
 ] as const;
 
 const emptyToNull = (v: string | undefined | null) => (v === '' ? null : v);
@@ -31,8 +32,11 @@ const courseFields = {
   status: z.nativeEnum(CourseStatus).optional(),
 };
 
-export const createCourseSchema = z.object({ ...courseFields, departmentId: idSchema.optional() });
-export const updateCourseSchema = z.object(courseFields).partial().extend({ departmentId: idSchema.nullable().optional() });
+export const createCourseSchema = z.object({ ...courseFields, departmentId: idSchema.optional(), termId: idSchema.nullable().optional() });
+export const updateCourseSchema = z
+  .object(courseFields)
+  .partial()
+  .extend({ departmentId: idSchema.nullable().optional(), termId: idSchema.nullable().optional() });
 
 export const createModuleSchema = z.object({
   title: z.string().trim().min(1).max(255),
@@ -59,9 +63,28 @@ export const listQuery = z.object({
   ...paginationShape,
   status: z.nativeEnum(CourseStatus).optional(),
   search: z.string().trim().max(100).optional(),
+  termId: idSchema.optional(),
+});
+
+/** POST /courses/:id/copy */
+export const copyCourseSchema = z.object({
+  code: z.string().trim().min(2).max(50),
+  title: z.string().trim().min(3).max(255).optional(),
+  /** The new course's term; omitted, it stays in the source course's term. */
+  termId: idSchema.nullable().optional(),
+  /**
+   * Days to move every due date and quiz window by. Omitted: the gap between the two terms' start dates
+   * when both courses have a term, otherwise 0.
+   */
+  shiftDays: z.number().int().min(-1000).max(1000).optional(),
 });
 
 /** A department must exist inside the caller's tenant (row-level security scopes this lookup). */
+async function assertTermInTenant(termId: string | null | undefined) {
+  if (!termId) return;
+  if (!(await prisma.term.findFirst({ where: { id: termId }, select: { id: true } }))) throw new HttpError(400, 'Term not found');
+}
+
 async function assertDepartmentInTenant(departmentId: string | null | undefined) {
   if (!departmentId) return;
   const department = await prisma.department.findFirst({ where: { id: departmentId }, select: { id: true } });
@@ -90,11 +113,12 @@ router.get(
   authenticateJWT,
   route('Failed to retrieve courses', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const { page, limit, status, search } = parseQuery(req, listQuery);
+    const { page, limit, status, search, termId } = parseQuery(req, listQuery);
     const user = req.user!;
 
     const and: any[] = [];
     if (status) and.push({ status });
+    if (termId) and.push({ termId });
     if (search) {
       and.push({
         OR: [
@@ -124,6 +148,7 @@ router.get(
           _count: { select: { instructors: true, enrollments: true, modules: true } },
           instructors: { select: { isPrimary: true, user: { select: instructorSelect(req) } } },
           department: { select: { id: true, name: true } },
+          term: { select: { id: true, name: true } },
         },
       }),
     ]);
@@ -186,6 +211,7 @@ router.get(
       where: { id: access.course.id, tenantId: tenantIdOf(req) },
       include: {
         department: true,
+        term: { select: { id: true, name: true, startsOn: true, endsOn: true } },
         instructors: { select: { isPrimary: true, user: { select: instructorSelect(req) } } },
         modules: access.canAccessContent
           ? { orderBy: { orderIndex: 'asc' }, include: { lessons: { orderBy: { orderIndex: 'asc' } } } }
@@ -218,6 +244,7 @@ router.post(
     const tenantId = tenantIdOf(req);
     const input = parseBody(req, createCourseSchema);
     await assertDepartmentInTenant(input.departmentId);
+    await assertTermInTenant(input.termId);
 
     const course = await prisma.course.create({
       data: {
@@ -228,6 +255,7 @@ router.post(
         syllabus: input.syllabus,
         thumbnailUrl: emptyToNull(input.thumbnailUrl) ?? null,
         departmentId: input.departmentId,
+        termId: input.termId ?? null,
         passingGradePercent: input.passingGradePercent ?? 70.0,
         allowSelfEnroll: input.allowSelfEnroll ?? false,
         status: input.status ?? CourseStatus.DRAFT,
@@ -253,6 +281,34 @@ router.post(
   })
 );
 
+/**
+ * POST /api/v1/courses/:id/copy
+ * A new DRAFT course with this course's material (see lib/course-copy): the course's editors only. An
+ * instructor who copies becomes the new course's primary instructor.
+ */
+router.post(
+  '/:id/copy',
+  authenticateJWT,
+  requireRole('INSTRUCTOR', 'TENANT_ADMIN', 'SUPER_ADMIN'),
+  route('Failed to copy the course', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const access = await requireCourseEditor(req, String(req.params.id));
+    const input = parseBody(req, copyCourseSchema);
+    const result = await copyCourse(access.course.id, input, { id: req.user!.id, role: req.user!.role, tenantId });
+    await logAuditEvent({
+      tenantId,
+      userId: req.user!.id,
+      action: 'COURSE_COPIED',
+      resourceType: 'COURSE',
+      resourceId: result.course.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { sourceCourseId: access.course.id, shiftDays: result.shiftDays, copied: result.copied },
+    });
+    return res.status(201).json({ data: result });
+  })
+);
+
 /** PUT /api/v1/courses/:id - update (assigned instructor or admin) */
 router.put(
   '/:id',
@@ -263,6 +319,7 @@ router.put(
     const input = parseBody(req, updateCourseSchema);
     await requireCourseEditor(req, id);
     await assertDepartmentInTenant(input.departmentId);
+    await assertTermInTenant(input.termId);
 
     const before = await prisma.course.findFirstOrThrow({ where: { id, tenantId } });
     const updated = await prisma.course.update({
@@ -274,6 +331,7 @@ router.put(
         syllabus: input.syllabus,
         thumbnailUrl: input.thumbnailUrl !== undefined ? emptyToNull(input.thumbnailUrl) : undefined,
         departmentId: input.departmentId,
+        termId: input.termId,
         passingGradePercent: input.passingGradePercent,
         allowSelfEnroll: input.allowSelfEnroll,
         status: input.status,

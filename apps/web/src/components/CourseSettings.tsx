@@ -16,7 +16,10 @@ interface CourseDetail {
   passingGradePercent: number;
   allowSelfEnroll: boolean;
   departmentId: string | null;
+  termId: string | null;
 }
+
+interface Term { id: string; name: string }
 
 interface Department {
   id: string;
@@ -33,6 +36,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
   useEscapeKey(onClose);
   const course = useApiData<{ data: CourseDetail }>(`/api/v1/courses/${courseId}`);
   const departments = useApiData<{ data: Department[] }>("/api/v1/courses/departments");
+  const terms = useApiData<{ data: Term[] }>("/api/v1/terms");
   const { busy, error, run } = useAction();
   const [draft, setDraft] = useState<CourseDetail | null>(null);
   const [saved, setSaved] = useState(false);
@@ -58,6 +62,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
         passingGradePercent: draft.passingGradePercent,
         allowSelfEnroll: draft.allowSelfEnroll,
         departmentId: draft.departmentId,
+        termId: draft.termId,
       });
       setSaved(true);
       await course.reload();
@@ -114,7 +119,18 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                   placeholder="Learning outcomes, weekly schedule, assessment and grading policy, required reading, office hours…"
                 />
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <label className="space-y-1.5">
+                  <span className={label}>Term</span>
+                  <select className={field} value={draft.termId ?? ""} onChange={(e) => set({ termId: e.target.value || null })}>
+                    <option value="">None</option>
+                    {(terms.data?.data ?? []).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="space-y-1.5">
                   <span className={label}>Department</span>
                   <select className={field} value={draft.departmentId ?? ""} onChange={(e) => set({ departmentId: e.target.value || null })}>

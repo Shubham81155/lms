@@ -203,6 +203,118 @@ const Color: React.FC<{ label: string; value: string; onChange: (v: string) => v
   </div>
 );
 
+// ---------------------------------------------------------------------------
+// Academic terms
+// ---------------------------------------------------------------------------
+
+interface Term { id: string; name: string; startsOn: string; endsOn: string; courseCount: number }
+
+const day = (iso: string) => iso.slice(0, 10);
+
+/** Terms courses run in ("Fall 2026"): courses are filed under one, and copying a course moves its dates between them. */
+export const TermsPanel: React.FC = () => {
+  const { data, isLoading, error, reload } = useApiData<{ data: Term[] }>("/api/v1/terms");
+  const { busy, error: actionError, run } = useAction();
+  const [name, setName] = useState("");
+  const [starts, setStarts] = useState("");
+  const [ends, setEnds] = useState("");
+  const [editing, setEditing] = useState<{ id: string; name: string; starts: string; ends: string } | null>(null);
+
+  const act = (fn: () => Promise<unknown>) =>
+    run(async () => {
+      await fn();
+      await reload();
+    });
+  const valid = (n: string, s: string, e: string) => n.trim().length >= 2 && !!s && !!e && e > s;
+  const terms = data?.data ?? [];
+
+  return (
+    <section className="space-y-4" aria-labelledby="terms-h">
+      <div>
+        <h3 id="terms-h" className="font-bold text-base text-ink">Terms</h3>
+        <p className="text-xs text-ink-muted">Semesters or cohorts courses run in. Copying a course into a new term moves its due dates by the gap between the terms.</p>
+      </div>
+      {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
+
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          act(async () => {
+            await api.post("/api/v1/terms", { name: name.trim(), startsOn: starts, endsOn: ends });
+            setName("");
+            setStarts("");
+            setEnds("");
+          });
+        }}
+      >
+        <input className={`${input} flex-1 min-w-40`} aria-label="New term name" placeholder="e.g. Fall 2026" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+        <label className="text-[11px] text-ink-muted space-y-1">
+          <span className="block">Starts</span>
+          <input className={`${input} w-40`} type="date" aria-label="Term starts on" value={starts} onChange={(e) => setStarts(e.target.value)} />
+        </label>
+        <label className="text-[11px] text-ink-muted space-y-1">
+          <span className="block">Ends</span>
+          <input className={`${input} w-40`} type="date" aria-label="Term ends on" value={ends} onChange={(e) => setEnds(e.target.value)} />
+        </label>
+        <button className={primary} disabled={busy || !valid(name, starts, ends)}>
+          <Plus className="h-3.5 w-3.5 inline mr-1" />
+          Add term
+        </button>
+      </form>
+      {starts && ends && ends <= starts && <p className="text-[11px] text-danger">The term must end after it starts.</p>}
+
+      {isLoading && <p className="text-xs text-ink-subtle">Loading…</p>}
+      {!isLoading && terms.length === 0 && <p className="text-xs text-ink-subtle">No terms yet.</p>}
+      <ul className="space-y-2">
+        {terms.map((t) =>
+          editing?.id === t.id ? (
+            <li key={t.id} className="bg-canvas border border-line rounded-xl p-3">
+              <form
+                className="flex flex-wrap items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  act(async () => {
+                    await api.patch(`/api/v1/terms/${t.id}`, { name: editing.name.trim(), startsOn: editing.starts, endsOn: editing.ends });
+                    setEditing(null);
+                  });
+                }}
+              >
+                <input className={`${input} flex-1 min-w-40`} aria-label={`New name for ${t.name}`} maxLength={80} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+                <input className={`${input} w-40`} type="date" aria-label={`${t.name} starts on`} value={editing.starts} onChange={(e) => setEditing({ ...editing, starts: e.target.value })} />
+                <input className={`${input} w-40`} type="date" aria-label={`${t.name} ends on`} value={editing.ends} onChange={(e) => setEditing({ ...editing, ends: e.target.value })} />
+                <button className={primary} disabled={busy || !valid(editing.name, editing.starts, editing.ends)}>Save</button>
+                <button type="button" className={ghost} onClick={() => setEditing(null)}>Cancel</button>
+              </form>
+            </li>
+          ) : (
+            <li key={t.id} className="bg-canvas border border-line rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div>
+                <strong className="text-ink">{t.name}</strong>
+                <span className="text-ink-subtle ml-2">
+                  {day(t.startsOn)} to {day(t.endsOn)} · {t.courseCount} course{t.courseCount === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button className={ghost} disabled={busy} onClick={() => setEditing({ id: t.id, name: t.name, starts: day(t.startsOn), ends: day(t.endsOn) })}>Edit</button>
+                <button
+                  className={ghost}
+                  disabled={busy || t.courseCount > 0}
+                  title={t.courseCount > 0 ? "Move its courses to another term first" : undefined}
+                  aria-label={`Delete term ${t.name}`}
+                  onClick={() => act(() => api.delete(`/api/v1/terms/${t.id}`))}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            </li>
+          )
+        )}
+      </ul>
+    </section>
+  );
+};
+
 export const BrandingPanel: React.FC = () => {
   const { data, isLoading, error, reload } = useApiData<{ data: TenantSettings }>("/api/v1/admin/tenant");
   const { busy, error: actionError, run, clearError } = useAction();

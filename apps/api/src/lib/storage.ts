@@ -147,6 +147,17 @@ export const setStorageDriver = (d: StorageDriver | null) => {
 };
 export const localDriver = (root: string): StorageDriver => new LocalDriver(root);
 
+/** Duplicates stored bytes under a new key (via a temporary file, so it works for every driver). */
+export async function copyStored(fromKey: string, toKey: string, contentType: string): Promise<void> {
+  const tempPath = path.join(os.tmpdir(), `lms-copy-${randomUUID()}`);
+  try {
+    await pipeline(await storage().open(fromKey), createWriteStream(tempPath));
+    await storage().putFile(toKey, tempPath, contentType);
+  } finally {
+    await rm(tempPath, { force: true });
+  }
+}
+
 export const maxUploadBytes = () => config.UPLOAD_MAX_MB * 1024 * 1024;
 
 /**

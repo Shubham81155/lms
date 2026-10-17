@@ -3,7 +3,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { QuestionType } from '@enterprise-lms/database';
-import { prisma } from '../lib/prisma';
+import { prisma, runInTenantTransaction } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
@@ -900,7 +900,7 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
     plagiarismAttempts: 0,
     plagiarismNextAttemptAt: check ? now : null,
   };
-  const { submission, version } = await prisma.$transaction(async (tx) => {
+  const { submission, version } = await runInTenantTransaction(tenantId, async (tx) => {
     const submission = await tx.assignmentSubmission.upsert({
       where: { assignmentId_userId: { assignmentId: assignment.id, userId } },
       create: { assignmentId: assignment.id, userId, ...data },

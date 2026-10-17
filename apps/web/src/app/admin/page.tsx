@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useApiData } from "@/hooks/useApiData";
 import { SamlPanel, ScimPanel, SsoPanel } from "@/components/admin/IdentityPanels";
 import { FeaturesPanel, UsagePanel, WebhooksPanel, type Usage } from "@/components/admin/PlatformPanels";
-import { BrandingPanel, CampusPanel, CompliancePanel } from "@/components/admin/OrgPanels";
+import { BrandingPanel, CampusPanel, CompliancePanel, TermsPanel } from "@/components/admin/OrgPanels";
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
 import { AiSettingsPanel } from "@/components/admin/AiSettingsPanel";
 import { OperatorPanel } from "@/components/admin/OperatorPanel";
@@ -15,6 +15,7 @@ import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 import { CourseBuilder } from "@/components/CourseBuilder";
 import { CourseContentEditor } from "@/components/CourseContentEditor";
 import { CourseSettings } from "@/components/CourseSettings";
+import { CourseCopy } from "@/components/CourseCopy";
 import { CourseAnnouncements } from "@/components/CourseAnnouncements";
 import { StaffCourseList, type CourseTool } from "@/components/StaffCourseList";
 import { AssignmentGrading } from "@/components/AssignmentGrading";
@@ -149,6 +150,9 @@ export default function AdminDashboard() {
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <BrandingPanel />
             </div>
+            <div className="md:col-span-3 bg-surface border border-line rounded-3xl p-6 shadow-xl">
+              <TermsPanel />
+            </div>
           </div>
         )}
 
@@ -156,7 +160,7 @@ export default function AdminDashboard() {
           <StaffCourseList
             title="All courses"
             canEdit
-            tools={["content", "settings", "announcements", "learners", "assessments", "grading", "gradebook", "forum", "live", "calendar"]}
+            tools={["content", "settings", "copy", "announcements", "learners", "assessments", "grading", "gradebook", "forum", "live", "calendar"]}
             onOpen={(tool, id) => show(tool, id)}
             emptyText="No courses yet. Create one, or ask an instructor to."
             refreshKey={coursesVersion}
@@ -228,6 +232,7 @@ export default function AdminDashboard() {
         {open?.tool === "content" && <CourseContentEditor initialCourseId={open.courseId} onClose={() => { close(); setCoursesVersion((v) => v + 1); }} />}
         {open?.tool === "announcements" && open.courseId && <CourseAnnouncements courseId={open.courseId} canPost onClose={close} />}
         {open?.tool === "settings" && open.courseId && <CourseSettings courseId={open.courseId} onClose={close} onSaved={() => setCoursesVersion((v) => v + 1)} />}
+        {open?.tool === "copy" && open.courseId && <CourseCopy courseId={open.courseId} onClose={close} onCopied={() => setCoursesVersion((v) => v + 1)} />}
         {open?.tool === "learners" && <CourseRoster initialCourseId={open.courseId} onClose={() => { close(); setCoursesVersion((v) => v + 1); }} />}
         {open?.tool === "gradebook" && <CourseGradebook initialCourseId={open.courseId} onClose={close} />}
         {open?.tool === "assessments" && <AssessmentManager initialCourseId={open.courseId} onClose={close} />}

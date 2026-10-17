@@ -80,6 +80,7 @@ model Tenant {
   announcements     Announcement[]
   submissionVersions AssignmentSubmissionVersion[]
   storedFiles        StoredFile[]
+  terms              Term[]
   liveAttendance    LiveAttendance[]
   lessonProgress    LessonProgress[]
   gradeAppeals      GradeAppeal[]
@@ -108,6 +109,22 @@ model Campus {
 
   @@unique([tenantId, code])
   @@index([tenantId])
+}
+
+/// An academic term (semester, quarter, cohort) courses can be grouped by, e.g. "Fall 2026".
+model Term {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  startsOn  DateTime
+  endsOn    DateTime
+  courses   Course[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId, startsOn])
 }
 
 model Department {
@@ -284,6 +301,9 @@ model Course {
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   departmentId   String?
   department     Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  /// The academic term the course runs in, if the organisation uses terms.
+  termId         String?
+  term           Term?           @relation(fields: [termId], references: [id], onDelete: Restrict)
 
   code         String // e.g. "CS-101"
   title        String
@@ -308,6 +328,7 @@ model Course {
 
   @@unique([tenantId, code])
   @@index([tenantId, status])
+  @@index([termId])
 }
 
 model CourseInstructor {

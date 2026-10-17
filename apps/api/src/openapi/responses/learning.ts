@@ -215,6 +215,8 @@ const CertificateVerification = z.object({
   institution: z.string(),
 });
 
+export const TermView = z.object({ id: z.string(), name: z.string(), startsOn: z.string(), endsOn: z.string(), courseCount: z.number() });
+
 export const CalendarEvent = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -317,6 +319,25 @@ export const RESPONSES: ResponseTable = {
   'PATCH /api/v1/enrollments/:id/progress': { response: data(ProgressResult), errors: [400, 403, 404, 409] },
   'GET /api/v1/enrollments/stats': { response: data(EnrollmentStats), errors: [400, 403] },
   'GET /api/v1/courses/:courseId/announcements': { response: body(z.object({ data: z.array(AnnouncementView), pagination: Pagination })), errors: [400, 403, 404] },
+  'GET /api/v1/terms': { response: data(z.array(TermView)) },
+  'POST /api/v1/terms': { response: data(TermView, 201), errors: [400, 409] },
+  'PATCH /api/v1/terms/:id': { response: data(TermView), errors: [400, 404, 409] },
+  'DELETE /api/v1/terms/:id': { response: { status: 204, description: 'Deleted' }, errors: [400, 404, 409] },
+  'POST /api/v1/courses/:id/copy': {
+    response: data(
+      z.object({
+        course: z.object({ id: z.string(), code: z.string(), title: z.string(), status: z.literal('DRAFT'), termId: z.string().nullable() }),
+        /** How many days due dates and quiz windows moved. */
+        shiftDays: z.number(),
+        copied: z.object({
+          modules: z.number(), lessons: z.number(), quizzes: z.number(), questions: z.number(), assignments: z.number(),
+          gradeCategories: z.number(), questionBankItems: z.number(), files: z.number(),
+        }),
+      }),
+      201
+    ),
+    errors: [400, 403, 404, 409],
+  },
   'POST /api/v1/files': {
     response: data(
       z.object({ id: z.string(), url: z.string(), filename: z.string(), contentType: z.string(), sizeBytes: z.number(), sha256: z.string(), createdAt: z.string() }),

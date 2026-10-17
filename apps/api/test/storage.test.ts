@@ -30,7 +30,7 @@ describe('local driver', () => {
       for await (const c of await d.open(key)) chunks.push(c as Buffer);
       expect(Buffer.concat(chunks).toString()).toBe('hello');
       expect(await readFile(path.join(root, ...key.split('/')), 'utf8')).toBe('hello');
-      expect(await d.signedDownloadUrl()).toBeNull();
+      expect(await d.signedDownloadUrl(key, { filename: 'a.txt', contentType: 'text/plain', inline: false })).toBeNull();
       await d.delete(key);
       await expect(d.open(key)).rejects.toThrow();
       await expect(d.open('../../etc/passwd')).rejects.toThrow(/Invalid storage key/);

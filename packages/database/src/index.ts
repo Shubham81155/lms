@@ -39,7 +39,9 @@ export interface TenantPrismaClient {
   /** Multi-statement atomic work for one tenant. */
   runInTenantTransaction: <T>(
     tenantId: string,
-    fn: (tx: Prisma.TransactionClient) => Promise<T>
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+    /** Prisma's interactive-transaction limits; the default timeout is 5 s. */
+    options?: { timeout?: number; maxWait?: number }
   ) => Promise<T>;
 }
 
@@ -69,11 +71,11 @@ export function createTenantPrismaClient(options?: Prisma.PrismaClientOptions): 
   return {
     prisma: extend(base),
     base,
-    runInTenantTransaction: (tenantId, fn) =>
+    runInTenantTransaction: (tenantId, fn, options) =>
       base.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
         return fn(tx);
-      }),
+      }, options),
   };
 }
 

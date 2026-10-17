@@ -9,6 +9,7 @@ import * as r_certificates from '../routes/certificates.routes';
 import * as r_courses from '../routes/courses.routes';
 import * as r_announcements from '../routes/announcements.routes';
 import * as r_files from '../routes/files.routes';
+import * as r_terms from '../routes/terms.routes';
 import * as r_deadlines from '../routes/deadlines.routes';
 import * as r_enrollments from '../routes/enrollments.routes';
 import * as r_forum from '../routes/forum.routes';
@@ -144,6 +145,11 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "GET /api/v1/enrollments/my": { summary: "GET /api/v1/enrollments/my" },
   "GET /api/v1/enrollments/stats": { summary: "Aggregates for the caller; admins and auditors may pass ?userId=.", query: r_enrollments.statsQuery as never },
   "GET /api/v1/courses/:courseId/announcements": { summary: "A course's announcements, pinned first then newest, for anyone who can open the course.", query: r_announcements.announcementListQuery as never },
+  "GET /api/v1/terms": { summary: "The organisation's academic terms, newest first, with how many courses each has." },
+  "POST /api/v1/terms": { summary: "Create a term (administrators). Names are unique within the organisation. Audited.", body: r_terms.termSchema },
+  "PATCH /api/v1/terms/:id": { summary: "Rename a term or move its dates (administrators). Audited.", body: r_terms.termUpdateSchema },
+  "DELETE /api/v1/terms/:id": { summary: "Delete a term no course belongs to (administrators). Audited." },
+  "POST /api/v1/courses/:id/copy": { summary: "Copy this course's material into a new DRAFT course (settings, modules and lessons, quizzes and questions, assignments and rubrics, grade categories, the course's question bank; uploaded lesson files are duplicated). No people or their work. Dates move by shiftDays, by default the gap between the two terms' starts. Course editors only. Audited.", body: r_courses.copyCourseSchema },
   "POST /api/v1/files": { summary: "Upload a file: the request body is the file itself (not multipart) with its Content-Type, at most UPLOAD_MAX_MB. Submission files: enrolled learners; lesson media: course editors. Link it as data.url. Audited.", query: r_files.uploadQuery },
   "GET /api/v1/files/:id": { summary: "Download an uploaded file: streamed (local storage) or a 302 to a five-minute link (S3). Submission files: the uploader and course staff; lesson media: anyone who can read the course." },
   "GET /api/v1/announcements/recent": { summary: "The latest announcements across the courses the caller is actively enrolled in.", query: r_announcements.recentQuery as never },
