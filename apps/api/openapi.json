@@ -9676,7 +9676,8 @@
                             "nullable": true
                           },
                           "createdById": {
-                            "type": "string"
+                            "type": "string",
+                            "nullable": true
                           },
                           "title": {
                             "type": "string"
@@ -9706,6 +9707,24 @@
                           },
                           "createdAt": {
                             "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "EVENT",
+                              "QUIZ",
+                              "ASSIGNMENT"
+                            ]
+                          },
+                          "itemId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "extended": {
+                            "type": "boolean"
+                          },
+                          "completed": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -9719,7 +9738,11 @@
                           "startsAt",
                           "endsAt",
                           "timezone",
-                          "createdAt"
+                          "createdAt",
+                          "source",
+                          "itemId",
+                          "extended",
+                          "completed"
                         ]
                       }
                     },
@@ -9738,7 +9761,8 @@
                           "nullable": true
                         },
                         "createdById": {
-                          "type": "string"
+                          "type": "string",
+                          "nullable": true
                         },
                         "title": {
                           "type": "string"
@@ -9768,6 +9792,24 @@
                         },
                         "createdAt": {
                           "type": "string"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "EVENT",
+                            "QUIZ",
+                            "ASSIGNMENT"
+                          ]
+                        },
+                        "itemId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "extended": {
+                          "type": "boolean"
+                        },
+                        "completed": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -9781,7 +9823,11 @@
                         "startsAt",
                         "endsAt",
                         "timezone",
-                        "createdAt"
+                        "createdAt",
+                        "source",
+                        "itemId",
+                        "extended",
+                        "completed"
                       ]
                     }
                   },

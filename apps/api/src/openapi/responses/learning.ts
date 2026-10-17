@@ -230,6 +230,23 @@ export const CalendarEvent = z.object({
   createdAt: z.string(),
 });
 
+/**
+ * A calendar entry as listed: a stored event (source EVENT), or a quiz or assignment due date worked out
+ * on read (source QUIZ or ASSIGNMENT; read-only, id "quiz-<id>" or "assignment-<id>", startsAt = endsAt =
+ * the caller's own due date, extension included).
+ */
+export const CalendarEntry = CalendarEvent.extend({
+  /** Null for due-date entries. */
+  createdById: z.string().nullable(),
+  source: z.enum(['EVENT', 'QUIZ', 'ASSIGNMENT']),
+  /** The quiz or assignment id; null for stored events. */
+  itemId: z.string().nullable(),
+  /** The caller has an extension that moves this due date. */
+  extended: z.boolean(),
+  /** The caller has submitted the assignment or used every quiz attempt. */
+  completed: z.boolean(),
+});
+
 const ForumFlagRecord = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -385,9 +402,9 @@ export const RESPONSES: ResponseTable = {
   'GET /api/v1/calendar/events': {
     response: body(
       z.object({
-        data: z.array(CalendarEvent),
-        /** The next non-lecture event that has not started yet. */
-        nextDeadline: CalendarEvent.nullable(),
+        data: z.array(CalendarEntry),
+        /** The next non-lecture entry that has not started yet and that the caller has not completed. */
+        nextDeadline: CalendarEntry.nullable(),
       })
     ),
     errors: [400],

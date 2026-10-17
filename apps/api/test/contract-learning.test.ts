@@ -348,7 +348,8 @@ describe('contract: calendar', () => {
     const list = await (await as('s1')).get('/api/v1/calendar/events');
     expect(list.status).toBe(200);
     check('GET /api/v1/calendar/events', list);
-    expect(list.body.data).toHaveLength(2);
+    expect(list.body.data.filter((e: any) => e.source === 'EVENT')).toHaveLength(2);
+    expect(list.body.data.find((e: any) => e.source === 'ASSIGNMENT')).toMatchObject({ id: 'assignment-a1', itemId: 'a1', category: 'DEADLINE', completed: false });
     expect(list.body.nextDeadline.id).toBe(courseEvent);
     const none = await (await as('s5')).get('/api/v1/calendar/events').query({ from: '2000-01-01', to: '2000-01-02' });
     check('GET /api/v1/calendar/events', none);

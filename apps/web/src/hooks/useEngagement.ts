@@ -80,6 +80,13 @@ export interface ServerEvent {
   endsAt: string;
   timezone: string;
   courseId: string | null;
+  /** EVENT is a stored event; QUIZ and ASSIGNMENT are due dates the API works out (read-only). */
+  source: "EVENT" | "QUIZ" | "ASSIGNMENT";
+  itemId: string | null;
+  /** The viewer has an extension that moves this due date. */
+  extended: boolean;
+  /** The viewer has submitted the work or used every attempt. */
+  completed: boolean;
 }
 
 export function useCalendarEvents() {

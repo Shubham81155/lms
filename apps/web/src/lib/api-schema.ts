@@ -7465,7 +7465,7 @@ export interface operations {
                             id: string;
                             tenantId: string;
                             courseId: string | null;
-                            createdById: string;
+                            createdById: string | null;
                             title: string;
                             description: string | null;
                             /** @enum {string} */
@@ -7474,12 +7474,17 @@ export interface operations {
                             endsAt: string;
                             timezone: string;
                             createdAt: string;
+                            /** @enum {string} */
+                            source: "EVENT" | "QUIZ" | "ASSIGNMENT";
+                            itemId: string | null;
+                            extended: boolean;
+                            completed: boolean;
                         }[];
                         nextDeadline: {
                             id: string;
                             tenantId: string;
                             courseId: string | null;
-                            createdById: string;
+                            createdById: string | null;
                             title: string;
                             description: string | null;
                             /** @enum {string} */
@@ -7488,6 +7493,11 @@ export interface operations {
                             endsAt: string;
                             timezone: string;
                             createdAt: string;
+                            /** @enum {string} */
+                            source: "EVENT" | "QUIZ" | "ASSIGNMENT";
+                            itemId: string | null;
+                            extended: boolean;
+                            completed: boolean;
                         } | null;
                     };
                 };

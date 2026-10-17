@@ -28,6 +28,10 @@ export interface CalendarEvent {
   type: "EXAM" | "ASSIGNMENT" | "LECTURE" | "OFFICE_HOURS";
   countdown: string;
   startsAt: string;
+  /** Badge text: the event type, or "Quiz due" / "Due" for due dates. */
+  label: string;
+  extended: boolean;
+  completed: boolean;
 }
 
 const TYPE_BY_CATEGORY: Record<ServerEvent["category"], CalendarEvent["type"]> = {
@@ -38,9 +42,12 @@ const TYPE_BY_CATEGORY: Record<ServerEvent["category"], CalendarEvent["type"]> =
   OFFICE_HOURS: "OFFICE_HOURS",
 };
 
-/** Formats in the event's own time zone, so an exam shows the time the organiser meant. */
+/**
+ * Formats a stored event in its own time zone, so an exam shows the time the organiser meant. Due dates
+ * have no organiser zone and show in the viewer's.
+ */
 function toView(e: ServerEvent): CalendarEvent {
-  const tz = e.timezone || "UTC";
+  const tz = e.source === "EVENT" ? e.timezone || "UTC" : Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const fmt = (opts: Intl.DateTimeFormatOptions, d: string) => {
     try {
       return new Intl.DateTimeFormat(undefined, { timeZone: tz, ...opts }).format(new Date(d));
@@ -51,13 +58,17 @@ function toView(e: ServerEvent): CalendarEvent {
   const day = fmt({ weekday: "short", month: "short", day: "numeric" }, e.startsAt);
   const start = fmt({ hour: "numeric", minute: "2-digit" }, e.startsAt);
   const end = fmt({ hour: "numeric", minute: "2-digit", timeZoneName: "short" }, e.endsAt);
+  const due = e.source !== "EVENT";
   return {
     id: e.id,
     title: e.title,
     description: e.description,
     dateStr: e.startsAt.slice(0, 10),
-    time: `${day}, ${start} - ${end}`,
+    time: due ? `Due ${day}, ${end}` : `${day}, ${start} - ${end}`,
     type: TYPE_BY_CATEGORY[e.category] ?? "ASSIGNMENT",
+    label: e.source === "QUIZ" ? "Quiz due" : e.source === "ASSIGNMENT" ? "Due" : e.category.replace("_", " "),
+    extended: e.extended,
+    completed: e.completed,
     countdown: countdown(e.startsAt),
     startsAt: e.startsAt,
   };
@@ -234,8 +245,10 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({
                           ? "bg-orchid/15 text-orchid border border-orchid/30"
                           : "bg-success/10 text-success border border-success/30"
                       }`}>
-                        {ev.type.replace("_", " ")}
+                        {ev.label}
                       </span>
+                      {ev.extended && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/30">Extended</span>}
+                      {ev.completed && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/30 inline-flex items-center gap-1"><CheckCircle2 className="h-2.5 w-2.5" />Done</span>}
                     </div>
 
                     {ev.description && (

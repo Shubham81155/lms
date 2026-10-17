@@ -5,6 +5,7 @@ import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
 import { idSchema, parseBody, parseQuery } from '../lib/validate';
 import { canSeeAllCourses, isAdminRole, requireCourseEditor } from '../lib/access';
+import { personalDue } from '../lib/deadlines';
 
 // Mounted at /api/v1/calendar. Events are stored as UTC instants; `timezone` is the organiser's
 // display zone so clients can render them in local time.
@@ -72,16 +73,90 @@ async function queryEvents(req: Request) {
       : visible === 'ALL'
         ? {}
         : { OR: [{ courseId: null }, { courseId: { in: visible } }] };
-  return prisma.calendarEvent.findMany({
-    where: {
-      tenantId: tenantIdOf(req),
-      ...scope,
-      ...(from ? { endsAt: { gte: from } } : {}),
-      ...(to ? { startsAt: { lte: to } } : {}),
-    },
-    orderBy: { startsAt: 'asc' },
-    take: 500,
-  });
+  const tenantId = tenantIdOf(req);
+  const [events, due] = await Promise.all([
+    prisma.calendarEvent.findMany({
+      where: {
+        tenantId,
+        ...scope,
+        ...(from ? { endsAt: { gte: from } } : {}),
+        ...(to ? { startsAt: { lte: to } } : {}),
+      },
+      orderBy: { startsAt: 'asc' },
+      take: 500,
+    }),
+    dueDates(req.user!.id, tenantId, courseId ? [courseId] : visible, from, to),
+  ]);
+  return [...events.map((e) => ({ ...e, source: 'EVENT' as const, itemId: null, extended: false, completed: false })), ...due]
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+    .slice(0, 500);
+}
+
+/**
+ * Quiz and assignment due dates as calendar entries, worked out on every read so they always match the
+ * item and the caller's own extension (no stored copy to keep in step). They are read-only: change the
+ * quiz or assignment, not the entry. `completed` is the caller's own state (submitted, or attempts used).
+ */
+async function dueDates(userId: string, tenantId: string, courseIds: string[] | 'ALL', from?: Date, to?: Date) {
+  if (courseIds !== 'ALL' && courseIds.length === 0) return [];
+  const course = courseIds === 'ALL' ? {} : { courseId: { in: courseIds } };
+  const inRange = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
+  const dated = (field: 'dueAt' | 'dueDate') => [
+    { [field]: from || to ? inRange : { not: null } },
+    { extensions: { some: { userId, dueAt: inRange } } },
+  ];
+  const [quizzes, assignments] = await Promise.all([
+    prisma.quiz.findMany({
+      where: { tenantId, ...course, questions: { some: {} }, OR: dated('dueAt') },
+      select: {
+        id: true, title: true, courseId: true, dueAt: true, maxAttempts: true, createdAt: true,
+        course: { select: { code: true } },
+        extensions: { where: { userId }, select: { dueAt: true } },
+        submissions: { where: { userId, submittedAt: { not: null } }, select: { id: true } },
+      },
+      take: 500,
+    }),
+    prisma.assignment.findMany({
+      where: { tenantId, ...course, OR: dated('dueDate') },
+      select: {
+        id: true, title: true, courseId: true, dueDate: true, createdAt: true,
+        course: { select: { code: true } },
+        extensions: { where: { userId }, select: { dueAt: true } },
+        submissions: { where: { userId }, select: { id: true } },
+      },
+      take: 500,
+    }),
+  ]);
+  const entry = (
+    source: 'QUIZ' | 'ASSIGNMENT',
+    item: { id: string; title: string; courseId: string; createdAt: Date; course: { code: string }; extensions: { dueAt: Date }[] },
+    courseDue: Date | null,
+    completed: boolean
+  ) => {
+    const at = personalDue(courseDue, item.extensions[0]?.dueAt ?? null);
+    if (!at || (from && at < from) || (to && at > to)) return null;
+    return {
+      id: `${source.toLowerCase()}-${item.id}`,
+      tenantId,
+      courseId: item.courseId,
+      createdById: null,
+      title: `${item.course.code}: ${item.title} due`,
+      description: null,
+      category: source === 'QUIZ' ? 'EXAM' : 'DEADLINE',
+      startsAt: at,
+      endsAt: at,
+      timezone: 'UTC',
+      createdAt: item.createdAt,
+      source,
+      itemId: item.id,
+      extended: item.extensions.length > 0 && at.getTime() !== courseDue?.getTime(),
+      completed,
+    };
+  };
+  return [
+    ...quizzes.map((q) => entry('QUIZ', q, q.dueAt, q.submissions.length >= q.maxAttempts)),
+    ...assignments.map((a) => entry('ASSIGNMENT', a, a.dueDate, a.submissions.length > 0)),
+  ].filter((e): e is NonNullable<typeof e> => e !== null);
 }
 
 /** GET /api/v1/calendar/events?from&to&courseId */
@@ -90,7 +165,7 @@ router.get(
   route('Failed to load calendar', async (req, res) => {
     const events = await queryEvents(req);
     const now = Date.now();
-    const next = events.find((e) => e.category !== 'LECTURE' && e.startsAt.getTime() >= now) ?? null;
+    const next = events.find((e) => e.category !== 'LECTURE' && !e.completed && e.startsAt.getTime() >= now) ?? null;
     return res.json({ data: events, nextDeadline: next });
   })
 );

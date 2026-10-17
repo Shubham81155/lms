@@ -23,6 +23,7 @@ interface EventRow {
   endsAt: string;
   timezone: string;
   courseId: string | null;
+  source: "EVENT" | "QUIZ" | "ASSIGNMENT";
 }
 
 interface Draft {
@@ -132,7 +133,8 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
   // Show what is coming up, plus the last week for reference.
   const from = useMemo(() => new Date(Date.now() - 7 * 86_400_000).toISOString(), []);
   const events = useApiData<{ data: EventRow[] }>("/api/v1/calendar/events", { from, courseId: filter && filter !== ORG ? filter : undefined });
-  const rows = (events.data?.data ?? []).filter((e) => (filter === ORG ? e.courseId === null : true));
+  // Quiz and assignment due dates are listed too, but they are edited on the quiz or assignment, not here.
+  const rows = (events.data?.data ?? []).filter((e) => e.source === "EVENT" && (filter === ORG ? e.courseId === null : true));
   const courseOf = (id: string | null) => courses.find((c) => c.id === id);
   const canChange = (e: EventRow) => !isLiveClass(e) && (e.courseId ? !!courseOf(e.courseId) : isAdmin);
 
