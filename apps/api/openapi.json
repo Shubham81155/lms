@@ -7797,6 +7797,9 @@
                         "gradedAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "version": {
+                          "type": "number"
                         }
                       },
                       "required": [
@@ -7814,7 +7817,8 @@
                         "plagiarismNextAttemptAt",
                         "submittedAt",
                         "isLate",
-                        "gradedAt"
+                        "gradedAt",
+                        "version"
                       ]
                     }
                   },
@@ -8268,6 +8272,130 @@
         }
       }
     },
+    "/api/v1/assignments/{id}/submissions/{subId}/versions": {
+      "get": {
+        "operationId": "getAssignmentsIdSubmissionsSubIdVersions",
+        "summary": "Submission history: every version the learner handed in, newest first.",
+        "tags": [
+          "assignments"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "subId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest first. Course staff and auditors, or the learner who handed it in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "version": {
+                            "type": "number"
+                          },
+                          "fileUrl": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "submissionText": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "submittedAt": {
+                            "type": "string"
+                          },
+                          "isLate": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "version",
+                          "fileUrl",
+                          "submissionText",
+                          "submittedAt",
+                          "isLate"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assignments/{id}/submit": {
       "post": {
         "operationId": "postAssignmentsIdSubmit",
@@ -8397,6 +8525,9 @@
                         "gradedAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "version": {
+                          "type": "number"
                         }
                       },
                       "required": [
@@ -8414,7 +8545,8 @@
                         "plagiarismNextAttemptAt",
                         "submittedAt",
                         "isLate",
-                        "gradedAt"
+                        "gradedAt",
+                        "version"
                       ]
                     }
                   },

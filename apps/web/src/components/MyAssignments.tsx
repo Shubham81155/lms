@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useMyEnrollments } from "@/hooks/useEnrollments";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
+import { SubmissionHistory } from "@/components/SubmissionHistory";
 import { appealDaysLeft, type Criterion } from "@/lib/forms";
 
 interface Assignment {
@@ -118,6 +119,7 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
         </form>
       )}
       {!graded && sub && !editing && <button className={ghost} onClick={() => setEditing(true)}>Edit my submission</button>}
+      {sub && <SubmissionHistory key={sub.submittedAt} assignmentId={a.id} submissionId={sub.id} />}
     </li>
   );
 };

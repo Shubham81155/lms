@@ -784,6 +784,23 @@ export interface paths {
         patch: operations["patchAssignmentsIdSubmissionsSubIdGrade"];
         trace?: never;
     };
+    "/api/v1/assignments/{id}/submissions/{subId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Submission history: every version the learner handed in, newest first. */
+        get: operations["getAssignmentsIdSubmissionsSubIdVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assignments/{id}/submit": {
         parameters: {
             query?: never;
@@ -6416,6 +6433,7 @@ export interface operations {
                             submittedAt: string;
                             isLate: boolean;
                             gradedAt: string | null;
+                            version: number;
                         };
                     };
                 };
@@ -6646,6 +6664,73 @@ export interface operations {
             };
         };
     };
+    getAssignmentsIdSubmissionsSubIdVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                subId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first. Course staff and auditors, or the learner who handed it in. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            version: number;
+                            fileUrl: string | null;
+                            submissionText: string | null;
+                            submittedAt: string;
+                            isLate: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     postAssignmentsIdSubmit: {
         parameters: {
             query?: never;
@@ -6689,6 +6774,7 @@ export interface operations {
                             submittedAt: string;
                             isLate: boolean;
                             gradedAt: string | null;
+                            version: number;
                         };
                     };
                 };

@@ -32,7 +32,11 @@ export async function buildUserExport(userId: string, tenantId: string) {
       }),
       prisma.assignmentSubmission.findMany({
         where: { userId, assignment: { tenantId } },
-        select: { id: true, assignmentId: true, fileUrl: true, submissionText: true, grade: true, feedback: true, plagiarismScore: true, submittedAt: true, gradedAt: true, appeal: { select: { reason: true, status: true, response: true, createdAt: true } } },
+        select: {
+          id: true, assignmentId: true, fileUrl: true, submissionText: true, grade: true, feedback: true, plagiarismScore: true, submittedAt: true, gradedAt: true,
+          appeal: { select: { reason: true, status: true, response: true, createdAt: true } },
+          versions: { orderBy: { version: 'asc' }, select: { version: true, fileUrl: true, submissionText: true, submittedAt: true, isLate: true } },
+        },
       }),
       prisma.notification.findMany({ where: { userId, tenantId }, select: { category: true, title: true, body: true, link: true, readAt: true, createdAt: true } }),
       prisma.notificationPreference.findFirst({ where: { userId } }),
@@ -102,6 +106,7 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
 
   // Free text the person wrote can contain anything; scores and grades are kept for the record.
   await prisma.assignmentSubmission.updateMany({ where: { userId, assignment: { tenantId } }, data: { submissionText: null, fileUrl: null } });
+  await prisma.assignmentSubmissionVersion.updateMany({ where: { tenantId, submission: { userId } }, data: { submissionText: null, fileUrl: null } });
   await prisma.proctoringLog.updateMany({ where: { submission: { userId } }, data: { snapshotUrl: null } });
   await prisma.forumThread.updateMany({ where: { authorId: userId, tenantId }, data: { title: '[removed]', body: '[removed]', hidden: true } });
   await prisma.forumPost.updateMany({ where: { authorId: userId, tenantId }, data: { body: '[removed]', hidden: true } });

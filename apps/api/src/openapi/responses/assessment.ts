@@ -303,6 +303,17 @@ const XapiRecorded = z.object({
   stored: z.number(),
 });
 
+/** One version a learner handed in (see GET .../submissions/:subId/versions). */
+const SubmissionVersion = z.object({
+  version: z.number(),
+  fileUrl: z.string().nullable(),
+  submissionText: z.string().nullable(),
+  submittedAt: z.string(),
+  isLate: z.boolean(),
+});
+/** The submission as stored now, with the number of the version this submit created. */
+const SubmittedAssignment = AssignmentSubmissionRecord.extend({ version: z.number() });
+
 export const RESPONSES: ResponseTable = {
   // ---- quizzes
   'GET /api/v1/courses/:courseId/quizzes': {
@@ -377,12 +388,16 @@ export const RESPONSES: ResponseTable = {
   'PATCH /api/v1/assignments/:id': { response: wrap(AssignmentRecord), errors: [400, 403, 404] },
   'DELETE /api/v1/assignments/:id': { response: deleted('Assignment'), errors: [403, 404, 409] },
   'POST /api/v1/assignments/:id/submissions': {
-    response: wrap(AssignmentSubmissionRecord, 201),
+    response: wrap(SubmittedAssignment, 201),
     errors: [400, 403, 404, 409],
   },
   'POST /api/v1/assignments/:id/submit': {
-    response: wrap(AssignmentSubmissionRecord, 201),
+    response: wrap(SubmittedAssignment, 201),
     errors: [400, 403, 404, 409],
+  },
+  'GET /api/v1/assignments/:id/submissions/:subId/versions': {
+    response: { ...wrap(z.array(SubmissionVersion)), description: 'Newest first. Course staff and auditors, or the learner who handed it in.' },
+    errors: [400, 403, 404],
   },
   'GET /api/v1/assignments/:id/submissions': {
     response: { ...page(AssignmentSubmissionItem), description: 'Staff and auditors: all submissions (with the learner). Learners: their own.' },

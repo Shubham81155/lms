@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { Banner } from "@/components/admin/IdentityPanels";
+import { SubmissionHistory } from "@/components/SubmissionHistory";
 import { round2, rubricDraft, type Criterion } from "@/lib/forms";
 
 export type { Criterion };
@@ -94,6 +95,7 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
         </div>
         {sub.submissionText && <p className="text-xs text-ink whitespace-pre-wrap max-h-48 overflow-y-auto">{sub.submissionText}</p>}
         {sub.fileUrl && <a className="text-xs text-brand-fg underline break-all" href={sub.fileUrl} target="_blank" rel="noopener noreferrer">{sub.fileUrl}</a>}
+        <SubmissionHistory key={sub.submittedAt} assignmentId={assignment.id} submissionId={sub.id} />
         {sub.plagiarismScore !== null && (
           <div className={`text-[11px] ${sub.plagiarismScore >= 30 ? "text-danger" : "text-success"}`}>
             Similarity: {Math.round(sub.plagiarismScore)}%{" "}

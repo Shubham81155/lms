@@ -78,6 +78,7 @@ model Tenant {
   aiConfig          TenantAiConfig?
   extensions        DeadlineExtension[]
   announcements     Announcement[]
+  submissionVersions AssignmentSubmissionVersion[]
   liveAttendance    LiveAttendance[]
   lessonProgress    LessonProgress[]
   gradeAppeals      GradeAppeal[]
@@ -566,6 +567,8 @@ model AssignmentSubmission {
   plagiarismNextAttemptAt DateTime?
   rubricScoresJson    Json? // { [criterionId]: points } when the assignment has a rubric
   appeal              GradeAppeal?
+  /// Every version the learner handed in, oldest first; this row always holds the latest one.
+  versions            AssignmentSubmissionVersion[]
 
   submittedAt DateTime  @default(now())
   // Submitted after the learner's due date (their extension if they have one).
@@ -850,6 +853,23 @@ model GradeCategory {
 
 // A learner's computed course grade and its approval state. Only APPROVED grades reach
 // Enrollment.finalGrade and become visible to the learner.
+/// An immutable copy of what a learner handed in, written on every submit and resubmit.
+model AssignmentSubmissionVersion {
+  id             String               @id @default(uuid())
+  tenantId       String
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  submissionId   String
+  submission     AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  version        Int
+  fileUrl        String?
+  submissionText String?              @db.Text
+  submittedAt    DateTime
+  isLate         Boolean              @default(false)
+
+  @@unique([submissionId, version])
+  @@index([tenantId])
+}
+
 model CourseGrade {
   id            String    @id @default(uuid())
   tenantId      String

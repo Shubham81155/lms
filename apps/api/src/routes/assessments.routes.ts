@@ -866,7 +866,8 @@ router.delete(
 
 /**
  * POST /api/v1/assignments/:id/submit   (alias: POST /assignments/:id/submissions)
- * One submission per learner, replaceable until it has been graded.
+ * One submission per learner, replaceable until it has been graded. Every submit also keeps an immutable
+ * copy (see GET .../submissions/:subId/versions); the response's `version` is its number.
  */
 const submitAssignment = route('Failed to submit assignment', async (req: Request, res: Response) => {
   const tenantId = tenantIdOf(req);
@@ -896,10 +897,18 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
     plagiarismAttempts: 0,
     plagiarismNextAttemptAt: check ? now : null,
   };
-  const submission = await prisma.assignmentSubmission.upsert({
-    where: { assignmentId_userId: { assignmentId: assignment.id, userId } },
-    create: { assignmentId: assignment.id, userId, ...data },
-    update: data,
+  const { submission, version } = await prisma.$transaction(async (tx) => {
+    const submission = await tx.assignmentSubmission.upsert({
+      where: { assignmentId_userId: { assignmentId: assignment.id, userId } },
+      create: { assignmentId: assignment.id, userId, ...data },
+      update: data,
+    });
+    const last = await tx.assignmentSubmissionVersion.findFirst({ where: { submissionId: submission.id }, orderBy: { version: 'desc' }, select: { version: true } });
+    const version = (last?.version ?? 0) + 1;
+    await tx.assignmentSubmissionVersion.create({
+      data: { tenantId, submissionId: submission.id, version, fileUrl: data.fileUrl, submissionText: data.submissionText, submittedAt: now, isLate },
+    });
+    return { submission, version };
   });
   await logAuditEvent({
     tenantId,
@@ -909,10 +918,10 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
     resourceId: submission.id,
     ipAddress: req.ip,
     userAgent: req.headers['user-agent'],
-    diffJson: { assignmentId: assignment.id, isLate, resubmission: !!existing },
+    diffJson: { assignmentId: assignment.id, isLate, resubmission: !!existing, version },
   });
 
-  return res.status(201).json({ data: submission });
+  return res.status(201).json({ data: { ...submission, version } });
 });
 router.post('/assignments/:id/submit', authenticateJWT, submitAssignment);
 router.post('/assignments/:id/submissions', authenticateJWT, submitAssignment);
@@ -940,6 +949,31 @@ router.get(
       }),
     ]);
     return res.status(200).json({ data: submissions, pagination: pageMeta(page, limit, total) });
+  })
+);
+
+/**
+ * GET /api/v1/assignments/:id/submissions/:subId/versions
+ * Everything the learner handed in for this assignment, newest first: course staff and auditors, or the
+ * learner themselves.
+ */
+router.get(
+  '/assignments/:id/submissions/:subId/versions',
+  authenticateJWT,
+  route('Failed to retrieve submission history', async (req, res) => {
+    const assignment = await loadAssignment(req, String(req.params.id));
+    const access = await requireContentAccess(req, assignment.courseId);
+    const submission = await prisma.assignmentSubmission.findFirst({
+      where: { id: idSchema.parse(req.params.subId), assignmentId: assignment.id, ...(seesAnswerKeys(req, access) ? {} : { userId: req.user!.id }) },
+      select: { id: true },
+    });
+    if (!submission) throw new HttpError(404, 'Submission not found');
+    const versions = await prisma.assignmentSubmissionVersion.findMany({
+      where: { submissionId: submission.id },
+      orderBy: { version: 'desc' },
+      select: { version: true, fileUrl: true, submissionText: true, submittedAt: true, isLate: true },
+    });
+    return res.status(200).json({ data: versions });
   })
 );
 

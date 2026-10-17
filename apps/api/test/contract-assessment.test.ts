@@ -181,6 +181,10 @@ describe('assignments, rubrics and appeals', () => {
     expect(all.body.data.length).toBe(2);
     expect(all.body.data[0].user.email).toBeTruthy();
 
+    const history = await teacher.get(`${V1}/assignments/${assignId}/submissions/${subS1}/versions`);
+    contract('GET /api/v1/assignments/:id/submissions/:subId/versions', history, 200);
+    expect(history.body.data).toHaveLength(1);
+
     const pending = await teacher.get(`${V1}/analytics/pending-grading`);
     contract('GET /api/v1/analytics/pending-grading', pending, 200);
     expect(pending.body.total).toBe(2);

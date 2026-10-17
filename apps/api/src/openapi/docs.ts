@@ -382,6 +382,7 @@ export const DOCS: Record<string, OperationDoc> = {
   'PATCH /api/v1/assignments/:id': { summary: 'Update an assignment.', body: updateAssignmentSchema, errors: [400, 403, 404] },
   'POST /api/v1/assignments/:id/submissions': { summary: 'Submit work: a file URL, text, or both.', body: assignmentSubmissionSchema, errors: [400, 403, 404, 409] },
   'POST /api/v1/assignments/:id/submit': { summary: 'Alias of POST /api/v1/assignments/:id/submissions.', body: assignmentSubmissionSchema, errors: [400, 403, 404, 409] },
+  'GET /api/v1/assignments/:id/submissions/:subId/versions': { summary: 'Submission history: every version the learner handed in, newest first.', errors: [400, 403, 404] },
   'PATCH /api/v1/assignments/:id/submissions/:subId/grade': { summary: 'Grade a submission with a total, or per rubric criterion (send one of grade / criteria).', body: gradeSubmissionSchema, errors: [400, 403, 404] },
 
   // ---- notifications
