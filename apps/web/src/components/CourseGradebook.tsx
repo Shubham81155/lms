@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Plus, Trash2, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { typedPut } from "@/lib/typed-api";
 import { useAuth } from "@/context/AuthContext";
-import { useAction, useApiData } from "@/hooks/useApiData";
+import { downloadFile, useAction, useApiData } from "@/hooks/useApiData";
 import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { Banner } from "@/components/admin/IdentityPanels";
 
@@ -236,12 +236,88 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
 };
 
 // ---------------------------------------------------------------------------
+// Grid: every learner against every quiz and assignment
+// ---------------------------------------------------------------------------
+
+interface Score { percent: number | null; pending: boolean; missing: boolean }
+interface GridData {
+  items: { id: string; type: "QUIZ" | "ASSIGNMENT"; title: string; category: string | null }[];
+  learners: {
+    userId: string; name: string; email: string; scores: Record<string, Score>;
+    courseGrade: { rawPercent: number; curvedPercent: number; letter: string; status: Row["status"] } | null;
+  }[];
+}
+
+const ScoreCell: React.FC<{ score?: Score }> = ({ score }) =>
+  !score ? <span className="text-ink-subtle">–</span>
+  : score.pending ? <span className="text-accent font-semibold" title="Waiting for a grader">Pending</span>
+  : score.missing ? <span className="text-danger" title="Not submitted (counts as 0)">Missing</span>
+  : <span className="text-ink">{score.percent}%</span>;
+
+const Grid: React.FC<{ courseId: string; courseCode: string }> = ({ courseId, courseCode }) => {
+  const { data, isLoading, error } = useApiData<{ data: GridData }>(`/api/v1/courses/${courseId}/gradebook/grid`);
+  const { busy, error: actionError, run } = useAction();
+
+  const exportCsv = () =>
+    run(() => downloadFile(`/api/v1/courses/${courseId}/gradebook/export.csv`, `grades-${courseCode.replace(/[^\w.-]+/g, "_")}.csv`));
+
+  if (isLoading) return <div className="text-xs text-ink-subtle p-6">Loading…</div>;
+  if (error) return <Banner kind="error">{error}</Banner>;
+  const grid = data?.data;
+  if (!grid) return null;
+
+  return (
+    <div className="space-y-4">
+      {actionError && <Banner kind="error">{actionError}</Banner>}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] text-ink-subtle">Best finished attempt for quizzes. Missing work counts as 0 in the course grade; pending work is left out until graded.</p>
+        <button className={ghost} disabled={busy || grid.learners.length === 0} onClick={exportCsv}><Download className="h-3 w-3 inline mr-1" />Export CSV</button>
+      </div>
+
+      {grid.learners.length === 0 ? (
+        <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">No learners are enrolled yet.</div>
+      ) : (
+        <div className="overflow-auto max-h-[60vh] bg-canvas border border-line rounded-2xl">
+          <table className="text-xs border-separate border-spacing-0">
+            <thead className="text-ink-subtle text-left">
+              <tr>
+                <th className="p-3 sticky left-0 top-0 z-20 bg-canvas border-b border-line min-w-48">Learner</th>
+                {grid.items.map((i) => (
+                  <th key={i.id} className="p-3 sticky top-0 z-10 bg-canvas border-b border-line min-w-28 align-bottom font-semibold">
+                    <div className="text-[9px] font-bold uppercase tracking-wider text-ink-subtle">{i.type === "QUIZ" ? "Quiz" : "Assignment"}{i.category ? ` · ${i.category}` : ""}</div>
+                    <div className="text-ink line-clamp-2" title={i.title}>{i.title}</div>
+                  </th>
+                ))}
+                <th className="p-3 sticky top-0 z-10 bg-canvas border-b border-line min-w-24 align-bottom">Course grade</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grid.learners.map((l) => (
+                <tr key={l.userId}>
+                  <td className="p-3 sticky left-0 z-10 bg-canvas border-b border-line text-ink">{l.name}<div className="text-[10px] text-ink-subtle">{l.email}</div></td>
+                  {grid.items.map((i) => <td key={i.id} className="p-3 border-b border-line"><ScoreCell score={l.scores[i.id]} /></td>)}
+                  <td className="p-3 border-b border-line">
+                    {l.courseGrade ? (
+                      <span className="font-bold text-ink" title={l.courseGrade.status}>{l.courseGrade.curvedPercent}% · {l.courseGrade.letter}</span>
+                    ) : <span className="text-ink-subtle" title="Not calculated yet">–</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 
 export const CourseGradebook: React.FC<{ onClose: () => void; /** Open on this course when the person may use it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
   const { user } = useAuth();
   const { courses, isLoading } = useStaffCourses();
   const [courseId, setCourseId] = useState<string>("");
-  const [tab, setTab] = useState<"grades" | "setup">("grades");
+  const [tab, setTab] = useState<"grades" | "grid" | "setup">("grades");
 
   useEffect(() => {
     if (!courseId && courses.length > 0) setCourseId(initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0].id);
@@ -271,8 +347,8 @@ export const CourseGradebook: React.FC<{ onClose: () => void; /** Open on this c
         </div>
 
         <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex gap-2">
-          {(["grades", "setup"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${tab === t ? "bg-brand text-on-brand" : "text-ink-muted hover:bg-surface"}`}>{t === "grades" ? "Grades & approval" : "Setup"}</button>
+          {(["grades", "grid", "setup"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${tab === t ? "bg-brand text-on-brand" : "text-ink-muted hover:bg-surface"}`}>{t === "grades" ? "Grades & approval" : t === "grid" ? "Grade grid" : "Setup"}</button>
           ))}
         </div>
 
@@ -283,6 +359,8 @@ export const CourseGradebook: React.FC<{ onClose: () => void; /** Open on this c
             <div className="text-xs text-ink-subtle p-10 text-center">You are not assigned to any course yet.</div>
           ) : tab === "grades" ? (
             <Grades key={course.id} courseId={course.id} canEdit={canEdit} isAdmin={isAdmin} />
+          ) : tab === "grid" ? (
+            <Grid key={course.id} courseId={course.id} courseCode={course.code} />
           ) : (
             <Setup key={course.id} courseId={course.id} canEdit={canEdit} />
           )}
