@@ -1,7 +1,8 @@
 # Enterprise Educational Learning Management System (LMS)
 
 > Multi-tenant LMS for universities and training organisations: courses, quizzes, assignments, gradebook,
-> live classes, LTI 1.3 launch, xAPI learning records, SSO/SCIM, and privacy tooling for FERPA and GDPR requests.
+> live classes, SCORM 1.2/2004, LTI 1.3 launch, xAPI learning records, SSO/SCIM, and privacy tooling for FERPA and
+> GDPR requests.
 
 ---
 
@@ -10,13 +11,17 @@
 ```mermaid
 flowchart TD
     Client["Next.js Web / LTI Tool Consumer"] --> CoreAPI["Express API (Tenant Isolation & RBAC)"]
+    Client -. "SCORM iframe" .-> Content["SCORM content origin<br/>(same API, own host, no session)"]
     CoreAPI --> DB[("PostgreSQL Multi-Tenant (RLS)<br/>incl. xAPI statements and audit trail")]
+    CoreAPI --> Store[("File storage<br/>local folder or S3-compatible")]
+    Content --> Store
     CoreAPI --> SMTP["SMTP"]
     CoreAPI --> Live["LiveKit (optional)"]
 ```
 
-Not built yet (see [docs/ROADMAP.md](docs/ROADMAP.md)): API gateway/WAF, Redis (shared rate limits, cache, job queue),
-object storage for assets and SCORM packages, a dedicated LRS (xAPI is stored in PostgreSQL today), mobile apps.
+Not built yet (see [docs/ROADMAP.md](docs/ROADMAP.md)): API gateway/WAF, Redis as a cache and job queue (it is only
+used for shared rate limits today), virus scanning of uploads, a dedicated LRS (xAPI is stored in PostgreSQL today),
+mobile apps.
 Compliance (FERPA, SOC 2, WCAG) is **not** claimed by the software; `GET /api/v1/admin/compliance` reports measured facts only.
 
 ---
@@ -45,13 +50,25 @@ LMS/
    - Tenants are resolved by custom domain (`learn.university.edu`) or subdomain.
    - Isolation is enforced in the database by PostgreSQL row-level security, as well as in queries.
 2. **Teaching and learning**
-   - Courses, modules and lessons; quizzes with timing, attempts, auto-grading and manual grading; assignments with
-     rubrics, grade appeals and plagiarism-provider callbacks; a weighted gradebook with two-person grade approval.
-   - Live classes on LiveKit, forums with moderation, a calendar with iCal export, notifications by e-mail.
+   - Courses, modules and lessons, grouped by academic **terms**; a course can be **copied** into a new term with its
+     material (lessons, quizzes, assignments, rubrics, grade setup, question bank) and its dates moved.
+   - Optional **publishing review**: an organisation can require an administrator to approve courses before they go live.
+   - Quizzes with timing, availability windows, attempts, auto-grading, manual grading and attempt review; assignments
+     with rubrics, late-work rules, per-learner extensions, **submission history**, grade appeals and
+     plagiarism-provider callbacks.
+   - A weighted gradebook with a curve, two-person grade approval, a **grade grid** of every learner and item, and
+     **CSV export**. Courses **complete automatically** when every lesson is done and, for graded courses, the
+     approved grade passes.
+   - **File uploads** (assignment files, lesson videos and documents) to a local folder or any S3-compatible service.
+   - A **course home** for learners (syllabus, upcoming work, "Continue: next lesson"), announcements, live classes on
+     LiveKit, forums with moderation, a calendar that shows quiz and assignment due dates (with iCal export),
+     notifications by e-mail.
 3. **Interoperability**
+   - **SCORM 1.2 and 2004**: packages are uploaded, unpacked and played on a separate content origin; progress and
+     scores are saved, and completion finishes the lesson.
    - **LTI 1.3** resource-link launch (signature-verified). Assignment and Grade Services, Names and Roles and Deep
      Linking are not implemented yet.
-   - **xAPI** statements are stored and queryable in PostgreSQL. SCORM packages are not supported yet.
+   - **xAPI** statements are stored and queryable in PostgreSQL.
    - **SCIM 2.0** user provisioning, **OIDC** and **SAML 2.0** single sign-on.
 4. **Security and privacy**
    - Append-only audit trail enforced by the database, MFA (TOTP), server-side session revocation.
@@ -100,8 +117,23 @@ npm run dev   # API on :4000, web on :3000
 
 ### 5. Test
 ```bash
-npm test
+npm test                                  # API, database and security packages
+(cd apps/web && npx tsc --noEmit -p .)    # the root typecheck does not cover the web app
 ```
+
+### File storage and SCORM
+
+| Setting | What it does |
+|---|---|
+| `STORAGE_DRIVER=local` (default), `STORAGE_LOCAL_DIR` | Uploads go to a folder on the API server (one server only; back it up). docker-compose keeps it in the `uploads` volume. |
+| `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | Any S3-compatible service (AWS S3, Cloudflare R2, MinIO, Backblaze B2). Downloads redirect to five-minute signed links. |
+| `UPLOAD_MAX_MB` (default 100) | Largest upload. The web proxy limit in `apps/web/next.config.ts` must be at least this. |
+| `SCORM_CONTENT_ORIGIN` | Where SCORM packages are served: a host name of its own pointing at the API (e.g. `https://content.example.org`), never the web app's origin, and not sharing a cookie domain with it. Without it SCORM is off in production; development uses `http://127.0.0.1:4000`. |
+
+Uploads are refused when their type could run script in a browser (HTML, SVG) and are always served with `nosniff`.
+SCORM packages run their own scripts, which is why they live on their own origin: there is no session there, every
+link carries a signed token for one learner and one package, the host answers nothing but `/scorm-content`, and only
+the LMS may frame it.
 
 ---
 

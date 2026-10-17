@@ -34,8 +34,11 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **SAML 2.0 single sign-on** (pinned signing certificate, per-tenant audience, request-bound responses, custom-domain aware) | Done | SP-initiated; no single logout or encrypted assertions |
 | WebAuthn / passkeys | Open | |
 | Course / module / lesson CRUD, catalogue, enrolment, certificates | Done | |
-| Course cloning, versioning, CSV / Common Cartridge import | Open | |
-| S3/CDN asset pipeline, virus scanning | Open | |
+| **Academic terms** and **course copy** into a new term (material only, dates moved by the gap between terms, uploaded files duplicated) | Done | admin Terms panel, "Copy" tool on each course |
+| **Publishing review** (optional per organisation: instructors submit drafts, administrators approve or request changes) | Done | off by default |
+| Course versioning, CSV / Common Cartridge import | Open | |
+| **File uploads** to local disk or S3-compatible storage (type allowlist, size limit, signed download links, erasure) | Done | S3 driver not yet run against a real bucket |
+| CDN, virus scanning of uploads | Open | |
 
 ## Phase 2 - Delivery standards and the LRS
 
@@ -43,7 +46,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 |---|---|---|
 | xAPI statements stored and queryable | Done | automatic statements for quizzes and completions |
 | LTI 1.3 launch (signature-verified, no auto-provisioning) | Done | |
-| SCORM 1.2 / 2004 package upload and player | Open | needs object storage first; the unused adapter library was removed |
+| **SCORM 1.2 / 2004** package upload and player (separate content origin, signed per-learner links, saved progress, completion finishes the lesson) | Done | not yet tried with packages from commercial authoring tools; the original zip is kept |
 | HLS/DASH video pipeline, DRM | Open | watermark overlay exists in the player |
 | Offline / PWA access | Open | |
 
@@ -52,14 +55,20 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | Item | Status | Notes |
 |---|---|---|
 | Quiz engine: timing, attempts, auto-grading, manual grading | Done | |
+| **Deadlines**: quiz availability windows, late work and cut-off, per-learner extensions, to-do list, attempt review policy | Done | |
+| **Calendar shows quiz and assignment due dates** (with the learner's own extension) and live classes automatically | Done | read-only entries, also in the iCal feed |
 | **Question bank** (reusable, tagged, Bloom level, copy-into-quiz) | Done | screen included |
 | **Gradebook**: weighted categories, curve, draft -> submit -> two-person approval | Done | teacher screen included; approved grade becomes `Enrollment.finalGrade` |
+| **Grade grid** (every learner against every item) and formula-safe, audited **CSV export** | Done | |
+| **Automatic course completion**: 100% when every lesson is done; complete (with certificate) then, or when a graded course's approved grade passes | Done | never records a fail automatically; courses without lessons stay manual |
+| **Assignment submission history** (every version kept, learner and staff can view) | Done | |
 | Bloom's-taxonomy mastery analytics | Done | from tagged questions |
 | Proctoring telemetry and flagging | Done | the quiz screen reports tab switches, leaving full screen and copy/paste; no webcam capture |
 | **Plagiarism provider callbacks** (HMAC-signed, replay-limited) | Done | outbound submission is queued, signed, retried with backoff and sent to a configurable provider URL (`PLAGIARISM_SUBMIT_URL`); tested against a local stand-in, no native Turnitin/Copyleaks adapter, queued/in-progress/failed status shown on the teacher grading panel |
 | **Rubrics** (per-criterion scoring, learner-visible breakdown) | Done | teacher editor and grading screen included |
 | **Grade appeals** (14-day window, instructor decision, reopens an approved course grade) | Done | assignments only; learner and teacher screens included |
 | Peer review | Open | |
+| **Learner course home** (syllabus, upcoming work, "Continue: next lesson") and **course announcements** | Done | |
 | Notifications (bell + unread badge), forums (+moderation, faculty-verified answers), calendar + real iCal download, Bloom's-taxonomy mastery profile | Done | backend and web screens on live data; moderation actions (hide, lock, pin) have API only |
 | **E-mail delivery of notifications** (SMTP, quiet hours in the user's time zone, retries, de-duplicated) + settings panel | Done | SMS and push remain open |
 | Live-class attendance | Done | from the media server's webhooks |
@@ -92,6 +101,9 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 
 ## Suggested next steps (highest value first)
 
-1. Webcam/audio proctoring; Turnitin/Copyleaks adapter.
-2. Daily digest e-mails and SMS/push channels.
-3. DSAR request queue (log, deadline tracking) and a data-retention scheduler.
+1. Check the Phase 3-4 screens in a browser, run the S3 driver against a real bucket and SCORM against packages
+   from Articulate, Captivate and iSpring.
+2. Virus scanning of uploads (e.g. ClamAV) before files can be downloaded.
+3. Webcam/audio proctoring; Turnitin/Copyleaks adapter.
+4. Daily digest e-mails and SMS/push channels.
+5. DSAR request queue (log, deadline tracking) and a data-retention scheduler.
