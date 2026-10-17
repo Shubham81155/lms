@@ -7,6 +7,7 @@ import { CourseStatus, ContentType, EnrollmentStatus } from '@enterprise-lms/dat
 import { HttpError, route } from '../lib/http';
 import { httpUrl, idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { progressFromLessons } from '../lib/lesson-progress';
+import { autoComplete } from '../lib/completion';
 import { recomputeCourseProgress } from '../lib/course-progress';
 import { canSeeAllCourses, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
 
@@ -371,7 +372,8 @@ router.get(
 /**
  * POST /api/v1/courses/:id/lessons/:lessonId/complete
  * The learner marks a lesson finished (idempotent). Their enrollment's progress is recomputed from the
- * finished lessons, never reaching 100%: completing the course stays with the instructor.
+ * finished lessons; the last one can complete the course (see lib/completion), and `completion` says
+ * where the course stands.
  */
 router.post(
   '/:id/lessons/:lessonId/complete',
@@ -411,8 +413,9 @@ router.post(
       });
     }
 
+    const completion = await autoComplete(id, userId);
     return res.status(201).json({
-      data: { lessonId: lesson.id, completedLessons: completed, totalLessons, progressPercent: live ? progressPercent : enrollment.progressPercent },
+      data: { lessonId: lesson.id, completedLessons: completed, totalLessons, progressPercent: live ? progressPercent : enrollment.progressPercent, completion },
     });
   })
 );

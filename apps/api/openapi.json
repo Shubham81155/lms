@@ -12269,7 +12269,7 @@
     "/api/v1/courses/{courseId}/gradebook/approve": {
       "post": {
         "operationId": "postCoursesCourseIdGradebookApprove",
-        "summary": "Approve submitted grades (administrators; not the person who submitted them). Approved grades become the final grade and are published to learners.",
+        "summary": "Approve submitted grades (administrators; not the person who submitted them). Approved grades become the final grade and are published to learners; learners who have also finished every lesson and pass complete the course, counted in `completed`.",
         "tags": [
           "courses"
         ],
@@ -12304,10 +12304,14 @@
                       "properties": {
                         "approved": {
                           "type": "number"
+                        },
+                        "completed": {
+                          "type": "number"
                         }
                       },
                       "required": [
-                        "approved"
+                        "approved",
+                        "completed"
                       ]
                     }
                   },
@@ -15760,13 +15764,26 @@
                         },
                         "progressPercent": {
                           "type": "number"
+                        },
+                        "completion": {
+                          "type": "string",
+                          "enum": [
+                            "LESSONS_REMAINING",
+                            "AWAITING_GRADE",
+                            "BELOW_PASS_MARK",
+                            "MANUAL",
+                            "COMPLETED",
+                            "FAILED",
+                            "NOT_ENROLLED"
+                          ]
                         }
                       },
                       "required": [
                         "lessonId",
                         "completedLessons",
                         "totalLessons",
-                        "progressPercent"
+                        "progressPercent",
+                        "completion"
                       ]
                     }
                   },

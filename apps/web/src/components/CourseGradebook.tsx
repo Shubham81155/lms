@@ -186,7 +186,7 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
       <div className="flex flex-wrap items-center gap-2">
         {canEdit && <button className={primary} disabled={busy} onClick={() => act("calculate", undefined, (r) => `Calculated ${r.calculated} grade(s)${r.skippedApproved ? `; ${r.skippedApproved} approved grade(s) left unchanged` : ""}.`)}>Calculate grades</button>}
         {canEdit && <button className={ghost} disabled={busy || !s?.draft} onClick={submit}>Submit for approval</button>}
-        {isAdmin && <button className={ghost} disabled={busy || !s?.submitted} onClick={() => act("approve", undefined, (r) => `${r.approved} grade(s) approved and released to learners.`)}>Approve</button>}
+        {isAdmin && <button className={ghost} disabled={busy || !s?.submitted} onClick={() => act("approve", undefined, (r) => `${r.approved} grade(s) approved and released to learners${r.completed ? `; ${r.completed} learner(s) who had finished every lesson and passed completed the course` : ""}.`)}>Approve</button>}
         {isAdmin && <button className={ghost} disabled={busy || !s?.submitted} onClick={() => setRejecting((v) => !v)}>Send back…</button>}
         {isAdmin && <button className={ghost} disabled={busy || !s?.approved} onClick={() => window.confirm("Reopen approved grades for correction? Learners will stop seeing them until re-approved.") && act("reopen", undefined, (r) => `${r.reopened} grade(s) reopened.`)}>Reopen</button>}
       </div>

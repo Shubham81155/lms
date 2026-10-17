@@ -8,11 +8,7 @@ import { EnrollmentStatus } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
 import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { COURSE_STAFF_ROLES, isAdminRole, canSeeAllCourses } from '../lib/access';
-import { issueCertificate } from '../lib/certificates';
-import { config } from '../config';
-import { notify } from '../lib/notify';
-import { VERBS, recordStatement } from '../lib/xapi';
-import { dispatchWebhook } from '../lib/webhooks';
+import { recordCourseResult } from '../lib/completion';
 import { LEARNER_MAX_PROGRESS, progressFromLessons } from '../lib/lesson-progress';
 
 const router = Router();
@@ -537,57 +533,26 @@ router.patch(
     }
 
     const grade = finalGrade ?? enrollment.finalGrade;
-    let status = enrollment.status;
-    let completedAt = enrollment.completedAt;
+    let status: EnrollmentStatus = enrollment.status;
+    let updated;
+    let certificate = null;
 
     if (progressPercent >= 100) {
-      const failed = grade !== null && grade < enrollment.course.passingGradePercent;
-      status = failed ? EnrollmentStatus.FAILED : EnrollmentStatus.COMPLETED;
-      completedAt = completedAt ?? new Date();
-    } else if (status === EnrollmentStatus.COMPLETED || status === EnrollmentStatus.FAILED) {
-      status = EnrollmentStatus.IN_PROGRESS; // staff reopened it
-      completedAt = null;
-    } else if (progressPercent > 0 && status === EnrollmentStatus.ENROLLED) {
-      status = EnrollmentStatus.IN_PROGRESS;
-    }
-
-    const updated = await prisma.enrollment.update({
-      where: { id },
-      data: { progressPercent, finalGrade: grade, status, completedAt },
-      include: { course: { select: { id: true, code: true, title: true } } },
-    });
-
-    let certificate = null;
-    if (updated.status === EnrollmentStatus.COMPLETED) {
-      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } });
-      certificate = await issueCertificate(updated.id, tenant?.slug ?? tenantId);
-
-      // Only on the transition into COMPLETED, so re-sending progress does not re-notify.
-      if (enrollment.status !== EnrollmentStatus.COMPLETED) {
-        const learner = await prisma.user.findFirst({ where: { id: updated.userId }, select: { id: true, email: true, firstName: true, lastName: true } });
-        await Promise.all([
-          notify({
-            tenantId,
-            userId: updated.userId,
-            category: 'COURSE',
-            title: `You completed ${updated.course.title}`,
-            body: certificate ? `Certificate ${certificate.certificateNumber} is ready.` : undefined,
-            link: `/courses/${updated.courseId}`,
-          }),
-          learner
-            ? recordStatement({
-                tenantId,
-                user: learner,
-                verb: VERBS.completed,
-                object: { id: `${config.APP_URL}/xapi/courses/${updated.courseId}`, name: updated.course.title, type: 'http://adlnet.gov/expapi/activities/course' },
-                result: { completion: true, ...(grade !== null ? { score: { raw: grade, min: 0, max: 100 } } : {}) },
-              })
-            : Promise.resolve(null),
-        ]);
-        // Not awaited: a slow receiver must not hold up the response.
-        void dispatchWebhook(tenantId, 'enrollment.completed', { enrollmentId: updated.id, courseId: updated.courseId, userId: updated.userId, finalGrade: grade });
-        if (certificate) void dispatchWebhook(tenantId, 'certificate.issued', { certificateNumber: certificate.certificateNumber, userId: updated.userId, courseId: updated.courseId });
+      ({ enrollment: updated, certificate } = await recordCourseResult(id, grade, progressPercent));
+      status = updated.status;
+    } else {
+      let completedAt = enrollment.completedAt;
+      if (status === EnrollmentStatus.COMPLETED || status === EnrollmentStatus.FAILED) {
+        status = EnrollmentStatus.IN_PROGRESS; // staff reopened it
+        completedAt = null;
+      } else if (progressPercent > 0 && status === EnrollmentStatus.ENROLLED) {
+        status = EnrollmentStatus.IN_PROGRESS;
       }
+      updated = await prisma.enrollment.update({
+        where: { id },
+        data: { progressPercent, finalGrade: grade, status, completedAt },
+        include: { course: { select: { id: true, code: true, title: true } } },
+      });
     }
 
     await logAuditEvent({

@@ -1,6 +1,7 @@
 import { EnrollmentStatus } from '@enterprise-lms/database';
 import { prisma } from './prisma';
 import { progressFromLessons } from './lesson-progress';
+import { autoComplete } from './completion';
 
 /**
  * Re-derives progress after a course's lessons are added or removed. Only live enrollments of learners
@@ -18,5 +19,7 @@ export async function recomputeCourseProgress(courseId: string): Promise<void> {
       where: { courseId, userId: row.userId, status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS] } },
       data: { progressPercent: progressFromLessons(row._count._all, totalLessons) },
     });
+    // Removing the last unfinished lesson can finish the course.
+    await autoComplete(courseId, row.userId);
   }
 }

@@ -1,8 +1,15 @@
-/** A learner can never reach 100% on their own: course completion is recorded by the instructor. */
+/**
+ * The most a learner may report by hand (PATCH /enrollments/:id/progress): 100% comes only from finishing
+ * every lesson or from staff.
+ */
 export const LEARNER_MAX_PROGRESS = 99;
 
-/** Share of lessons finished, as a whole percent, held below 100 until staff record completion. */
+/**
+ * Share of lessons finished, as a whole percent. 100 only when every lesson is done (rounding never gets
+ * there early); whether that completes the course is decided in lib/completion.
+ */
 export function progressFromLessons(completed: number, total: number): number {
   if (total <= 0 || completed <= 0) return 0;
-  return Math.min(LEARNER_MAX_PROGRESS, Math.round((Math.min(completed, total) / total) * 100));
+  if (completed >= total) return 100;
+  return Math.min(99, Math.round((completed / total) * 100));
 }

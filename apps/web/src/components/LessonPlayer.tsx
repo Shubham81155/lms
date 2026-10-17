@@ -43,6 +43,8 @@ export interface UpcomingWork {
   overdue?: boolean;
 }
 
+type Completion = "LESSONS_REMAINING" | "AWAITING_GRADE" | "BELOW_PASS_MARK" | "MANUAL" | "COMPLETED" | "FAILED" | "NOT_ENROLLED";
+
 interface CourseDetail {
   description: string | null;
   syllabus: string | null;
@@ -194,6 +196,8 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  /** Where the course stands after the last lesson recorded in this session. */
+  const [completion, setCompletion] = useState<Completion | null>(null);
 
   useEffect(() => {
     const p = progressReq.data?.data;
@@ -226,9 +230,10 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await api.post<{ data: { progressPercent: number } }>(`/api/v1/courses/${courseId}/lessons/${current.id}/complete`, {});
+      const res = await api.post<{ data: { progressPercent: number; completion: Completion } }>(`/api/v1/courses/${courseId}/lessons/${current.id}/complete`, {});
       setDone((d) => new Set(d).add(current.id));
       setPercent(res.data.progressPercent);
+      setCompletion(res.data.completion);
       onProgressUpdated?.(res.data.progressPercent);
     } catch (e) {
       setSaveError(errorMessage(e, "Could not record this lesson."));
@@ -403,7 +408,13 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
                   {lessons.length > 0 && done.size === lessons.length && (
                     <p role="status" className="rounded-xl border border-success/30 bg-success/10 px-4 py-2.5 text-xs font-semibold text-success">
-                      You have finished every lesson. Your instructor records course completion and issues your certificate.
+                      {completion === "COMPLETED"
+                        ? "Course complete. Your certificate is ready."
+                        : completion === "AWAITING_GRADE"
+                          ? "You have finished every lesson. The course is marked complete once your final grade is approved."
+                          : completion === "BELOW_PASS_MARK" || completion === "FAILED"
+                            ? "You have finished every lesson, but your final grade is below the pass mark. Talk to your instructor."
+                            : "You have finished every lesson."}
                     </p>
                   )}
 

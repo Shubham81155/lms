@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEARNER_MAX_PROGRESS, progressFromLessons } from '../src/lib/lesson-progress';
+import { progressFromLessons } from '../src/lib/lesson-progress';
 
 describe('progressFromLessons', () => {
   it('is 0 with no lessons or none finished', () => {
@@ -14,8 +14,9 @@ describe('progressFromLessons', () => {
     expect(progressFromLessons(2, 3)).toBe(67);
   });
 
-  it('never reaches 100 on its own', () => {
-    expect(progressFromLessons(6, 6)).toBe(LEARNER_MAX_PROGRESS);
-    expect(progressFromLessons(9, 6)).toBe(LEARNER_MAX_PROGRESS);
+  it('is 100 only when every lesson is finished', () => {
+    expect(progressFromLessons(6, 6)).toBe(100);
+    expect(progressFromLessons(9, 6)).toBe(100);
+    expect(progressFromLessons(199, 200)).toBe(99);
   });
 });

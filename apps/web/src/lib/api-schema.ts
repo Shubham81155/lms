@@ -1274,7 +1274,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Approve submitted grades (administrators; not the person who submitted them). Approved grades become the final grade and are published to learners. */
+        /** Approve submitted grades (administrators; not the person who submitted them). Approved grades become the final grade and are published to learners; learners who have also finished every lesson and pass complete the course, counted in `completed`. */
         post: operations["postCoursesCourseIdGradebookApprove"];
         delete?: never;
         options?: never;
@@ -8609,6 +8609,7 @@ export interface operations {
                     "application/json": {
                         data: {
                             approved: number;
+                            completed: number;
                         };
                     };
                 };
@@ -10231,6 +10232,8 @@ export interface operations {
                             completedLessons: number;
                             totalLessons: number;
                             progressPercent: number;
+                            /** @enum {string} */
+                            completion: "LESSONS_REMAINING" | "AWAITING_GRADE" | "BELOW_PASS_MARK" | "MANUAL" | "COMPLETED" | "FAILED" | "NOT_ENROLLED";
                         };
                     };
                 };

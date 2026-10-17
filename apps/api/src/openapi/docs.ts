@@ -442,7 +442,7 @@ export const DOCS: Record<string, OperationDoc> = {
     response: ok(z.object({ data: z.object({ submitted: z.number(), incomplete: z.number() }) })),
     errors: [403, 404, 409],
   },
-  'POST /api/v1/courses/:courseId/gradebook/approve': { summary: 'Approve submitted grades (administrators; not the person who submitted them). Approved grades become the final grade and are published to learners.', response: ok(z.object({ data: z.object({ approved: z.number() }) })), errors: [403, 404, 409] },
+  'POST /api/v1/courses/:courseId/gradebook/approve': { summary: 'Approve submitted grades (administrators; not the person who submitted them). Approved grades become the final grade and are published to learners; learners who have also finished every lesson and pass complete the course, counted in `completed`.', response: ok(z.object({ data: z.object({ approved: z.number(), completed: z.number() }) })), errors: [403, 404, 409] },
   'POST /api/v1/courses/:courseId/gradebook/reject': { summary: 'Return submitted grades to draft with a note (administrators).', body: rejectSchema, response: ok(z.object({ data: z.object({ returned: z.number() }) })), errors: [400, 403, 404, 409] },
   'POST /api/v1/courses/:courseId/gradebook/reopen': { summary: 'Reopen approved grades for correction (administrators).', response: ok(z.object({ data: z.object({ reopened: z.number() }) })), errors: [403, 404, 409] },
 

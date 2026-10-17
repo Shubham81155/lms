@@ -7,6 +7,7 @@ import { HttpError, route } from '../lib/http';
 import { idSchema, parseBody } from '../lib/validate';
 import { isAdminRole, requireContentAccess, requireCourseEditor, requireCourseStaff } from '../lib/access';
 import { notify } from '../lib/notify';
+import { autoComplete } from '../lib/completion';
 import { csvRow } from '../lib/csv';
 import {
   CurveMethod,
@@ -402,8 +403,11 @@ router.post(
         notify({ tenantId, userId: g.userId, category: 'GRADE', title: 'Your final grade is available', body: `Final grade: ${g.curvedPercent}% (${g.letter})`, link: `/courses/${access.course.id}/gradebook` })
       )
     );
-    await audit(req, 'GRADEBOOK_APPROVED', access.course.id, { count: submitted.length });
-    return res.json({ data: { approved: submitted.length } });
+    // Learners who have also finished every lesson and pass complete the course now.
+    let completed = 0;
+    for (const g of submitted) if ((await autoComplete(access.course.id, g.userId)) === 'COMPLETED') completed++;
+    await audit(req, 'GRADEBOOK_APPROVED', access.course.id, { count: submitted.length, completed });
+    return res.json({ data: { approved: submitted.length, completed } });
   })
 );
 

@@ -287,7 +287,21 @@ export const RESPONSES: ResponseTable = {
     errors: [403, 404],
   },
   'POST /api/v1/courses/:id/lessons/:lessonId/complete': {
-    response: data(z.object({ lessonId: z.string(), completedLessons: z.number(), totalLessons: z.number(), progressPercent: z.number() }), 201),
+    response: data(
+      z.object({
+        lessonId: z.string(),
+        completedLessons: z.number(),
+        totalLessons: z.number(),
+        progressPercent: z.number(),
+        /**
+         * Where the course stands: AWAITING_GRADE means every lesson is done and the final grade is not approved
+         * yet; BELOW_PASS_MARK that the approved grade is below the pass mark; MANUAL that the course has no
+         * lessons, so staff record completion.
+         */
+        completion: z.enum(['LESSONS_REMAINING', 'AWAITING_GRADE', 'BELOW_PASS_MARK', 'MANUAL', 'COMPLETED', 'FAILED', 'NOT_ENROLLED']),
+      }),
+      201
+    ),
     errors: [403, 404],
   },
   'POST /api/v1/courses/:id/modules': { response: data(ModuleWithLessons, 201), errors: [400, 403, 404] },
