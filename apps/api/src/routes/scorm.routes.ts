@@ -9,7 +9,7 @@ import { pipeline } from 'stream/promises';
 import { prisma } from '../lib/prisma';
 import { HttpError, route } from '../lib/http';
 import { idSchema, parseBody } from '../lib/validate';
-import { requireContentAccess, requireCourseEditor, requireCourseStaff } from '../lib/access';
+import { ACTIVE_ENROLLMENT, requireContentAccess, requireCourseEditor, requireCourseStaff } from '../lib/access';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { storage } from '../lib/storage';
@@ -123,21 +123,38 @@ router.get(
   })
 );
 
-/** GET /api/v1/scorm-packages/:id/attempts (course staff): every learner's status and score. */
+/**
+ * GET /api/v1/scorm-packages/:id/attempts (course staff): every learner's status and score, most recent first,
+ * then the enrolled learners who have not opened the package ("not attempted", updatedAt null).
+ */
 router.get(
   '/scorm-packages/:id/attempts',
   route('Failed to load SCORM results', async (req, res) => {
     const pkg = await loadPackage(tenantIdOf(req), idSchema.parse(req.params.id));
     await requireCourseStaff(req, pkg.courseId);
-    const attempts = await prisma.scormAttempt.findMany({
-      where: { packageId: pkg.id },
-      orderBy: { updatedAt: 'desc' },
-      select: { userId: true, status: true, scorePercent: true, completedAt: true, updatedAt: true, user: { select: { firstName: true, lastName: true, email: true } } },
-    });
+    const user = { select: { firstName: true, lastName: true, email: true } };
+    const [attempts, enrolled] = await Promise.all([
+      prisma.scormAttempt.findMany({
+        where: { packageId: pkg.id },
+        orderBy: { updatedAt: 'desc' },
+        select: { userId: true, status: true, scorePercent: true, completedAt: true, updatedAt: true, user },
+      }),
+      prisma.enrollment.findMany({
+        where: { courseId: pkg.courseId, status: { in: [...ACTIVE_ENROLLMENT] } },
+        orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
+        select: { userId: true, user },
+      }),
+    ]);
+    const started = new Set(attempts.map((a) => a.userId));
     return res.json({
-      data: attempts.map((a) => ({
-        userId: a.userId, name: `${a.user.firstName} ${a.user.lastName}`, email: a.user.email, status: a.status, scorePercent: a.scorePercent, completedAt: a.completedAt, updatedAt: a.updatedAt,
-      })),
+      data: [
+        ...attempts.map((a) => ({
+          userId: a.userId, name: `${a.user.firstName} ${a.user.lastName}`, email: a.user.email, status: a.status, scorePercent: a.scorePercent, completedAt: a.completedAt, updatedAt: a.updatedAt,
+        })),
+        ...enrolled.filter((e) => !started.has(e.userId)).map((e) => ({
+          userId: e.userId, name: `${e.user.firstName} ${e.user.lastName}`, email: e.user.email, status: 'not attempted', scorePercent: null, completedAt: null, updatedAt: null,
+        })),
+      ],
     });
   })
 );

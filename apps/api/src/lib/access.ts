@@ -15,7 +15,7 @@ export const isLearnerRole = (role: Role) => (LEARNER_ROLES as readonly string[]
 /** Admins and auditors can see everything in their tenant; auditors can only read. */
 export const canSeeAllCourses = (role: Role) => isAdminRole(role) || role === 'AUDITOR';
 
-const ACTIVE_ENROLLMENT = ['ENROLLED', 'IN_PROGRESS', 'COMPLETED'] as const;
+export const ACTIVE_ENROLLMENT = ['ENROLLED', 'IN_PROGRESS', 'COMPLETED'] as const;
 
 export interface CourseAccess {
   course: {

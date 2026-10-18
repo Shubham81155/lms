@@ -154,7 +154,7 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   "POST /api/v1/courses/:id/scorm-packages": { summary: "Unpack an uploaded SCORM 1.2/2004 zip (POST /files, purpose SCORM_PACKAGE) into a package lessons can play (course editors). Paths, file count and unpacked size are checked; imsmanifest.xml gives the version and start page. Audited.", body: r_scorm.createPackageSchema },
   "GET /api/v1/courses/:id/scorm-packages": { summary: "The course's SCORM packages (course staff)." },
   "GET /api/v1/scorm-packages/:id/launch": { summary: "A four-hour link to play the package as the caller, on SCORM_CONTENT_ORIGIN; embed it in an iframe. Anyone who can read the course." },
-  "GET /api/v1/scorm-packages/:id/attempts": { summary: "Every learner's status and score in a SCORM package (course staff)." },
+  "GET /api/v1/scorm-packages/:id/attempts": { summary: "Every learner's status and score in a SCORM package, then the enrolled learners who have not opened it (course staff)." },
   "GET /api/v1/admin/course-approval": { summary: "Whether publishing a course needs an administrator's approval in this organisation (administrators)." },
   "PUT /api/v1/admin/course-approval": { summary: "Turn publishing review on or off (administrators). Off, instructors publish themselves. Audited.", body: r_review.approvalSettingSchema },
   "GET /api/v1/course-reviews": { summary: "Courses waiting for publishing review, oldest first (administrators)." },

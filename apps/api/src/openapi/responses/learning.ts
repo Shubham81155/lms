@@ -352,7 +352,9 @@ export const RESPONSES: ResponseTable = {
           userId: z.string(), name: z.string(), email: z.string(),
           /** not attempted | incomplete | completed | passed | failed | unknown */
           status: z.string(),
-          scorePercent: z.number().nullable(), completedAt: z.string().nullable(), updatedAt: z.string(),
+          scorePercent: z.number().nullable(), completedAt: z.string().nullable(),
+          /** Null for an enrolled learner who has not opened the package. */
+          updatedAt: z.string().nullable(),
         })
       )
     ),

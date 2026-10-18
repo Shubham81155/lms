@@ -2725,7 +2725,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Every learner's status and score in a SCORM package (course staff). */
+        /** Every learner's status and score in a SCORM package, then the enrolled learners who have not opened it (course staff). */
         get: operations["getScormPackagesIdAttempts"];
         put?: never;
         post?: never;
@@ -16824,7 +16824,7 @@ export interface operations {
                             status: string;
                             scorePercent: number | null;
                             completedAt: string | null;
-                            updatedAt: string;
+                            updatedAt: string | null;
                         }[];
                     };
                 };

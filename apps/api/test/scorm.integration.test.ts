@@ -239,8 +239,17 @@ describe('playing a package', () => {
     // The only lesson of a course without a gradebook: the course is complete.
     expect(await admin.enrollment.findUniqueOrThrow({ where: { courseId_userId: { courseId: 'c1', userId: 's1' } } })).toMatchObject({ status: 'COMPLETED', progressPercent: 100 });
 
+    // Enrolled learners who never opened the package are listed too; a dropped one is not.
+    await admin.user.create({ data: { id: 's2', tenantId: 't-h', email: 's2@x.edu', firstName: 'Bo', lastName: 'L', role: 'STUDENT', passwordHash: 'x' } });
+    await admin.user.create({ data: { id: 's3', tenantId: 't-h', email: 's3@x.edu', firstName: 'Cy', lastName: 'L', role: 'STUDENT', passwordHash: 'x' } });
+    await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: 's2', status: 'ENROLLED' } });
+    await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: 's3', status: 'DROPPED' } });
     const results = await (await as('teacher')).get(`/api/v1/scorm-packages/${pkgId}/attempts`);
-    expect(results.body.data).toMatchObject([{ userId: 's1', status: 'passed', scorePercent: 80 }]);
+    expect(results.body.data).toMatchObject([
+      { userId: 's1', status: 'passed', scorePercent: 80 },
+      { userId: 's2', name: 'Bo L', status: 'not attempted', scorePercent: null, completedAt: null, updatedAt: null },
+    ]);
+    expect(results.body.data).toHaveLength(2);
     expect((await (await as('s1')).get(`/api/v1/scorm-packages/${pkgId}/attempts`)).status).toBe(403);
   });
 

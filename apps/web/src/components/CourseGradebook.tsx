@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { downloadFile, useAction, useApiData } from "@/hooks/useApiData";
 import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { Banner } from "@/components/admin/IdentityPanels";
+import { ScormResults } from "@/components/ScormResults";
 
 interface Category { id: string; name: string; weightPercent: number }
 interface Item { type: "QUIZ" | "ASSIGNMENT"; id: string; title: string; gradeCategoryId: string | null }
@@ -317,7 +318,7 @@ export const CourseGradebook: React.FC<{ onClose: () => void; /** Open on this c
   const { user } = useAuth();
   const { courses, isLoading } = useStaffCourses();
   const [courseId, setCourseId] = useState<string>("");
-  const [tab, setTab] = useState<"grades" | "grid" | "setup">("grades");
+  const [tab, setTab] = useState<"grades" | "grid" | "scorm" | "setup">("grades");
 
   useEffect(() => {
     if (!courseId && courses.length > 0) setCourseId(initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0].id);
@@ -347,8 +348,8 @@ export const CourseGradebook: React.FC<{ onClose: () => void; /** Open on this c
         </div>
 
         <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex gap-2">
-          {(["grades", "grid", "setup"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${tab === t ? "bg-brand text-on-brand" : "text-ink-muted hover:bg-surface"}`}>{t === "grades" ? "Grades & approval" : t === "grid" ? "Grade grid" : "Setup"}</button>
+          {(["grades", "grid", "scorm", "setup"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${tab === t ? "bg-brand text-on-brand" : "text-ink-muted hover:bg-surface"}`}>{t === "grades" ? "Grades & approval" : t === "grid" ? "Grade grid" : t === "scorm" ? "SCORM results" : "Setup"}</button>
           ))}
         </div>
 
@@ -361,6 +362,8 @@ export const CourseGradebook: React.FC<{ onClose: () => void; /** Open on this c
             <Grades key={course.id} courseId={course.id} canEdit={canEdit} isAdmin={isAdmin} />
           ) : tab === "grid" ? (
             <Grid key={course.id} courseId={course.id} courseCode={course.code} />
+          ) : tab === "scorm" ? (
+            <ScormResults key={course.id} courseId={course.id} />
           ) : (
             <Setup key={course.id} courseId={course.id} canEdit={canEdit} />
           )}

@@ -29278,7 +29278,7 @@
     "/api/v1/scorm-packages/{id}/attempts": {
       "get": {
         "operationId": "getScormPackagesIdAttempts",
-        "summary": "Every learner's status and score in a SCORM package (course staff).",
+        "summary": "Every learner's status and score in a SCORM package, then the enrolled learners who have not opened it (course staff).",
         "tags": [
           "scorm-packages"
         ],
@@ -29334,7 +29334,8 @@
                             "nullable": true
                           },
                           "updatedAt": {
-                            "type": "string"
+                            "type": "string",
+                            "nullable": true
                           }
                         },
                         "required": [
