@@ -123,7 +123,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                 <label className="space-y-1.5">
                   <span className={label}>Term</span>
                   <select className={field} value={draft.termId ?? ""} onChange={(e) => set({ termId: e.target.value || null })}>
-                    <option value="">None</option>
+                    <option value="">No term</option>
                     {(terms.data?.data ?? []).map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
