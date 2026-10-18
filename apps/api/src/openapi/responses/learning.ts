@@ -220,6 +220,8 @@ export const ScormPackageView = z.object({
   /** The start page, relative to the package root. */
   launchPath: z.string(),
   fileCount: z.number(), sizeBytes: z.number(), createdAt: z.string(),
+  /** A virus scan found malware in the package's zip: it is no longer launched or served. */
+  withdrawn: z.boolean(),
 });
 
 export const TermView = z.object({ id: z.string(), name: z.string(), startsOn: z.string(), endsOn: z.string(), courseCount: z.number() });
@@ -343,7 +345,7 @@ export const RESPONSES: ResponseTable = {
   'GET /api/v1/courses/:id/scorm-packages': { response: data(z.array(ScormPackageView)), errors: [403, 404] },
   'GET /api/v1/scorm-packages/:id/launch': {
     response: data(z.object({ url: z.string(), origin: z.string(), version: z.enum(['1.2', '2004']) })),
-    errors: [400, 403, 404, 409],
+    errors: [400, 403, 404, 409, 410],
   },
   'GET /api/v1/scorm-packages/:id/attempts': {
     response: data(

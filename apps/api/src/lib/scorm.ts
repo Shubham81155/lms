@@ -270,3 +270,7 @@ export function summarise(version: string, cmi: Record<string, string>): { statu
   const scorePercent = raw === null ? null : max ? (raw / max) * 100 : raw;
   return { status: lesson, scorePercent: scorePercent === null ? null : Math.round(scorePercent * 10) / 10, completed: lesson === 'completed' || lesson === 'passed' };
 }
+
+/** A package whose zip a virus scan found malware in is withdrawn: it is neither launched nor served. */
+export const isWithdrawn = (p: { sourceFile?: { scanStatus: string } | null }) => p.sourceFile?.scanStatus === 'INFECTED';
+export const WITHDRAWN_MESSAGE = 'This activity was withdrawn because a virus scan found malware in it.';

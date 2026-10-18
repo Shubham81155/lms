@@ -123,6 +123,9 @@ model ScormPackage {
   courseId     String
   course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
   uploadedById String?
+  /// The uploaded zip it was unpacked from. A virus scan that later finds malware in it withdraws the package.
+  sourceFileId String?
+  sourceFile   StoredFile?    @relation(fields: [sourceFileId], references: [id], onDelete: SetNull)
   title        String
   /// "1.2" or "2004"
   version      String
@@ -136,6 +139,7 @@ model ScormPackage {
   createdAt    DateTime       @default(now())
 
   @@index([tenantId, courseId])
+  @@index([sourceFileId])
 }
 
 /// One learner's run-time data for a SCORM package (the cmi.* values the package saved).
@@ -959,6 +963,7 @@ model StoredFile {
   scanStatus  String    @default("NOT_SCANNED")
   scannedAt   DateTime?
   createdAt   DateTime  @default(now())
+  scormPackages ScormPackage[]
 
   @@index([tenantId, ownerId])
   @@index([scanStatus])

@@ -5,7 +5,11 @@ import { useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { plural } from "@/lib/plural";
 
-interface Package { id: string; title: string; version: "1.2" | "2004"; createdAt: string }
+interface Package {
+  id: string; title: string; version: "1.2" | "2004"; createdAt: string;
+  /** A virus scan found malware in its zip: learners can no longer open it. */
+  withdrawn: boolean;
+}
 interface Attempt {
   userId: string; name: string; email: string;
   /** not attempted | incomplete | completed | passed | failed | unknown */
@@ -106,10 +110,13 @@ export const ScormResults: React.FC<{ courseId: string }> = ({ courseId }) => {
         <p className="text-[11px] text-ink-subtle">Status and score as each package reports them. {plural(packages.length, "package")} in this course.</p>
         {packages.length > 1 && (
           <select className={input} aria-label="SCORM package" value={packageId} onChange={(e) => setPackageId(e.target.value)}>
-            {packages.map((p) => <option key={p.id} value={p.id}>{p.title} (SCORM {p.version})</option>)}
+            {packages.map((p) => <option key={p.id} value={p.id}>{p.title} (SCORM {p.version}){p.withdrawn ? " · withdrawn" : ""}</option>)}
           </select>
         )}
       </div>
+      {packages.find((p) => p.id === packageId)?.withdrawn && (
+        <Banner kind="error">A virus scan found malware in this package&apos;s zip, so learners can no longer open it. Upload a clean copy as a new lesson.</Banner>
+      )}
       {packageId && <Results key={packageId} packageId={packageId} />}
     </div>
   );

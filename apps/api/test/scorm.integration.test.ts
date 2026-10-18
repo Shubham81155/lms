@@ -253,6 +253,23 @@ describe('playing a package', () => {
     expect((await (await as('s1')).get(`/api/v1/scorm-packages/${pkgId}/attempts`)).status).toBe(403);
   });
 
+  it('is withdrawn when a virus scan finds malware in its zip, even mid-lesson', async () => {
+    const pkg = await admin.scormPackage.findUniqueOrThrow({ where: { id: pkgId } });
+    expect(pkg.sourceFileId).not.toBeNull();
+    await admin.storedFile.update({ where: { id: pkg.sourceFileId! }, data: { scanStatus: 'INFECTED' } });
+    try {
+      expect((await (await as('s1')).get(`/api/v1/scorm-packages/${pkgId}/launch`)).status).toBe(410);
+      // A launch link handed out before the scan stops working too.
+      expect((await request(app).get(`${contentBase}__launch`)).status).toBe(410);
+      expect((await request(app).get(`${contentBase}__state`)).status).toBe(410);
+      const list = await (await as('teacher')).get('/api/v1/courses/c1/scorm-packages');
+      expect(list.body.data.find((p: { id: string }) => p.id === pkgId)).toMatchObject({ withdrawn: true });
+    } finally {
+      await admin.storedFile.update({ where: { id: pkg.sourceFileId! }, data: { scanStatus: 'NOT_SCANNED' } });
+    }
+    expect((await request(app).get(`${contentBase}__state`)).status).toBe(200);
+  });
+
   it('is part of the personal data export and cleared on erasure', async () => {
     const s1 = await as('s1');
     const exported = await s1.get('/api/v1/privacy/me/export');

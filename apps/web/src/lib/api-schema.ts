@@ -11690,6 +11690,7 @@ export interface operations {
                             fileCount: number;
                             sizeBytes: number;
                             createdAt: string;
+                            withdrawn: boolean;
                         }[];
                     };
                 };
@@ -11758,6 +11759,7 @@ export interface operations {
                             fileCount: number;
                             sizeBytes: number;
                             createdAt: string;
+                            withdrawn: boolean;
                         };
                     };
                 };
@@ -16970,6 +16972,15 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Withdrawn */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };

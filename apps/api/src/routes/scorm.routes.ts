@@ -13,7 +13,7 @@ import { ACTIVE_ENROLLMENT, requireContentAccess, requireCourseEditor, requireCo
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { storage } from '../lib/storage';
-import { removeStored, scormContentOrigin, signLaunch, unpackPackage, type PackageFile } from '../lib/scorm';
+import { isWithdrawn, removeStored, scormContentOrigin, signLaunch, unpackPackage, WITHDRAWN_MESSAGE, type PackageFile } from '../lib/scorm';
 
 // Mounted at /api/v1. SCORM packages: course editors upload the zip (POST /files, purpose SCORM_PACKAGE) and
 // turn it into a package here; lessons of type SCORM_PACKAGE play it. Playing happens on the content origin
@@ -28,9 +28,11 @@ export const createPackageSchema = z.object({
   title: z.string().trim().min(1).max(255).optional(),
 });
 
-const view = (p: { id: string; courseId: string; title: string; version: string; launchPath: string; fileCount: number; sizeBytes: number; createdAt: Date }) => ({
+const view = (p: { id: string; courseId: string; title: string; version: string; launchPath: string; fileCount: number; sizeBytes: number; createdAt: Date; sourceFile?: { scanStatus: string } | null }) => ({
   id: p.id, courseId: p.courseId, title: p.title, version: p.version, launchPath: p.launchPath, fileCount: p.fileCount, sizeBytes: p.sizeBytes, createdAt: p.createdAt,
+  withdrawn: isWithdrawn(p),
 });
+
 
 /** Unpacking writes up to 1 GB of files: at most two at a time per server. */
 let unpacking = 0;
@@ -67,6 +69,7 @@ router.post(
             tenantId,
             courseId: access.course.id,
             uploadedById: req.user!.id,
+            sourceFileId: upload.id,
             title: title ?? unpacked.title ?? upload.filename.replace(/\.zip$/i, ''),
             version: unpacked.version,
             launchPath: unpacked.launchPath,
@@ -96,13 +99,17 @@ router.get(
   '/courses/:id/scorm-packages',
   route('Failed to load SCORM packages', async (req, res) => {
     const access = await requireCourseStaff(req, idSchema.parse(req.params.id));
-    const list = await prisma.scormPackage.findMany({ where: { courseId: access.course.id }, orderBy: { createdAt: 'desc' } });
+    const list = await prisma.scormPackage.findMany({
+      where: { courseId: access.course.id },
+      orderBy: { createdAt: 'desc' },
+      include: { sourceFile: { select: { scanStatus: true } } },
+    });
     return res.json({ data: list.map(view) });
   })
 );
 
 async function loadPackage(tenantId: string, id: string) {
-  const pkg = await prisma.scormPackage.findFirst({ where: { id, tenantId } });
+  const pkg = await prisma.scormPackage.findFirst({ where: { id, tenantId }, include: { sourceFile: { select: { scanStatus: true } } } });
   if (!pkg) throw new HttpError(404, 'SCORM package not found');
   return pkg;
 }
@@ -119,6 +126,7 @@ router.get(
     const tenantId = tenantIdOf(req);
     const pkg = await loadPackage(tenantId, idSchema.parse(req.params.id));
     await requireContentAccess(req, pkg.courseId);
+    if (isWithdrawn(pkg)) throw new HttpError(410, WITHDRAWN_MESSAGE);
     const token = signLaunch({ t: tenantId, p: pkg.id, u: req.user!.id });
     return res.json({ data: { url: `${origin}/scorm-content/${token}/__launch`, origin, version: pkg.version } });
   })

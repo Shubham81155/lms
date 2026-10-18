@@ -18114,6 +18114,9 @@
                           },
                           "createdAt": {
                             "type": "string"
+                          },
+                          "withdrawn": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -18124,7 +18127,8 @@
                           "launchPath",
                           "fileCount",
                           "sizeBytes",
-                          "createdAt"
+                          "createdAt",
+                          "withdrawn"
                         ]
                       }
                     }
@@ -18255,6 +18259,9 @@
                         },
                         "createdAt": {
                           "type": "string"
+                        },
+                        "withdrawn": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -18265,7 +18272,8 @@
                         "launchPath",
                         "fileCount",
                         "sizeBytes",
-                        "createdAt"
+                        "createdAt",
+                        "withdrawn"
                       ]
                     }
                   },
@@ -29554,6 +29562,16 @@
           },
           "409": {
             "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Withdrawn",
             "content": {
               "application/json": {
                 "schema": {

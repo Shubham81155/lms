@@ -8,7 +8,7 @@ import { config } from '../config';
 import { logger } from '../lib/logger';
 import { storage } from '../lib/storage';
 import { recordLessonsDone } from '../lib/completion';
-import { safeEntryPath, scormContentOrigin, summarise, verifyLaunch, type LaunchClaims, type PackageFile } from '../lib/scorm';
+import { isWithdrawn, safeEntryPath, scormContentOrigin, summarise, verifyLaunch, WITHDRAWN_MESSAGE, type LaunchClaims, type PackageFile } from '../lib/scorm';
 
 // Mounted at /scorm-content and meant to be reached on SCORM_CONTENT_ORIGIN only (server.ts keeps other
 // routes off that host). There is no session here: every URL carries a signed token for one learner and one
@@ -74,9 +74,11 @@ const withToken = (handler: (req: Request, res: Response, ctx: Ctx) => Promise<u
       if (!learner) return res.status(403).type('text/plain').send('This link is no longer valid.');
       const pkg = await prisma.scormPackage.findFirst({
         where: { id: claims.p, tenantId: claims.t },
-        select: { id: true, courseId: true, version: true, launchPath: true, filesJson: true, title: true },
+        select: { id: true, courseId: true, version: true, launchPath: true, filesJson: true, title: true, sourceFile: { select: { scanStatus: true } } },
       });
       if (!pkg) return res.status(404).type('text/plain').send('Not found');
+      // Checked on every request, so an open lesson stops as soon as a scan withdraws the package.
+      if (isWithdrawn(pkg)) return res.status(410).type('text/plain').send(WITHDRAWN_MESSAGE);
       contentHeaders(res);
       await handler(req, res, { claims, pkg });
     } catch (err) {
