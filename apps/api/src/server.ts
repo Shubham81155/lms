@@ -17,6 +17,7 @@ import { apiMounts, rawBodyMounts } from './mounts';
 import { buildOpenApi } from './openapi/spec';
 import { startEmailDispatcher } from './lib/email-dispatch';
 import { startWebhookRetryWorker } from './lib/webhooks';
+import { startFileScanSweep, virusScanner } from './lib/virus-scan';
 import { startPlagiarismSubmitWorker } from './lib/plagiarism-submit';
 
 const app = express();
@@ -277,6 +278,10 @@ if (config.NODE_ENV !== 'test') {
     startEmailDispatcher();
     startWebhookRetryWorker();
     startPlagiarismSubmitWorker();
+    startFileScanSweep();
+    if (!virusScanner() && config.NODE_ENV === 'production') {
+      logger.warn('Uploads are not scanned for viruses: set CLAMAV_URL (e.g. tcp://clamav:3310) to a ClamAV daemon.');
+    }
   });
 }
 

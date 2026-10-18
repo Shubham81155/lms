@@ -49,8 +49,13 @@ const ERROR_TEXT: Record<number, string> = {
   403: 'Not allowed',
   404: 'Not found',
   409: 'Conflict with the current state',
+  410: 'Withdrawn',
+  413: 'Too large',
+  415: 'Unsupported content type',
+  422: 'Refused',
   423: 'Account locked',
   429: 'Rate limit exceeded',
+  503: 'A service this needs is unavailable',
 };
 
 /** Schemas that cannot be expressed in OpenAPI (e.g. z.never()), by operation: they are left out of the description. */

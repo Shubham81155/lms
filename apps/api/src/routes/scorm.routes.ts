@@ -52,6 +52,7 @@ router.post(
     const { fileId, title } = parseBody(req, createPackageSchema);
     const upload = await prisma.storedFile.findFirst({ where: { id: fileId, tenantId, courseId: access.course.id, purpose: 'SCORM_PACKAGE' } });
     if (!upload) throw new HttpError(400, 'Upload the package zip for this course first');
+    if (upload.scanStatus === 'INFECTED') throw new HttpError(410, 'This package was withdrawn because a virus scan found malware in it.');
 
     if (unpacking >= MAX_CONCURRENT_UNPACKS) throw new HttpError(429, 'Other packages are being unpacked; try again in a minute');
     unpacking++;

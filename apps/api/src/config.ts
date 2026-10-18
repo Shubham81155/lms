@@ -114,6 +114,18 @@ const envSchema = z.object({
   SCORM_CONTENT_ORIGIN: z.string().url().optional(),
   /** Largest upload accepted, in megabytes. The web app's proxy limit (next.config.ts) must be at least this. */
   UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(5120).default(100),
+  /**
+   * ClamAV daemon (clamd) that every upload is scanned with before it is stored, e.g. tcp://clamav:3310. Its
+   * StreamMaxLength must be at least UPLOAD_MAX_MB. Set: uploads are refused while it cannot be reached.
+   * Unset: uploads are stored unscanned (a warning is logged in production).
+   */
+  CLAMAV_URL: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().regex(/^tcp:\/\/[^\s:/]+:\d{1,5}$/, 'CLAMAV_URL must look like tcp://host:3310').optional()
+  ),
+  CLAMAV_TIMEOUT_MS: z.coerce.number().int().min(1000).default(120_000),
+  /** How often files stored before scanning was set up are scanned, in seconds (0 turns the sweep off). */
+  FILE_SCAN_SWEEP_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(300),
 }).refine((c) => c.STORAGE_DRIVER !== 's3' || !!c.S3_BUCKET, { message: 'STORAGE_DRIVER=s3 needs S3_BUCKET' })
   .refine((c) => !c.S3_ACCESS_KEY_ID === !c.S3_SECRET_ACCESS_KEY, { message: 'Set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither' });
 

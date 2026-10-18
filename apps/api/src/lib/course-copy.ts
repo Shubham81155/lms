@@ -104,6 +104,8 @@ export async function copyCourse(sourceId: string, opts: CopyOptions, actor: { i
             data: {
               id: c.newId, tenantId, ownerId: actor.id, courseId: course.id, purpose: 'LESSON_MEDIA', storageKey: c.key,
               filename: c.file.filename, contentType: c.file.contentType, sizeBytes: c.file.sizeBytes, sha256: c.file.sha256,
+              // The same bytes: a copy is as clean, unscanned or withdrawn as its original.
+              scanStatus: c.file.scanStatus, scannedAt: c.file.scannedAt,
             },
           });
         }

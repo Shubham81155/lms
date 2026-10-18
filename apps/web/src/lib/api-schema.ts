@@ -1966,7 +1966,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload a file: the request body is the file itself (not multipart) with its Content-Type, at most UPLOAD_MAX_MB. Submission files: enrolled learners; lesson media: course editors. Link it as data.url. Audited. */
+        /** Upload a file: the request body is the file itself (not multipart) with its Content-Type, at most UPLOAD_MAX_MB. Submission files: enrolled learners; lesson media: course editors. Link it as data.url. With a virus scanner set (CLAMAV_URL) the file is scanned first: 422 when malware is found (audited), 503 while the scanner cannot answer. Audited. */
         post: operations["postFiles"];
         delete?: never;
         options?: never;
@@ -1981,7 +1981,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download an uploaded file: streamed (local storage) or a 302 to a five-minute link (S3). Submission files: the uploader and course staff; lesson media: anyone who can read the course. */
+        /** Download an uploaded file: streamed (local storage) or a 302 to a five-minute link (S3). Submission files: the uploader and course staff; lesson media: anyone who can read the course. 410 for a file a later virus scan found malware in. */
         get: operations["getFilesId"];
         put?: never;
         post?: never;
@@ -5380,7 +5380,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description Refused */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5407,7 +5407,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description A service this needs is unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -5737,7 +5737,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description Refused */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -5764,7 +5764,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description A service this needs is unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -11807,6 +11807,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Withdrawn */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getCoursesDepartments: {
@@ -12707,6 +12716,8 @@ export interface operations {
                             contentType: string;
                             sizeBytes: number;
                             sha256: string;
+                            /** @enum {string} */
+                            scanStatus: "CLEAN" | "NOT_SCANNED";
                             createdAt: string;
                         };
                     };
@@ -12748,7 +12759,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description Too large */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -12757,8 +12768,26 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description Unsupported content type */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Refused */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12824,6 +12853,15 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Withdrawn */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13016,7 +13054,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description A service this needs is unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -13087,7 +13125,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description A service this needs is unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -13456,7 +13494,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description A service this needs is unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -13537,7 +13575,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Error */
+            /** @description A service this needs is unavailable */
             503: {
                 headers: {
                     [name: string]: unknown;

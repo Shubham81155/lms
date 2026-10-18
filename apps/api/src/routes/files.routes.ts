@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { once } from 'events';
 import { z } from 'zod';
+import { createReadStream } from 'fs';
 import { rm } from 'fs/promises';
 import { prisma } from '../lib/prisma';
 import { HttpError, route } from '../lib/http';
@@ -10,11 +11,13 @@ import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { ALLOWED_TYPES, contentDisposition, newStorageKey, receiveUpload, storage } from '../lib/storage';
 import { FILE_PURPOSES, fileLink } from '../lib/stored-files';
+import { ScanUnavailableError, virusScanner } from '../lib/virus-scan';
 
 // Mounted at /api/v1/files. Uploads stream straight into storage (lib/storage); the result is linked from
 // a submission's fileUrl or a lesson's mediaUrl as /api/v1/files/<id>. Who may read a file follows from
 // its purpose: a submission file is for the learner who uploaded it and the course's staff; lesson media
-// is for anyone who can read the course.
+// is for anyone who can read the course. With a virus scanner set (CLAMAV_URL) every upload is scanned before
+// it is stored: infected files are refused, and nothing is stored while the scanner cannot answer.
 
 const router = Router();
 router.use(authenticateJWT);
@@ -76,7 +79,26 @@ async function handleUpload(req: Request, res: Response) {
   const tenantId = tenantIdOf(req);
   const { tempPath, sizeBytes, sha256 } = await receiveUpload(req);
   const storageKey = newStorageKey(tenantId);
+  let scannedAt: Date | null = null;
   try {
+    const scanner = virusScanner();
+    if (scanner) {
+      let result;
+      try {
+        result = await scanner.scan(createReadStream(tempPath));
+      } catch (e) {
+        if (e instanceof ScanUnavailableError) throw new HttpError(503, 'Files cannot be checked for viruses right now. Try again in a few minutes.');
+        throw e;
+      }
+      if (result.infected) {
+        await logAuditEvent({
+          tenantId, userId: req.user!.id, action: 'FILE_MALWARE_BLOCKED', resourceType: 'FILE',
+          ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { purpose, courseId, contentType, sizeBytes, sha256, signature: result.signature },
+        });
+        throw new HttpError(422, 'This file contains a virus or other malware and was not uploaded.');
+      }
+      scannedAt = new Date();
+    }
     await storage().putFile(storageKey, tempPath, contentType);
   } finally {
     await rm(tempPath, { force: true });
@@ -94,6 +116,8 @@ async function handleUpload(req: Request, res: Response) {
         contentType,
         sizeBytes,
         sha256,
+        scanStatus: scannedAt ? 'CLEAN' : 'NOT_SCANNED',
+        scannedAt,
       },
     });
   } catch (e) {
@@ -113,7 +137,7 @@ async function handleUpload(req: Request, res: Response) {
     diffJson: { purpose, courseId, contentType, sizeBytes },
   });
   return res.status(201).json({
-    data: { id: file.id, url: fileLink(file.id), filename: file.filename, contentType, sizeBytes, sha256, createdAt: file.createdAt },
+    data: { id: file.id, url: fileLink(file.id), filename: file.filename, contentType, sizeBytes, sha256, scanStatus: file.scanStatus, createdAt: file.createdAt },
   });
 }
 
@@ -134,6 +158,7 @@ router.get(
     if (staffOnly && !access.isStaff && !canSeeAllCourses(user.role)) {
       throw new HttpError(404, 'File not found');
     }
+    if (file.scanStatus === 'INFECTED') throw new HttpError(410, 'This file was withdrawn because a virus scan found malware in it.');
 
     const inline = ALLOWED_TYPES[file.contentType]?.inline ?? false;
     const signed = await storage().signedDownloadUrl(file.storageKey, { filename: file.filename, contentType: file.contentType, inline });

@@ -38,7 +38,8 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **Publishing review** (optional per organisation: instructors submit drafts, administrators approve or request changes) | Done | off by default |
 | Course versioning, CSV / Common Cartridge import | Open | |
 | **File uploads** to local disk or S3-compatible storage (type allowlist, size limit, signed download links, erasure) | Done | S3 driver not yet run against a real bucket |
-| CDN, virus scanning of uploads | Open | |
+| **Virus scanning** of uploads with ClamAV (before storing; background scan of older files; infected ones withdrawn) | Done | not yet run against a real clamd |
+| CDN | Open | |
 
 ## Phase 2 - Delivery standards and the LRS
 
@@ -101,9 +102,8 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 
 ## Suggested next steps (highest value first)
 
-1. Check the Phase 3-4 screens in a browser, run the S3 driver against a real bucket and SCORM against packages
-   from Articulate, Captivate and iSpring.
-2. Virus scanning of uploads (e.g. ClamAV) before files can be downloaded.
-3. Webcam/audio proctoring; Turnitin/Copyleaks adapter.
-4. Daily digest e-mails and SMS/push channels.
-5. DSAR request queue (log, deadline tracking) and a data-retention scheduler.
+1. Run the S3 driver against a real bucket, SCORM against packages from Articulate, Captivate and iSpring, and
+   virus scanning against a real ClamAV daemon (the Phase 3-4 screens were checked in a browser on 2026-10-18).
+2. Webcam/audio proctoring; Turnitin/Copyleaks adapter.
+3. Daily digest e-mails and SMS/push channels.
+4. DSAR request queue (log, deadline tracking) and a data-retention scheduler.

@@ -339,7 +339,7 @@ export const RESPONSES: ResponseTable = {
     response: { status: 200, contentType: 'application/octet-stream', schema: z.string(), description: 'The file, with its own Content-Type.' },
     errors: [403, 404],
   },
-  'POST /api/v1/courses/:id/scorm-packages': { response: data(ScormPackageView, 201), errors: [400, 403, 404, 409] },
+  'POST /api/v1/courses/:id/scorm-packages': { response: data(ScormPackageView, 201), errors: [400, 403, 404, 409, 410] },
   'GET /api/v1/courses/:id/scorm-packages': { response: data(z.array(ScormPackageView)), errors: [403, 404] },
   'GET /api/v1/scorm-packages/:id/launch': {
     response: data(z.object({ url: z.string(), origin: z.string(), version: z.enum(['1.2', '2004']) })),
@@ -402,15 +402,20 @@ export const RESPONSES: ResponseTable = {
   },
   'POST /api/v1/files': {
     response: data(
-      z.object({ id: z.string(), url: z.string(), filename: z.string(), contentType: z.string(), sizeBytes: z.number(), sha256: z.string(), createdAt: z.string() }),
+      z.object({
+        id: z.string(), url: z.string(), filename: z.string(), contentType: z.string(), sizeBytes: z.number(), sha256: z.string(),
+        /** CLEAN when a virus scanner checked it, NOT_SCANNED when none is set up. */
+        scanStatus: z.enum(['CLEAN', 'NOT_SCANNED']),
+        createdAt: z.string(),
+      }),
       201
     ),
-    errors: [400, 403, 404, 413, 415],
+    errors: [400, 403, 404, 413, 415, 422, 503],
   },
   'GET /api/v1/files/:id': {
     response: { status: 200, contentType: 'application/octet-stream', schema: z.string(), description: 'The file, with its own Content-Type (local storage).' },
     otherResponses: [{ status: 302, description: 'Redirect to a signed link valid for five minutes (S3 storage).' }],
-    errors: [400, 403, 404],
+    errors: [400, 403, 404, 410],
   },
   'GET /api/v1/announcements/recent': {
     response: data(z.array(AnnouncementView.extend({ course: z.object({ id: z.string(), code: z.string(), title: z.string() }) }))),

@@ -43,9 +43,20 @@ services:
       # Uploads are kept in the uploads volume. For S3-compatible storage set STORAGE_DRIVER=s3 and S3_* instead.
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       STORAGE_LOCAL_DIR: /app/storage
+      # Virus scanning of uploads: start with `CLAMAV_URL=tcp://clamav:3310 docker compose --profile scan up`.
+      CLAMAV_URL: ${CLAMAV_URL:-}
     volumes:
       - uploads:/app/storage
     ports: ["4000:4000"]
+
+  # ClamAV daemon for scanning uploads (opt-in: --profile scan). It needs about 2 GB of memory and a few minutes
+  # to load its signatures on first start; freshclam inside keeps them up to date. Its StreamMaxLength must be at
+  # least UPLOAD_MAX_MB, or larger uploads are refused (503) rather than let through.
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: [scan]
+    volumes:
+      - clamav-db:/var/lib/clamav
 
   web:
     build: { context: ., dockerfile: deploy/Dockerfile.web }
@@ -57,3 +68,4 @@ services:
 volumes:
   pgdata:
   uploads:
+  clamav-db:

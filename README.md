@@ -20,7 +20,7 @@ flowchart TD
 ```
 
 Not built yet (see [docs/ROADMAP.md](docs/ROADMAP.md)): API gateway/WAF, Redis as a cache and job queue (it is only
-used for shared rate limits today), virus scanning of uploads, a dedicated LRS (xAPI is stored in PostgreSQL today),
+used for shared rate limits today), a dedicated LRS (xAPI is stored in PostgreSQL today),
 mobile apps.
 Compliance (FERPA, SOC 2, WCAG) is **not** claimed by the software; `GET /api/v1/admin/compliance` reports measured facts only.
 
@@ -59,7 +59,8 @@ LMS/
    - A weighted gradebook with a curve, two-person grade approval, a **grade grid** of every learner and item, and
      **CSV export**. Courses **complete automatically** when every lesson is done and, for graded courses, the
      approved grade passes.
-   - **File uploads** (assignment files, lesson videos and documents) to a local folder or any S3-compatible service.
+   - **File uploads** (assignment files, lesson videos and documents) to a local folder or any S3-compatible service,
+     **scanned for viruses** with ClamAV before they are stored.
    - A **course home** for learners (syllabus, upcoming work, "Continue: next lesson"), announcements, live classes on
      LiveKit, forums with moderation, a calendar that shows quiz and assignment due dates (with iCal export),
      notifications by e-mail.
@@ -128,6 +129,7 @@ npm test                                  # API, database and security packages
 | `STORAGE_DRIVER=local` (default), `STORAGE_LOCAL_DIR` | Uploads go to a folder on the API server (one server only; back it up). docker-compose keeps it in the `uploads` volume. |
 | `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | Any S3-compatible service (AWS S3, Cloudflare R2, MinIO, Backblaze B2). Downloads redirect to five-minute signed links. |
 | `UPLOAD_MAX_MB` (default 100) | Largest upload. The web proxy limit in `apps/web/next.config.ts` must be at least this. |
+| `CLAMAV_URL` (e.g. `tcp://clamav:3310`), `CLAMAV_TIMEOUT_MS`, `FILE_SCAN_SWEEP_INTERVAL_SECONDS` | Scan every upload with a ClamAV daemon before it is stored. Infected files are refused (422, audited); while the scanner cannot answer, uploads are refused (503). Files stored before it was set are scanned in the background, and any found infected are no longer served (410). Unset: uploads are stored unscanned, with a warning at startup in production. docker-compose: `CLAMAV_URL=tcp://clamav:3310 docker compose --profile scan up`. |
 | `SCORM_CONTENT_ORIGIN` | Where SCORM packages are served: a host name of its own pointing at the API (e.g. `https://content.example.org`), never the web app's origin, and not sharing a cookie domain with it. Without it SCORM is off in production; development uses `http://127.0.0.1:4000`. |
 
 Uploads are refused when their type could run script in a browser (HTML, SVG) and are always served with `nosniff`.

@@ -4884,7 +4884,7 @@
             }
           },
           "422": {
-            "description": "Error",
+            "description": "Refused",
             "content": {
               "application/json": {
                 "schema": {
@@ -4914,7 +4914,7 @@
             }
           },
           "503": {
-            "description": "Error",
+            "description": "A service this needs is unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -5654,7 +5654,7 @@
             }
           },
           "422": {
-            "description": "Error",
+            "description": "Refused",
             "content": {
               "application/json": {
                 "schema": {
@@ -5684,7 +5684,7 @@
             }
           },
           "503": {
-            "description": "Error",
+            "description": "A service this needs is unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -18325,6 +18325,16 @@
                 }
               }
             }
+          },
+          "410": {
+            "description": "Withdrawn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -20476,7 +20486,7 @@
     "/api/v1/files": {
       "post": {
         "operationId": "postFiles",
-        "summary": "Upload a file: the request body is the file itself (not multipart) with its Content-Type, at most UPLOAD_MAX_MB. Submission files: enrolled learners; lesson media: course editors. Link it as data.url. Audited.",
+        "summary": "Upload a file: the request body is the file itself (not multipart) with its Content-Type, at most UPLOAD_MAX_MB. Submission files: enrolled learners; lesson media: course editors. Link it as data.url. With a virus scanner set (CLAMAV_URL) the file is scanned first: 422 when malware is found (audited), 503 while the scanner cannot answer. Audited.",
         "tags": [
           "files"
         ],
@@ -20552,6 +20562,13 @@
                         "sha256": {
                           "type": "string"
                         },
+                        "scanStatus": {
+                          "type": "string",
+                          "enum": [
+                            "CLEAN",
+                            "NOT_SCANNED"
+                          ]
+                        },
                         "createdAt": {
                           "type": "string"
                         }
@@ -20563,6 +20580,7 @@
                         "contentType",
                         "sizeBytes",
                         "sha256",
+                        "scanStatus",
                         "createdAt"
                       ]
                     }
@@ -20615,7 +20633,7 @@
             }
           },
           "413": {
-            "description": "Error",
+            "description": "Too large",
             "content": {
               "application/json": {
                 "schema": {
@@ -20625,7 +20643,27 @@
             }
           },
           "415": {
-            "description": "Error",
+            "description": "Unsupported content type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Refused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service this needs is unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -20640,7 +20678,7 @@
     "/api/v1/files/{id}": {
       "get": {
         "operationId": "getFilesId",
-        "summary": "Download an uploaded file: streamed (local storage) or a 302 to a five-minute link (S3). Submission files: the uploader and course staff; lesson media: anyone who can read the course.",
+        "summary": "Download an uploaded file: streamed (local storage) or a 302 to a five-minute link (S3). Submission files: the uploader and course staff; lesson media: anyone who can read the course. 410 for a file a later virus scan found malware in.",
         "tags": [
           "files"
         ],
@@ -20708,6 +20746,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Withdrawn",
             "content": {
               "application/json": {
                 "schema": {
@@ -21007,7 +21055,7 @@
             }
           },
           "503": {
-            "description": "Error",
+            "description": "A service this needs is unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -21104,7 +21152,7 @@
             }
           },
           "503": {
-            "description": "Error",
+            "description": "A service this needs is unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -21790,7 +21838,7 @@
             }
           },
           "503": {
-            "description": "Error",
+            "description": "A service this needs is unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -21940,7 +21988,7 @@
             }
           },
           "503": {
-            "description": "Error",
+            "description": "A service this needs is unavailable",
             "content": {
               "application/json": {
                 "schema": {
