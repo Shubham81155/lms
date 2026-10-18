@@ -14462,6 +14462,12 @@
                           "requireProctoring": {
                             "type": "boolean"
                           },
+                          "proctorCamera": {
+                            "type": "boolean"
+                          },
+                          "proctorMicrophone": {
+                            "type": "boolean"
+                          },
                           "availableFrom": {
                             "type": "string",
                             "nullable": true
@@ -14496,6 +14502,8 @@
                           "maxAttempts",
                           "passingPercent",
                           "requireProctoring",
+                          "proctorCamera",
+                          "proctorMicrophone",
                           "availableFrom",
                           "dueAt",
                           "reviewPolicy",
@@ -14598,6 +14606,12 @@
                   "requireProctoring": {
                     "type": "boolean"
                   },
+                  "proctorCamera": {
+                    "type": "boolean"
+                  },
+                  "proctorMicrophone": {
+                    "type": "boolean"
+                  },
                   "passingPercent": {
                     "type": "number",
                     "minimum": 0,
@@ -14663,6 +14677,12 @@
                         "requireProctoring": {
                           "type": "boolean"
                         },
+                        "proctorCamera": {
+                          "type": "boolean"
+                        },
+                        "proctorMicrophone": {
+                          "type": "boolean"
+                        },
                         "passingPercent": {
                           "type": "number"
                         },
@@ -14702,6 +14722,8 @@
                         "maxAttempts",
                         "randomizeQuestions",
                         "requireProctoring",
+                        "proctorCamera",
+                        "proctorMicrophone",
                         "passingPercent",
                         "availableFrom",
                         "dueAt",
@@ -24312,7 +24334,9 @@
                       "MULTIPLE_FACES",
                       "AUDIO_SPIKE",
                       "COPY_PASTE",
-                      "FULLSCREEN_EXIT"
+                      "FULLSCREEN_EXIT",
+                      "CAMERA_STOPPED",
+                      "MICROPHONE_STOPPED"
                     ]
                   },
                   "severity": {
@@ -25536,6 +25560,12 @@
                             "requireProctoring": {
                               "type": "boolean"
                             },
+                            "proctorCamera": {
+                              "type": "boolean"
+                            },
+                            "proctorMicrophone": {
+                              "type": "boolean"
+                            },
                             "passingPercent": {
                               "type": "number"
                             },
@@ -25656,6 +25686,8 @@
                             "maxAttempts",
                             "randomizeQuestions",
                             "requireProctoring",
+                            "proctorCamera",
+                            "proctorMicrophone",
                             "passingPercent",
                             "availableFrom",
                             "dueAt",
@@ -25690,6 +25722,12 @@
                               "type": "number"
                             },
                             "requireProctoring": {
+                              "type": "boolean"
+                            },
+                            "proctorCamera": {
+                              "type": "boolean"
+                            },
+                            "proctorMicrophone": {
                               "type": "boolean"
                             },
                             "randomizeQuestions": {
@@ -25785,6 +25823,8 @@
                             "maxAttempts",
                             "passingPercent",
                             "requireProctoring",
+                            "proctorCamera",
+                            "proctorMicrophone",
                             "randomizeQuestions",
                             "course",
                             "attemptsUsed",
@@ -25887,6 +25927,12 @@
                   "requireProctoring": {
                     "type": "boolean"
                   },
+                  "proctorCamera": {
+                    "type": "boolean"
+                  },
+                  "proctorMicrophone": {
+                    "type": "boolean"
+                  },
                   "passingPercent": {
                     "type": "number",
                     "minimum": 0,
@@ -25949,6 +25995,12 @@
                         "requireProctoring": {
                           "type": "boolean"
                         },
+                        "proctorCamera": {
+                          "type": "boolean"
+                        },
+                        "proctorMicrophone": {
+                          "type": "boolean"
+                        },
                         "passingPercent": {
                           "type": "number"
                         },
@@ -25988,6 +26040,8 @@
                         "maxAttempts",
                         "randomizeQuestions",
                         "requireProctoring",
+                        "proctorCamera",
+                        "proctorMicrophone",
                         "passingPercent",
                         "availableFrom",
                         "dueAt",

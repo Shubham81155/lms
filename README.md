@@ -74,8 +74,10 @@ LMS/
 4. **Security and privacy**
    - Append-only audit trail enforced by the database, MFA (TOTP), server-side session revocation.
    - Self-serve personal-data export, directory opt-out and erasure for FERPA and GDPR requests.
-   - Quiz proctoring records browser events (tab switches, leaving full screen, copy and paste). It does not use a
-     webcam and does not decide anything on its own: staff review the events.
+   - Quiz proctoring records browser events (tab switches, leaving full screen, copy and paste) and, per quiz, what
+     the **camera and microphone** pick up (face out of view, more than one face, sustained sound, a device turned
+     off). Detection runs in the learner's browser (MediaPipe face detector, served by the web app): only events
+     are sent, never images or sound. It does not decide anything on its own: staff review the events.
 5. **AI assistance (optional)**
    - A study tutor for learners, grounded in the course's lessons, and draft course outlines for instructors.
    - Each organisation's administrators choose the provider (Claude, Gemini or Grok), the model and the API key under

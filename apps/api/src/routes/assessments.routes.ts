@@ -40,6 +40,9 @@ const quizFields = {
   maxAttempts: z.number().int().min(1).max(100).optional(),
   randomizeQuestions: z.boolean().optional(),
   requireProctoring: z.boolean().optional(),
+  /** With requireProctoring: watch the camera / microphone in the learner's browser (events only). */
+  proctorCamera: z.boolean().optional(),
+  proctorMicrophone: z.boolean().optional(),
   passingPercent: z.number().min(0).max(100).optional(),
   /** Learners can start the quiz from this time (null: any time). */
   availableFrom: z.coerce.date().nullable().optional(),
@@ -171,6 +174,8 @@ router.get(
         maxAttempts: q.maxAttempts,
         passingPercent: q.passingPercent,
         requireProctoring: q.requireProctoring,
+        proctorCamera: q.proctorCamera,
+        proctorMicrophone: q.proctorMicrophone,
         availableFrom: q.availableFrom,
         dueAt: q.dueAt,
         reviewPolicy: q.reviewPolicy,
@@ -246,6 +251,8 @@ router.get(
         maxAttempts: quiz.maxAttempts,
         passingPercent: quiz.passingPercent,
         requireProctoring: quiz.requireProctoring,
+        proctorCamera: quiz.proctorCamera,
+        proctorMicrophone: quiz.proctorMicrophone,
         randomizeQuestions: quiz.randomizeQuestions,
         course,
         attemptsUsed,

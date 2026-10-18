@@ -535,6 +535,10 @@ model Quiz {
   maxAttempts        Int     @default(1)
   randomizeQuestions Boolean @default(true)
   requireProctoring  Boolean @default(false)
+  /// With requireProctoring: the learner's browser watches the camera (face missing, more than one face) and
+  /// the microphone (sustained sound). Only events leave the browser, never images or audio.
+  proctorCamera      Boolean @default(false)
+  proctorMicrophone  Boolean @default(false)
   passingPercent     Float   @default(70.0)
   // Availability window; null means no limit on that side. Per-learner extensions can move the close.
   availableFrom      DateTime?

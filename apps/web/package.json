@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-proctoring-assets.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-proctoring-assets.mjs",
     "build": "next build",
     "start": "next start",
     "test": "vitest run"
   },
   "dependencies": {
     "@enterprise-lms/security": "*",
+    "@mediapipe/tasks-vision": "1.0.1",
     "clsx": "^2.1.1",
     "livekit-client": "^2.22.4",
     "lucide-react": "^0.468.0",

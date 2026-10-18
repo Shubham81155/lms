@@ -10053,6 +10053,8 @@ export interface operations {
                             maxAttempts: number;
                             passingPercent: number;
                             requireProctoring: boolean;
+                            proctorCamera: boolean;
+                            proctorMicrophone: boolean;
                             availableFrom: string | null;
                             dueAt: string | null;
                             /** @enum {string} */
@@ -10110,6 +10112,8 @@ export interface operations {
                     maxAttempts?: number;
                     randomizeQuestions?: boolean;
                     requireProctoring?: boolean;
+                    proctorCamera?: boolean;
+                    proctorMicrophone?: boolean;
                     passingPercent?: number;
                     availableFrom?: string | null;
                     dueAt?: string | null;
@@ -10135,6 +10139,8 @@ export interface operations {
                             maxAttempts: number;
                             randomizeQuestions: boolean;
                             requireProctoring: boolean;
+                            proctorCamera: boolean;
+                            proctorMicrophone: boolean;
                             passingPercent: number;
                             availableFrom: string | null;
                             dueAt: string | null;
@@ -14684,7 +14690,7 @@ export interface operations {
                 "application/json": {
                     submissionId: string;
                     /** @enum {string} */
-                    eventType: "TAB_SWITCH" | "FACE_NOT_DETECTED" | "MULTIPLE_FACES" | "AUDIO_SPIKE" | "COPY_PASTE" | "FULLSCREEN_EXIT";
+                    eventType: "TAB_SWITCH" | "FACE_NOT_DETECTED" | "MULTIPLE_FACES" | "AUDIO_SPIKE" | "COPY_PASTE" | "FULLSCREEN_EXIT" | "CAMERA_STOPPED" | "MICROPHONE_STOPPED";
                     /** @enum {string} */
                     severity: "LOW" | "MEDIUM" | "HIGH";
                     /** Format: uri */
@@ -15142,6 +15148,8 @@ export interface operations {
                             maxAttempts: number;
                             randomizeQuestions: boolean;
                             requireProctoring: boolean;
+                            proctorCamera: boolean;
+                            proctorMicrophone: boolean;
                             passingPercent: number;
                             availableFrom: string | null;
                             dueAt: string | null;
@@ -15176,6 +15184,8 @@ export interface operations {
                             maxAttempts: number;
                             passingPercent: number;
                             requireProctoring: boolean;
+                            proctorCamera: boolean;
+                            proctorMicrophone: boolean;
                             randomizeQuestions: boolean;
                             course: {
                                 id: string;
@@ -15307,6 +15317,8 @@ export interface operations {
                     maxAttempts?: number;
                     randomizeQuestions?: boolean;
                     requireProctoring?: boolean;
+                    proctorCamera?: boolean;
+                    proctorMicrophone?: boolean;
                     passingPercent?: number;
                     availableFrom?: string | null;
                     dueAt?: string | null;
@@ -15332,6 +15344,8 @@ export interface operations {
                             maxAttempts: number;
                             randomizeQuestions: boolean;
                             requireProctoring: boolean;
+                            proctorCamera: boolean;
+                            proctorMicrophone: boolean;
                             passingPercent: number;
                             availableFrom: string | null;
                             dueAt: string | null;

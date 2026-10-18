@@ -153,6 +153,8 @@ export async function copyCourse(sourceId: string, opts: CopyOptions, actor: { i
               maxAttempts: q.maxAttempts,
               randomizeQuestions: q.randomizeQuestions,
               requireProctoring: q.requireProctoring,
+              proctorCamera: q.proctorCamera,
+              proctorMicrophone: q.proctorMicrophone,
               passingPercent: q.passingPercent,
               availableFrom: shift(q.availableFrom),
               dueAt: shift(q.dueAt),

@@ -143,7 +143,10 @@ router.get(
 // Proctoring telemetry
 // ---------------------------------------------------------------------------
 
-const EVENT_TYPES = ['TAB_SWITCH', 'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'AUDIO_SPIKE', 'COPY_PASTE', 'FULLSCREEN_EXIT'] as const;
+const EVENT_TYPES = ['TAB_SWITCH', 'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'AUDIO_SPIKE', 'COPY_PASTE', 'FULLSCREEN_EXIT', 'CAMERA_STOPPED', 'MICROPHONE_STOPPED'] as const;
+/** Reported from the camera or microphone: only accepted when the quiz asks for that device. */
+const CAMERA_EVENTS: readonly string[] = ['FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'CAMERA_STOPPED'];
+const MICROPHONE_EVENTS: readonly string[] = ['AUDIO_SPIKE', 'MICROPHONE_STOPPED'];
 const SEVERITIES = ['LOW', 'MEDIUM', 'HIGH'] as const;
 export const proctorEventSchema = z.object({
   submissionId: idSchema,
@@ -167,11 +170,13 @@ router.post(
 
     const submission = await prisma.quizSubmission.findFirst({
       where: { id: body.submissionId, userId: req.user!.id },
-      select: { id: true, submittedAt: true, quiz: { select: { id: true, title: true, courseId: true, requireProctoring: true } } },
+      select: { id: true, submittedAt: true, quiz: { select: { id: true, title: true, courseId: true, requireProctoring: true, proctorCamera: true, proctorMicrophone: true } } },
     });
     if (!submission) throw new HttpError(404, 'Submission not found');
     if (submission.submittedAt) throw new HttpError(409, 'This attempt is already submitted');
     if (!submission.quiz.requireProctoring) throw new HttpError(400, 'Proctoring is not enabled for this quiz');
+    if (CAMERA_EVENTS.includes(body.eventType) && !submission.quiz.proctorCamera) throw new HttpError(400, 'This quiz does not use the camera');
+    if (MICROPHONE_EVENTS.includes(body.eventType) && !submission.quiz.proctorMicrophone) throw new HttpError(400, 'This quiz does not use the microphone');
 
     const before = assessProctoring(await prisma.proctoringLog.findMany({ where: { submissionId: submission.id }, select: { severity: true } }));
     await prisma.proctoringLog.create({

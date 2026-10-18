@@ -59,7 +59,10 @@ export function formatClock(totalSeconds: number): string {
   return `${h > 0 ? `${h}:` : ""}${mm}:${String(s).padStart(2, "0")}`;
 }
 
-export type IntegrityKind = "TAB_SWITCH" | "FULLSCREEN_EXIT" | "COPY_PASTE";
+export type IntegrityKind =
+  | "TAB_SWITCH" | "FULLSCREEN_EXIT" | "COPY_PASTE"
+  // From the camera and microphone (hooks/useMediaProctor.ts).
+  | "FACE_NOT_DETECTED" | "MULTIPLE_FACES" | "AUDIO_SPIKE" | "CAMERA_STOPPED" | "MICROPHONE_STOPPED";
 
 /**
  * How serious each kind of event is. They are signals for a human reviewer, not verdicts: the server
@@ -69,10 +72,20 @@ export const SEVERITY: Record<IntegrityKind, "LOW" | "MEDIUM" | "HIGH"> = {
   TAB_SWITCH: "MEDIUM",
   FULLSCREEN_EXIT: "MEDIUM",
   COPY_PASTE: "LOW",
+  FACE_NOT_DETECTED: "MEDIUM",
+  MULTIPLE_FACES: "MEDIUM",
+  AUDIO_SPIKE: "LOW",
+  CAMERA_STOPPED: "MEDIUM",
+  MICROPHONE_STOPPED: "MEDIUM",
 };
 
 export const KIND_LABEL: Record<IntegrityKind, string> = {
   TAB_SWITCH: "You left the exam tab",
   FULLSCREEN_EXIT: "You left full-screen mode",
   COPY_PASTE: "Copy and paste is recorded",
+  FACE_NOT_DETECTED: "Your face is not visible to the camera",
+  MULTIPLE_FACES: "More than one person is visible to the camera",
+  AUDIO_SPIKE: "Talking or other sound was picked up",
+  CAMERA_STOPPED: "Your camera was turned off",
+  MICROPHONE_STOPPED: "Your microphone was turned off",
 };

@@ -35,6 +35,9 @@ const QuizRecord = z.object({
   maxAttempts: z.number(),
   randomizeQuestions: z.boolean(),
   requireProctoring: z.boolean(),
+  /** With requireProctoring: the camera / microphone are watched in the learner's browser (events only). */
+  proctorCamera: z.boolean(),
+  proctorMicrophone: z.boolean(),
   passingPercent: z.number(),
   /** Learners can start from this time; null: any time. */
   availableFrom: z.string().nullable(),
@@ -54,6 +57,9 @@ const QuizListItem = z.object({
   maxAttempts: z.number(),
   passingPercent: z.number(),
   requireProctoring: z.boolean(),
+  /** With requireProctoring: the camera / microphone are watched in the learner's browser (events only). */
+  proctorCamera: z.boolean(),
+  proctorMicrophone: z.boolean(),
   availableFrom: z.string().nullable(),
   dueAt: z.string().nullable(),
   reviewPolicy: z.enum(['SCORE_ONLY', 'RESPONSES', 'ANSWERS']),
@@ -91,6 +97,9 @@ const QuizLearnerView = z.object({
   maxAttempts: z.number(),
   passingPercent: z.number(),
   requireProctoring: z.boolean(),
+  /** With requireProctoring: the camera / microphone are watched in the learner's browser (events only). */
+  proctorCamera: z.boolean(),
+  proctorMicrophone: z.boolean(),
   randomizeQuestions: z.boolean(),
   course: CourseRef,
   attemptsUsed: z.number(),

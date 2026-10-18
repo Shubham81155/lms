@@ -9,6 +9,9 @@ export interface QuizSettings {
   passing: string;
   randomize: boolean;
   proctoring: boolean;
+  /** With proctoring: watch the camera / microphone in the learner's browser. */
+  camera: boolean;
+  microphone: boolean;
   /** datetime-local values; empty means no limit. */
   opens: string;
   closes: string;

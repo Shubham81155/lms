@@ -29,13 +29,15 @@ interface QuizDetail {
   maxAttempts: number;
   passingPercent: number;
   requireProctoring: boolean;
+  proctorCamera: boolean;
+  proctorMicrophone: boolean;
   randomizeQuestions: boolean;
   availableFrom: string | null;
   dueAt: string | null;
   reviewPolicy: Settings["review"];
 }
 
-const defaults: Settings = { title: "", timed: false, minutes: "30", attempts: "1", passing: "70", randomize: false, proctoring: false, opens: "", closes: "", review: "RESPONSES" };
+const defaults: Settings = { title: "", timed: false, minutes: "30", attempts: "1", passing: "70", randomize: false, proctoring: false, camera: false, microphone: false, opens: "", closes: "", review: "RESPONSES" };
 
 const fromDetail = (q: QuizDetail): Settings => ({
   title: q.title,
@@ -45,6 +47,8 @@ const fromDetail = (q: QuizDetail): Settings => ({
   passing: String(q.passingPercent),
   randomize: q.randomizeQuestions,
   proctoring: q.requireProctoring,
+  camera: q.proctorCamera,
+  microphone: q.proctorMicrophone,
   opens: toLocalInput(q.availableFrom),
   closes: toLocalInput(q.dueAt),
   review: q.reviewPolicy,
@@ -57,6 +61,8 @@ const toBody = (s: Settings) => ({
   passingPercent: Number(s.passing),
   randomizeQuestions: s.randomize,
   requireProctoring: s.proctoring,
+  proctorCamera: s.proctoring && s.camera,
+  proctorMicrophone: s.proctoring && s.microphone,
   availableFrom: s.opens ? new Date(s.opens).toISOString() : null,
   dueAt: s.closes ? new Date(s.closes).toISOString() : null,
   reviewPolicy: s.review,
@@ -103,6 +109,21 @@ const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boole
             <input type="checkbox" checked={s.proctoring} onChange={(e) => set({ proctoring: e.target.checked })} />
             Require proctoring
           </label>
+          {s.proctoring && (
+            <>
+              <label className="flex items-center gap-2 pl-5">
+                <input type="checkbox" checked={s.camera} onChange={(e) => set({ camera: e.target.checked })} />
+                Use the camera (face missing, more than one face)
+              </label>
+              <label className="flex items-center gap-2 pl-5">
+                <input type="checkbox" checked={s.microphone} onChange={(e) => set({ microphone: e.target.checked })} />
+                Use the microphone (sustained sound)
+              </label>
+              {(s.camera || s.microphone) && (
+                <p className="pl-5 text-[10px] text-ink-subtle max-w-xs">Checked in the learner&apos;s browser; only events reach you, never images or sound. Learners without a working device cannot start.</p>
+              )}
+            </>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">

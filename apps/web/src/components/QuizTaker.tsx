@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AttemptReview } from "./AttemptReview";
-import { AlertTriangle, CheckCircle2, Clock, ShieldAlert, X } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, Clock, Mic, ShieldAlert, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { errorMessage, useAction } from "@/hooks/useApiData";
+import { useMediaProctor } from "@/hooks/useMediaProctor";
 import { Banner } from "@/components/admin/IdentityPanels";
 import {
   AnswerValue, IntegrityKind, KIND_LABEL, QuizQuestionView, SEVERITY,
@@ -18,6 +19,9 @@ interface QuizView {
   maxAttempts: number;
   passingPercent: number;
   requireProctoring: boolean;
+  /** With requireProctoring: watched in this browser; only events are sent. */
+  proctorCamera?: boolean;
+  proctorMicrophone?: boolean;
   attemptsRemaining: number;
   course?: { code: string; title: string };
   questions: QuizQuestionView[];
@@ -32,7 +36,9 @@ const field = "w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs 
 /**
  * Takes a real quiz from the API: starts an attempt (which starts the clock), keeps the countdown,
  * and submits for grading. For proctored quizzes it reports tab switches, leaving full screen and
- * copy/paste to the proctoring endpoint as the attempt runs. Those are signals for a reviewer.
+ * copy/paste to the proctoring endpoint as the attempt runs, and, when the quiz asks for them, what the
+ * camera and microphone pick up (a missing face, a second face, sustained sound). Those are signals for a
+ * reviewer; no image or sound leaves the browser.
  */
 export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinished?: (r: Result) => void }> = ({ quizId, onClose, onFinished }) => {
   const [quiz, setQuiz] = useState<QuizView | null>(null);
@@ -115,6 +121,17 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
     api.post("/api/v1/proctoring/events", { submissionId: a.submissionId, eventType: kind, severity: SEVERITY[kind] }).catch(() => undefined);
   }, []);
 
+  const media = useMediaProctor({
+    camera: !!quiz?.requireProctoring && !!quiz.proctorCamera,
+    microphone: !!quiz?.requireProctoring && !!quiz.proctorMicrophone,
+    active: !!attempt && !result,
+    onEvent: report,
+  });
+  const stopMedia = media.stop;
+  useEffect(() => {
+    if (result) stopMedia();
+  }, [result, stopMedia]);
+
   useEffect(() => {
     if (!attempt || !quiz?.requireProctoring || result) return;
     const onVisibility = () => document.hidden && report("TAB_SWITCH");
@@ -138,6 +155,13 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
     run(async () => {
       if (!quiz) return;
       if (quiz.requireProctoring) await document.documentElement.requestFullscreen?.().catch(() => undefined); // needs this click
+      // The camera and microphone must be on before the clock starts.
+      try {
+        await media.start();
+      } catch (e) {
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+        throw e;
+      }
       const r = await api.post<{ data: Attempt }>(`/api/v1/quizzes/${quiz.id}/start`, {});
       attemptRef.current = r.data;
       setAttempt(r.data);
@@ -192,6 +216,14 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                 <div className="p-4 rounded-2xl border border-danger/30 bg-danger/10 text-xs text-danger space-y-1">
                   <div className="flex items-center gap-2 font-bold"><ShieldAlert className="h-4 w-4" /> This exam is monitored</div>
                   <p>Switching tabs, leaving full-screen mode and copy/paste are recorded and shown to your instructor, who decides whether anything needs review. The exam opens full screen.</p>
+                  {media.needed && (
+                    <p>
+                      This exam also uses your {quiz.proctorCamera && quiz.proctorMicrophone ? "camera and microphone" : quiz.proctorCamera ? "camera" : "microphone"}.
+                      {quiz.proctorCamera ? " It notes when your face is out of view or more than one person is visible." : ""}
+                      {quiz.proctorMicrophone ? " It notes sustained talking or other sound." : ""}{" "}
+                      <strong>This is checked on your own device: no picture, video or sound is recorded or sent</strong>, only a note of what was noticed and when. Your browser will ask for permission when you press Start.
+                    </p>
+                  )}
                 </div>
               )}
               {quiz.attemptsRemaining === 0 ? (
@@ -208,6 +240,22 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
               {notice && <div role="status" className="p-3 rounded-xl border border-accent/30 bg-accent/10 text-xs text-accent flex items-start gap-2"><AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />{notice}</div>}
               {quiz.requireProctoring && !document.fullscreenElement && (
                 <button className={ghost} onClick={() => document.documentElement.requestFullscreen?.().catch(() => undefined)}>Return to full screen</button>
+              )}
+              {media.needed && (
+                <div className="flex items-center gap-3 p-2 rounded-2xl border border-line bg-canvas">
+                  {quiz.proctorCamera && (
+                    // Shown to the learner only (mirrored, like a mirror); it is never uploaded.
+                    <video ref={media.videoRef} muted playsInline aria-label="Your camera" className="h-16 w-24 rounded-xl object-cover bg-black -scale-x-100" />
+                  )}
+                  <div className="text-[11px] text-ink-muted space-y-0.5">
+                    <div className="flex items-center gap-3 font-semibold text-ink">
+                      {quiz.proctorCamera && <span className="flex items-center gap-1"><Camera className="h-3.5 w-3.5" /> Camera on</span>}
+                      {quiz.proctorMicrophone && <span className="flex items-center gap-1"><Mic className="h-3.5 w-3.5" /> Microphone on</span>}
+                    </div>
+                    <div>Checked on this device only. Nothing is recorded or sent.</div>
+                    {media.detectorProblem && <div className="text-accent">{media.detectorProblem}</div>}
+                  </div>
+                </div>
               )}
               <div className="flex items-center justify-between text-[11px] text-ink-subtle">
                 <span>Question {index + 1} of {quiz.questions.length}</span>

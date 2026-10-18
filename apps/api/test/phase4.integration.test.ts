@@ -50,7 +50,7 @@ async function seed() {
 
   await admin.quiz.create({
     data: {
-      id: 'q-proc', tenantId: 't-h', courseId: 'c1', title: 'Proctored', requireProctoring: true, maxAttempts: 2, passingPercent: 50,
+      id: 'q-proc', tenantId: 't-h', courseId: 'c1', title: 'Proctored', requireProctoring: true, proctorCamera: true, maxAttempts: 2, passingPercent: 50,
       questions: { create: [{ id: 'qq1', questionText: '2+2?', questionType: 'MULTIPLE_CHOICE', points: 1, optionsJson: [{ id: 'a', text: '4', isCorrect: true }, { id: 'b', text: '5', isCorrect: false }] }] },
     },
   });
@@ -432,6 +432,10 @@ describe('proctoring telemetry', () => {
     expect((await (await as('s4')).post('/api/v1/proctoring/events').send(ev('HIGH'))).status).toBe(404); // someone else's
     expect((await s1.post('/api/v1/proctoring/events').send({ ...ev('HIGH'), eventType: 'MADE_UP' })).status).toBe(400);
     expect((await s1.post('/api/v1/proctoring/events').send({ ...ev('HIGH'), snapshotUrl: 'javascript:alert(1)' })).status).toBe(400);
+    // Device events only for the devices the quiz uses: this one watches the camera, not the microphone.
+    const mic = await s1.post('/api/v1/proctoring/events').send(ev('LOW', 'AUDIO_SPIKE'));
+    expect(mic.status).toBe(400);
+    expect(mic.body.error).toMatch(/microphone/);
     expect((await (await as('s3')).post('/api/v1/proctoring/events').send({ submissionId: 'sub-done', eventType: 'TAB_SWITCH', severity: 'HIGH' })).status).toBe(409);
   });
 

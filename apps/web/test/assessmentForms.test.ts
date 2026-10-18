@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { assignmentProblem, eventProblem, quizSettingsProblem, toLocalInput } from '../src/lib/assessmentForms';
 import { blankQuestion, questionBody } from '../src/lib/questionDraft';
 
-const quiz = { title: 'Midterm', timed: false, minutes: '30', attempts: '2', passing: '70', randomize: false, proctoring: false, opens: '', closes: '', review: 'RESPONSES' as const };
+const quiz = { title: 'Midterm', timed: false, minutes: '30', attempts: '2', passing: '70', randomize: false, proctoring: false, camera: false, microphone: false, opens: '', closes: '', review: 'RESPONSES' as const };
 
 describe('quizSettingsProblem', () => {
   it('accepts sensible settings', () => {

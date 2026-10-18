@@ -1,0 +1,2 @@
+# MediaPipe runtime, copied from node_modules by scripts/copy-proctoring-assets.mjs
+/public/proctoring/wasm/

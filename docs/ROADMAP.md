@@ -64,7 +64,8 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **Automatic course completion**: 100% when every lesson is done; complete (with certificate) then, or when a graded course's approved grade passes | Done | never records a fail automatically; courses without lessons stay manual |
 | **Assignment submission history** (every version kept, learner and staff can view) | Done | |
 | Bloom's-taxonomy mastery analytics | Done | from tagged questions |
-| Proctoring telemetry and flagging | Done | the quiz screen reports tab switches, leaving full screen and copy/paste; no webcam capture |
+| Proctoring telemetry and flagging | Done | the quiz screen reports tab switches, leaving full screen and copy/paste |
+| **Camera and microphone proctoring** (per quiz; detection in the browser, events only, no recording) | Done | face threshold tuned on synthetic video only; not yet tried with real webcams |
 | **Plagiarism provider callbacks** (HMAC-signed, replay-limited) | Done | outbound submission is queued, signed, retried with backoff and sent to a configurable provider URL (`PLAGIARISM_SUBMIT_URL`); tested against a local stand-in, no native Turnitin/Copyleaks adapter, queued/in-progress/failed status shown on the teacher grading panel |
 | **Rubrics** (per-criterion scoring, learner-visible breakdown) | Done | teacher editor and grading screen included |
 | **Grade appeals** (14-day window, instructor decision, reopens an approved course grade) | Done | assignments only; learner and teacher screens included |
@@ -104,6 +105,6 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 
 1. Run the S3 driver against a real bucket, SCORM against packages from Articulate, Captivate and iSpring, and
    virus scanning against a real ClamAV daemon (the Phase 3-4 screens were checked in a browser on 2026-10-18).
-2. Webcam/audio proctoring; Turnitin/Copyleaks adapter.
+2. Turnitin/Copyleaks adapter for the plagiarism queue; try camera proctoring with real webcams and lighting.
 3. Daily digest e-mails and SMS/push channels.
 4. DSAR request queue (log, deadline tracking) and a data-retention scheduler.
