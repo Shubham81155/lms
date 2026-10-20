@@ -16,8 +16,10 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | Prisma migrations, seed, test database | Done | embedded PostgreSQL in tests |
 | Secrets/config validation at start-up | Done | weak or placeholder secrets refuse to boot |
 | OpenAPI description generated from the mounted routes, generated web types, typed GET client, route-authentication coverage test | Done | every route has a summary, auth/roles, request schema (from the handler's Zod schema) and a described response; response schemas are checked against real responses by contract tests (`test/contract-*.test.ts` and the per-area tests) |
-| Server-side session revocation (token version, live status/role check), `/ready` probe, global API rate limits | Done | shared across instances when `REDIS_URL` is set (not exercised against a live Redis here), per process otherwise |
-| ESLint, Docker/compose for local stack | Done | Dockerfiles/compose not yet exercised; API runs via ts-node. CI intentionally not set up |
+| Server-side session revocation (token version, live status/role check), `/ready` probe, global API rate limits | Done | shared across instances when `REDIS_URL` is set (tested against a real Redis; the production stack runs with one), per process otherwise |
+| ESLint, Docker/compose for local stack | Done | API runs via ts-node in development |
+| **CI** (`.github/workflows/ci.yml`: type checks, lint, tests on every push) | Done | `format:check` is not part of it: about 270 files do not pass Prettier yet |
+| **Advisory-lock helper for background jobs** (`lib/job-lock.ts`) | Done | used by the trial, custom-domain re-check and offboarding jobs; the older workers claim each row (webhooks, e-mail, plagiarism) except the file-scan sweep, which may repeat work on several instances |
 | Infrastructure as code (Terraform), GitOps CI/CD | Open | |
 | mTLS service mesh, Vault/KMS secret rotation | Open | |
 
@@ -27,8 +29,15 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 |---|---|---|
 | Auth: cookie/JWT sessions, lockout, password reset, e-mail verification | Done | |
 | RBAC + per-course access rules | Done | `api_authorization.md` |
-| **Organisation registration with operator approval**: public request (address availability, institution details, contact), e-mails to the applicant, in-app alert to operators; the platform operator approves (creates the organisation with a plan and seats, invites its first administrator) or rejects (reason e-mailed); operators can also create organisations directly and suspend/reactivate them; `lms_org` cookie picks the organisation on a shared address; `npm run platform:bootstrap` creates the operator organisation | Done | requests are not e-mail-verified before review (the invitation proves the address on approval); no trial expiry or billing |
+| **Organisation registration with operator approval**: public request (address availability, institution details, contact), e-mails to the applicant, in-app alert to operators; the platform operator approves (creates the organisation with a plan and seats, invites its first administrator) or rejects (reason e-mailed); operators can also create organisations directly and suspend/reactivate them; `lms_org` cookie picks the organisation on a shared address; `npm run platform:bootstrap` creates the operator organisation | Done | the applicant confirms the contact e-mail address before a request is reviewed; trials are in the next rows; no billing |
 | Tenant branding, feature flags by plan, seat quota, usage metering | Done | plans, quotas and feature overrides are set by the platform operator (`PLATFORM_OPERATOR_TENANT`), not by the organisation's own admins |
+| **Per-organisation addresses** (`<slug>.<TENANT_BASE_DOMAIN>`, reserved and punycode names refused, no fallback organisation for an unknown subdomain) and `__Host-` session cookies in production | Done | |
+| **Find my organisation** (an e-mail address gets the addresses of its organisations, sent to that address only) | Done | the lookup across organisations is a database function (`find_tenants_for_email`) that returns ids and nothing else |
+| **CAPTCHA on public forms** (Cloudflare Turnstile; off until both keys are set; fails closed) | Done | tested against Cloudflare's test keys only |
+| **Custom domains proved by a DNS TXT record**, re-checked daily; a missing record starts a grace period, warns the administrators and then removes the domain | Done | `docs/custom-domains.md`; tested with a stand-in resolver, not yet real DNS |
+| **Consented support access** (administrator grants a time-limited, read-only-by-default pass; operator enters through a one-time link on the organisation's own address; banner, locked forms, instant revoke, audited) | Done | `GET/POST /api/v1/support/*`; checked in a browser on 2026-10-20 |
+| **Offboarding**: full export (ZIP of every table and file, secrets left out, 7-day download) and scheduled deletion (30 days to cancel, final export kept 90 days, record of the deletion, address reserved 90 days) | Done | the deletion cascade and the append-only audit table are tested as the unprivileged role |
+| **Trials** (off by default; reminders at 7 days and 1 day, read-only grace of 14 days, then suspension; operator starts, extends, ends or converts) | Done | the choice between trial and paid start is still open; billing is not built |
 | SCIM 2.0 provisioning | Done | |
 | MFA (TOTP + recovery codes) | Done | login page asks for the code |
 | **OIDC single sign-on** (PKCE, per-tenant provider, custom-domain aware, no auto-provisioning) + login button | Done | works with SCIM-provisioned users |
@@ -102,12 +111,21 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | GDPR access, erasure and FERPA directory opt-out | Done | self-serve JSON export, account erasure (anonymises the person, keeps grades; audit trail is append-only so it keeps ids/IPs) and directory opt-out under `/api/v1/privacy`; every user has a "Privacy & data" dialog in the header, administrators answer requests for others from the Security & Compliance tab. No request queue or retention scheduler yet |
 | Penetration test, SOC 2 / FERPA audit | Open | process, not code |
 | Load test (100k exam takers), multi-region HA / DR | Open | targets in `load_testing_sla.md` |
-| Redis cache, read replicas, PgBouncer | Open | |
+| Redis cache, read replicas, PgBouncer | Open | Redis is used for shared rate limits only |
+| **Production stack** (`docker-compose.prod.yml`: Caddy with a wildcard certificate by DNS-01 and certificates on demand for verified custom domains, web, API as the unprivileged `lms_app` role, one-shot migrate as the owner, PostgreSQL, Redis, optional ClamAV; `docs/deployment/dns-and-tls.md`) | Done | images build, the Caddyfile validates and the stack starts locally (2026-10-20); not yet deployed with real DNS and certificates; the product domain name is a placeholder |
+| Monitoring and alerting, automated backups, restore drills | Open | the deployment guide describes manual backups |
+| Terraform / infrastructure as code | Open | |
 
 ## Suggested next steps (highest value first)
 
-1. Run the S3 driver against a real bucket, SCORM against packages from Articulate, Captivate and iSpring, and
+1. Decide the product domain name, then deploy the production stack with real DNS and certificates (Cloudflare token,
+   wildcard record, a test custom domain).
+2. Decide trial or paid start and the payment provider (Razorpay or Stripe), then build billing: seats, GST invoices, plan limits.
+3. Small hardening items: drop `includeSubDomains` from the API's HSTS header on customers' own domains; raise ClamAV's
+   `StreamMaxLength` above `UPLOAD_MAX_MB`; give the file-scan sweep a claim like the other workers.
+4. Run the S3 driver against a real bucket, SCORM against packages from Articulate, Captivate and iSpring, and
    virus scanning against a real ClamAV daemon (the Phase 3-4 screens were checked in a browser on 2026-10-18).
-2. Try the Copyleaks adapter with a real account (sandbox mode first); try camera proctoring with real webcams and lighting.
-3. Daily digest e-mails and SMS/push channels.
-4. DSAR request queue (log, deadline tracking) and a data-retention scheduler.
+5. Try the Copyleaks adapter with a real account (sandbox mode first); try camera proctoring with real webcams and lighting.
+6. Backups, monitoring and alerting for a live deployment.
+7. Daily digest e-mails and SMS/push channels.
+8. DSAR request queue (log, deadline tracking) and a data-retention scheduler.
