@@ -242,6 +242,7 @@ services:
     restart: unless-stopped
     volumes:
       - clamav-db:/var/lib/clamav
+      - ./deploy/clamd.conf:/etc/clamav/clamd.conf:ro
     networks: [backend, edge]
     logging: *logging
 

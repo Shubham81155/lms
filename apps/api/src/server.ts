@@ -52,13 +52,18 @@ app.use(
         frameAncestors: ["'self'", 'https://*.canvaslms.com', 'https://*.blackboard.com'], // Whitelisted LMS tool consumers
       },
     },
-    hsts: {
-      maxAge: 31536000,
-      includeSubDomains: true,
-      preload: true,
-    },
+    hsts: false, // set per host below
   })
 );
+
+// HSTS with includeSubDomains/preload only on the platform's own hosts. A customer's own domain is theirs: pinning
+// every subdomain of it to HTTPS would be our decision to make for their other sites.
+app.use((req, res, next) => {
+  const host = req.hostname.toLowerCase();
+  const own = isUnderBaseDomain(host) || platformHostnames().includes(host);
+  res.setHeader('Strict-Transport-Security', own ? 'max-age=31536000; includeSubDomains; preload' : 'max-age=31536000');
+  next();
+});
 
 // Only configured browser origins may make credentialed cross-origin calls.
 app.use(

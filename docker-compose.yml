@@ -57,6 +57,7 @@ services:
     profiles: [scan]
     volumes:
       - clamav-db:/var/lib/clamav
+      - ./deploy/clamd.conf:/etc/clamav/clamd.conf:ro
 
   web:
     build: { context: ., dockerfile: deploy/Dockerfile.web }
