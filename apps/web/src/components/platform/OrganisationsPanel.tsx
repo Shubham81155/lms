@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Archive, Globe, Plus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAction, useApiData } from "@/hooks/useApiData";
@@ -27,8 +27,9 @@ const STATUS_STYLE: Record<string, string> = {
 /**
  * Every organisation on the platform: its plan (tier, seats, feature overrides), its custom domain, whether it is
  * active, and a form to create one directly. `focusId` scrolls to and highlights one row (e.g. after approving a request).
+ * `onChanged` runs after every change here, so the page's own figures (organisations, trials ending) follow.
  */
-export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: string | null; refreshKey?: number }> = ({ ownTenantId, focusId, refreshKey }) => {
+export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: string | null; refreshKey?: number; onChanged?: () => void }> = ({ ownTenantId, focusId, refreshKey, onChanged }) => {
   const list = useApiData<{ data: Org[] }>("/api/v1/operator/tenants");
   const { busy, error, run, clearError } = useAction();
   const [quota, setQuota] = useState<Record<string, string>>({});
@@ -40,10 +41,14 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
   const [done, setDone] = useState<string | null>(null);
   const focusRef = useRef<HTMLTableRowElement | null>(null);
 
-  const { reload } = list;
+  const { reload: reloadList } = list;
+  const reload = useCallback(async () => {
+    await reloadList();
+    onChanged?.();
+  }, [reloadList, onChanged]);
   useEffect(() => {
-    if (refreshKey) reload();
-  }, [refreshKey, reload]);
+    if (refreshKey) reloadList();
+  }, [refreshKey, reloadList]);
   useEffect(() => {
     if (focusId && focusRef.current) focusRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [focusId, list.data]);

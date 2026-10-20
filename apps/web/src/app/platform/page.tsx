@@ -152,7 +152,7 @@ export default function PlatformPage() {
           />
         )}
 
-        {tab === "organisations" && <OrganisationsPanel ownTenantId={user?.tenantId} focusId={focusOrg} refreshKey={version} />}
+        {tab === "organisations" && <OrganisationsPanel ownTenantId={user?.tenantId} focusId={focusOrg} refreshKey={version} onChanged={orgs.reload} />}
       </main>
     </AppShell>
   );

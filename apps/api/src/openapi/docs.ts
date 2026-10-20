@@ -338,9 +338,9 @@ const message = z.object({ message: z.string() });
 export const DOCS: Record<string, OperationDoc> = {
   ...OFFBOARDING_DOCS,
   'POST /api/v1/auth/login': {
-    summary: 'Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended.',
+    summary: 'Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended. `platformOperator` as in GET /auth/me.',
     body: loginSchema,
-    response: ok(z.object({ user: PublicUser })),
+    response: ok(z.object({ user: PublicUser.extend({ platformOperator: z.boolean() }) })),
     errors: [400, 401, 403, 423, 429],
   },
   'POST /api/v1/auth/logout': { summary: 'Sign out. Invalidates the session token, not just the cookie.', response: ok(message) },

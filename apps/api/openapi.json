@@ -10770,7 +10770,7 @@
     "/api/v1/auth/login": {
       "post": {
         "operationId": "postAuthLogin",
-        "summary": "Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended.",
+        "summary": "Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended. `platformOperator` as in GET /auth/me.",
         "tags": [
           "auth"
         ],
@@ -10878,6 +10878,9 @@
                             "slug",
                             "name"
                           ]
+                        },
+                        "platformOperator": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -10890,7 +10893,8 @@
                         "status",
                         "avatarUrl",
                         "emailVerified",
-                        "tenant"
+                        "tenant",
+                        "platformOperator"
                       ]
                     }
                   },

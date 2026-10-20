@@ -984,7 +984,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended. */
+        /** Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended. `platformOperator` as in GET /auth/me. */
         post: operations["postAuthLogin"];
         delete?: never;
         options?: never;
@@ -8798,6 +8798,7 @@ export interface operations {
                                 slug: string;
                                 name: string;
                             };
+                            platformOperator: boolean;
                         };
                     };
                 };

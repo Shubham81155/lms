@@ -213,13 +213,21 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
         userAgent: req.headers['user-agent'],
       });
 
-      return res.status(200).json({ user: updatedUser });
+      return res.status(200).json({ user: { ...updatedUser, platformOperator: isPlatformOperator(updatedUser.role, tenant.slug) } });
     });
   } catch (error: any) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/login');
     return res.status(500).json({ error: 'Internal server error during authentication' });
   }
 });
+
+/**
+ * Platform operators (super administrators of PLATFORM_OPERATOR_TENANT) also get the platform console. Login and
+ * /me both say so: the web app takes the user from whichever answered last.
+ */
+function isPlatformOperator(role: string, tenantSlug: string | undefined): boolean {
+  return role === 'SUPER_ADMIN' && !!config.PLATFORM_OPERATOR_TENANT && tenantSlug === config.PLATFORM_OPERATOR_TENANT;
+}
 
 /**
  * POST /api/v1/auth/logout
@@ -269,9 +277,7 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Session is no longer valid' });
     }
 
-    // Platform operators (super administrators of PLATFORM_OPERATOR_TENANT) also get the platform admin page.
-    const platformOperator = user.role === 'SUPER_ADMIN' && !!config.PLATFORM_OPERATOR_TENANT && user.tenant?.slug === config.PLATFORM_OPERATOR_TENANT;
-    return res.status(200).json({ user: { ...user, platformOperator } });
+    return res.status(200).json({ user: { ...user, platformOperator: isPlatformOperator(user.role, user.tenant?.slug) } });
   } catch (error: any) {
     logger.error({ err: error }, 'Error in GET /api/v1/auth/me');
     return res.status(500).json({ error: 'Internal server error retrieving user profile' });

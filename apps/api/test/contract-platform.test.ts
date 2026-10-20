@@ -71,6 +71,15 @@ const binary = (req: request.Test) => req.buffer(true).parse((res, done) => {
   res.on('end', () => done(null, Buffer.concat(chunks)));
 });
 
+describe('sign-in', () => {
+  it('login says whether the user is the platform operator, as /auth/me does', async () => {
+    const login = (email: string, tenant: string) =>
+      request(app).post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email, password: PASSWORD });
+    expect((await login('operator@x.edu', 'ops')).body.user.platformOperator).toBe(true);
+    expect((await login('admin@x.edu', 'harvard')).body.user.platformOperator).toBe(false);
+  });
+});
+
 describe('support access', () => {
   it('grant, enter, session, exit and revoke', async () => {
     const a = await as('admin', 'harvard');
