@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { displayAddress, guessOrgUrl, isOrgSlug, orgLoginUrl, suggestSlug } from "../src/lib/org-address";
+import { displayAddress, guessOrgUrl, isOrgSlug, isOwnSubdomain, orgLoginUrl, suggestSlug } from "../src/lib/org-address";
 
 describe("organisation web address", () => {
   it("accepts 3 to 40 lowercase letters, digits and hyphens, not at either end", () => {
@@ -33,5 +33,14 @@ describe("organisation web address", () => {
   it("shows an address without the scheme", () => {
     expect(displayAddress("https://st-marys.example.com")).toBe("st-marys.example.com");
     expect(displayAddress("http://harvard.localhost:3000")).toBe("harvard.localhost:3000");
+  });
+
+  it("tells an organisation's own subdomain from the shared address", () => {
+    expect(isOwnSubdomain("harvard.localhost", "harvard")).toBe(true);
+    expect(isOwnSubdomain("Harvard.lms.example.com", "harvard")).toBe(true);
+    expect(isOwnSubdomain("localhost", "default-tenant")).toBe(false);
+    expect(isOwnSubdomain("lms.example.com", "default-tenant")).toBe(false);
+    expect(isOwnSubdomain("yale.localhost", "harvard")).toBe(false);
+    expect(isOwnSubdomain("harvard.localhost", null)).toBe(false);
   });
 });

@@ -16,6 +16,8 @@ const SERVER_OPERATIONS: Operation[] = [
   { method: 'get', path: '/ready', security: 'none' },
   { method: 'get', path: '/api/v1/tenant/config', security: 'none' },
   { method: 'get', path: '/api/v1/openapi.json', security: 'none' },
+  // Mounted in server.ts outside /api/v1 (routes/internal-tls.routes.ts): guarded by TLS_ASK_SECRET, not a session.
+  { method: 'get', path: '/internal/tls/allowed', security: 'none' },
 ];
 
 const EXTRA_DOCS: Record<string, { summary: string; tag: string }> = {

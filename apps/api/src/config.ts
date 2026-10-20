@@ -48,6 +48,21 @@ const envSchema = z.object({
     .toLowerCase()
     .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?$/, 'TENANT_BASE_DOMAIN must be a host name, optionally with a port')
     .optional(),
+  /**
+   * The host organisations point their custom domain at (a CNAME), e.g. tenants.lms.example.com. Only shown to
+   * administrators and reported as a hint when a domain is checked; verification itself needs only the TXT record.
+   */
+  CUSTOM_DOMAIN_TARGET: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.string().trim().toLowerCase().regex(/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, 'CUSTOM_DOMAIN_TARGET must be a host name').optional()
+  ),
+  /** How long one DNS lookup for custom-domain verification may take, in milliseconds. */
+  CUSTOM_DOMAIN_DNS_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5000),
+  /**
+   * Shared secret for GET /internal/tls/allowed, the "ask" check of the reverse proxy's on-demand TLS (Caddy).
+   * The proxy sends it as ?secret= or the X-TLS-Ask-Secret header. Unset: the endpoint answers 404 to everything.
+   */
+  TLS_ASK_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(16, 'TLS_ASK_SECRET must be at least 16 characters').optional()),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_REQUEST_BODIES: z
     .enum(['true', 'false'])
@@ -62,7 +77,15 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
   /** Organisation registration requests per IP per hour. */
   ORG_REQUEST_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  /**
+   * Cloudflare Turnstile CAPTCHA on public forms (organisation registration): the widget's site key and its
+   * secret, from the Cloudflare dashboard. Set both or neither. Unset: no CAPTCHA (a warning is logged in production).
+   */
+  TURNSTILE_SITE_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().min(10, 'TURNSTILE_SITE_KEY looks too short').optional()),
+  TURNSTILE_SECRET_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().min(10, 'TURNSTILE_SECRET_KEY looks too short').optional()),
   TOKEN_FLOW_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  /** "Find my organisation" lookups per IP per hour (each e-mail address is also limited to 3 an hour). */
+  FIND_ORG_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   /** Optional. When set, rate-limit counters are shared by every API instance; otherwise they are per process. */
   REDIS_URL: z.string().url().optional(),
   /** Per-IP requests per minute across /api/v1 (reads), and for state-changing methods. In-memory per instance. */
@@ -161,6 +184,7 @@ const envSchema = z.object({
 }).refine((c) => c.STORAGE_DRIVER !== 's3' || !!c.S3_BUCKET, { message: 'STORAGE_DRIVER=s3 needs S3_BUCKET' })
   .refine((c) => !c.S3_ACCESS_KEY_ID === !c.S3_SECRET_ACCESS_KEY, { message: 'Set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither' })
   .refine((c) => !c.COPYLEAKS_EMAIL === !c.COPYLEAKS_API_KEY, { message: 'Set both COPYLEAKS_EMAIL and COPYLEAKS_API_KEY, or neither' })
+  .refine((c) => !c.TURNSTILE_SITE_KEY === !c.TURNSTILE_SECRET_KEY, { message: 'Set both TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY, or neither' })
   .refine((c) => !(c.COPYLEAKS_API_KEY && c.PLAGIARISM_SUBMIT_URL), { message: 'Use either Copyleaks or PLAGIARISM_SUBMIT_URL, not both' });
 
 export type AppConfig = z.infer<typeof envSchema> & { corsOrigins: string[] };

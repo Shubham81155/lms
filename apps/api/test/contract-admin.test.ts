@@ -50,6 +50,7 @@ beforeAll(async () => {
   process.env.LIVEKIT_URL = LK_URL;
   process.env.LIVEKIT_API_KEY = 'APIkeyForTests';
   process.env.LIVEKIT_API_SECRET = LK_SECRET;
+  process.env.TLS_ASK_SECRET = 'tls-ask-secret-for-contract-tests';
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await seed();
@@ -512,6 +513,8 @@ describe('organisation registration and the platform operator', () => {
     const free = check('GET /api/v1/organizations/availability', await request(app).get('/api/v1/organizations/availability?slug=contract-college'));
     expect(free.data).toMatchObject({ slug: 'contract-college', available: true });
     expect(typeof free.data.url).toBe('string');
+    // No CAPTCHA configured in tests: the register page is told there is none.
+    expect(check('GET /api/v1/organizations/captcha', await request(app).get('/api/v1/organizations/captcha')).data).toEqual({ siteKey: null });
     const found = check('GET /api/v1/organizations/lookup', await request(app).get('/api/v1/organizations/lookup?slug=harvard'));
     expect(found.data).toEqual({ slug: 'harvard', name: 'Harvard U' });
     const sent = check('POST /api/v1/organizations/requests', await request(app).post('/api/v1/organizations/requests').send(ask('contract-college')));
@@ -538,6 +541,47 @@ describe('organisation registration and the platform operator', () => {
     const off = check('PATCH /api/v1/operator/tenants/:id/status', await op.patch(`/api/v1/operator/tenants/${made.data.organization.id}/status`).send({ status: 'SUSPENDED' }));
     expect(off.data.status).toBe('SUSPENDED');
     check('PATCH /api/v1/operator/tenants/:id/status', await op.patch(`/api/v1/operator/tenants/${made.data.organization.id}/status`).send({ status: 'ACTIVE' }));
+  });
+});
+
+describe('custom domains', () => {
+  // DNS answers, by record name; the TXT lookup is the whole proof of ownership.
+  const txt: Record<string, string[]> = {};
+  beforeAll(async () => {
+    const notFound = () => Promise.reject(Object.assign(new Error('not found'), { code: 'ENOTFOUND' }));
+    (await import('../src/lib/custom-domain.js')).setDnsResolver({
+      resolveTxt: (name) => (txt[name] ? Promise.resolve(txt[name].map((v) => [v])) : notFound()),
+      resolveCname: notFound,
+      resolve4: notFound,
+      resolve6: notFound,
+    });
+  });
+
+  it('administrators: ask, verify and remove', async () => {
+    const a = await as('admin');
+    expect(check('GET /api/v1/admin/custom-domain', await a.get('/api/v1/admin/custom-domain')).data.pending).toBeNull();
+    const asked = check('PUT /api/v1/admin/custom-domain', await a.put('/api/v1/admin/custom-domain').send({ domain: 'learn.contract-harvard.edu' }));
+    const { txtName, txtValue } = asked.data.pending;
+    const failed = check('POST /api/v1/admin/custom-domain/verify', await a.post('/api/v1/admin/custom-domain/verify'));
+    expect(failed.data.check).toMatchObject({ verified: false });
+    txt[txtName] = [txtValue];
+    const live = check('POST /api/v1/admin/custom-domain/verify', await a.post('/api/v1/admin/custom-domain/verify'));
+    expect(live.data).toMatchObject({ customDomain: 'learn.contract-harvard.edu', pending: null, check: { verified: true } });
+
+    const tls = (domain: string) => request(app).get(`/internal/tls/allowed?domain=${domain}`).set('x-tls-ask-secret', 'tls-ask-secret-for-contract-tests');
+    check('GET /internal/tls/allowed', await tls('learn.contract-harvard.edu'));
+    check('GET /internal/tls/allowed', await tls('unknown.example.org'), 404);
+
+    expect(check('DELETE /api/v1/admin/custom-domain', await a.delete('/api/v1/admin/custom-domain')).data.customDomain).toBeNull();
+  });
+
+  it('operator: the same for any organisation', async () => {
+    const op = await as('operator', 'ops');
+    check('GET /api/v1/operator/tenants/:id/custom-domain', await op.get('/api/v1/operator/tenants/t-h/custom-domain'));
+    const asked = check('PUT /api/v1/operator/tenants/:id/custom-domain', await op.put('/api/v1/operator/tenants/t-h/custom-domain').send({ domain: 'lms.contract-harvard.edu' }));
+    txt[asked.data.pending.txtName] = [asked.data.pending.txtValue];
+    expect(check('POST /api/v1/operator/tenants/:id/custom-domain/verify', await op.post('/api/v1/operator/tenants/t-h/custom-domain/verify')).data.check.verified).toBe(true);
+    expect(check('DELETE /api/v1/operator/tenants/:id/custom-domain', await op.delete('/api/v1/operator/tenants/t-h/custom-domain')).data.customDomain).toBeNull();
   });
 });
 

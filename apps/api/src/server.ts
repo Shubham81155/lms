@@ -18,9 +18,11 @@ import { rateLimitStore } from './lib/rate-limit-store';
 
 import { apiMounts, rawBodyMounts } from './mounts';
 import { buildOpenApi } from './openapi/spec';
+import internalTlsRoutes from './routes/internal-tls.routes';
 import { startEmailDispatcher } from './lib/email-dispatch';
 import { startWebhookRetryWorker } from './lib/webhooks';
 import { startFileScanSweep, virusScanner } from './lib/virus-scan';
+import { captchaEnabled } from './lib/captcha';
 import { startPlagiarismSubmitWorker } from './lib/plagiarism-submit';
 
 const app = express();
@@ -211,6 +213,9 @@ app.get('/ready', async (_req: Request, res: Response) => {
   }
 });
 
+// The reverse proxy's on-demand TLS check (which hosts may get a certificate). Off without TLS_ASK_SECRET.
+app.use('/internal/tls', internalTlsRoutes);
+
 // Machine-readable description of this API (OpenAPI 3), generated from the mounted routes.
 let openApiDocument: ReturnType<typeof buildOpenApi> | undefined;
 app.get('/api/v1/openapi.json', (_req: Request, res: Response) => {
@@ -315,6 +320,9 @@ if (config.NODE_ENV !== 'test') {
     startFileScanSweep();
     if (!virusScanner() && config.NODE_ENV === 'production') {
       logger.warn('Uploads are not scanned for viruses: set CLAMAV_URL (e.g. tcp://clamav:3310) to a ClamAV daemon.');
+    }
+    if (!captchaEnabled() && config.NODE_ENV === 'production' && config.ORG_REGISTRATION_ENABLED) {
+      logger.warn('Organisation registration has no CAPTCHA: set TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY (Cloudflare Turnstile).');
     }
   });
 }

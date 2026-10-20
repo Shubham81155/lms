@@ -352,7 +352,7 @@ describe('organisations created and suspended by the operator', () => {
     const op = await as('operator', 'ops');
     const res = await op.post('/api/v1/operator/tenants').send({ name: 'Direct Academy', slug: 'direct-academy', customDomain: 'learn.direct.edu', adminFirstName: 'Bo', adminLastName: 'Ray', adminEmail: 'bo@direct.edu' });
     expect(res.status).toBe(201);
-    expect(res.body.data).toMatchObject({ invitation: 'sent', organization: { slug: 'direct-academy', customDomain: 'learn.direct.edu', tier: 'STARTER', seatQuota: 100, status: 'ACTIVE' } });
+    expect(res.body.data).toMatchObject({ invitation: 'sent', organization: { slug: 'direct-academy', customDomain: null, pendingCustomDomain: 'learn.direct.edu', tier: 'STARTER', seatQuota: 100, status: 'ACTIVE' } });
     expect(await admin.user.findFirst({ where: { email: 'bo@direct.edu' } })).toMatchObject({ role: 'TENANT_ADMIN', status: 'INVITED' });
     expect((await op.post('/api/v1/operator/tenants').send({ name: 'Copy', slug: 'direct-academy', adminFirstName: 'A', adminLastName: 'B', adminEmail: 'a@b.edu' })).status).toBe(409);
     expect((await op.post('/api/v1/operator/tenants').send({ name: 'Copy', slug: 'other-academy', customDomain: 'learn.direct.edu', adminFirstName: 'A', adminLastName: 'B', adminEmail: 'a@b.edu' })).status).toBe(409);

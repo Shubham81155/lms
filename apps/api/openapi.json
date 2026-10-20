@@ -290,6 +290,111 @@
         }
       }
     },
+    "/internal/tls/allowed": {
+      "get": {
+        "operationId": "getInternalTlsAllowed",
+        "summary": "For the reverse proxy's on-demand TLS (Caddy `ask`): 200 when a certificate may be issued for `domain` (a verified custom domain, or `<slug>.<TENANT_BASE_DOMAIN>` of an organisation that is not archived), otherwise 404. Requires TLS_ASK_SECRET as the X-TLS-Ask-Secret header or `secret` (403 otherwise); 404 for everything when it is not configured. Not for browsers: keep /internal/* unreachable from the internet.",
+        "tags": [
+          "internal"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 253
+            },
+            "required": true,
+            "name": "domain",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "required": false,
+            "name": "secret",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "allowed": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "allowed"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not a host of the platform, or the check is off (no TLS_ASK_SECRET)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "allowed": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    }
+                  },
+                  "required": [
+                    "allowed"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/audit-logs": {
       "get": {
         "operationId": "getAdminAuditLogs",
@@ -1516,6 +1621,655 @@
           },
           "403": {
             "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/custom-domain": {
+      "delete": {
+        "operationId": "deleteAdminCustomDomain",
+        "summary": "Administrators: withdraw the domain waiting (`scope=pending`) or both it and the live domain (`scope=all`, the default); the organisation keeps its subdomain. Audited.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "pending"
+              ],
+              "default": "all"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subdomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pending": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "domain": {
+                              "type": "string"
+                            },
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "domain",
+                            "txtName",
+                            "txtValue",
+                            "requestedAt",
+                            "checkedAt",
+                            "error"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "subdomain",
+                        "customDomain",
+                        "verifiedAt",
+                        "pending",
+                        "target"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getAdminCustomDomain",
+        "summary": "Administrators: the organisation's live custom domain, the one waiting for verification with the exact TXT record to add (`_lms-verify.<domain>` = `lms-verify=<token>`), and where to point it (CNAME target).",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subdomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pending": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "domain": {
+                              "type": "string"
+                            },
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "domain",
+                            "txtName",
+                            "txtValue",
+                            "requestedAt",
+                            "checkedAt",
+                            "error"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "subdomain",
+                        "customDomain",
+                        "verifiedAt",
+                        "pending",
+                        "target"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putAdminCustomDomain",
+        "summary": "Administrators: ask for a custom domain. It waits for its TXT record and never resolves until verified; a live domain stays live meanwhile. Asking again for the domain waiting keeps its token; asking for the live one withdraws the one waiting. 409 when another organisation uses it, or asked for it within the last week. Audited.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "domain": {
+                    "type": "string",
+                    "maxLength": 253,
+                    "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+                  }
+                },
+                "required": [
+                  "domain"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subdomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pending": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "domain": {
+                              "type": "string"
+                            },
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "domain",
+                            "txtName",
+                            "txtValue",
+                            "requestedAt",
+                            "checkedAt",
+                            "error"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "subdomain",
+                        "customDomain",
+                        "verifiedAt",
+                        "pending",
+                        "target"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/custom-domain/verify": {
+      "post": {
+        "operationId": "postAdminCustomDomainVerify",
+        "summary": "Administrators: look the TXT record up now. Found: the domain becomes live, replacing the previous one (audited). Not found: it keeps waiting, with the reason in `check.error` and `pending.error`. `check.routing` is only a hint about the CNAME. 409 when nothing is waiting; 20 checks per 10 minutes.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subdomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pending": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "domain": {
+                              "type": "string"
+                            },
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "domain",
+                            "txtName",
+                            "txtValue",
+                            "requestedAt",
+                            "checkedAt",
+                            "error"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "check": {
+                          "type": "object",
+                          "properties": {
+                            "verified": {
+                              "type": "boolean"
+                            },
+                            "domain": {
+                              "type": "string"
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "routing": {
+                              "type": "object",
+                              "properties": {
+                                "target": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "pointsAtPlatform": {
+                                  "type": "boolean",
+                                  "nullable": true
+                                },
+                                "detail": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "target",
+                                "pointsAtPlatform",
+                                "detail"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "verified",
+                            "domain",
+                            "error",
+                            "routing"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "subdomain",
+                        "customDomain",
+                        "verifiedAt",
+                        "pending",
+                        "target",
+                        "check"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
             "content": {
               "application/json": {
                 "schema": {
@@ -3546,6 +4300,30 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "pendingCustomDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainToken": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainRequestedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainCheckedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainError": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainVerifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "tier": {
                           "type": "string",
                           "enum": [
@@ -3622,6 +4400,12 @@
                         "slug",
                         "name",
                         "customDomain",
+                        "pendingCustomDomain",
+                        "customDomainToken",
+                        "customDomainRequestedAt",
+                        "customDomainCheckedAt",
+                        "customDomainError",
+                        "customDomainVerifiedAt",
                         "tier",
                         "status",
                         "logoUrl",
@@ -3790,6 +4574,30 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "pendingCustomDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainToken": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainRequestedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainCheckedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainError": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainVerifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "tier": {
                           "type": "string",
                           "enum": [
@@ -3854,6 +4662,12 @@
                         "slug",
                         "name",
                         "customDomain",
+                        "pendingCustomDomain",
+                        "customDomainToken",
+                        "customDomainRequestedAt",
+                        "customDomainCheckedAt",
+                        "customDomainError",
+                        "customDomainVerifiedAt",
                         "tier",
                         "status",
                         "logoUrl",
@@ -23663,6 +24477,10 @@
                               "type": "string",
                               "nullable": true
                             },
+                            "pendingCustomDomain": {
+                              "type": "string",
+                              "nullable": true
+                            },
                             "tier": {
                               "type": "string",
                               "enum": [
@@ -23720,6 +24538,7 @@
                             "slug",
                             "name",
                             "customDomain",
+                            "pendingCustomDomain",
                             "tier",
                             "status",
                             "seatQuota",
@@ -24073,6 +24892,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "pendingCustomDomain": {
+                            "type": "string",
+                            "nullable": true
+                          },
                           "tier": {
                             "type": "string",
                             "enum": [
@@ -24130,6 +24953,7 @@
                           "slug",
                           "name",
                           "customDomain",
+                          "pendingCustomDomain",
                           "tier",
                           "status",
                           "seatQuota",
@@ -24171,7 +24995,7 @@
       },
       "post": {
         "operationId": "postOperatorTenants",
-        "summary": "Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited.",
+        "summary": "Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live.",
         "tags": [
           "operator"
         ],
@@ -24278,6 +25102,10 @@
                               "type": "string",
                               "nullable": true
                             },
+                            "pendingCustomDomain": {
+                              "type": "string",
+                              "nullable": true
+                            },
                             "tier": {
                               "type": "string",
                               "enum": [
@@ -24335,6 +25163,7 @@
                             "slug",
                             "name",
                             "customDomain",
+                            "pendingCustomDomain",
                             "tier",
                             "status",
                             "seatQuota",
@@ -24513,6 +25342,10 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "pendingCustomDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "tier": {
                           "type": "string",
                           "enum": [
@@ -24570,6 +25403,7 @@
                         "slug",
                         "name",
                         "customDomain",
+                        "pendingCustomDomain",
                         "tier",
                         "status",
                         "seatQuota",
@@ -24628,6 +25462,689 @@
           },
           "409": {
             "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants/{id}/custom-domain": {
+      "delete": {
+        "operationId": "deleteOperatorTenantsIdCustomDomain",
+        "summary": "Platform operator: withdraw an organisation's custom domain (as DELETE /admin/custom-domain). Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "pending"
+              ],
+              "default": "all"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subdomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pending": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "domain": {
+                              "type": "string"
+                            },
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "domain",
+                            "txtName",
+                            "txtValue",
+                            "requestedAt",
+                            "checkedAt",
+                            "error"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "subdomain",
+                        "customDomain",
+                        "verifiedAt",
+                        "pending",
+                        "target"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getOperatorTenantsIdCustomDomain",
+        "summary": "Platform operator: an organisation's custom domain state (as GET /admin/custom-domain).",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subdomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pending": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "domain": {
+                              "type": "string"
+                            },
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "domain",
+                            "txtName",
+                            "txtValue",
+                            "requestedAt",
+                            "checkedAt",
+                            "error"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "subdomain",
+                        "customDomain",
+                        "verifiedAt",
+                        "pending",
+                        "target"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putOperatorTenantsIdCustomDomain",
+        "summary": "Platform operator: ask for a custom domain for an organisation (as PUT /admin/custom-domain). Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "domain": {
+                    "type": "string",
+                    "maxLength": 253,
+                    "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+                  }
+                },
+                "required": [
+                  "domain"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subdomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pending": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "domain": {
+                              "type": "string"
+                            },
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "domain",
+                            "txtName",
+                            "txtValue",
+                            "requestedAt",
+                            "checkedAt",
+                            "error"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "subdomain",
+                        "customDomain",
+                        "verifiedAt",
+                        "pending",
+                        "target"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants/{id}/custom-domain/verify": {
+      "post": {
+        "operationId": "postOperatorTenantsIdCustomDomainVerify",
+        "summary": "Platform operator: check an organisation's TXT record now (as POST /admin/custom-domain/verify).",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subdomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "verifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pending": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "domain": {
+                              "type": "string"
+                            },
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "domain",
+                            "txtName",
+                            "txtValue",
+                            "requestedAt",
+                            "checkedAt",
+                            "error"
+                          ]
+                        },
+                        "target": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "check": {
+                          "type": "object",
+                          "properties": {
+                            "verified": {
+                              "type": "boolean"
+                            },
+                            "domain": {
+                              "type": "string"
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "routing": {
+                              "type": "object",
+                              "properties": {
+                                "target": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "pointsAtPlatform": {
+                                  "type": "boolean",
+                                  "nullable": true
+                                },
+                                "detail": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "target",
+                                "pointsAtPlatform",
+                                "detail"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "verified",
+                            "domain",
+                            "error",
+                            "routing"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "subdomain",
+                        "customDomain",
+                        "verifiedAt",
+                        "pending",
+                        "target",
+                        "check"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
             "content": {
               "application/json": {
                 "schema": {
@@ -24714,6 +26231,10 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "pendingCustomDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "tier": {
                           "type": "string",
                           "enum": [
@@ -24771,6 +26292,7 @@
                         "slug",
                         "name",
                         "customDomain",
+                        "pendingCustomDomain",
                         "tier",
                         "status",
                         "seatQuota",
@@ -24925,6 +26447,129 @@
         }
       }
     },
+    "/api/v1/organizations/captcha": {
+      "get": {
+        "operationId": "getOrganizationsCaptcha",
+        "summary": "Public: the Cloudflare Turnstile site key public forms (organisation registration) render their CAPTCHA with; null while the CAPTCHA is off and forms need no token.",
+        "tags": [
+          "organizations"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "siteKey": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "siteKey"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/find": {
+      "post": {
+        "operationId": "postOrganizationsFind",
+        "summary": "Public (\"Find my organisation\"): e-mails the address the sign-in links of the organisations where it has an active or invited account (at most 20; suspended organisations and the platform operator are left out). Always answers 202 with the same body, whether or not the address has accounts; nothing is sent when it has none, or after 3 lookups for the address within an hour.",
+        "tags": [
+          "organizations"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email"
+                  },
+                  "captchaToken": {
+                    "type": "string",
+                    "maxLength": 2048
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/lookup": {
       "get": {
         "operationId": "getOrganizationsLookup",
@@ -25011,7 +26656,7 @@
     "/api/v1/organizations/requests": {
       "post": {
         "operationId": "postOrganizationsRequests",
-        "summary": "Public: ask for an organisation. The applicant is e-mailed a link to confirm their address (valid 24 hours, during which the request holds the web address); only then does the request reach the platform operator. At most 3 open requests per e-mail address (429). 503 when the server cannot send e-mail. Off when ORG_REGISTRATION_ENABLED=false.",
+        "summary": "Public: ask for an organisation. The applicant is e-mailed a link to confirm their address (valid 24 hours, during which the request holds the web address); only then does the request reach the platform operator. At most 3 open requests per e-mail address (429). 503 when the server cannot send e-mail. Off when ORG_REGISTRATION_ENABLED=false. While the CAPTCHA is on (GET /organizations/captcha names a site key), `captchaToken` must carry a Cloudflare Turnstile token from a widget with action `org-request` (or send it in the `cf-turnstile-response` header): 400 when it is missing or does not pass, 503 when it could not be checked.",
         "tags": [
           "organizations"
         ],
@@ -25088,6 +26733,10 @@
                     "enum": [
                       true
                     ]
+                  },
+                  "captchaToken": {
+                    "type": "string",
+                    "maxLength": 2048
                   }
                 },
                 "required": [

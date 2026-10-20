@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowLeft, Building2, CheckCircle2, Loader2, MailCheck, XCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandLogo } from "@/components/BrandLogo";
+import { Captcha, type CaptchaHandle } from "@/components/Captcha";
 import { api, ApiError } from "@/lib/api";
 import { displayAddress, guessOrgUrl, isOrgSlug, suggestSlug } from "@/lib/org-address";
 import { orgNameProblem, personNameProblem } from "@/lib/platform";
@@ -29,6 +30,9 @@ type Availability =
   | { state: "available"; url?: string }
   | { state: "unavailable"; reason: "invalid" | "reserved" | "taken" | "pending" }
   | { state: "error" };
+
+/** The widget action the API expects for this form (ORG_REQUEST_CAPTCHA_ACTION). */
+const CAPTCHA_ACTION = "org-request";
 
 const REASON_TEXT: Record<"invalid" | "reserved" | "taken" | "pending", string> = {
   invalid: "Use 3 to 40 lowercase letters, digits or hyphens, starting and ending with a letter or digit.",
@@ -163,6 +167,22 @@ export default function RegisterOrganisationPage() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [confirmBy, setConfirmBy] = useState<string | null>(null);
   const [requestedUrl, setRequestedUrl] = useState<string | null>(null);
+  // undefined while asking the API whether a CAPTCHA is on; null when it is off.
+  const [captchaKey, setCaptchaKey] = useState<string | null | undefined>(undefined);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captcha = useRef<CaptchaHandle>(null);
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .get<{ data: { siteKey: string | null } }>("/api/v1/organizations/captcha")
+      // Unreachable: go on without; the API refuses the request if it does want a CAPTCHA.
+      .then((r) => alive && setCaptchaKey(r.data.siteKey || null))
+      .catch(() => alive && setCaptchaKey(null));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // The address follows the name until the person edits it themselves.
   useEffect(() => {
@@ -218,6 +238,10 @@ export default function RegisterOrganisationPage() {
       setError("Expected learners must be a whole number.");
       return;
     }
+    if (captchaKey && !captchaToken) {
+      setError("Complete the security check first.");
+      return;
+    }
     setBusy(true);
     try {
       const r = await api.post<{ data: { status: string; slug: string; contactEmail: string; url?: string; confirmBy?: string } }>("/api/v1/organizations/requests", {
@@ -233,12 +257,15 @@ export default function RegisterOrganisationPage() {
         ...(phone.trim() ? { contactPhone: phone.trim() } : {}),
         ...(message.trim() ? { message: message.trim() } : {}),
         acceptTerms: true,
+        ...(captchaToken ? { captchaToken } : {}),
       });
       setRequestedUrl(r.data.url ?? futureUrl);
       setSentTo(r.data.contactEmail || email.trim());
       setConfirmBy(r.data.confirmBy ?? null);
       window.scrollTo({ top: 0 });
     } catch (err) {
+      // The token has been spent either way; a new attempt needs a fresh one.
+      captcha.current?.reset();
       if (err instanceof ApiError && err.status === 409) {
         setError("That web address was just taken or asked for by someone else. Choose another.");
         setAvailability({ state: "unavailable", reason: "taken" });
@@ -417,9 +444,11 @@ export default function RegisterOrganisationPage() {
                   <span>I am authorised to register this organisation, and I agree that the platform team may contact me about this request.</span>
                 </label>
 
+                <Captcha ref={captcha} siteKey={captchaKey} action={CAPTCHA_ACTION} onToken={setCaptchaToken} />
+
                 <button
                   type="submit"
-                  disabled={busy || !terms || availability.state === "checking"}
+                  disabled={busy || !terms || availability.state === "checking" || captchaKey === undefined || (!!captchaKey && !captchaToken)}
                   className="w-full py-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold shadow-lg shadow-brand/25 transition-all"
                 >
                   {busy ? "Sending…" : "Send registration request"}

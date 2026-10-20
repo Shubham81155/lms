@@ -11,10 +11,10 @@ import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { createOrganization, mailApplicant, orgSlugSchema, requestedAddress } from '../lib/organizations';
 import { logger } from '../lib/logger';
 import { invalidateTenantSessions } from '../lib/session';
-import { isUnderBaseDomain, platformHostnames } from '../lib/platform-hosts';
+import { customDomainSchema, domainCheckLimiter, getDomainState, removeCustomDomain, removeDomainQuery, requestCustomDomain, setDomainSchema, verifyCustomDomain } from '../lib/custom-domain';
 
 // Mounted at /api/v1/operator. The platform operator decides organisation registration requests, creates and
-// suspends organisations, and manages every organisation's plan: tier, feature overrides and seat quota. Organisations' own administrators can read their plan but not change it.
+// suspends organisations, verifies their custom domains, and manages every organisation's plan: tier, feature overrides and seat quota. Organisations' own administrators can read their plan but not change it.
 // Operators are super administrators of the organisation named by PLATFORM_OPERATOR_TENANT; with that
 // unset, plans can only be changed in the database.
 
@@ -38,11 +38,13 @@ const TIERS = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
 /** Seats in use: active and invited accounts. Users are tenant-scoped, so count inside that tenant's context. */
 const seatsUsed = (tenantId: string) => runWithTenant(tenantId, () => prisma.user.count({ where: { tenantId, status: { in: ['ACTIVE', 'INVITED'] } } }));
 
-export const view = async (t: { id: string; slug: string; name: string; tier: string; status: string; seatQuota: number | null; featureFlags: unknown; customDomain: string | null }) => ({
+export const view = async (t: { id: string; slug: string; name: string; tier: string; status: string; seatQuota: number | null; featureFlags: unknown; customDomain: string | null; pendingCustomDomain: string | null }) => ({
   id: t.id,
   slug: t.slug,
   name: t.name,
   customDomain: t.customDomain,
+  /** A custom domain waiting for DNS verification; it does not resolve to the organisation yet. */
+  pendingCustomDomain: t.pendingCustomDomain,
   tier: t.tier,
   status: t.status,
   seatQuota: t.seatQuota,
@@ -52,7 +54,7 @@ export const view = async (t: { id: string; slug: string; name: string; tier: st
   overrides: Object.fromEntries(FEATURE_KEYS.flatMap((k) => (typeof (t.featureFlags as any)?.[k] === 'boolean' ? [[k, (t.featureFlags as any)[k]]] : []))),
 });
 
-const tenantSelect = { id: true, slug: true, name: true, tier: true, status: true, seatQuota: true, featureFlags: true, customDomain: true } as const;
+const tenantSelect = { id: true, slug: true, name: true, tier: true, status: true, seatQuota: true, featureFlags: true, customDomain: true, pendingCustomDomain: true } as const;
 
 /** GET /api/v1/operator/tenants: every organisation with its plan and seat use. */
 router.get(
@@ -119,24 +121,14 @@ router.patch(
 
 // --------------------------------------------------------------------------- creating and suspending organisations
 
-const hostname = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .max(253)
-  .regex(/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/, 'Enter a domain such as learn.university.edu')
-  // The base domain and its subdomains are the platform's and other organisations' addresses (the API looks a
-  // host there up by its subdomain only), and the platform's own hosts are not an organisation's to take.
-  .refine((d) => !isUnderBaseDomain(d), 'Use a domain of the organisation, not an address under the platform domain')
-  .refine((d) => !platformHostnames().includes(d), 'That domain is one of the platform addresses');
-
 export const createTenantSchema = z
   .object({
     name: z.string().trim().min(2).max(120),
     slug: orgSlugSchema,
     tier: z.enum(TIERS).default('STARTER'),
     seatQuota: z.number().int().min(1).max(10_000_000).nullable().default(100),
-    customDomain: hostname.optional(),
+    /** Waits for DNS verification, like one asked for later (PUT /tenants/:id/custom-domain). */
+    customDomain: customDomainSchema.optional(),
     adminFirstName: z.string().trim().min(1).max(100),
     adminLastName: z.string().trim().min(1).max(100),
     adminEmail: z.string().trim().toLowerCase().email().max(254),
@@ -185,6 +177,50 @@ router.patch(
     await logAuditEvent({ ...entry, tenantId: tenantIdOf(req) });
     await runWithTenant(id, () => logAuditEvent({ ...entry, tenantId: id, userId: undefined }));
     return res.json({ data: await view(updated) });
+  })
+);
+
+// --------------------------------------------------------------------------- custom domains
+
+// The same as the organisation's own administrators can do (org.routes.ts), for any organisation. Changes are
+// audited in the operator's trail and the organisation's.
+
+const domainTenant = async (req: Request) => {
+  const id = idSchema.parse(req.params.id);
+  if (!(await prisma.tenant.findUnique({ where: { id }, select: { id: true } }))) throw new HttpError(404, 'Organisation not found');
+  return id;
+};
+
+/** GET /api/v1/operator/tenants/:id/custom-domain: its live domain, the one waiting and the TXT record that proves it. */
+router.get(
+  '/tenants/:id/custom-domain',
+  route('Failed to load the custom domain', async (req, res) => res.json({ data: await getDomainState(await domainTenant(req)) }))
+);
+
+/** PUT /api/v1/operator/tenants/:id/custom-domain: ask for a domain; it waits for its TXT record. */
+router.put(
+  '/tenants/:id/custom-domain',
+  route('Failed to set the custom domain', async (req, res) => {
+    const id = await domainTenant(req);
+    const { domain } = parseBody(req, setDomainSchema);
+    return res.json({ data: await requestCustomDomain(id, domain, actorOf(req)) });
+  })
+);
+
+/** POST /api/v1/operator/tenants/:id/custom-domain/verify: look the TXT record up now. */
+router.post(
+  '/tenants/:id/custom-domain/verify',
+  domainCheckLimiter,
+  route('Failed to verify the custom domain', async (req, res) => res.json({ data: await verifyCustomDomain(await domainTenant(req), actorOf(req)) }))
+);
+
+/** DELETE /api/v1/operator/tenants/:id/custom-domain?scope=all|pending */
+router.delete(
+  '/tenants/:id/custom-domain',
+  route('Failed to remove the custom domain', async (req, res) => {
+    const id = await domainTenant(req);
+    const { scope } = parseQuery(req, removeDomainQuery);
+    return res.json({ data: await removeCustomDomain(id, scope, actorOf(req)) });
   })
 );
 

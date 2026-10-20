@@ -20,7 +20,15 @@ const TenantRecord = z.object({
   id: z.string(),
   slug: z.string(),
   name: z.string(),
+  /** The live, verified custom domain. */
   customDomain: z.string().nullable(),
+  /** A custom domain waiting for DNS verification (GET /admin/custom-domain has its TXT record). */
+  pendingCustomDomain: z.string().nullable(),
+  customDomainToken: z.string().nullable(),
+  customDomainRequestedAt: z.string().nullable(),
+  customDomainCheckedAt: z.string().nullable(),
+  customDomainError: z.string().nullable(),
+  customDomainVerifiedAt: z.string().nullable(),
   tier: Tier,
   status: z.enum(['ACTIVE', 'SUSPENDED', 'TRIAL', 'ARCHIVED']),
   logoUrl: z.string().nullable(),
@@ -118,12 +126,49 @@ export const OperatorTenant = z.object({
   slug: z.string(),
   name: z.string(),
   customDomain: z.string().nullable(),
+  /** Waiting for DNS verification; not live yet. */
+  pendingCustomDomain: z.string().nullable(),
   tier: Tier,
   status: z.string(),
   seatQuota: z.number().nullable(),
   seatsUsed: z.number(),
   features: FeatureFlags,
   overrides: z.record(z.string(), z.boolean()),
+});
+
+/** An organisation's custom domain: the live one, the one waiting for verification and how to prove it. */
+export const CustomDomainState = z.object({
+  /** `<slug>.<TENANT_BASE_DOMAIN>`, which always works; null without TENANT_BASE_DOMAIN. */
+  subdomain: z.string().nullable(),
+  /** The live, verified domain: requests on it belong to the organisation and e-mail links use it. */
+  customDomain: z.string().nullable(),
+  verifiedAt: z.string().nullable(),
+  pending: z
+    .object({
+      domain: z.string(),
+      /** Name of the TXT record to add, `_lms-verify.<domain>`. */
+      txtName: z.string(),
+      /** Its exact value, `lms-verify=<token>`. */
+      txtValue: z.string(),
+      requestedAt: z.string().nullable(),
+      checkedAt: z.string().nullable(),
+      /** Why the last check failed. */
+      error: z.string().nullable(),
+    })
+    .nullable(),
+  /** CUSTOM_DOMAIN_TARGET: the host to point the domain at with a CNAME, when the platform says. */
+  target: z.string().nullable(),
+});
+
+/** The result of a check ("Check now"), with the state after it. */
+export const CustomDomainCheck = CustomDomainState.extend({
+  check: z.object({
+    verified: z.boolean(),
+    domain: z.string(),
+    error: z.string().nullable(),
+    /** Only a hint: whether the domain points at CUSTOM_DOMAIN_TARGET. Verification does not depend on it. */
+    routing: z.object({ target: z.string().nullable(), pointsAtPlatform: z.boolean().nullable(), detail: z.string() }),
+  }),
 });
 
 export const UsageReport = z.object({
@@ -401,6 +446,19 @@ export const RESPONSES: ResponseTable = {
   // ---- plan, usage, export
   'GET /api/v1/admin/features': { response: ok(z.object({ data: FeatureFlags })) },
   'GET /api/v1/operator/tenants': { response: ok(z.object({ data: z.array(OperatorTenant) })) },
+  'GET /api/v1/operator/tenants/:id/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [404] },
+  'PUT /api/v1/operator/tenants/:id/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [400, 404, 409] },
+  'POST /api/v1/operator/tenants/:id/custom-domain/verify': { response: ok(z.object({ data: CustomDomainCheck })), errors: [404, 409, 429] },
+  'DELETE /api/v1/operator/tenants/:id/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [400, 404] },
+  'GET /api/v1/admin/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [404] },
+  'PUT /api/v1/admin/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [400, 404, 409] },
+  'POST /api/v1/admin/custom-domain/verify': { response: ok(z.object({ data: CustomDomainCheck })), errors: [404, 409, 429] },
+  'DELETE /api/v1/admin/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [400, 404] },
+  'GET /internal/tls/allowed': {
+    response: ok(z.object({ allowed: z.literal(true) })),
+    otherResponses: [{ status: 404, schema: z.object({ allowed: z.literal(false) }), description: 'Not a host of the platform, or the check is off (no TLS_ASK_SECRET)' }],
+    errors: [400, 403, 429],
+  },
   'PATCH /api/v1/operator/tenants/:id': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
   'POST /api/v1/operator/tenants': { response: ok(z.object({ data: z.object({ organization: OperatorTenant, invitation: Invitation }) }), 201), errors: [400, 409] },
   'PATCH /api/v1/operator/tenants/:id/status': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
@@ -424,6 +482,7 @@ export const RESPONSES: ResponseTable = {
     ),
     errors: [400, 429],
   },
+  'GET /api/v1/organizations/captcha': { response: ok(z.object({ data: z.object({ siteKey: z.string().nullable() }) })), errors: [429] },
   'GET /api/v1/organizations/lookup': { response: ok(z.object({ data: z.object({ slug: z.string(), name: z.string() }) })), errors: [400, 404, 429] },
   'POST /api/v1/organizations/requests': {
     response: ok(

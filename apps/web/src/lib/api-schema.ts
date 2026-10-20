@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/tls/allowed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** For the reverse proxy's on-demand TLS (Caddy `ask`): 200 when a certificate may be issued for `domain` (a verified custom domain, or `<slug>.<TENANT_BASE_DOMAIN>` of an organisation that is not archived), otherwise 404. Requires TLS_ASK_SECRET as the X-TLS-Ask-Secret header or `secret` (403 otherwise); 404 for everything when it is not configured. Not for browsers: keep /internal/* unreachable from the internet. */
+        get: operations["getInternalTlsAllowed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/audit-logs": {
         parameters: {
             query?: never;
@@ -205,6 +222,42 @@ export interface paths {
         /** Turn publishing review on or off (administrators). Off, instructors publish themselves. Audited. */
         put: operations["putAdminCourseApproval"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/custom-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: the organisation's live custom domain, the one waiting for verification with the exact TXT record to add (`_lms-verify.<domain>` = `lms-verify=<token>`), and where to point it (CNAME target). */
+        get: operations["getAdminCustomDomain"];
+        /** Administrators: ask for a custom domain. It waits for its TXT record and never resolves until verified; a live domain stays live meanwhile. Asking again for the domain waiting keeps its token; asking for the live one withdraws the one waiting. 409 when another organisation uses it, or asked for it within the last week. Audited. */
+        put: operations["putAdminCustomDomain"];
+        post?: never;
+        /** Administrators: withdraw the domain waiting (`scope=pending`) or both it and the live domain (`scope=all`, the default); the organisation keeps its subdomain. Audited. */
+        delete: operations["deleteAdminCustomDomain"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/custom-domain/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: look the TXT record up now. Found: the domain becomes live, replacing the previous one (audited). Not found: it keeps waiting, with the reason in `check.error` and `pending.error`. `check.routing` is only a hint about the CNAME. 409 when nothing is waiting; 20 checks per 10 minutes. */
+        post: operations["postAdminCustomDomainVerify"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2376,7 +2429,7 @@ export interface paths {
         /** Platform operator: every organisation with its plan tier, features, seat quota and seats in use. */
         get: operations["getOperatorTenants"];
         put?: never;
-        /** Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited. */
+        /** Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live. */
         post: operations["postOperatorTenants"];
         delete?: never;
         options?: never;
@@ -2399,6 +2452,42 @@ export interface paths {
         head?: never;
         /** Platform operator: change an organisation's tier, seat quota (not below the seats in use) or feature overrides (null returns a feature to the tier's default). Audited in the operator's and the organisation's trail. */
         patch: operations["patchOperatorTenantsId"];
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}/custom-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: an organisation's custom domain state (as GET /admin/custom-domain). */
+        get: operations["getOperatorTenantsIdCustomDomain"];
+        /** Platform operator: ask for a custom domain for an organisation (as PUT /admin/custom-domain). Audited in both trails. */
+        put: operations["putOperatorTenantsIdCustomDomain"];
+        post?: never;
+        /** Platform operator: withdraw an organisation's custom domain (as DELETE /admin/custom-domain). Audited in both trails. */
+        delete: operations["deleteOperatorTenantsIdCustomDomain"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}/custom-domain/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: check an organisation's TXT record now (as POST /admin/custom-domain/verify). */
+        post: operations["postOperatorTenantsIdCustomDomainVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/operator/tenants/{id}/status": {
@@ -2435,6 +2524,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/captcha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public: the Cloudflare Turnstile site key public forms (organisation registration) render their CAPTCHA with; null while the CAPTCHA is off and forms need no token. */
+        get: operations["getOrganizationsCaptcha"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/find": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Public ("Find my organisation"): e-mails the address the sign-in links of the organisations where it has an active or invited account (at most 20; suspended organisations and the platform operator are left out). Always answers 202 with the same body, whether or not the address has accounts; nothing is sent when it has none, or after 3 lookups for the address within an hour. */
+        post: operations["postOrganizationsFind"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/lookup": {
         parameters: {
             query?: never;
@@ -2461,7 +2584,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Public: ask for an organisation. The applicant is e-mailed a link to confirm their address (valid 24 hours, during which the request holds the web address); only then does the request reach the platform operator. At most 3 open requests per e-mail address (429). 503 when the server cannot send e-mail. Off when ORG_REGISTRATION_ENABLED=false. */
+        /** Public: ask for an organisation. The applicant is e-mailed a link to confirm their address (valid 24 hours, during which the request holds the web address); only then does the request reach the platform operator. At most 3 open requests per e-mail address (429). 503 when the server cannot send e-mail. Off when ORG_REGISTRATION_ENABLED=false. While the CAPTCHA is on (GET /organizations/captcha names a site key), `captchaToken` must carry a Cloudflare Turnstile token from a widget with action `org-request` (or send it in the `cf-turnstile-response` header): 400 when it is missing or does not pass, 503 when it could not be checked. */
         post: operations["postOrganizationsRequests"];
         delete?: never;
         options?: never;
@@ -3355,6 +3478,71 @@ export interface operations {
             };
         };
     };
+    getInternalTlsAllowed: {
+        parameters: {
+            query: {
+                domain: string;
+                secret?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        allowed: true;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not a host of the platform, or the check is off (no TLS_ASK_SECRET) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        allowed: false;
+                    };
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getAdminAuditLogs: {
         parameters: {
             query?: never;
@@ -4008,6 +4196,317 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAdminCustomDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subdomain: string | null;
+                            customDomain: string | null;
+                            verifiedAt: string | null;
+                            pending: {
+                                domain: string;
+                                txtName: string;
+                                txtValue: string;
+                                requestedAt: string | null;
+                                checkedAt: string | null;
+                                error: string | null;
+                            } | null;
+                            target: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putAdminCustomDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    domain: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subdomain: string | null;
+                            customDomain: string | null;
+                            verifiedAt: string | null;
+                            pending: {
+                                domain: string;
+                                txtName: string;
+                                txtValue: string;
+                                requestedAt: string | null;
+                                checkedAt: string | null;
+                                error: string | null;
+                            } | null;
+                            target: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteAdminCustomDomain: {
+        parameters: {
+            query?: {
+                scope?: "all" | "pending";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subdomain: string | null;
+                            customDomain: string | null;
+                            verifiedAt: string | null;
+                            pending: {
+                                domain: string;
+                                txtName: string;
+                                txtValue: string;
+                                requestedAt: string | null;
+                                checkedAt: string | null;
+                                error: string | null;
+                            } | null;
+                            target: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postAdminCustomDomainVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subdomain: string | null;
+                            customDomain: string | null;
+                            verifiedAt: string | null;
+                            pending: {
+                                domain: string;
+                                txtName: string;
+                                txtValue: string;
+                                requestedAt: string | null;
+                                checkedAt: string | null;
+                                error: string | null;
+                            } | null;
+                            target: string | null;
+                            check: {
+                                verified: boolean;
+                                domain: string;
+                                error: string | null;
+                                routing: {
+                                    target: string | null;
+                                    pointsAtPlatform: boolean | null;
+                                    detail: string;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4925,6 +5424,12 @@ export interface operations {
                             slug: string;
                             name: string;
                             customDomain: string | null;
+                            pendingCustomDomain: string | null;
+                            customDomainToken: string | null;
+                            customDomainRequestedAt: string | null;
+                            customDomainCheckedAt: string | null;
+                            customDomainError: string | null;
+                            customDomainVerifiedAt: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             /** @enum {string} */
@@ -5011,6 +5516,12 @@ export interface operations {
                             slug: string;
                             name: string;
                             customDomain: string | null;
+                            pendingCustomDomain: string | null;
+                            customDomainToken: string | null;
+                            customDomainRequestedAt: string | null;
+                            customDomainCheckedAt: string | null;
+                            customDomainError: string | null;
+                            customDomainVerifiedAt: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             /** @enum {string} */
@@ -14488,6 +14999,7 @@ export interface operations {
                                 slug: string;
                                 name: string;
                                 customDomain: string | null;
+                                pendingCustomDomain: string | null;
                                 /** @enum {string} */
                                 tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                                 status: string;
@@ -14676,6 +15188,7 @@ export interface operations {
                             slug: string;
                             name: string;
                             customDomain: string | null;
+                            pendingCustomDomain: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             status: string;
@@ -14756,6 +15269,7 @@ export interface operations {
                                 slug: string;
                                 name: string;
                                 customDomain: string | null;
+                                pendingCustomDomain: string | null;
                                 /** @enum {string} */
                                 tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                                 status: string;
@@ -14854,6 +15368,7 @@ export interface operations {
                             slug: string;
                             name: string;
                             customDomain: string | null;
+                            pendingCustomDomain: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             status: string;
@@ -14920,6 +15435,325 @@ export interface operations {
             };
         };
     };
+    getOperatorTenantsIdCustomDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subdomain: string | null;
+                            customDomain: string | null;
+                            verifiedAt: string | null;
+                            pending: {
+                                domain: string;
+                                txtName: string;
+                                txtValue: string;
+                                requestedAt: string | null;
+                                checkedAt: string | null;
+                                error: string | null;
+                            } | null;
+                            target: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putOperatorTenantsIdCustomDomain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    domain: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subdomain: string | null;
+                            customDomain: string | null;
+                            verifiedAt: string | null;
+                            pending: {
+                                domain: string;
+                                txtName: string;
+                                txtValue: string;
+                                requestedAt: string | null;
+                                checkedAt: string | null;
+                                error: string | null;
+                            } | null;
+                            target: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteOperatorTenantsIdCustomDomain: {
+        parameters: {
+            query?: {
+                scope?: "all" | "pending";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subdomain: string | null;
+                            customDomain: string | null;
+                            verifiedAt: string | null;
+                            pending: {
+                                domain: string;
+                                txtName: string;
+                                txtValue: string;
+                                requestedAt: string | null;
+                                checkedAt: string | null;
+                                error: string | null;
+                            } | null;
+                            target: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorTenantsIdCustomDomainVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subdomain: string | null;
+                            customDomain: string | null;
+                            verifiedAt: string | null;
+                            pending: {
+                                domain: string;
+                                txtName: string;
+                                txtValue: string;
+                                requestedAt: string | null;
+                                checkedAt: string | null;
+                                error: string | null;
+                            } | null;
+                            target: string | null;
+                            check: {
+                                verified: boolean;
+                                domain: string;
+                                error: string | null;
+                                routing: {
+                                    target: string | null;
+                                    pointsAtPlatform: boolean | null;
+                                    detail: string;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     patchOperatorTenantsIdStatus: {
         parameters: {
             query?: never;
@@ -14950,6 +15784,7 @@ export interface operations {
                             slug: string;
                             name: string;
                             customDomain: string | null;
+                            pendingCustomDomain: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             status: string;
@@ -15064,6 +15899,87 @@ export interface operations {
             };
         };
     };
+    getOrganizationsCaptcha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            siteKey: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOrganizationsFind: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    captchaToken?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getOrganizationsLookup: {
         parameters: {
             query: {
@@ -15144,6 +16060,7 @@ export interface operations {
                     message?: string;
                     /** @enum {boolean} */
                     acceptTerms: true;
+                    captchaToken?: string;
                 };
             };
         };

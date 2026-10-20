@@ -10,6 +10,7 @@ import { mailDelivers, sendMail } from './mailer';
 import { InvitationResult, sendInvitation } from './invitations';
 import { platformSubdomainLabels } from './platform-hosts';
 import { tenantUrl } from './tenant-url';
+import { newDomainToken } from './custom-domain';
 
 // Creating organisations (tenants): from an approved registration request or directly by the platform
 // operator. Both make the tenant and its first administrator, who gets an invitation to choose a password.
@@ -127,6 +128,7 @@ export interface NewOrganization {
   tier: 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
   /** null: no seat limit. */
   seatQuota: number | null;
+  /** Waits for DNS verification (lib/custom-domain.ts); it is not live until then. */
   customDomain?: string | null;
   admin: { email: string; firstName: string; lastName: string };
 }
@@ -143,13 +145,13 @@ export interface Actor {
  * tenant and the account are created together, so a failure leaves neither. 409 when the slug or domain is
  * taken. `requestId` is the request being approved: it keeps its own slug and is linked to the organisation
  * in the same transaction. The operator creating directly may take a slug only requests hold; those
- * requests are closed. Once the transaction has committed this does not throw: invitation and audit
+ * requests are closed. A custom domain starts out waiting for verification. Once the transaction has committed this does not throw: invitation and audit
  * problems are logged (and reported in `invitation`).
  */
 export async function createOrganization(input: NewOrganization, actor: Actor, opts: { requestId?: string; via: 'REQUEST' | 'OPERATOR' }) {
   const problem = await slugProblem(input.slug, { ignoreRequestId: opts.requestId, allowPending: opts.via === 'OPERATOR' });
   if (problem) throw new HttpError(problem === 'invalid' ? 400 : 409, SLUG_PROBLEM_MESSAGE[problem]);
-  if (input.customDomain && (await basePrisma.tenant.findUnique({ where: { customDomain: input.customDomain }, select: { id: true } }))) {
+  if (input.customDomain && (await basePrisma.tenant.findFirst({ where: { OR: [{ customDomain: input.customDomain }, { pendingCustomDomain: input.customDomain }] }, select: { id: true } }))) {
     throw new HttpError(409, 'That domain is already used by another organisation');
   }
 
@@ -159,8 +161,11 @@ export async function createOrganization(input: NewOrganization, actor: Actor, o
   try {
     created = await runInTenantTransaction(id, async (tx) => {
       const tenant = await tx.tenant.create({
-        data: { id, slug: input.slug, name: input.name, tier: input.tier, status: 'ACTIVE', seatQuota: input.seatQuota, customDomain: input.customDomain ?? null, setupChecklist: true },
-        select: { id: true, slug: true, name: true, tier: true, status: true, seatQuota: true, featureFlags: true, customDomain: true },
+        data: {
+          id, slug: input.slug, name: input.name, tier: input.tier, status: 'ACTIVE', seatQuota: input.seatQuota, setupChecklist: true,
+          ...(input.customDomain ? { pendingCustomDomain: input.customDomain, customDomainToken: newDomainToken(), customDomainRequestedAt: new Date() } : {}),
+        },
+        select: { id: true, slug: true, name: true, tier: true, status: true, seatQuota: true, featureFlags: true, customDomain: true, pendingCustomDomain: true },
       });
       const admin = await tx.user.create({
         data: { tenantId: id, email, firstName: input.admin.firstName, lastName: input.admin.lastName, role: 'TENANT_ADMIN', status: 'INVITED', passwordHash: null, emailVerified: false },
@@ -200,7 +205,7 @@ export async function createOrganization(input: NewOrganization, actor: Actor, o
     resourceId: id,
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
-    diffJson: { slug: input.slug, name: input.name, tier: input.tier, seatQuota: input.seatQuota, customDomain: input.customDomain ?? null, adminEmail: email, via: opts.via, invitation },
+    diffJson: { slug: input.slug, name: input.name, tier: input.tier, seatQuota: input.seatQuota, pendingCustomDomain: input.customDomain ?? null, adminEmail: email, via: opts.via, invitation },
   };
   await afterCommit('the audit entry', () => runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId })));
   await afterCommit('the audit entry', () => runWithTenant(id, () => logAuditEvent({ ...entry, tenantId: id, userId: undefined })));

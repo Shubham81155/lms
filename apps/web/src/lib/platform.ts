@@ -11,7 +11,10 @@ export interface Org {
   id: string;
   slug: string;
   name: string;
+  /** The live, verified custom domain. */
   customDomain: string | null;
+  /** A custom domain waiting for DNS verification; it does not work yet. */
+  pendingCustomDomain: string | null;
   tier: Tier;
   status: OrgStatus;
   seatQuota: number | null;

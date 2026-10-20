@@ -231,6 +231,10 @@ export default function Home() {
                 New to ApexLMS? Register your college, school or company; our team reviews each request and e-mails your
                 administrator a link to get started. <a href="#platform" className="text-brand-fg hover:underline underline-offset-2">Explore the platform</a>
               </p>
+              <p className="text-xs text-ink-subtle">
+                Already have an account but not sure of your organisation&apos;s address?{" "}
+                <Link href="/find-organisation" className="text-brand-fg hover:underline underline-offset-2">Find my organisation</Link>
+              </p>
             </div>
             <PortalPreview />
           </div>
@@ -354,6 +358,9 @@ export default function Home() {
             </Link>
             <Link href="/forgot-password" className="hover:text-brand-fg transition-colors">
               Forgot password
+            </Link>
+            <Link href="/find-organisation" className="hover:text-brand-fg transition-colors">
+              Find my organisation
             </Link>
             <Link href="/register" className="hover:text-brand-fg transition-colors">
               Register your organisation

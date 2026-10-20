@@ -15,7 +15,7 @@ implemented.
 Hints are tried in order and may each be a tenant id, slug or custom domain:
 
 1. `x-tenant-id` header
-2. the request host (matches `Tenant.customDomain`, e.g. `learn.university.edu`)
+2. the request host (matches `Tenant.customDomain`, e.g. `learn.university.edu`; only verified domains are stored there, see [custom domains](../custom-domains.md))
 3. the first host label (matches `Tenant.slug`, e.g. `stanford` from `stanford.lms.example.com`)
 4. `DEFAULT_TENANT_SLUG`
 

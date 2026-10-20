@@ -41,7 +41,7 @@ describe("a pending request's hold on its address", () => {
 });
 
 describe('platform summary', () => {
-  const org = (status: Org['status'], seatsUsed: number): Org => ({ id: status + seatsUsed, slug: 's', name: 'n', customDomain: null, tier: 'STARTER', status, seatQuota: null, seatsUsed, features: {}, overrides: {} });
+  const org = (status: Org['status'], seatsUsed: number): Org => ({ id: status + seatsUsed, slug: 's', name: 'n', customDomain: null, pendingCustomDomain: null, tier: 'STARTER', status, seatQuota: null, seatsUsed, features: {}, overrides: {} });
   it('counts organisations by status, seats and pending requests', () => {
     const s = summarise([org('ACTIVE', 10), org('ACTIVE', 5), org('TRIAL', 1), org('SUSPENDED', 3)], [{ status: 'PENDING' } as OrgRequest, { status: 'PENDING' } as OrgRequest]);
     expect(s).toEqual({ organisations: 4, byStatus: { ACTIVE: 2, TRIAL: 1, SUSPENDED: 1, ARCHIVED: 0 }, seatsUsed: 19, pending: 2 });

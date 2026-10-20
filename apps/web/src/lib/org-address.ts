@@ -54,3 +54,12 @@ export function displayAddress(url: string): string {
     return url;
   }
 }
+
+/**
+ * Whether this host is the organisation's own subdomain ("harvard.localhost" for slug "harvard"). The shared
+ * address (localhost, lms.example.com) is not, and neither, as far as the browser can tell, is a custom domain.
+ */
+export function isOwnSubdomain(hostname: string, slug: string | null | undefined): boolean {
+  const labels = hostname.toLowerCase().split(".");
+  return !!slug && labels.length > 1 && labels[0] === slug.toLowerCase();
+}

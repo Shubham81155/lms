@@ -89,6 +89,8 @@ describe('authentication coverage', () => {
     'GET /api/v1/scim/v2/Users/:id',
     'GET /api/v1/tenant/config',
     'GET /health',
+    // The reverse proxy's TLS check: guarded by TLS_ASK_SECRET, and off without it.
+    'GET /internal/tls/allowed',
     'GET /ready',
     'DELETE /api/v1/scim/v2/Users/:id',
     'PATCH /api/v1/scim/v2/Users/:id',
@@ -102,7 +104,9 @@ describe('authentication coverage', () => {
     'POST /api/v1/integrations/plagiarism/:tenantSlug',
     'POST /api/v1/integrations/copyleaks/:tenantSlug/:submissionId/:status',
     'GET /api/v1/organizations/availability',
+    'GET /api/v1/organizations/captcha',
     'GET /api/v1/organizations/lookup',
+    'POST /api/v1/organizations/find',
     'POST /api/v1/organizations/requests',
     'POST /api/v1/organizations/requests/confirm',
     'POST /api/v1/lti/launch',

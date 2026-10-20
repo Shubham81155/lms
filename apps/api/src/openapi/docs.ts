@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { ResponseDoc } from './responses/types';
 import { forgotSchema, loginSchema, resetSchema, verifySchema } from '../routes/auth.routes';
 import { confirmRequestSchema, organizationRequestSchema, slugQuery } from '../routes/organizations.routes';
+import { findOrganizationSchema } from '../routes/find-organization.routes';
 import { approveSchema, createTenantSchema, rejectSchema as rejectRequestSchema, requestListQuery, tenantStatusSchema } from '../routes/operator.routes';
 import { createCourseSchema, listQuery as courseListQuery, updateCourseSchema } from '../routes/courses.routes';
 import {
@@ -36,6 +37,8 @@ import {
 import { statementSchema } from '../routes/intelligence.routes';
 import { aiSettingsSchema, outlineSchema, tutorSchema } from '../routes/ai.routes';
 import { planSchema } from '../routes/operator.routes';
+import { removeDomainQuery, setDomainSchema } from '../lib/custom-domain';
+import { tlsAskQuery } from '../routes/internal-tls.routes';
 import { patchBody as scimPatchBody, userBody as scimUserBody } from '../routes/scim.routes';
 import { listQuery as notificationListQuery, prefsSchema } from '../routes/notifications.routes';
 import { enrollSchema, listQuery as enrollmentListQuery, updateProgressSchema } from '../routes/enrollments.routes';
@@ -485,7 +488,7 @@ export const DOCS: Record<string, OperationDoc> = {
   // ---- bodies the handlers read without parseBody
   'GET /api/v1/operator/tenants': { summary: 'Platform operator: every organisation with its plan tier, features, seat quota and seats in use.' },
   'POST /api/v1/operator/tenants': {
-    summary: 'Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited.',
+    summary: 'Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live.',
     body: createTenantSchema,
     errors: [400, 409],
   },
@@ -502,11 +505,19 @@ export const DOCS: Record<string, OperationDoc> = {
   },
   'POST /api/v1/operator/requests/:id/reject': { summary: 'Platform operator: reject a pending request, freeing its address; the applicant is e-mailed the reason.', body: rejectRequestSchema, errors: [400, 404, 409] },
   'GET /api/v1/organizations/availability': { summary: "Public: whether a new organisation could use this address. `url` is the web address it would have; `reason` says why not: invalid, reserved, taken (an organisation has it) or pending (another open request holds it).", query: slugQuery },
+  'GET /api/v1/organizations/captcha': { summary: 'Public: the Cloudflare Turnstile site key public forms (organisation registration) render their CAPTCHA with; null while the CAPTCHA is off and forms need no token.' },
   'GET /api/v1/organizations/lookup': { summary: "Public: an active organisation's name by its address, so the login page can confirm which organisation people sign in to.", query: slugQuery },
   'POST /api/v1/organizations/requests': {
     summary:
-      'Public: ask for an organisation. The applicant is e-mailed a link to confirm their address (valid 24 hours, during which the request holds the web address); only then does the request reach the platform operator. At most 3 open requests per e-mail address (429). 503 when the server cannot send e-mail. Off when ORG_REGISTRATION_ENABLED=false.',
+      'Public: ask for an organisation. The applicant is e-mailed a link to confirm their address (valid 24 hours, during which the request holds the web address); only then does the request reach the platform operator. At most 3 open requests per e-mail address (429). 503 when the server cannot send e-mail. Off when ORG_REGISTRATION_ENABLED=false. While the CAPTCHA is on (GET /organizations/captcha names a site key), `captchaToken` must carry a Cloudflare Turnstile token from a widget with action `org-request` (or send it in the `cf-turnstile-response` header): 400 when it is missing or does not pass, 503 when it could not be checked.',
     body: organizationRequestSchema,
+  },
+  'POST /api/v1/organizations/find': {
+    summary:
+      'Public ("Find my organisation"): e-mails the address the sign-in links of the organisations where it has an active or invited account (at most 20; suspended organisations and the platform operator are left out). Always answers 202 with the same body, whether or not the address has accounts; nothing is sent when it has none, or after 3 lookups for the address within an hour.',
+    body: findOrganizationSchema,
+    response: ok(message, 202),
+    errors: [400, 429],
   },
   'POST /api/v1/organizations/requests/confirm': {
     summary:
@@ -517,6 +528,22 @@ export const DOCS: Record<string, OperationDoc> = {
     summary: "Platform operator: change an organisation's tier, seat quota (not below the seats in use) or feature overrides (null returns a feature to the tier's default). Audited in the operator's and the organisation's trail.",
     body: planSchema,
     errors: [400, 404, 409],
+  },
+  'GET /api/v1/admin/custom-domain': { summary: "Administrators: the organisation's live custom domain, the one waiting for verification with the exact TXT record to add (`_lms-verify.<domain>` = `lms-verify=<token>`), and where to point it (CNAME target)." },
+  'PUT /api/v1/admin/custom-domain': {
+    summary: 'Administrators: ask for a custom domain. It waits for its TXT record and never resolves until verified; a live domain stays live meanwhile. Asking again for the domain waiting keeps its token; asking for the live one withdraws the one waiting. 409 when another organisation uses it, or asked for it within the last week. Audited.',
+    body: setDomainSchema,
+  },
+  'POST /api/v1/admin/custom-domain/verify': { summary: 'Administrators: look the TXT record up now. Found: the domain becomes live, replacing the previous one (audited). Not found: it keeps waiting, with the reason in `check.error` and `pending.error`. `check.routing` is only a hint about the CNAME. 409 when nothing is waiting; 20 checks per 10 minutes.' },
+  'DELETE /api/v1/admin/custom-domain': { summary: 'Administrators: withdraw the domain waiting (`scope=pending`) or both it and the live domain (`scope=all`, the default); the organisation keeps its subdomain. Audited.', query: removeDomainQuery },
+  'GET /api/v1/operator/tenants/:id/custom-domain': { summary: "Platform operator: an organisation's custom domain state (as GET /admin/custom-domain)." },
+  'PUT /api/v1/operator/tenants/:id/custom-domain': { summary: 'Platform operator: ask for a custom domain for an organisation (as PUT /admin/custom-domain). Audited in both trails.', body: setDomainSchema },
+  'POST /api/v1/operator/tenants/:id/custom-domain/verify': { summary: "Platform operator: check an organisation's TXT record now (as POST /admin/custom-domain/verify)." },
+  'DELETE /api/v1/operator/tenants/:id/custom-domain': { summary: "Platform operator: withdraw an organisation's custom domain (as DELETE /admin/custom-domain). Audited in both trails.", query: removeDomainQuery },
+  'GET /internal/tls/allowed': {
+    summary:
+      "For the reverse proxy's on-demand TLS (Caddy `ask`): 200 when a certificate may be issued for `domain` (a verified custom domain, or `<slug>.<TENANT_BASE_DOMAIN>` of an organisation that is not archived), otherwise 404. Requires TLS_ASK_SECRET as the X-TLS-Ask-Secret header or `secret` (403 otherwise); 404 for everything when it is not configured. Not for browsers: keep /internal/* unreachable from the internet.",
+    query: tlsAskQuery,
   },
   'GET /api/v1/ai/status': { summary: "Whether AI assistance can be used here: it is on the plan, not switched off, and a provider key applies (the organisation's own or the platform default)." },
   'GET /api/v1/ai/settings': { summary: "Administrators: this organisation's AI provider, model and whether a key is saved. The key is never returned." },

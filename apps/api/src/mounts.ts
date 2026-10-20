@@ -27,6 +27,7 @@ import liveRoutes from './routes/live.routes';
 import aiRoutes from './routes/ai.routes';
 import operatorRoutes from './routes/operator.routes';
 import organizationsRoutes from './routes/organizations.routes';
+import findOrganizationRoutes from './routes/find-organization.routes';
 import deadlinesRoutes from './routes/deadlines.routes';
 import announcementsRoutes from './routes/announcements.routes';
 import filesRoutes from './routes/files.routes';
@@ -59,6 +60,7 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1/ai', router: aiRoutes },
   { prefix: '/api/v1/operator', router: operatorRoutes },
   { prefix: '/api/v1/organizations', router: organizationsRoutes },
+  { prefix: '/api/v1/organizations', router: findOrganizationRoutes },
   { prefix: '/api/v1/certificates', router: certificatesRoutes },
   { prefix: '/api/v1/admin', router: platformRoutes },
   { prefix: '/api/v1/admin', router: orgRoutes },

@@ -34,7 +34,9 @@ model Tenant {
   id           String       @id @default(uuid())
   slug         String       @unique // e.g. "harvard" or "acme-corp"
   name         String
-  customDomain String?      @unique // e.g. "learn.university.edu"
+  // The live custom domain (e.g. "learn.university.edu"): requests on that host belong to this organisation,
+  // and links in e-mails use it. Only a domain whose DNS proved the organisation's control gets here.
+  customDomain String?      @unique
   tier         TenantTier   @default(ENTERPRISE)
   status       TenantStatus @default(ACTIVE)
 
@@ -43,6 +45,18 @@ model Tenant {
   primaryColor   String? @default("#0f172a")
   secondaryColor String? @default("#3b82f6")
   faviconUrl     String?
+
+  // A custom domain waiting for proof of ownership: a TXT record `_lms-verify.<domain>` = `lms-verify=<token>`.
+  // It never resolves to the organisation; the live customDomain (if any) stays until this one verifies.
+  pendingCustomDomain     String?   @unique
+  /// Random, stored as-is: it is published in DNS anyway.
+  customDomainToken       String?
+  customDomainRequestedAt DateTime?
+  customDomainCheckedAt   DateTime?
+  /// Why the last check of the pending domain failed.
+  customDomainError       String?
+  /// When the live customDomain was proved (set to the migration time for domains that predate verification).
+  customDomainVerifiedAt  DateTime?
 
   // Created through registration or by the platform operator: the admin area shows the setup checklist.
   // Organisations that existed before onboarding was added never see it.

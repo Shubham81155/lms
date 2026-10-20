@@ -9,6 +9,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { SamlPanel, ScimPanel, SsoPanel } from "@/components/admin/IdentityPanels";
 import { FeaturesPanel, UsagePanel, WebhooksPanel, type Usage } from "@/components/admin/PlatformPanels";
 import { BrandingPanel, CampusPanel, CompliancePanel, TermsPanel } from "@/components/admin/OrgPanels";
+import { CustomDomainPanel } from "@/components/admin/CustomDomainPanel";
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
 import { AiSettingsPanel } from "@/components/admin/AiSettingsPanel";
 import { SetupChecklist } from "@/components/admin/SetupChecklist";
@@ -156,6 +157,9 @@ export default function AdminDashboard() {
             </div>
             <div id="admin-branding" className="bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
               <BrandingPanel />
+            </div>
+            <div id="admin-domain" className="md:col-span-3 bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
+              <CustomDomainPanel />
             </div>
             <div id="admin-terms" className="md:col-span-3 bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
               <TermsPanel />

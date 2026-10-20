@@ -15,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandLogo } from "@/components/BrandLogo";
 import { api, ApiError } from "@/lib/api";
+import { isOwnSubdomain } from "@/lib/org-address";
 
 // Error codes the API puts in /login?error= after a failed single sign-on round trip.
 const SSO_ERRORS: Record<string, string> = {
@@ -41,6 +42,8 @@ function LoginForm() {
   const [noOrganisation, setNoOrganisation] = useState(false);
   // A suspended organisation: nobody can sign in until the platform operator reactivates it.
   const [suspended, setSuspended] = useState(false);
+  // On the shared address (not an organisation's own subdomain) people may not know where to sign in.
+  const [sharedAddress, setSharedAddress] = useState(false);
   useEffect(() => {
     let alive = true;
     api
@@ -48,8 +51,12 @@ function LoginForm() {
       .then((r) => alive && setSso({ oidc: !!r.oidc, saml: !!r.saml }))
       .catch(() => alive && setSso({ oidc: false, saml: false }));
     api
-      .get("/api/v1/tenant/config")
-      .then(() => alive && setNoOrganisation(false))
+      .get<{ slug: string }>("/api/v1/tenant/config")
+      .then((r) => {
+        if (!alive) return;
+        setNoOrganisation(false);
+        setSharedAddress(!isOwnSubdomain(window.location.hostname, r.slug));
+      })
       .catch((e) => {
         if (!alive || !(e instanceof ApiError)) return;
         setNoOrganisation(e.status === 404);
@@ -123,7 +130,13 @@ function LoginForm() {
           {noOrganisation && (
             <div role="status" className="p-3.5 bg-accent/10 border border-accent/30 rounded-2xl flex items-start gap-2.5 text-xs text-ink">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-accent" />
-              <span>No organisation uses this web address. Check the address your organisation gave you, or register your organisation below.</span>
+              <span>
+                No organisation uses this web address. Check the address your organisation gave you, or{" "}
+                <Link href="/find-organisation" className="font-semibold text-brand-fg hover:underline underline-offset-2">
+                  find my organisation
+                </Link>{" "}
+                by e-mail. New here? Register your organisation below.
+              </span>
             </div>
           )}
 
@@ -266,12 +279,21 @@ function LoginForm() {
             </div>
           )}
 
-          <p className="text-center text-[11px] text-ink-muted">
-            New organisation?{" "}
-            <Link href="/register" className="font-semibold text-brand-fg hover:underline underline-offset-2">
-              Register your organisation
-            </Link>
-          </p>
+          <div className="space-y-1.5 text-center text-[11px]">
+            <p className="text-ink-muted">
+              New organisation?{" "}
+              <Link href="/register" className="font-semibold text-brand-fg hover:underline underline-offset-2">
+                Register your organisation
+              </Link>
+            </p>
+            {sharedAddress && (
+              <p>
+                <Link href="/find-organisation" className="text-brand-fg hover:underline underline-offset-2">
+                  Can&apos;t find your organisation&apos;s address?
+                </Link>
+              </p>
+            )}
+          </div>
         </div>
       </main>
     </div>

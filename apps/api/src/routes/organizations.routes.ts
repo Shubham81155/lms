@@ -1,10 +1,11 @@
-import { Router } from 'express';
+import { RequestHandler, Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { runWithTenant } from '@enterprise-lms/database';
 import { config } from '../config';
 import { basePrisma } from '../lib/prisma';
-import { HttpError, route } from '../lib/http';
+import { HttpError, route, sendError } from '../lib/http';
+import { captchaSiteKey, requireCaptcha } from '../lib/captcha';
 import { httpUrl, parseBody, parseQuery } from '../lib/validate';
 import { logAuditEvent } from '../lib/audit';
 import { logger } from '../lib/logger';
@@ -56,6 +57,16 @@ router.get(
   })
 );
 
+/**
+ * GET /api/v1/organizations/captcha: the Cloudflare Turnstile site key the public forms render their CAPTCHA
+ * with, or null while the CAPTCHA is off. Read at run time, so the web app needs no build setting for it.
+ */
+router.get(
+  '/captcha',
+  lookupLimiter,
+  route('Failed to read the CAPTCHA settings', async (_req, res) => res.json({ data: { siteKey: captchaSiteKey() } }))
+);
+
 /** GET /api/v1/organizations/lookup?slug=: an active organisation's name, so the login page can confirm it. */
 router.get(
   '/lookup',
@@ -104,20 +115,34 @@ export const organizationRequestSchema = z.object({
   contactPhone: optionalText(40),
   message: optionalText(2000),
   acceptTerms: z.literal(true, { errorMap: () => ({ message: 'Accept the terms to continue' }) }),
+  /** Cloudflare Turnstile token, required while the CAPTCHA is on (GET /captcha names a site key). */
+  captchaToken: z.string().max(2048).optional(),
 });
+
+/** The widget action of the registration form's CAPTCHA (apps/web register page). */
+export const ORG_REQUEST_CAPTCHA_ACTION = 'org-request';
+
+/** Registration open and the form well-formed, checked before the CAPTCHA so a bad form costs no siteverify call. */
+const requestFormChecks: RequestHandler = (req, res, next) => {
+  if (!config.ORG_REGISTRATION_ENABLED) return sendError(req, res, 403, 'Organisation registration is closed');
+  const parsed = organizationRequestSchema.safeParse(req.body);
+  if (!parsed.success) return sendError(req, res, 400, 'Validation failed', parsed.error.format());
+  next();
+};
 
 const confirmLink = (token: string) => `${config.APP_URL.replace(/\/+$/, '')}/register?confirm=${encodeURIComponent(token)}`;
 
 /**
  * POST /api/v1/organizations/requests: ask for an organisation. Nothing reaches the platform operator yet:
  * the applicant is e-mailed a link to confirm their address first (POST /requests/confirm). Until then the
- * request holds its address for 24 hours.
+ * request holds its address for 24 hours. With TURNSTILE_SECRET_KEY set, the form needs a passing CAPTCHA.
  */
 router.post(
   '/requests',
   requestLimiter,
+  requestFormChecks,
+  requireCaptcha(ORG_REQUEST_CAPTCHA_ACTION),
   route('Failed to send the request', async (req, res) => {
-    if (!config.ORG_REGISTRATION_ENABLED) throw new HttpError(403, 'Organisation registration is closed');
     const input = parseBody(req, organizationRequestSchema);
     const problem = await slugProblem(input.slug);
     if (problem === 'invalid') throw new HttpError(400, SLUG_PROBLEM_MESSAGE.invalid);
@@ -131,7 +156,7 @@ router.post(
     const expiresAt = new Date(Date.now() + VERIFY_WINDOW_MS);
     let request;
     try {
-      const { acceptTerms: _accepted, ...fields } = input;
+      const { acceptTerms: _accepted, captchaToken: _captcha, ...fields } = input;
       await releaseLapsedHolds(input.slug);
       request = await basePrisma.organizationRequest.create({
         data: {

@@ -6,11 +6,12 @@ import { basePrisma, prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
-import { idSchema, parseBody } from '../lib/validate';
+import { idSchema, parseBody, parseQuery } from '../lib/validate';
 import { mailMode } from '../lib/mailer';
+import { domainCheckLimiter, getDomainState, removeCustomDomain, removeDomainQuery, requestCustomDomain, setDomainSchema, verifyCustomDomain } from '../lib/custom-domain';
 
-// Mounted at /api/v1/admin. The institutional hierarchy (campuses and their departments) and the
-// compliance posture report. Administrators only.
+// Mounted at /api/v1/admin. The institutional hierarchy (campuses and their departments), the organisation's
+// custom domain and the compliance posture report. Administrators only.
 
 const router = Router();
 router.use(authenticateJWT, requireRole('SUPER_ADMIN', 'TENANT_ADMIN'));
@@ -138,6 +139,43 @@ router.delete(
     await prisma.department.delete({ where: { id: dept.id } });
     await audit(req, 'DEPARTMENT_DELETED', 'DEPARTMENT', dept.id, { code: dept.code });
     return res.status(204).end();
+  })
+);
+
+// --------------------------------------------------------------------------- custom domain
+
+// Not a plan feature: any organisation may use its own domain, once DNS proves it controls it (lib/custom-domain.ts).
+
+const domainActor = (req: any) => ({ tenantId: tenantIdOf(req), userId: req.user!.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+
+/** GET /api/v1/admin/custom-domain: the live domain, the one waiting for verification and the TXT record to add. */
+router.get(
+  '/custom-domain',
+  route('Failed to load the custom domain', async (req, res) => res.json({ data: await getDomainState(tenantIdOf(req)) }))
+);
+
+/** PUT /api/v1/admin/custom-domain: ask for a domain. It waits for its TXT record; a live domain stays live meanwhile. */
+router.put(
+  '/custom-domain',
+  route('Failed to set the custom domain', async (req, res) => {
+    const { domain } = parseBody(req, setDomainSchema);
+    return res.json({ data: await requestCustomDomain(tenantIdOf(req), domain, domainActor(req)) });
+  })
+);
+
+/** POST /api/v1/admin/custom-domain/verify: look the TXT record up now ("Check now"). */
+router.post(
+  '/custom-domain/verify',
+  domainCheckLimiter,
+  route('Failed to verify the custom domain', async (req, res) => res.json({ data: await verifyCustomDomain(tenantIdOf(req), domainActor(req)) }))
+);
+
+/** DELETE /api/v1/admin/custom-domain?scope=all|pending */
+router.delete(
+  '/custom-domain',
+  route('Failed to remove the custom domain', async (req, res) => {
+    const { scope } = parseQuery(req, removeDomainQuery);
+    return res.json({ data: await removeCustomDomain(tenantIdOf(req), scope, domainActor(req)) });
   })
 );
 

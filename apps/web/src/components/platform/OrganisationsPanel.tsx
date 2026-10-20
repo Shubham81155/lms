@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Globe, Plus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { FEATURE_LABELS } from "@/components/admin/PlatformPanels";
+import { CustomDomainEditor } from "@/components/admin/CustomDomainPanel";
 import { TIERS, invitationMessage, isValidSlug, suggestSlug, tierLabel, type InvitationResult, type Org, type Tier } from "@/lib/platform";
 
 const field = "bg-canvas border border-line rounded-lg px-2 py-1 text-xs text-ink focus:outline-none focus:border-brand";
@@ -21,8 +22,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 /**
- * Every organisation on the platform: its plan (tier, seats, feature overrides), whether it is active, and a
- * form to create one directly. `focusId` scrolls to and highlights one row (e.g. after approving a request).
+ * Every organisation on the platform: its plan (tier, seats, feature overrides), its custom domain, whether it is
+ * active, and a form to create one directly. `focusId` scrolls to and highlights one row (e.g. after approving a request).
  */
 export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: string | null; refreshKey?: number }> = ({ ownTenantId, focusId, refreshKey }) => {
   const list = useApiData<{ data: Org[] }>("/api/v1/operator/tenants");
@@ -30,6 +31,7 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
   const [quota, setQuota] = useState<Record<string, string>>({});
   const [confirming, setConfirming] = useState<{ id: string; to: "ACTIVE" | "SUSPENDED" } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [domainFor, setDomainFor] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const focusRef = useRef<HTMLTableRowElement | null>(null);
 
@@ -69,7 +71,7 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="orgs-h" className="font-bold text-base text-ink">Organisations</h2>
-          <p className="text-xs text-ink-muted">Plans, seat quotas, feature overrides and status. Every change is audited in the platform's trail and the organisation's own.</p>
+          <p className="text-xs text-ink-muted">Plans, seat quotas, feature overrides, custom domains and status. Every change is audited in the platform's trail and the organisation's own.</p>
         </div>
         {!creating && (
           <button type="button" className={primary} onClick={() => { clearError(); setDone(null); setCreating(true); }}>
@@ -111,102 +113,132 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
                 const own = t.id === ownTenantId;
                 const focused = t.id === focusId;
                 return (
-                  <tr key={t.id} ref={focused ? focusRef : undefined} className={`align-top ${focused ? "bg-brand/10" : ""}`}>
-                    <td className="px-3 py-3">
-                      <div className="font-semibold text-ink">{t.name}{own && <span className="ml-1 text-[10px] font-normal text-ink-subtle">(platform operator)</span>}</div>
-                      <div className="font-mono text-[11px] text-ink-subtle">{t.slug}</div>
-                      {t.customDomain && <div className="text-[11px] text-ink-subtle">{t.customDomain}</div>}
-                    </td>
-                    <td className="px-3 py-3">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLE[t.status] ?? STATUS_STYLE.ARCHIVED}`}>{t.status.toLowerCase()}</span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <select aria-label={`Plan for ${t.name}`} value={t.tier} disabled={busy} onChange={(e) => patch(t.id, { tier: e.target.value })} className={field}>
-                        {TIERS.map((tier) => (
-                          <option key={tier} value={tier}>{tierLabel(tier)}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-3">
-                      <form
-                        className="flex items-center gap-1.5"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const v = (quota[t.id] ?? "").trim();
-                          patch(t.id, { seatQuota: v === "" ? null : Number(v) });
-                        }}
-                      >
-                        <span className="whitespace-nowrap text-ink">{t.seatsUsed} /</span>
-                        <input
-                          type="number"
-                          min={1}
-                          aria-label={`Seat quota for ${t.name}`}
-                          placeholder={t.seatQuota ? String(t.seatQuota) : "∞"}
-                          value={quota[t.id] ?? ""}
-                          onChange={(e) => setQuota((q) => ({ ...q, [t.id]: e.target.value }))}
-                          className={`${field} w-20`}
-                        />
-                        <button disabled={busy} className="text-[11px] font-semibold text-brand-fg disabled:opacity-50">Set</button>
-                      </form>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {Object.entries(FEATURE_LABELS).map(([key, meta]) => {
-                          const on = !!t.features[key];
-                          const overridden = key in t.overrides;
-                          return (
-                            <span key={key} className="inline-flex items-center">
-                              <button
-                                type="button"
-                                disabled={busy}
-                                title={overridden ? "Set for this organisation" : "Plan default. Click to override."}
-                                onClick={() => patch(t.id, { features: { [key]: !on } })}
-                                aria-pressed={on}
-                                aria-label={`${meta.label} for ${t.name}`}
-                                className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold ${on ? "bg-brand/15 text-brand-fg border-brand/40" : "bg-canvas text-ink-subtle border-line"} ${overridden ? "ring-1 ring-accent/60" : ""}`}
-                              >
-                                {meta.label}
-                              </button>
-                              {overridden && (
+                  <React.Fragment key={t.id}>
+                    <tr ref={focused ? focusRef : undefined} className={`align-top ${focused ? "bg-brand/10" : ""}`}>
+                      <td className="px-3 py-3">
+                        <div className="font-semibold text-ink">{t.name}{own && <span className="ml-1 text-[10px] font-normal text-ink-subtle">(platform operator)</span>}</div>
+                        <div className="font-mono text-[11px] text-ink-subtle">{t.slug}</div>
+                        {t.customDomain && <div className="text-[11px] text-ink-subtle" title="Verified custom domain">{t.customDomain}</div>}
+                        {t.pendingCustomDomain && (
+                          <div className="text-[11px] text-accent" title="Waiting for its DNS TXT record">{t.pendingCustomDomain} (verifying)</div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLE[t.status] ?? STATUS_STYLE.ARCHIVED}`}>{t.status.toLowerCase()}</span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <select aria-label={`Plan for ${t.name}`} value={t.tier} disabled={busy} onChange={(e) => patch(t.id, { tier: e.target.value })} className={field}>
+                          {TIERS.map((tier) => (
+                            <option key={tier} value={tier}>{tierLabel(tier)}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-3 py-3">
+                        <form
+                          className="flex items-center gap-1.5"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const v = (quota[t.id] ?? "").trim();
+                            patch(t.id, { seatQuota: v === "" ? null : Number(v) });
+                          }}
+                        >
+                          <span className="whitespace-nowrap text-ink">{t.seatsUsed} /</span>
+                          <input
+                            type="number"
+                            min={1}
+                            aria-label={`Seat quota for ${t.name}`}
+                            placeholder={t.seatQuota ? String(t.seatQuota) : "∞"}
+                            value={quota[t.id] ?? ""}
+                            onChange={(e) => setQuota((q) => ({ ...q, [t.id]: e.target.value }))}
+                            className={`${field} w-20`}
+                          />
+                          <button disabled={busy} className="text-[11px] font-semibold text-brand-fg disabled:opacity-50">Set</button>
+                        </form>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(FEATURE_LABELS).map(([key, meta]) => {
+                            const on = !!t.features[key];
+                            const overridden = key in t.overrides;
+                            return (
+                              <span key={key} className="inline-flex items-center">
                                 <button
                                   type="button"
                                   disabled={busy}
-                                  onClick={() => patch(t.id, { features: { [key]: null } })}
-                                  aria-label={`${meta.label}: use the plan default for ${t.name}`}
-                                  title="Use the plan default"
-                                  className="ml-0.5 px-1 text-[11px] text-ink-subtle hover:text-ink"
+                                  title={overridden ? "Set for this organisation" : "Plan default. Click to override."}
+                                  onClick={() => patch(t.id, { features: { [key]: !on } })}
+                                  aria-pressed={on}
+                                  aria-label={`${meta.label} for ${t.name}`}
+                                  className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold ${on ? "bg-brand/15 text-brand-fg border-brand/40" : "bg-canvas text-ink-subtle border-line"} ${overridden ? "ring-1 ring-accent/60" : ""}`}
                                 >
-                                  ↺
+                                  {meta.label}
                                 </button>
-                              )}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-right">
-                      {!own && (t.status === "SUSPENDED" ? (
-                        <button type="button" className={ghost} disabled={busy} onClick={() => { clearError(); setConfirming({ id: t.id, to: "ACTIVE" }); }}>Reactivate</button>
-                      ) : t.status !== "ARCHIVED" ? (
-                        <button type="button" className={ghost} disabled={busy} onClick={() => { clearError(); setConfirming({ id: t.id, to: "SUSPENDED" }); }}>Suspend</button>
-                      ) : null)}
-                      {confirming?.id === t.id && (
-                        <div role="alertdialog" aria-label={`${confirming.to === "SUSPENDED" ? "Suspend" : "Reactivate"} ${t.name}?`} className={`mt-2 rounded-xl border p-3 text-left ${confirming.to === "SUSPENDED" ? "border-danger/40 bg-danger/5" : "border-success/40 bg-success/5"}`}>
-                          <p className="text-[11px] text-ink">
-                            {confirming.to === "SUSPENDED"
-                              ? "Nobody in this organisation can sign in while it is suspended. Its data is kept."
-                              : "People in this organisation can sign in again."}
-                          </p>
-                          <div className="mt-2 flex justify-end gap-2">
-                            <button type="button" className={ghost} disabled={busy} onClick={() => setConfirming(null)}>Cancel</button>
-                            <button type="button" className={confirming.to === "SUSPENDED" ? "px-3 py-1.5 bg-danger hover:opacity-90 text-white rounded-lg text-[11px] font-bold disabled:opacity-50" : primary} disabled={busy} onClick={() => setStatus(t, confirming.to)}>
-                              {confirming.to === "SUSPENDED" ? "Suspend" : "Reactivate"}
+                                {overridden && (
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() => patch(t.id, { features: { [key]: null } })}
+                                    aria-label={`${meta.label}: use the plan default for ${t.name}`}
+                                    title="Use the plan default"
+                                    className="ml-0.5 px-1 text-[11px] text-ink-subtle hover:text-ink"
+                                  >
+                                    ↺
+                                  </button>
+                                )}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <button
+                          type="button"
+                          className={`${ghost} mr-2`}
+                          aria-expanded={domainFor === t.id}
+                          aria-label={`Custom domain of ${t.name}`}
+                          onClick={() => setDomainFor((id) => (id === t.id ? null : t.id))}
+                        >
+                          <Globe className="h-3 w-3" /> Domain
+                        </button>
+                        {!own && (t.status === "SUSPENDED" ? (
+                          <button type="button" className={ghost} disabled={busy} onClick={() => { clearError(); setConfirming({ id: t.id, to: "ACTIVE" }); }}>Reactivate</button>
+                        ) : t.status !== "ARCHIVED" ? (
+                          <button type="button" className={ghost} disabled={busy} onClick={() => { clearError(); setConfirming({ id: t.id, to: "SUSPENDED" }); }}>Suspend</button>
+                        ) : null)}
+                        {confirming?.id === t.id && (
+                          <div role="alertdialog" aria-label={`${confirming.to === "SUSPENDED" ? "Suspend" : "Reactivate"} ${t.name}?`} className={`mt-2 rounded-xl border p-3 text-left ${confirming.to === "SUSPENDED" ? "border-danger/40 bg-danger/5" : "border-success/40 bg-success/5"}`}>
+                            <p className="text-[11px] text-ink">
+                              {confirming.to === "SUSPENDED"
+                                ? "Nobody in this organisation can sign in while it is suspended. Its data is kept."
+                                : "People in this organisation can sign in again."}
+                            </p>
+                            <div className="mt-2 flex justify-end gap-2">
+                              <button type="button" className={ghost} disabled={busy} onClick={() => setConfirming(null)}>Cancel</button>
+                              <button type="button" className={confirming.to === "SUSPENDED" ? "px-3 py-1.5 bg-danger hover:opacity-90 text-white rounded-lg text-[11px] font-bold disabled:opacity-50" : primary} disabled={busy} onClick={() => setStatus(t, confirming.to)}>
+                                {confirming.to === "SUSPENDED" ? "Suspend" : "Reactivate"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                    {domainFor === t.id && (
+                      <tr className="bg-canvas/50">
+                        <td colSpan={6} className="px-3 py-4">
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div>
+                              <h3 className="text-xs font-bold text-ink">Custom domain of {t.name}</h3>
+                              <p className="text-[11px] text-ink-muted">A domain works only once its TXT record is found. Send the record to the organisation, or check it for them.</p>
+                            </div>
+                            <button type="button" aria-label="Close" onClick={() => setDomainFor(null)} className="rounded-lg p-1 text-ink-muted hover:bg-raised hover:text-ink">
+                              <X className="h-4 w-4" />
                             </button>
                           </div>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
+                          <CustomDomainEditor basePath={`/api/v1/operator/tenants/${t.id}/custom-domain`} onChanged={reload} />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -272,7 +304,10 @@ const NewOrganisationForm: React.FC<{ onCancel: () => void; onCreated: (text: st
         adminLastName: last.trim(),
         adminEmail: email.trim(),
       });
-      onCreated(`"${res.data.organization.name}" is created. ${invitationMessage(res.data.invitation, email.trim())}`);
+      const pending = res.data.organization.pendingCustomDomain;
+      onCreated(
+        `"${res.data.organization.name}" is created. ${invitationMessage(res.data.invitation, email.trim())}${pending ? ` ${pending} works once verified: open Domain for its TXT record.` : ""}`
+      );
     });
   };
 
@@ -330,7 +365,7 @@ const NewOrganisationForm: React.FC<{ onCancel: () => void; onCreated: (text: st
           <input className={input} type="number" min={1} value={seats} onChange={(e) => setSeats(e.target.value)} />
         </label>
         <label className="space-y-1 text-[11px] font-semibold text-ink-muted md:col-span-2">
-          Custom domain (optional)
+          Custom domain (optional: it works once its DNS TXT record is verified)
           <input className={input} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="learn.college.edu" />
         </label>
         <label className="space-y-1 text-[11px] font-semibold text-ink-muted">

@@ -33,6 +33,7 @@ async function main() {
       slug: 'harvard',
       name: 'Harvard University',
       customDomain: 'learn.harvard.edu',
+      customDomainVerifiedAt: new Date(),
       tier: 'ENTERPRISE',
       primaryColor: '#a51c30',
       secondaryColor: '#1e1e1e',
