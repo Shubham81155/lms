@@ -80,7 +80,7 @@ export const AuditLogPanel: React.FC = () => {
         </button>
       </div>
 
-      <form onSubmit={apply} className="flex flex-wrap items-end gap-2">
+      <form role="search" onSubmit={apply} className="flex flex-wrap items-end gap-2">
         <label className="space-y-1 text-[11px] text-ink-muted">
           <span className="block">Action</span>
           <select className={field} value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })}>

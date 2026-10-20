@@ -154,7 +154,7 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <Editor item={editing === "new" ? null : editing} onCancel={() => setEditing(null)} onDone={() => { setEditing(null); reload(); }} />
           ) : (
             <>
-              <div className="flex flex-wrap items-center gap-2">
+              <div role="search" className="flex flex-wrap items-center gap-2">
                 <input className={`${input} w-56`} aria-label="Search questions" placeholder="Search text…" value={q} onChange={(e) => setQ(e.target.value)} />
                 <input className={`${input} w-32`} aria-label="Filter by tag" placeholder="Tag" value={tag} onChange={(e) => { setTag(e.target.value); setPage(1); }} />
                 <select className={input} aria-label="Filter by type" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>

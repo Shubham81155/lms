@@ -149,3 +149,9 @@ nextjs-portal,
     width: 100%;
   }
 }
+
+/* Form controls locked by a read-only support session (components/shell/useReadOnlyForms.ts). */
+[data-support-locked] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

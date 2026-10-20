@@ -182,7 +182,7 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
             <p className="text-xs text-ink-muted">Exams, deadlines, labs and office hours. Learners see them on their academic calendar. Live classes appear here too but are managed from Live Classes.</p>
           </div>
           <div className="flex items-center gap-3">
-            <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Show events for" className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none">
+            <select data-readonly-ok value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Show events for" className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none">
               <option value="">Everything I can see</option>
               <option value={ORG}>Organisation-wide only</option>
               {courses.map((c) => (

@@ -19,11 +19,10 @@ export interface SupportSession {
 const CHECK_MS = 30_000;
 const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 
-export const SupportBanner: React.FC = () => {
+/** The current support session (null for an ordinary one), checked again every 30 s while there is one. */
+export function useSupportSession(): SupportSession | null {
   const { user } = useAuth();
   const [session, setSession] = useState<SupportSession | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -44,6 +43,13 @@ export const SupportBanner: React.FC = () => {
       if (timer) clearInterval(timer);
     };
   }, [user, session?.passId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return session;
+}
+
+export const SupportBanner: React.FC<{ session: SupportSession | null }> = ({ session }) => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!session) return null;
 
@@ -70,7 +76,7 @@ export const SupportBanner: React.FC = () => {
         <span>
           <span className="font-semibold">Support access by {session.operatorEmail}</span>
           {" — "}
-          {readOnly ? "read-only" : "full access, every change is audited"}
+          {readOnly ? "read-only, forms are locked" : "full access, every change is audited"}
           {" — "}ends at {time(session.expiresAt)}
         </span>
         {error && <span className="text-danger">{error}</span>}

@@ -322,7 +322,7 @@ export const UserManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-line bg-canvas/60 px-6 py-3">
+        <div role="search" className="flex flex-wrap items-center gap-2 border-b border-line bg-canvas/60 px-6 py-3">
           <input className={`${input} w-64`} aria-label="Search people" placeholder="Search name or email…" value={q} onChange={(e) => setQ(e.target.value)} />
           <select className={input} aria-label="Filter by role" value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }}>
             <option value="">All roles</option>

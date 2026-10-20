@@ -6,7 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 import { PrivacySettings } from "@/components/PrivacySettings";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar, type TopBarSearch } from "@/components/shell/TopBar";
-import { SupportBanner } from "@/components/shell/SupportBanner";
+import { SupportBanner, useSupportSession } from "@/components/shell/SupportBanner";
+import { useReadOnlyForms } from "@/components/shell/useReadOnlyForms";
 import { useDrawerBehavior, useSidebar } from "@/hooks/useSidebar";
 import { currentTab, visibleSections, type Area, type NavItem } from "@/lib/navigation";
 
@@ -32,6 +33,10 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
   const { collapsed, ready, toggleCollapsed, mobileOpen, openMobile, closeMobile } = useSidebar();
   const [showPrivacy, setShowPrivacy] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const support = useSupportSession();
+  // A read-only support session cannot change anything: say so by locking the page's form controls.
+  useReadOnlyForms(mainRef, support?.scope === "READ_ONLY");
   useDrawerBehavior(mobileOpen, drawerRef, closeMobile);
 
   const sections = visibleSections(area, actions, user?.role);
@@ -115,7 +120,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Only while the platform operator is here on a support pass. */}
-        <SupportBanner />
+        <SupportBanner session={support} />
         <TopBar
           area={area}
           search={search}
@@ -125,7 +130,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
           sidebarCollapsed={collapsed}
           onToggleSidebar={toggleCollapsed}
         />
-        <div id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
+        <div ref={mainRef} id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
           {children}
         </div>
       </div>

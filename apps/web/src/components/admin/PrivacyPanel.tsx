@@ -63,6 +63,7 @@ export const PrivacyPanel: React.FC = () => {
       </div>
 
       <form
+        role="search"
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();

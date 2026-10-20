@@ -181,7 +181,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
         {/* Filter Bar */}
         <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:w-80">
+          <div role="search" className="relative w-full sm:w-80">
             <Search className="h-3.5 w-3.5 text-ink-subtle absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
