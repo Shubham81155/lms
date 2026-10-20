@@ -2,13 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Inbox, Users } from "lucide-react";
+import { Building2, Clock, Inbox, Users } from "lucide-react";
 import { AppShell } from "@/components/shell/AppShell";
 import { useAuth } from "@/context/AuthContext";
 import { useApiData } from "@/hooks/useApiData";
 import { RequestsPanel } from "@/components/platform/RequestsPanel";
 import { OrganisationsPanel } from "@/components/platform/OrganisationsPanel";
-import { summarise, type Org, type OrgRequest } from "@/lib/platform";
+import { SupportPassesPanel } from "@/components/platform/SupportPassesPanel";
+import { summarise, trialsEndingWithin, type Org, type OrgRequest } from "@/lib/platform";
 
 const TABS = ["overview", "requests", "organisations"] as const;
 type Tab = (typeof TABS)[number];
@@ -50,6 +51,7 @@ export default function PlatformPage() {
   const pending = useApiData<{ data: OrgRequest[]; pagination?: { total: number } }>(allowed ? "/api/v1/operator/requests" : null, { status: "PENDING", v: version });
   // The list is one page; the count of everything waiting comes from its pagination.
   const s = summarise(orgs.data?.data ?? [], pending.data?.data ?? [], pending.data?.pagination?.total);
+  const endingSoon = trialsEndingWithin(orgs.data?.data ?? []);
 
   if (!allowed) {
     return (
@@ -62,6 +64,14 @@ export default function PlatformPage() {
   const stats = [
     { label: "Waiting for a decision", value: pending.data ? String(s.pending) : "…", sub: "registration requests", icon: Inbox, color: "text-accent", onClick: () => go("requests") },
     { label: "Organisations", value: orgs.data ? String(s.organisations) : "…", sub: orgs.data ? `${s.byStatus.ACTIVE} active · ${s.byStatus.TRIAL} trial · ${s.byStatus.SUSPENDED} suspended` : "", icon: Building2, color: "text-brand-fg", onClick: () => go("organisations") },
+    {
+      label: "Trials ending this week",
+      value: orgs.data ? String(endingSoon.length) : "…",
+      sub: orgs.data ? (endingSoon.length ? endingSoon.slice(0, 3).map((o) => o.name).join(", ") + (endingSoon.length > 3 ? ", …" : "") : "none in the next 7 days") : "",
+      icon: Clock,
+      color: "text-accent",
+      onClick: () => go("organisations"),
+    },
     { label: "Seats in use", value: orgs.data ? s.seatsUsed.toLocaleString() : "…", sub: "active and invited people, all organisations", icon: Users, color: "text-success" },
   ];
 
@@ -74,7 +84,7 @@ export default function PlatformPage() {
           <p className="text-sm text-ink-muted">Organisations asking to join, and every organisation on the platform.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((st) => {
             const Icon = st.icon;
             const body = (
@@ -126,6 +136,8 @@ export default function PlatformPage() {
             </ul>
           </section>
         )}
+
+        {tab === "overview" && <SupportPassesPanel />}
 
         {tab === "requests" && (
           <RequestsPanel

@@ -91,8 +91,16 @@ const stripDot = (h: string) => h.toLowerCase().replace(/\.$/, '');
 export const txtRecordName = (domain: string) => `${TXT_LABEL}.${domain}`;
 export const txtRecordValue = (token: string) => `${TXT_PREFIX}${token}`;
 
-/** Whether DNS carries the proof; `error` says what is wrong in words an administrator can act on. */
-async function checkTxt(domain: string, token: string): Promise<{ ok: boolean; error: string | null }> {
+export interface TxtCheck {
+  ok: boolean;
+  /** What is wrong, in words an administrator can act on. */
+  error: string | null;
+  /** The answer is a definite no (no record, or a different value), not a failed lookup (timeout, SERVFAIL...). */
+  definite: boolean;
+}
+
+/** Whether DNS carries the proof. */
+export async function checkTxt(domain: string, token: string): Promise<TxtCheck> {
   const name = txtRecordName(domain);
   const expected = txtRecordValue(token);
   let records: string[];
@@ -100,13 +108,14 @@ async function checkTxt(domain: string, token: string): Promise<{ ok: boolean; e
     // A long TXT value can arrive split into several strings: they form one value.
     records = (await lookup((r) => r.resolveTxt(name))).map((chunks) => chunks.join('').trim());
   } catch (err: any) {
-    if (NOT_FOUND.has(err?.code)) return { ok: false, error: `No TXT record found at ${name}. DNS changes can take a while to appear; check again later.` };
-    if (err?.code === 'ETIMEOUT') return { ok: false, error: 'The DNS lookup timed out. Try again in a few minutes.' };
-    return { ok: false, error: `The DNS lookup failed${err?.code ? ` (${err.code})` : ''}. Try again in a few minutes.` };
+    if (NOT_FOUND.has(err?.code)) return { ok: false, definite: true, error: `No TXT record found at ${name}. DNS changes can take a while to appear; check again later.` };
+    if (err?.code === 'ETIMEOUT') return { ok: false, definite: false, error: 'The DNS lookup timed out. Try again in a few minutes.' };
+    return { ok: false, definite: false, error: `The DNS lookup failed${err?.code ? ` (${err.code})` : ''}. Try again in a few minutes.` };
   }
-  if (records.includes(expected)) return { ok: true, error: null };
+  if (records.includes(expected)) return { ok: true, definite: true, error: null };
   return {
     ok: false,
+    definite: true,
     error: records.some((v) => v.startsWith(TXT_PREFIX))
       ? `The TXT record at ${name} has a different value. It must be exactly ${expected}.`
       : `The TXT record at ${name} does not contain ${expected}.`,
@@ -145,9 +154,21 @@ export async function routingHint(domain: string): Promise<RoutingHint> {
 const select = {
   id: true, slug: true, status: true, customDomain: true, customDomainVerifiedAt: true,
   pendingCustomDomain: true, customDomainToken: true, customDomainRequestedAt: true, customDomainCheckedAt: true, customDomainError: true,
+  customDomainLiveToken: true, customDomainRecheckedAt: true, customDomainRecheckError: true, customDomainFailingSince: true,
 } as const;
 
-type DomainRow = { slug: string; customDomain: string | null; customDomainVerifiedAt: Date | null; pendingCustomDomain: string | null; customDomainToken: string | null; customDomainRequestedAt: Date | null; customDomainCheckedAt: Date | null; customDomainError: string | null };
+type DomainRow = {
+  slug: string; customDomain: string | null; customDomainVerifiedAt: Date | null; pendingCustomDomain: string | null; customDomainToken: string | null;
+  customDomainRequestedAt: Date | null; customDomainCheckedAt: Date | null; customDomainError: string | null;
+  customDomainLiveToken: string | null; customDomainRecheckedAt: Date | null; customDomainRecheckError: string | null; customDomainFailingSince: Date | null;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** When a live domain whose TXT record has been missing since `failingSince` is removed. */
+export const removalDate = (failingSince: Date) => new Date(failingSince.getTime() + config.CUSTOM_DOMAIN_RECHECK_GRACE_DAYS * DAY_MS);
+
+/** Fields that reset the re-check state of the live domain (it changed, or was removed). */
+export const clearedRecheck = { customDomainRecheckedAt: null, customDomainRecheckError: null, customDomainFailingSince: null, customDomainWarnedAt: null } as const;
 
 /** What the admin area and the platform console show: the live domain, the one waiting and the exact TXT record. */
 export function domainView(t: DomainRow) {
@@ -166,6 +187,24 @@ export function domainView(t: DomainRow) {
             requestedAt: t.customDomainRequestedAt,
             checkedAt: t.customDomainCheckedAt,
             error: t.customDomainError,
+          }
+        : null,
+    /**
+     * The periodic re-check of the live domain: its TXT record must stay. Null when there is no live domain, or it
+     * was set without verification (it is then not re-checked).
+     */
+    recheck:
+      t.customDomain && t.customDomainLiveToken
+        ? {
+            txtName: txtRecordName(t.customDomain),
+            txtValue: txtRecordValue(t.customDomainLiveToken),
+            checkedAt: t.customDomainRecheckedAt,
+            /** Why the last re-check failed (a passing DNS problem included), or null. */
+            error: t.customDomainRecheckError,
+            /** Since when the record has been missing or wrong; null while it is fine. */
+            failingSince: t.customDomainFailingSince,
+            /** When the domain is removed unless the record is back by then. */
+            removesAt: t.customDomainFailingSince ? removalDate(t.customDomainFailingSince) : null,
           }
         : null,
     /** Where to point the domain (CNAME), when the platform says. */
@@ -289,7 +328,7 @@ export async function verifyCustomDomain(tenantId: string, actor: DomainActor) {
       const moved = await basePrisma.tenant.updateMany({
         where: same,
         data: {
-          customDomain: domain, customDomainVerifiedAt: now,
+          customDomain: domain, customDomainVerifiedAt: now, customDomainLiveToken: token, ...clearedRecheck, customDomainRecheckedAt: now,
           pendingCustomDomain: null, customDomainToken: null, customDomainRequestedAt: null, customDomainCheckedAt: now, customDomainError: null,
         },
       });
@@ -311,7 +350,7 @@ export async function removeCustomDomain(tenantId: string, scope: 'all' | 'pendi
   const saved = await basePrisma.tenant.update({
     where: { id: tenantId },
     data: {
-      customDomain: null, customDomainVerifiedAt: null,
+      customDomain: null, customDomainVerifiedAt: null, customDomainLiveToken: null, ...clearedRecheck,
       pendingCustomDomain: null, customDomainToken: null, customDomainRequestedAt: null, customDomainCheckedAt: null, customDomainError: null,
     },
     select,

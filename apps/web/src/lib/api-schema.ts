@@ -316,6 +316,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/offboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: the organisation's scheduled deletion (if any) and its 20 most recent full exports. */
+        get: operations["getAdminOffboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/offboarding/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: schedule the organisation and all its data for deletion in ORG_DELETION_GRACE_DAYS (30 by default). `confirmSlug` must be the organisation's address. It stays usable until then and the administrators are e-mailed; a final export is taken before the deletion. Not the platform operator's organisation (409). Audited. */
+        post: operations["postAdminOffboardingDeletion"];
+        /** Administrators: cancel the scheduled deletion (403 when the platform operator scheduled it). Administrators are e-mailed. Audited. */
+        delete: operations["deleteAdminOffboardingDeletion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/offboarding/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: queue a full export: a ZIP of every table of the organisation (JSON lines) and its stored files, without passwords, tokens, secrets or keys. A background job builds it; it can be downloaded for 7 days. Audited. 409 while one is already being prepared. */
+        post: operations["postAdminOffboardingExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/offboarding/export/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: download a ready export of their organisation. Audited. 409 while it is being built, 410 once expired. */
+        get: operations["getAdminOffboardingExportIdDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/saml": {
         parameters: {
             query?: never;
@@ -2368,6 +2437,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/exports/{exportId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: download any ready export, including the final export of a deleted organisation. Audited. */
+        get: operations["getOperatorExportsExportIdDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/offboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: organisations scheduled for deletion, and the deleted ones with their final export and how long their address stays reserved. */
+        get: operations["getOperatorOffboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/requests": {
         parameters: {
             query?: never;
@@ -2394,7 +2497,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Platform operator: approve a pending request. Creates the organisation with the chosen plan and seats, and invites the request's contact as its administrator. A request is decided once. */
+        /** Platform operator: approve a pending request. Creates the organisation with the chosen plan and seats (and a free trial of `trialDays`, default ORG_TRIAL_DAYS; 0: active, paid), and invites the request's contact as its administrator. A request is decided once. */
         post: operations["postOperatorRequestsIdApprove"];
         delete?: never;
         options?: never;
@@ -2419,6 +2522,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/support-passes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: support passes in force across organisations, soonest to expire first. */
+        get: operations["getOperatorSupportPasses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/support-passes/{id}/enter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: a one-time link (valid two minutes) to /support/enter at the organisation's own address, which opens a support session there. 404 when the pass is not in force; 409 for a suspended organisation or the operator's own. */
+        post: operations["postOperatorSupportPassesIdEnter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/tenants": {
         parameters: {
             query?: never;
@@ -2429,7 +2566,7 @@ export interface paths {
         /** Platform operator: every organisation with its plan tier, features, seat quota and seats in use. */
         get: operations["getOperatorTenants"];
         put?: never;
-        /** Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live. */
+        /** Platform operator: create an organisation and its first administrator, who is e-mailed an invitation to choose a password. `trialDays` (default ORG_TRIAL_DAYS): a free trial of that many days (status TRIAL), 0 for an active (paid) organisation. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live. */
         post: operations["postOperatorTenants"];
         delete?: never;
         options?: never;
@@ -2490,6 +2627,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/tenants/{id}/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: schedule an organisation's deletion (as POST /admin/offboarding/deletion); only the operator can cancel it. Never the operator's own organisation. Audited in both trails. */
+        post: operations["postOperatorTenantsIdDeletion"];
+        /** Platform operator: cancel an organisation's scheduled deletion. Audited in both trails. */
+        delete: operations["deleteOperatorTenantsIdDeletion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: queue a full export of an organisation (as POST /admin/offboarding/export). Audited in both trails. */
+        post: operations["postOperatorTenantsIdExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}/offboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: an organisation's scheduled deletion and exports, final ones included (as GET /admin/offboarding). */
+        get: operations["getOperatorTenantsIdOffboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/tenants/{id}/status": {
         parameters: {
             query?: never;
@@ -2503,8 +2692,77 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Platform operator: suspend an organisation (nobody can sign in to it) or make it active again. Not the operator's own organisation. Audited in both trails. */
+        /** Platform operator: suspend an organisation (nobody can sign in to it) or make it active again; making it active ends any trial it had. Not the operator's own organisation. Audited in both trails. */
         patch: operations["patchOperatorTenantsIdStatus"];
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}/trial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: start a free trial of `days` for an active organisation (status TRIAL). Its administrators are e-mailed 7 days and 1 day before the end; then it is read-only (changes answer 402 TRIAL_ENDED) for ORG_TRIAL_GRACE_DAYS, then suspended. Not the operator's own organisation (409). Audited in both trails. */
+        post: operations["postOperatorTenantsIdTrial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Platform operator: extend a trial by `days`, from its end or from now if it already ended; an ended (read-only) or lapsed (suspended) trial runs again and reminders are sent afresh. Audited in both trails. */
+        patch: operations["patchOperatorTenantsIdTrial"];
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}/trial/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: convert a trial organisation (running, ended or suspended after it lapsed) to an active, paid one. Audited in both trails. */
+        post: operations["postOperatorTenantsIdTrialConvert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}/trial/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: end a running trial now; the organisation becomes read-only, then is suspended after the grace period. Audited in both trails. */
+        post: operations["postOperatorTenantsIdTrialEnd"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/trial-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: the trial defaults: `defaultDays` (ORG_TRIAL_DAYS, 0 = new organisations start active) and `graceDays` (ORG_TRIAL_GRACE_DAYS, read-only days after a trial ends before suspension). */
+        get: operations["getOperatorTrialSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/organizations/availability": {
@@ -3046,6 +3304,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/support/enter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Public: exchange the one-time handoff token of /support/enter?token= (valid once, for two minutes) for a support session in the pass's organisation, as its "Platform support" account. Sets the session cookie. 410 when the link was used, expired or its pass is no longer in force; 403 when the organisation is suspended. Audited. */
+        post: operations["postSupportEnter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/exit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End the support session (the pass stays in force until it expires or is revoked). Answers where to go next: the platform console. 409 for an ordinary session. Audited. */
+        post: operations["postSupportExit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/passes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: this organisation's support passes for the platform operator, newest first (the last 50). */
+        get: operations["getSupportPasses"];
+        put?: never;
+        /** Administrators: grant the platform operator a support pass for 1, 4, 24 or 72 hours, READ_ONLY (default) or FULL (changes allowed, each one audited). One pass is in force at a time (409); the platform operator organisation cannot grant one (409); not from a support session (403). Audited. */
+        post: operations["postSupportPasses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/passes/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: withdraw a support pass. A support session under it ends at once. Not from a support session (403). Audited. */
+        post: operations["postSupportPassesIdRevoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The current support session (scope, operator e-mail, when it ends), or null for an ordinary session. A READ_ONLY support session gets 403 with code SUPPORT_READ_ONLY for any change. */
+        get: operations["getSupportSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/terms": {
         parameters: {
             query?: never;
@@ -3127,6 +3471,23 @@ export interface paths {
         put?: never;
         /** Reply to a thread, optionally to another reply (`parentId`). Locked threads accept staff replies only. */
         post: operations["postThreadsIdPosts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/trial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller's organisation's free trial: NONE (no trial), TRIAL (running, with `daysLeft`) or READ_ONLY (ended: changes answer 402 with code TRIAL_ENDED until `readOnlyUntil`, when it is suspended; signing out, exports and privacy requests still work). */
+        get: operations["getTrial"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4233,6 +4594,14 @@ export interface operations {
                                 checkedAt: string | null;
                                 error: string | null;
                             } | null;
+                            recheck: {
+                                txtName: string;
+                                txtValue: string;
+                                checkedAt: string | null;
+                                error: string | null;
+                                failingSince: string | null;
+                                removesAt: string | null;
+                            } | null;
                             target: string | null;
                         };
                     };
@@ -4300,6 +4669,14 @@ export interface operations {
                                 requestedAt: string | null;
                                 checkedAt: string | null;
                                 error: string | null;
+                            } | null;
+                            recheck: {
+                                txtName: string;
+                                txtValue: string;
+                                checkedAt: string | null;
+                                error: string | null;
+                                failingSince: string | null;
+                                removesAt: string | null;
                             } | null;
                             target: string | null;
                         };
@@ -4383,6 +4760,14 @@ export interface operations {
                                 checkedAt: string | null;
                                 error: string | null;
                             } | null;
+                            recheck: {
+                                txtName: string;
+                                txtValue: string;
+                                checkedAt: string | null;
+                                error: string | null;
+                                failingSince: string | null;
+                                removesAt: string | null;
+                            } | null;
                             target: string | null;
                         };
                     };
@@ -4453,6 +4838,14 @@ export interface operations {
                                 requestedAt: string | null;
                                 checkedAt: string | null;
                                 error: string | null;
+                            } | null;
+                            recheck: {
+                                txtName: string;
+                                txtValue: string;
+                                checkedAt: string | null;
+                                error: string | null;
+                                failingSince: string | null;
+                                removesAt: string | null;
                             } | null;
                             target: string | null;
                             check: {
@@ -4849,6 +5242,397 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAdminOffboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            tenantId: string;
+                            slug: string;
+                            name: string;
+                            deletable: boolean;
+                            graceDays: number;
+                            deletion: {
+                                scheduledAt: string;
+                                requestedAt: string | null;
+                                requestedBy: string | null;
+                                byOperator: boolean;
+                                canCancel: boolean;
+                            } | null;
+                            exports: {
+                                id: string;
+                                tenantId: string;
+                                /** @enum {string} */
+                                status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                                isFinal: boolean;
+                                sizeBytes: number | null;
+                                createdAt: string;
+                                completedAt: string | null;
+                                expiresAt: string | null;
+                                error: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postAdminOffboardingDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    confirmSlug: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            tenantId: string;
+                            slug: string;
+                            name: string;
+                            deletable: boolean;
+                            graceDays: number;
+                            deletion: {
+                                scheduledAt: string;
+                                requestedAt: string | null;
+                                requestedBy: string | null;
+                                byOperator: boolean;
+                                canCancel: boolean;
+                            } | null;
+                            exports: {
+                                id: string;
+                                tenantId: string;
+                                /** @enum {string} */
+                                status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                                isFinal: boolean;
+                                sizeBytes: number | null;
+                                createdAt: string;
+                                completedAt: string | null;
+                                expiresAt: string | null;
+                                error: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteAdminOffboardingDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            tenantId: string;
+                            slug: string;
+                            name: string;
+                            deletable: boolean;
+                            graceDays: number;
+                            deletion: {
+                                scheduledAt: string;
+                                requestedAt: string | null;
+                                requestedBy: string | null;
+                                byOperator: boolean;
+                                canCancel: boolean;
+                            } | null;
+                            exports: {
+                                id: string;
+                                tenantId: string;
+                                /** @enum {string} */
+                                status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                                isFinal: boolean;
+                                sizeBytes: number | null;
+                                createdAt: string;
+                                completedAt: string | null;
+                                expiresAt: string | null;
+                                error: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postAdminOffboardingExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            /** @enum {string} */
+                            status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                            isFinal: boolean;
+                            sizeBytes: number | null;
+                            createdAt: string;
+                            completedAt: string | null;
+                            expiresAt: string | null;
+                            error: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAdminOffboardingExportIdDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The ZIP (attachment). With S3 storage the answer is instead a 302 to a link valid for 5 minutes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Withdrawn */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5430,10 +6214,18 @@ export interface operations {
                             customDomainCheckedAt: string | null;
                             customDomainError: string | null;
                             customDomainVerifiedAt: string | null;
+                            customDomainLiveToken: string | null;
+                            customDomainRecheckedAt: string | null;
+                            customDomainRecheckError: string | null;
+                            customDomainFailingSince: string | null;
+                            customDomainWarnedAt: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             /** @enum {string} */
                             status: "ACTIVE" | "SUSPENDED" | "TRIAL" | "ARCHIVED";
+                            trialEndsAt: string | null;
+                            trialRemindersSent: number;
+                            trialExpiredAt: string | null;
                             logoUrl: string | null;
                             primaryColor: string | null;
                             secondaryColor: string | null;
@@ -5444,6 +6236,10 @@ export interface operations {
                             featureFlags?: unknown;
                             seatQuota: number | null;
                             setupChecklist: boolean;
+                            deletionScheduledAt: string | null;
+                            deletionRequestedAt: string | null;
+                            deletionRequestedBy: string | null;
+                            deletionByOperator: boolean;
                             createdAt: string;
                             updatedAt: string;
                             userCount: number;
@@ -5522,10 +6318,18 @@ export interface operations {
                             customDomainCheckedAt: string | null;
                             customDomainError: string | null;
                             customDomainVerifiedAt: string | null;
+                            customDomainLiveToken: string | null;
+                            customDomainRecheckedAt: string | null;
+                            customDomainRecheckError: string | null;
+                            customDomainFailingSince: string | null;
+                            customDomainWarnedAt: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             /** @enum {string} */
                             status: "ACTIVE" | "SUSPENDED" | "TRIAL" | "ARCHIVED";
+                            trialEndsAt: string | null;
+                            trialRemindersSent: number;
+                            trialExpiredAt: string | null;
                             logoUrl: string | null;
                             primaryColor: string | null;
                             secondaryColor: string | null;
@@ -5536,6 +6340,10 @@ export interface operations {
                             featureFlags?: unknown;
                             seatQuota: number | null;
                             setupChecklist: boolean;
+                            deletionScheduledAt: string | null;
+                            deletionRequestedAt: string | null;
+                            deletionRequestedBy: string | null;
+                            deletionByOperator: boolean;
                             createdAt: string;
                             updatedAt: string;
                         };
@@ -14856,6 +15664,144 @@ export interface operations {
             };
         };
     };
+    getOperatorExportsExportIdDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                exportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The ZIP (attachment). With S3 storage the answer is instead a 302 to a link valid for 5 minutes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Withdrawn */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOperatorOffboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            scheduled: {
+                                tenantId: string;
+                                slug: string;
+                                name: string;
+                                scheduledAt: string;
+                                requestedBy: string | null;
+                                byOperator: boolean;
+                            }[];
+                            deleted: {
+                                id: string;
+                                tenantId: string;
+                                slug: string;
+                                name: string;
+                                deletedAt: string;
+                                requestedBy: string | null;
+                                slugHeldUntil: string;
+                                summary?: unknown;
+                                finalExport: {
+                                    id: string;
+                                    tenantId: string;
+                                    /** @enum {string} */
+                                    status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                                    isFinal: boolean;
+                                    sizeBytes: number | null;
+                                    createdAt: string;
+                                    completedAt: string | null;
+                                    expiresAt: string | null;
+                                    error: string | null;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getOperatorRequests: {
         parameters: {
             query?: {
@@ -14958,6 +15904,7 @@ export interface operations {
                     /** @default 100 */
                     seatQuota?: number | null;
                     note?: string;
+                    trialDays?: number;
                 };
             };
         };
@@ -15000,9 +15947,13 @@ export interface operations {
                                 name: string;
                                 customDomain: string | null;
                                 pendingCustomDomain: string | null;
+                                customDomainFailingSince: string | null;
                                 /** @enum {string} */
                                 tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                                 status: string;
+                                trialEndsAt: string | null;
+                                trialExpiredAt: string | null;
+                                readOnlyUntil: string | null;
                                 seatQuota: number | null;
                                 seatsUsed: number;
                                 features: {
@@ -15167,6 +16118,134 @@ export interface operations {
             };
         };
     };
+    getOperatorSupportPasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            organization: {
+                                id: string;
+                                slug: string;
+                                name: string;
+                                status: string;
+                            };
+                            /** @enum {string} */
+                            scope: "READ_ONLY" | "FULL";
+                            reason: string;
+                            grantedByEmail: string;
+                            createdAt: string;
+                            expiresAt: string;
+                            lastEnteredAt: string | null;
+                            lastEnteredByEmail: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorSupportPassesIdEnter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            url: string;
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getOperatorTenants: {
         parameters: {
             query?: never;
@@ -15189,9 +16268,13 @@ export interface operations {
                             name: string;
                             customDomain: string | null;
                             pendingCustomDomain: string | null;
+                            customDomainFailingSince: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             status: string;
+                            trialEndsAt: string | null;
+                            trialExpiredAt: string | null;
+                            readOnlyUntil: string | null;
                             seatQuota: number | null;
                             seatsUsed: number;
                             features: {
@@ -15252,6 +16335,7 @@ export interface operations {
                     adminLastName: string;
                     /** Format: email */
                     adminEmail: string;
+                    trialDays?: number;
                 };
             };
         };
@@ -15270,9 +16354,13 @@ export interface operations {
                                 name: string;
                                 customDomain: string | null;
                                 pendingCustomDomain: string | null;
+                                customDomainFailingSince: string | null;
                                 /** @enum {string} */
                                 tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                                 status: string;
+                                trialEndsAt: string | null;
+                                trialExpiredAt: string | null;
+                                readOnlyUntil: string | null;
                                 seatQuota: number | null;
                                 seatsUsed: number;
                                 features: {
@@ -15369,9 +16457,13 @@ export interface operations {
                             name: string;
                             customDomain: string | null;
                             pendingCustomDomain: string | null;
+                            customDomainFailingSince: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             status: string;
+                            trialEndsAt: string | null;
+                            trialExpiredAt: string | null;
+                            readOnlyUntil: string | null;
                             seatQuota: number | null;
                             seatsUsed: number;
                             features: {
@@ -15465,6 +16557,14 @@ export interface operations {
                                 checkedAt: string | null;
                                 error: string | null;
                             } | null;
+                            recheck: {
+                                txtName: string;
+                                txtValue: string;
+                                checkedAt: string | null;
+                                error: string | null;
+                                failingSince: string | null;
+                                removesAt: string | null;
+                            } | null;
                             target: string | null;
                         };
                     };
@@ -15534,6 +16634,14 @@ export interface operations {
                                 requestedAt: string | null;
                                 checkedAt: string | null;
                                 error: string | null;
+                            } | null;
+                            recheck: {
+                                txtName: string;
+                                txtValue: string;
+                                checkedAt: string | null;
+                                error: string | null;
+                                failingSince: string | null;
+                                removesAt: string | null;
                             } | null;
                             target: string | null;
                         };
@@ -15619,6 +16727,14 @@ export interface operations {
                                 checkedAt: string | null;
                                 error: string | null;
                             } | null;
+                            recheck: {
+                                txtName: string;
+                                txtValue: string;
+                                checkedAt: string | null;
+                                error: string | null;
+                                failingSince: string | null;
+                                removesAt: string | null;
+                            } | null;
                             target: string | null;
                         };
                     };
@@ -15692,6 +16808,14 @@ export interface operations {
                                 checkedAt: string | null;
                                 error: string | null;
                             } | null;
+                            recheck: {
+                                txtName: string;
+                                txtValue: string;
+                                checkedAt: string | null;
+                                error: string | null;
+                                failingSince: string | null;
+                                removesAt: string | null;
+                            } | null;
                             target: string | null;
                             check: {
                                 verified: boolean;
@@ -15754,6 +16878,338 @@ export interface operations {
             };
         };
     };
+    postOperatorTenantsIdDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    confirmSlug: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            tenantId: string;
+                            slug: string;
+                            name: string;
+                            deletable: boolean;
+                            graceDays: number;
+                            deletion: {
+                                scheduledAt: string;
+                                requestedAt: string | null;
+                                requestedBy: string | null;
+                                byOperator: boolean;
+                                canCancel: boolean;
+                            } | null;
+                            exports: {
+                                id: string;
+                                tenantId: string;
+                                /** @enum {string} */
+                                status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                                isFinal: boolean;
+                                sizeBytes: number | null;
+                                createdAt: string;
+                                completedAt: string | null;
+                                expiresAt: string | null;
+                                error: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteOperatorTenantsIdDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            tenantId: string;
+                            slug: string;
+                            name: string;
+                            deletable: boolean;
+                            graceDays: number;
+                            deletion: {
+                                scheduledAt: string;
+                                requestedAt: string | null;
+                                requestedBy: string | null;
+                                byOperator: boolean;
+                                canCancel: boolean;
+                            } | null;
+                            exports: {
+                                id: string;
+                                tenantId: string;
+                                /** @enum {string} */
+                                status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                                isFinal: boolean;
+                                sizeBytes: number | null;
+                                createdAt: string;
+                                completedAt: string | null;
+                                expiresAt: string | null;
+                                error: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorTenantsIdExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            /** @enum {string} */
+                            status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                            isFinal: boolean;
+                            sizeBytes: number | null;
+                            createdAt: string;
+                            completedAt: string | null;
+                            expiresAt: string | null;
+                            error: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOperatorTenantsIdOffboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            tenantId: string;
+                            slug: string;
+                            name: string;
+                            deletable: boolean;
+                            graceDays: number;
+                            deletion: {
+                                scheduledAt: string;
+                                requestedAt: string | null;
+                                requestedBy: string | null;
+                                byOperator: boolean;
+                                canCancel: boolean;
+                            } | null;
+                            exports: {
+                                id: string;
+                                tenantId: string;
+                                /** @enum {string} */
+                                status: "QUEUED" | "RUNNING" | "READY" | "FAILED" | "EXPIRED";
+                                isFinal: boolean;
+                                sizeBytes: number | null;
+                                createdAt: string;
+                                completedAt: string | null;
+                                expiresAt: string | null;
+                                error: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     patchOperatorTenantsIdStatus: {
         parameters: {
             query?: never;
@@ -15785,9 +17241,13 @@ export interface operations {
                             name: string;
                             customDomain: string | null;
                             pendingCustomDomain: string | null;
+                            customDomainFailingSince: string | null;
                             /** @enum {string} */
                             tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
                             status: string;
+                            trialEndsAt: string | null;
+                            trialExpiredAt: string | null;
+                            readOnlyUntil: string | null;
                             seatQuota: number | null;
                             seatsUsed: number;
                             features: {
@@ -15842,6 +17302,419 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorTenantsIdTrial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    days: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            pendingCustomDomain: string | null;
+                            customDomainFailingSince: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            status: string;
+                            trialEndsAt: string | null;
+                            trialExpiredAt: string | null;
+                            readOnlyUntil: string | null;
+                            seatQuota: number | null;
+                            seatsUsed: number;
+                            features: {
+                                lti13: boolean;
+                                sso: boolean;
+                                webhooks: boolean;
+                                scim: boolean;
+                                aiAssistant: boolean;
+                            };
+                            overrides: {
+                                [key: string]: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchOperatorTenantsIdTrial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    days: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            pendingCustomDomain: string | null;
+                            customDomainFailingSince: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            status: string;
+                            trialEndsAt: string | null;
+                            trialExpiredAt: string | null;
+                            readOnlyUntil: string | null;
+                            seatQuota: number | null;
+                            seatsUsed: number;
+                            features: {
+                                lti13: boolean;
+                                sso: boolean;
+                                webhooks: boolean;
+                                scim: boolean;
+                                aiAssistant: boolean;
+                            };
+                            overrides: {
+                                [key: string]: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorTenantsIdTrialConvert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            pendingCustomDomain: string | null;
+                            customDomainFailingSince: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            status: string;
+                            trialEndsAt: string | null;
+                            trialExpiredAt: string | null;
+                            readOnlyUntil: string | null;
+                            seatQuota: number | null;
+                            seatsUsed: number;
+                            features: {
+                                lti13: boolean;
+                                sso: boolean;
+                                webhooks: boolean;
+                                scim: boolean;
+                                aiAssistant: boolean;
+                            };
+                            overrides: {
+                                [key: string]: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorTenantsIdTrialEnd: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            pendingCustomDomain: string | null;
+                            customDomainFailingSince: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            status: string;
+                            trialEndsAt: string | null;
+                            trialExpiredAt: string | null;
+                            readOnlyUntil: string | null;
+                            seatQuota: number | null;
+                            seatsUsed: number;
+                            features: {
+                                lti13: boolean;
+                                sso: boolean;
+                                webhooks: boolean;
+                                scim: boolean;
+                                aiAssistant: boolean;
+                            };
+                            overrides: {
+                                [key: string]: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOperatorTrialSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            defaultDays: number;
+                            graceDays: number;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19036,6 +20909,376 @@ export interface operations {
             };
         };
     };
+    postSupportEnter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            passId: string;
+                            /** @enum {string} */
+                            scope: "READ_ONLY" | "FULL";
+                            expiresAt: string;
+                            operatorEmail: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Withdrawn */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postSupportExit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            redirect: string;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSupportPasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            scope: "READ_ONLY" | "FULL";
+                            reason: string;
+                            grantedByEmail: string;
+                            createdAt: string;
+                            expiresAt: string;
+                            revokedAt: string | null;
+                            revokedByEmail: string | null;
+                            lastEnteredAt: string | null;
+                            lastEnteredByEmail: string | null;
+                            /** @enum {string} */
+                            status: "ACTIVE" | "REVOKED" | "EXPIRED";
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postSupportPasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @default READ_ONLY
+                     * @enum {string}
+                     */
+                    scope?: "READ_ONLY" | "FULL";
+                    hours: 1 | 4 | 24 | 72;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            scope: "READ_ONLY" | "FULL";
+                            reason: string;
+                            grantedByEmail: string;
+                            createdAt: string;
+                            expiresAt: string;
+                            revokedAt: string | null;
+                            revokedByEmail: string | null;
+                            lastEnteredAt: string | null;
+                            lastEnteredByEmail: string | null;
+                            /** @enum {string} */
+                            status: "ACTIVE" | "REVOKED" | "EXPIRED";
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postSupportPassesIdRevoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            scope: "READ_ONLY" | "FULL";
+                            reason: string;
+                            grantedByEmail: string;
+                            createdAt: string;
+                            expiresAt: string;
+                            revokedAt: string | null;
+                            revokedByEmail: string | null;
+                            lastEnteredAt: string | null;
+                            lastEnteredByEmail: string | null;
+                            /** @enum {string} */
+                            status: "ACTIVE" | "REVOKED" | "EXPIRED";
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSupportSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            passId: string;
+                            /** @enum {string} */
+                            scope: "READ_ONLY" | "FULL";
+                            expiresAt: string;
+                            operatorEmail: string;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getTerms: {
         parameters: {
             query?: never;
@@ -19541,6 +21784,43 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTrial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            state: "NONE" | "TRIAL" | "READ_ONLY";
+                            trialEndsAt: string | null;
+                            daysLeft: number | null;
+                            readOnlyUntil: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -109,3 +109,62 @@ describe('finding my organisation', () => {
     expect(outbox).toHaveLength(0);
   });
 });
+
+describe('the database function behind it', () => {
+  const asApp = async <T>(fn: (c: import('pg').Client) => Promise<T>) => {
+    const { Client } = await import('pg');
+    const c = new Client({ connectionString: db.appUrl });
+    await c.connect();
+    try {
+      return await fn(c);
+    } finally {
+      await c.end();
+    }
+  };
+  const tenantsFor = (c: import('pg').Client, email: string) =>
+    c.query<{ tenant_id: string }>('SELECT tenant_id FROM find_tenants_for_email($1)', [email]).then((r) => r.rows.map((x) => x.tenant_id).sort());
+
+  it('returns only organisation ids, for active and invited accounts, whatever the case of the address', async () => {
+    await asApp(async (c) => {
+      expect(await tenantsFor(c, 'ANN@example.edu')).toEqual(['t-a', 't-h', 't-op', 't-s', 't-tr', 't-y']);
+      expect(await tenantsFor(c, 'nobody@example.edu')).toEqual([]);
+    });
+  });
+
+  it('does not open the users table to the runtime role that sets the switch itself', async () => {
+    await asApp(async (c) => {
+      await c.query("SELECT set_config('app.find_tenants_for_email', 'on', false)");
+      expect((await c.query('SELECT count(*)::int AS n FROM "User"')).rows[0].n).toBe(0);
+      // The function resets it for its own duration only, and it never applies to lms_app's own queries.
+      expect(await tenantsFor(c, 'bob@example.edu')).toEqual(['t-o']);
+      expect((await c.query('SELECT count(*)::int AS n FROM "User"')).rows[0].n).toBe(0);
+    });
+  });
+
+  it('is not executable by other roles', async () => {
+    await admin.$executeRawUnsafe(`CREATE ROLE someone_else LOGIN PASSWORD 'pw' NOSUPERUSER`);
+    await admin.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO someone_else`);
+    const { Client } = await import('pg');
+    const c = new Client({ connectionString: db.appUrl.replace('lms_app:app_pw', 'someone_else:pw') });
+    await c.connect();
+    try {
+      await expect(c.query("SELECT * FROM find_tenants_for_email('ann@example.edu')")).rejects.toThrow(/permission denied/);
+    } finally {
+      await c.end();
+    }
+  });
+
+  // Last: changes the owner. When migrations run as a role that is not a superuser, row-level security (FORCE)
+  // applies to the function's owner, and only the owner policy lets the function read users.
+  it('works when owned by a role subject to row-level security', async () => {
+    await admin.$executeRawUnsafe(`CREATE ROLE lms_owner NOLOGIN NOSUPERUSER NOBYPASSRLS`);
+    await admin.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO lms_owner`);
+    await admin.$executeRawUnsafe(`GRANT SELECT ON "User" TO lms_owner`);
+    await admin.$executeRawUnsafe(`ALTER FUNCTION find_tenants_for_email(text) OWNER TO lms_owner`);
+    // Without the owner policy RLS hides every user from it.
+    await asApp(async (c) => expect(await tenantsFor(c, 'bob@example.edu')).toEqual([]));
+    // What the migration creates for the role running it.
+    await admin.$executeRawUnsafe(`ALTER POLICY find_tenants_for_email ON "User" TO lms_owner`);
+    await asApp(async (c) => expect(await tenantsFor(c, 'bob@example.edu')).toEqual(['t-o']));
+  });
+});

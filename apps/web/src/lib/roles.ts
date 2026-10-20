@@ -54,4 +54,4 @@ export function canView(viewer: Viewer, pathname: string): boolean {
 }
 
 /** Pages where a signed-out visitor is welcome. */
-export const PUBLIC_PATHS = ["/", "/login", "/register", "/find-organisation", "/forgot-password", "/reset-password", "/verify-email", "/verify"];
+export const PUBLIC_PATHS = ["/", "/login", "/register", "/find-organisation", "/forgot-password", "/reset-password", "/verify-email", "/verify", "/support/enter"];

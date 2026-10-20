@@ -36,12 +36,13 @@ import {
 } from '../routes/forum.routes';
 import { statementSchema } from '../routes/intelligence.routes';
 import { aiSettingsSchema, outlineSchema, tutorSchema } from '../routes/ai.routes';
-import { planSchema } from '../routes/operator.routes';
+import { planSchema, trialDaysSchema } from '../routes/operator.routes';
 import { removeDomainQuery, setDomainSchema } from '../lib/custom-domain';
 import { tlsAskQuery } from '../routes/internal-tls.routes';
 import { patchBody as scimPatchBody, userBody as scimUserBody } from '../routes/scim.routes';
 import { listQuery as notificationListQuery, prefsSchema } from '../routes/notifications.routes';
 import { enrollSchema, listQuery as enrollmentListQuery, updateProgressSchema } from '../routes/enrollments.routes';
+import { OFFBOARDING_DOCS } from './responses/offboarding';
 
 /**
  * Hand-written detail for the endpoints the web app relies on most. Every route is listed in the
@@ -335,6 +336,7 @@ const message = z.object({ message: z.string() });
 
 /** Keyed `METHOD /express/style/path`. */
 export const DOCS: Record<string, OperationDoc> = {
+  ...OFFBOARDING_DOCS,
   'POST /api/v1/auth/login': {
     summary: 'Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended.',
     body: loginSchema,
@@ -488,21 +490,35 @@ export const DOCS: Record<string, OperationDoc> = {
   // ---- bodies the handlers read without parseBody
   'GET /api/v1/operator/tenants': { summary: 'Platform operator: every organisation with its plan tier, features, seat quota and seats in use.' },
   'POST /api/v1/operator/tenants': {
-    summary: 'Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live.',
+    summary: 'Platform operator: create an organisation and its first administrator, who is e-mailed an invitation to choose a password. `trialDays` (default ORG_TRIAL_DAYS): a free trial of that many days (status TRIAL), 0 for an active (paid) organisation. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live.',
     body: createTenantSchema,
     errors: [400, 409],
   },
   'PATCH /api/v1/operator/tenants/:id/status': {
-    summary: "Platform operator: suspend an organisation (nobody can sign in to it) or make it active again. Not the operator's own organisation. Audited in both trails.",
+    summary: "Platform operator: suspend an organisation (nobody can sign in to it) or make it active again; making it active ends any trial it had. Not the operator's own organisation. Audited in both trails.",
     body: tenantStatusSchema,
     errors: [400, 404, 409],
   },
   'GET /api/v1/operator/requests': { summary: 'Platform operator: organisation registration requests with the given status (default PENDING), newest first, a page at a time (`page`, `limit`, default 25). Only requests whose applicant confirmed their e-mail are listed. `expired`: a pending request older than its 30-day hold, which no longer reserves its address.', query: requestListQuery },
   'POST /api/v1/operator/requests/:id/approve': {
-    summary: "Platform operator: approve a pending request. Creates the organisation with the chosen plan and seats, and invites the request's contact as its administrator. A request is decided once.",
+    summary: "Platform operator: approve a pending request. Creates the organisation with the chosen plan and seats (and a free trial of `trialDays`, default ORG_TRIAL_DAYS; 0: active, paid), and invites the request's contact as its administrator. A request is decided once.",
     body: approveSchema,
     errors: [400, 404, 409],
   },
+  'GET /api/v1/operator/trial-settings': { summary: 'Platform operator: the trial defaults: `defaultDays` (ORG_TRIAL_DAYS, 0 = new organisations start active) and `graceDays` (ORG_TRIAL_GRACE_DAYS, read-only days after a trial ends before suspension).' },
+  'POST /api/v1/operator/tenants/:id/trial': {
+    summary: "Platform operator: start a free trial of `days` for an active organisation (status TRIAL). Its administrators are e-mailed 7 days and 1 day before the end; then it is read-only (changes answer 402 TRIAL_ENDED) for ORG_TRIAL_GRACE_DAYS, then suspended. Not the operator's own organisation (409). Audited in both trails.",
+    body: trialDaysSchema,
+    errors: [400, 404, 409],
+  },
+  'PATCH /api/v1/operator/tenants/:id/trial': {
+    summary: 'Platform operator: extend a trial by `days`, from its end or from now if it already ended; an ended (read-only) or lapsed (suspended) trial runs again and reminders are sent afresh. Audited in both trails.',
+    body: trialDaysSchema,
+    errors: [400, 404, 409],
+  },
+  'POST /api/v1/operator/tenants/:id/trial/end': { summary: 'Platform operator: end a running trial now; the organisation becomes read-only, then is suspended after the grace period. Audited in both trails.' },
+  'POST /api/v1/operator/tenants/:id/trial/convert': { summary: 'Platform operator: convert a trial organisation (running, ended or suspended after it lapsed) to an active, paid one. Audited in both trails.' },
+  'GET /api/v1/trial': { summary: "The caller's organisation's free trial: NONE (no trial), TRIAL (running, with `daysLeft`) or READ_ONLY (ended: changes answer 402 with code TRIAL_ENDED until `readOnlyUntil`, when it is suspended; signing out, exports and privacy requests still work)." },
   'POST /api/v1/operator/requests/:id/reject': { summary: 'Platform operator: reject a pending request, freeing its address; the applicant is e-mailed the reason.', body: rejectRequestSchema, errors: [400, 404, 409] },
   'GET /api/v1/organizations/availability': { summary: "Public: whether a new organisation could use this address. `url` is the web address it would have; `reason` says why not: invalid, reserved, taken (an organisation has it) or pending (another open request holds it).", query: slugQuery },
   'GET /api/v1/organizations/captcha': { summary: 'Public: the Cloudflare Turnstile site key public forms (organisation registration) render their CAPTCHA with; null while the CAPTCHA is off and forms need no token.' },

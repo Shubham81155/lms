@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { PrivacySettings } from "@/components/PrivacySettings";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar, type TopBarSearch } from "@/components/shell/TopBar";
+import { SupportBanner } from "@/components/shell/SupportBanner";
 import { useDrawerBehavior, useSidebar } from "@/hooks/useSidebar";
 import { currentTab, visibleSections, type Area, type NavItem } from "@/lib/navigation";
 
@@ -113,6 +114,8 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {/* Only while the platform operator is here on a support pass. */}
+        <SupportBanner />
         <TopBar
           area={area}
           search={search}

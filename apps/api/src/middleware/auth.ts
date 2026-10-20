@@ -3,7 +3,9 @@ import jwt from 'jsonwebtoken';
 import { runWithTenant } from '@enterprise-lms/database';
 import { UserRole } from '@enterprise-lms/security';
 import { config } from '../config';
-import { loadSession, sessionIsValid, tenantIsBlocked, TENANT_SUSPENDED_MESSAGE } from '../lib/session';
+import { loadSession, sessionIsValid, tenantIsBlocked, tenantIsReadOnly, TENANT_SUSPENDED_MESSAGE } from '../lib/session';
+import { refuseTrialWrite } from '../lib/trial-guard';
+import { loadSupportSession, refuseSupportWrite } from '../lib/support-access';
 import { HttpError } from '../lib/http';
 import { cookieName } from '../lib/cookie-name';
 
@@ -27,6 +29,8 @@ declare global {
       /** Host the browser used (with port), lower-cased. Only meaningful for choosing among a tenant's own origins. */
       publicHost?: string;
       user?: AuthUser;
+      /** Set by authentication: the organisation's trial has ended, so changes are refused (lib/trial-guard.ts). */
+      tenantReadOnly?: boolean;
     }
   }
 }
@@ -81,11 +85,15 @@ export function extractToken(req: Request): string | null {
   return typeof cookie === 'string' && cookie ? cookie : null;
 }
 
-export function verifyToken(token: string): (AuthUser & { tv: number }) | null {
+export function verifyToken(token: string): (AuthUser & { tv: number; sp?: string; op?: string }) | null {
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as Partial<AuthUser> & { tv?: number };
+    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as Partial<AuthUser> & { tv?: number; sp?: string; op?: string };
     if (!decoded.id || !decoded.role || !decoded.tenantId || !decoded.email) return null;
-    return { id: decoded.id, role: decoded.role, email: decoded.email, tenantId: decoded.tenantId, tv: decoded.tv ?? 0 };
+    return {
+      id: decoded.id, role: decoded.role, email: decoded.email, tenantId: decoded.tenantId, tv: decoded.tv ?? 0,
+      // A platform-operator support session (lib/support-access.ts): its pass, and the operator's e-mail.
+      ...(typeof decoded.sp === 'string' ? { sp: decoded.sp, op: typeof decoded.op === 'string' ? decoded.op : '' } : {}),
+    };
   } catch {
     return null;
   }
@@ -102,6 +110,13 @@ async function authenticate(req: Request): Promise<AuthUser | null | 'TENANT_SUS
   const state = await loadSession(claims.id, claims.tenantId);
   if (!sessionIsValid(state, claims.tv)) return null;
   if (tenantIsBlocked(state.tenantStatus)) return 'TENANT_SUSPENDED';
+  req.tenantReadOnly = tenantIsReadOnly(state);
+  if (claims.sp) {
+    // A support session lasts only while its pass is in force: revoked or expired ends it at once.
+    const support = await loadSupportSession(claims.sp, claims.tenantId, claims.op ?? '');
+    if (!support) return null;
+    req.support = support;
+  }
   return { id: claims.id, role: state.role as UserRole, email: claims.email, tenantId: claims.tenantId };
 }
 
@@ -117,6 +132,8 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
       if (user === 'TENANT_SUSPENDED') return res.status(403).json({ error: TENANT_SUSPENDED_MESSAGE, code: 'TENANT_SUSPENDED' });
       req.user = user;
       req.tenantId = user.tenantId;
+      if (refuseTrialWrite(req, res)) return;
+      if (refuseSupportWrite(req, res)) return;
       // Everything downstream (handlers, audit logging) runs scoped to this tenant at the database.
       return runWithTenant(user.tenantId, () => next());
     },

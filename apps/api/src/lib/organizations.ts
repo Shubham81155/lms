@@ -11,6 +11,7 @@ import { InvitationResult, sendInvitation } from './invitations';
 import { platformSubdomainLabels } from './platform-hosts';
 import { tenantUrl } from './tenant-url';
 import { newDomainToken } from './custom-domain';
+import { initialTrial } from './trial';
 
 // Creating organisations (tenants): from an approved registration request or directly by the platform
 // operator. Both make the tenant and its first administrator, who gets an invitation to choose a password.
@@ -60,6 +61,8 @@ export async function slugProblem(slug: string, opts: { ignoreRequestId?: string
   if (!ORG_SLUG.test(slug)) return 'invalid';
   if (isReservedSlug(slug)) return 'reserved';
   if (await basePrisma.tenant.findUnique({ where: { slug }, select: { id: true } })) return 'taken';
+  // A deleted organisation's address stays reserved for ORG_DELETED_SLUG_HOLD_DAYS (lib/offboarding.ts), for everyone.
+  if (await basePrisma.tenantDeletion.findFirst({ where: { slug, slugHeldUntil: { gt: new Date() } }, select: { id: true } })) return 'taken';
   if (opts.allowPending) return null;
   const pending = await basePrisma.organizationRequest.findFirst({
     where: { slug, ...holdingNow(), ...(opts.ignoreRequestId ? { NOT: { id: opts.ignoreRequestId } } : {}) },
@@ -131,6 +134,8 @@ export interface NewOrganization {
   /** Waits for DNS verification (lib/custom-domain.ts); it is not live until then. */
   customDomain?: string | null;
   admin: { email: string; firstName: string; lastName: string };
+  /** A free trial of this many days (lib/trial.ts); 0 or unset: active (paid) from the start. */
+  trialDays?: number;
 }
 
 export interface Actor {
@@ -141,7 +146,7 @@ export interface Actor {
 }
 
 /**
- * Creates an active organisation and its first administrator (INVITED), then sends the invitation. The
+ * Creates an organisation (active, or on a trial of `trialDays`) and its first administrator (INVITED), then sends the invitation. The
  * tenant and the account are created together, so a failure leaves neither. 409 when the slug or domain is
  * taken. `requestId` is the request being approved: it keeps its own slug and is linked to the organisation
  * in the same transaction. The operator creating directly may take a slug only requests hold; those
@@ -162,10 +167,13 @@ export async function createOrganization(input: NewOrganization, actor: Actor, o
     created = await runInTenantTransaction(id, async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
-          id, slug: input.slug, name: input.name, tier: input.tier, status: 'ACTIVE', seatQuota: input.seatQuota, setupChecklist: true,
+          id, slug: input.slug, name: input.name, tier: input.tier, ...initialTrial(input.trialDays ?? 0), seatQuota: input.seatQuota, setupChecklist: true,
           ...(input.customDomain ? { pendingCustomDomain: input.customDomain, customDomainToken: newDomainToken(), customDomainRequestedAt: new Date() } : {}),
         },
-        select: { id: true, slug: true, name: true, tier: true, status: true, seatQuota: true, featureFlags: true, customDomain: true, pendingCustomDomain: true },
+        select: {
+          id: true, slug: true, name: true, tier: true, status: true, seatQuota: true, featureFlags: true, customDomain: true, pendingCustomDomain: true,
+          customDomainFailingSince: true, trialEndsAt: true, trialExpiredAt: true,
+        },
       });
       const admin = await tx.user.create({
         data: { tenantId: id, email, firstName: input.admin.firstName, lastName: input.admin.lastName, role: 'TENANT_ADMIN', status: 'INVITED', passwordHash: null, emailVerified: false },
@@ -205,7 +213,7 @@ export async function createOrganization(input: NewOrganization, actor: Actor, o
     resourceId: id,
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
-    diffJson: { slug: input.slug, name: input.name, tier: input.tier, seatQuota: input.seatQuota, pendingCustomDomain: input.customDomain ?? null, adminEmail: email, via: opts.via, invitation },
+    diffJson: { slug: input.slug, name: input.name, tier: input.tier, seatQuota: input.seatQuota, pendingCustomDomain: input.customDomain ?? null, adminEmail: email, via: opts.via, invitation, trialEndsAt: created.tenant.trialEndsAt?.toISOString() ?? null },
   };
   await afterCommit('the audit entry', () => runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId })));
   await afterCommit('the audit entry', () => runWithTenant(id, () => logAuditEvent({ ...entry, tenantId: id, userId: undefined })));

@@ -3,7 +3,7 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 import { runWithTenant } from '@enterprise-lms/database';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { invalidateSessionCache, tenantIsBlocked, TENANT_SUSPENDED_MESSAGE } from '../lib/session';
+import { invalidateSessionCache, tenantIsBlocked, tenantIsReadOnly, TENANT_SUSPENDED_MESSAGE, TRIAL_ENDED_MESSAGE } from '../lib/session';
 import { logAuditEvent } from '../lib/audit';
 import { withSeat, tenantFeatures } from '../lib/features';
 import { hashOneTimeToken } from '../lib/one-time-token';
@@ -54,10 +54,12 @@ async function scimAuth(req: Request, res: Response, next: NextFunction) {
   if (!token) return fail(res, new ScimError(401, 'Bearer token required'));
   const row = await prisma.scimToken.findUnique({
     where: { tokenHash: hashOneTimeToken(token) },
-    select: { tenantId: true, revokedAt: true, tenant: { select: { status: true } } },
+    select: { tenantId: true, revokedAt: true, tenant: { select: { status: true, trialExpiredAt: true } } },
   });
   if (!row || row.revokedAt) return fail(res, new ScimError(401, 'Invalid token'));
   if (tenantIsBlocked(row.tenant.status)) return fail(res, new ScimError(403, TENANT_SUSPENDED_MESSAGE));
+  // An ended trial is read-only for provisioning too.
+  if (req.method !== 'GET' && tenantIsReadOnly({ tenantStatus: row.tenant.status, tenantTrialExpiredAt: row.tenant.trialExpiredAt })) return fail(res, new ScimError(402, TRIAL_ENDED_MESSAGE));
   req.tenantId = row.tenantId;
   return runWithTenant(row.tenantId, async () => {
     if (!(await tenantFeatures(row.tenantId)).scim) return fail(res, new ScimError(403, 'SCIM is not enabled for this organisation'));

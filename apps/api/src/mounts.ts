@@ -26,8 +26,10 @@ import orgRoutes from './routes/org.routes';
 import liveRoutes from './routes/live.routes';
 import aiRoutes from './routes/ai.routes';
 import operatorRoutes from './routes/operator.routes';
+import supportRoutes, { operatorSupportRouter } from './routes/support.routes';
 import organizationsRoutes from './routes/organizations.routes';
 import findOrganizationRoutes from './routes/find-organization.routes';
+import trialRoutes from './routes/trial.routes';
 import deadlinesRoutes from './routes/deadlines.routes';
 import announcementsRoutes from './routes/announcements.routes';
 import filesRoutes from './routes/files.routes';
@@ -35,6 +37,7 @@ import termsRoutes from './routes/terms.routes';
 import courseReviewRoutes from './routes/course-review.routes';
 import scormRoutes from './routes/scorm.routes';
 import scormContentRoutes from './routes/scorm-content.routes';
+import offboardingRoutes, { operatorOffboardingRoutes } from './routes/offboarding.routes';
 
 /** Where each router is mounted, in mounting order (order matters: see the notes in server.ts). */
 export interface Mount {
@@ -58,12 +61,18 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1/admin', router: adminRoutes },
   { prefix: '/api/v1/analytics', router: analyticsRoutes },
   { prefix: '/api/v1/ai', router: aiRoutes },
+  // Before operatorRoutes, so its own guards (router.use) do not run a second time for these paths.
+  { prefix: '/api/v1/operator', router: operatorSupportRouter },
+  { prefix: '/api/v1/operator', router: operatorOffboardingRoutes },
   { prefix: '/api/v1/operator', router: operatorRoutes },
+  { prefix: '/api/v1/support', router: supportRoutes },
+  { prefix: '/api/v1/trial', router: trialRoutes },
   { prefix: '/api/v1/organizations', router: organizationsRoutes },
   { prefix: '/api/v1/organizations', router: findOrganizationRoutes },
   { prefix: '/api/v1/certificates', router: certificatesRoutes },
   { prefix: '/api/v1/admin', router: platformRoutes },
   { prefix: '/api/v1/admin', router: orgRoutes },
+  { prefix: '/api/v1/admin', router: offboardingRoutes },
   { prefix: '/api/v1/notifications', router: notificationsRoutes },
   { prefix: '/api/v1/calendar', router: calendarRoutes },
   { prefix: '/api/v1/files', router: filesRoutes },

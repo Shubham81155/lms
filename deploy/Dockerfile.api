@@ -12,6 +12,10 @@ RUN npm ci --ignore-scripts
 COPY packages packages
 COPY apps/api apps/api
 RUN npm run db:generate -w @enterprise-lms/database
+# npm ci ran with --ignore-scripts, so Prisma downloads its engines lazily. Fetch all of them now, while the build
+# runs as root: the migrate service (docker-compose.prod.yml) runs the schema engine as the node user, who cannot
+# write to node_modules.
+RUN cd packages/database && npx prisma --version
 ENV NODE_ENV=production TS_NODE_TRANSPILE_ONLY=true
 # Uploaded files with STORAGE_DRIVER=local (mount a volume here; see docker-compose.yml).
 RUN mkdir -p /app/storage && chown node:node /app/storage

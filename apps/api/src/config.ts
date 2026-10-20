@@ -58,6 +58,10 @@ const envSchema = z.object({
   ),
   /** How long one DNS lookup for custom-domain verification may take, in milliseconds. */
   CUSTOM_DOMAIN_DNS_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5000),
+  /** How often each live custom domain's TXT record is re-checked, in seconds (0: never). */
+  CUSTOM_DOMAIN_RECHECK_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(86_400),
+  /** Days a live domain's TXT record may stay missing (administrators are warned) before the domain is removed. */
+  CUSTOM_DOMAIN_RECHECK_GRACE_DAYS: z.coerce.number().int().min(1).max(90).default(7),
   /**
    * Shared secret for GET /internal/tls/allowed, the "ask" check of the reverse proxy's on-demand TLS (Caddy).
    * The proxy sends it as ?secret= or the X-TLS-Ask-Secret header. Unset: the endpoint answers 404 to everything.
@@ -77,6 +81,15 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
   /** Organisation registration requests per IP per hour. */
   ORG_REQUEST_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
+  /**
+   * Free trial for new organisations (approved requests and ones the operator creates), in days; the operator can
+   * choose otherwise for each. 0 (the default): no trial, organisations start active (paid from day one).
+   */
+  ORG_TRIAL_DAYS: z.coerce.number().int().min(0).max(365).default(0),
+  /** After a trial ends the organisation is read-only for this many days, then suspended. */
+  ORG_TRIAL_GRACE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
+  /** How often trials are checked (reminders, expiry, suspension), in seconds; 0 turns the background job off. */
+  TRIAL_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(3600),
   /**
    * Cloudflare Turnstile CAPTCHA on public forms (organisation registration): the widget's site key and its
    * secret, from the Cloudflare dashboard. Set both or neither. Unset: no CAPTCHA (a warning is logged in production).
@@ -181,6 +194,12 @@ const envSchema = z.object({
   CLAMAV_TIMEOUT_MS: z.coerce.number().int().min(1000).default(120_000),
   /** How often files stored before scanning was set up are scanned, in seconds (0 turns the sweep off). */
   FILE_SCAN_SWEEP_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(300),
+  /** Days between scheduling an organisation's deletion and carrying it out (it can be cancelled until then). */
+  ORG_DELETION_GRACE_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  /** Days a deleted organisation's address stays reserved, so nobody else can take it at once. */
+  ORG_DELETED_SLUG_HOLD_DAYS: z.coerce.number().int().min(0).max(3650).default(90),
+  /** How often the export and deletion jobs look for work, in seconds (0 turns them off). */
+  OFFBOARDING_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(60),
 }).refine((c) => c.STORAGE_DRIVER !== 's3' || !!c.S3_BUCKET, { message: 'STORAGE_DRIVER=s3 needs S3_BUCKET' })
   .refine((c) => !c.S3_ACCESS_KEY_ID === !c.S3_SECRET_ACCESS_KEY, { message: 'Set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither' })
   .refine((c) => !c.COPYLEAKS_EMAIL === !c.COPYLEAKS_API_KEY, { message: 'Set both COPYLEAKS_EMAIL and COPYLEAKS_API_KEY, or neither' })

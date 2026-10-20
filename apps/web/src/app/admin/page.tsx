@@ -13,6 +13,9 @@ import { CustomDomainPanel } from "@/components/admin/CustomDomainPanel";
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
 import { AiSettingsPanel } from "@/components/admin/AiSettingsPanel";
 import { SetupChecklist } from "@/components/admin/SetupChecklist";
+import { TrialBanner } from "@/components/admin/TrialBanner";
+import { DeletionBanner, OffboardingPanel } from "@/components/admin/OffboardingPanel";
+import { SupportAccessPanel } from "@/components/admin/SupportAccessPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 import { CourseAnnouncements } from "@/components/CourseAnnouncements";
 import { CourseGradebook } from "@/components/CourseGradebook";
@@ -35,6 +38,8 @@ export default function AdminDashboard() {
   // grades) and announcements reached from a notification, read-only.
   const [open, setOpen] = useState<{ tool: "gradebook" | "announcements"; courseId: string | null } | null>(null);
   const [coursesVersion, setCoursesVersion] = useState(0);
+  // Bumped when the deletion is scheduled or cancelled, so the banner reloads.
+  const [offboardingVersion, setOffboardingVersion] = useState(0);
   const show = (tool: "gradebook" | "announcements", courseId: string | null = null) => setOpen({ tool, courseId });
   const close = () => setOpen(null);
 
@@ -75,6 +80,14 @@ export default function AdminDashboard() {
     >
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-8">
+        <TrialBanner />
+        <DeletionBanner
+          key={offboardingVersion}
+          onManage={() => {
+            setActiveTab("platform");
+            setTimeout(() => document.getElementById("admin-offboarding")?.scrollIntoView({ behavior: "smooth" }), 50);
+          }}
+        />
         {/* Admin Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           {/* Whose administration this is: the organisation's own name and logo, so nobody mistakes it for the
@@ -182,6 +195,9 @@ export default function AdminDashboard() {
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <PrivacyPanel />
             </div>
+            <div id="admin-support" className="bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
+              <SupportAccessPanel />
+            </div>
           </div>
         )}
 
@@ -203,6 +219,9 @@ export default function AdminDashboard() {
           <div className="space-y-6">
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <UsagePanel />
+            </div>
+            <div id="admin-offboarding" className="bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
+              <OffboardingPanel onChanged={() => setOffboardingVersion((v) => v + 1)} />
             </div>
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <FeaturesPanel />

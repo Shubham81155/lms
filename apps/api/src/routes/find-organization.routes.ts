@@ -58,28 +58,23 @@ const ACCEPTED = { message: 'If this e-mail address has an account with any orga
 
 /**
  * The organisations (that people can use) where this address has an active or invited account. Users are
- * tenant-scoped under RLS, so each organisation is checked inside its own tenant context, all in one
- * transaction on one connection. Every organisation is checked whatever is found, so the time taken does
- * not depend on the answer.
+ * tenant-scoped under RLS, so the lookup across organisations is the database function find_tenants_for_email
+ * (migration 20261103000004_find_tenants_function), which returns organisation ids and nothing else; which of
+ * those organisations count is decided here.
  */
 async function organisationsFor(email: string) {
-  const tenants = await basePrisma.tenant.findMany({
-    where: { status: { in: ['ACTIVE', 'TRIAL'] }, ...(config.PLATFORM_OPERATOR_TENANT ? { NOT: { slug: config.PLATFORM_OPERATOR_TENANT } } : {}) },
+  const rows = await basePrisma.$queryRaw<{ tenant_id: string }[]>`SELECT tenant_id FROM find_tenants_for_email(${email})`;
+  if (!rows.length) return [];
+  return basePrisma.tenant.findMany({
+    where: {
+      id: { in: rows.map((r) => r.tenant_id) },
+      status: { in: ['ACTIVE', 'TRIAL'] },
+      ...(config.PLATFORM_OPERATOR_TENANT ? { NOT: { slug: config.PLATFORM_OPERATOR_TENANT } } : {}),
+    },
     select: { id: true, slug: true, name: true, customDomain: true },
     orderBy: { name: 'asc' },
+    take: MAX_FIND_RESULTS,
   });
-  return basePrisma.$transaction(
-    async (tx) => {
-      const found: typeof tenants = [];
-      for (const t of tenants) {
-        await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${t.id}, true)`;
-        const user = await tx.user.findFirst({ where: { tenantId: t.id, email, status: { in: ['ACTIVE', 'INVITED'] } }, select: { id: true } });
-        if (user) found.push(t);
-      }
-      return found.slice(0, MAX_FIND_RESULTS);
-    },
-    { timeout: 30_000 }
-  );
 }
 
 const mailText = (orgs: { name: string; slug: string; customDomain: string | null }[]) =>

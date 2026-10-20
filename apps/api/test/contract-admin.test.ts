@@ -585,6 +585,22 @@ describe('custom domains', () => {
   });
 });
 
+describe('trials', () => {
+  it('administrators see where their trial stands; the operator starts, extends, ends and converts it', async () => {
+    await admin.tenant.create({ data: { id: 't-trial', slug: 'contract-trial', name: 'Trial College', tier: 'STARTER' } });
+    const a = await as('admin');
+    expect(check('GET /api/v1/trial', await a.get('/api/v1/trial')).data.state).toBe('NONE');
+
+    const op = await as('operator', 'ops');
+    expect(check('GET /api/v1/operator/trial-settings', await op.get('/api/v1/operator/trial-settings')).data).toMatchObject({ defaultDays: 0 });
+    expect(check('POST /api/v1/operator/tenants/:id/trial', await op.post('/api/v1/operator/tenants/t-trial/trial').send({ days: 14 })).data.status).toBe('TRIAL');
+    check('PATCH /api/v1/operator/tenants/:id/trial', await op.patch('/api/v1/operator/tenants/t-trial/trial').send({ days: 7 }));
+    expect(check('POST /api/v1/operator/tenants/:id/trial/end', await op.post('/api/v1/operator/tenants/t-trial/trial/end')).data.trialExpiredAt).toBeTruthy();
+    const paid = check('POST /api/v1/operator/tenants/:id/trial/convert', await op.post('/api/v1/operator/tenants/t-trial/trial/convert'));
+    expect(paid.data).toMatchObject({ status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null });
+  });
+});
+
 describe('coverage', () => {
   it('exercised every operation in the table', () => {
     const missing = Object.keys(RESPONSES).filter((k) => !covered.has(k));

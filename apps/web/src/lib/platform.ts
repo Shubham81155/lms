@@ -21,6 +21,29 @@ export interface Org {
   seatsUsed: number;
   features: Record<string, boolean>;
   overrides: Record<string, boolean>;
+  /** When the trial ends (status TRIAL), or null without a trial. */
+  trialEndsAt?: string | null;
+  /** Set once the trial has ended: the organisation is read-only until `readOnlyUntil`, then suspended. */
+  trialExpiredAt?: string | null;
+  readOnlyUntil?: string | null;
+}
+
+/** The platform's trial defaults: `defaultDays` (ORG_TRIAL_DAYS, 0 = new organisations start active) and the read-only grace after a trial. */
+export interface TrialSettings {
+  defaultDays: number;
+  graceDays: number;
+}
+
+/** Where an organisation stands with its trial: none, running, or ended (read-only grace). */
+export function trialPhase(o: Pick<Org, "status" | "trialEndsAt" | "trialExpiredAt">): "none" | "running" | "read-only" {
+  if (o.status !== "TRIAL") return "none";
+  return o.trialExpiredAt ? "read-only" : "running";
+}
+
+/** Organisations whose running trial ends within `days` days of `now` (the overview's "Trials ending this week"). */
+export function trialsEndingWithin(orgs: Org[], days = 7, now = Date.now()): Org[] {
+  const until = now + days * 86_400_000;
+  return orgs.filter((o) => trialPhase(o) === "running" && o.trialEndsAt && new Date(o.trialEndsAt).getTime() <= until);
 }
 
 export interface OrgRequest {

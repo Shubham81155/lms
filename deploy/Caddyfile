@@ -1,0 +1,161 @@
+# Production edge for the LMS: TLS termination and routing in front of the API (api:4000) and the web app (web:3000).
+# Built by deploy/caddy/Dockerfile (Caddy + a DNS provider module) and started by docker-compose.prod.yml (repository root).
+# Every name comes from the environment, so nothing here changes when the product domain is decided:
+#
+#   LMS_BASE_DOMAIN        e.g. lms.example.com   the platform address; organisations are <slug>.LMS_BASE_DOMAIN
+#                          (compose sets it from TENANT_BASE_DOMAIN, the API's name for the same value)
+#   SCORM_CONTENT_HOST     e.g. lms-content.example.net   SCORM packages, on a separate registrable domain
+#   CUSTOM_DOMAIN_TARGET   e.g. tenants.lms.example.com   what customers CNAME their own domains to
+#   ACME_EMAIL, ACME_CA    the CA account and directory (ACME_CA switches to Let's Encrypt staging for tests)
+#   TLS_ASK_SECRET         same value as the API's; authorises the on-demand TLS "ask" call
+#   CLOUDFLARE_API_TOKEN   DNS-01 challenge for the wildcard certificate (read at run time, never in the config)
+#
+# Routing (same on every site that serves organisations):
+#   /api/*        -> api:4000 directly. The browser's /api/v1 calls do not pass through Next.js, so the API is
+#                    exactly one proxy hop behind Caddy: TRUST_PROXY=1. (Next's own /api/v1 rewrite in
+#                    apps/web/next.config.ts stays for development; in production nothing reaches it.)
+#   /internal/*   -> 404. GET /internal/tls/allowed is for Caddy only and is called on the compose network.
+#   everything else -> web:3000 (Next.js pages; its middleware calls the API on the internal network).
+# Caddy keeps the original Host header and replaces any client-sent X-Forwarded-* headers with its own (clients
+# are not trusted proxies), so the API's tenant resolver reads the real host from X-Forwarded-Host.
+#
+# See docs/deployment/dns-and-tls.md for DNS records, certificates, testing and troubleshooting.
+
+{
+	email {$ACME_EMAIL}
+	# Production Let's Encrypt by default. For a trial run use the staging directory, whose certificates browsers
+	# do not trust but whose rate limits are far higher:
+	#   ACME_CA=https://acme-staging-v02.api.letsencrypt.org/directory
+	acme_ca {$ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
+
+	# Hosts under LMS_BASE_DOMAIN that have a site of their own (www, CUSTOM_DOMAIN_TARGET) reuse the wildcard
+	# certificate instead of getting one each.
+	auto_https prefer_wildcard
+
+	# Before getting a certificate for a host it has not seen (customers' verified custom domains), Caddy asks the
+	# API: GET <ask>&domain=<host>, 200 = allowed. Caddy's ask can only call a URL, so the secret goes in the query
+	# string (the API also accepts the X-TLS-Ask-Secret header, which Caddy cannot send). Generate TLS_ASK_SECRET
+	# URL-safe (base64url or hex); see apps/api/src/routes/internal-tls.routes.ts.
+	on_demand_tls {
+		ask http://api:4000/internal/tls/allowed?secret={$TLS_ASK_SECRET}
+	}
+
+	# If Caddy itself sits behind a load balancer or CDN, list its addresses here so Caddy believes the client IP
+	# it forwards, and raise the API's TRUST_PROXY to 2 (see the deployment doc). Directly on the internet: leave off.
+	# servers {
+	#	trusted_proxies static 10.0.0.0/8
+	# }
+}
+
+# ----------------------------------------------------------------------------------------------- snippets
+
+# Response headers for pages and API responses. "?" sets a header only when the upstream did not send one, so the
+# API's own (helmet) headers and the SCORM content headers are never overridden or duplicated.
+# No Content-Security-Policy beyond frame-ancestors: a script/connect policy here would have to track Cloudflare
+# Turnstile (challenges.cloudflare.com, script + iframe) and LiveKit (wss:// to LIVEKIT_URL, WebRTC); it belongs in
+# the web app, which knows both. frame-ancestors mirrors the API's (LTI consumers may frame the LMS).
+(security_headers) {
+	header {
+		-Server
+		-X-Powered-By
+		?X-Content-Type-Options "nosniff"
+		?Referrer-Policy "strict-origin-when-cross-origin"
+		# Camera, microphone and screen sharing are used by live classes and quiz proctoring on our own pages.
+		# Features not listed keep the browser default (the Turnstile iframe needs nothing from this list).
+		?Permissions-Policy "camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()"
+		?Content-Security-Policy "frame-ancestors 'self' https://*.canvaslms.com https://*.blackboard.com"
+	}
+}
+
+(lms_routes) {
+	encode zstd gzip
+
+	handle /internal/* {
+		respond 404
+	}
+	handle /api/* {
+		# Uploads go straight to the API, so Next's body limit and 30 s proxy timeout do not apply. Keep this a
+		# little above the API's UPLOAD_MAX_MB.
+		request_body {
+			max_size {$EDGE_MAX_BODY:110MB}
+		}
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# ----------------------------------------------------------------------------------------------- sites
+
+# The platform address and every organisation's <slug>.LMS_BASE_DOMAIN. A wildcard certificate can only be
+# obtained with the DNS-01 challenge, so Caddy needs API access to the DNS zone. Two certificates are issued:
+# *.LMS_BASE_DOMAIN and LMS_BASE_DOMAIN (a wildcard does not cover the bare name).
+#
+# Other DNS providers: build Caddy with another module (deploy/caddy/Dockerfile, DNS_MODULE) and replace the
+# "dns" line, e.g.
+#   dns route53 { region {env.AWS_REGION} }                 github.com/caddy-dns/route53 (AWS_* credentials)
+#   dns digitalocean {env.DO_AUTH_TOKEN}                     github.com/caddy-dns/digitalocean
+#   dns hetzner {env.HETZNER_API_TOKEN}                      github.com/caddy-dns/hetzner
+#   dns gandi {env.GANDI_BEARER_TOKEN}                       github.com/caddy-dns/gandi
+# (each module's README has its exact options).
+*.{$LMS_BASE_DOMAIN}, {$LMS_BASE_DOMAIN} {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		# Check the TXT record on public resolvers, not on a split-horizon or caching resolver on this host.
+		resolvers 1.1.1.1 8.8.8.8
+	}
+	import security_headers
+	# The base domain and its subdomains are all ours and all HTTPS. No "preload": adding a domain to the browser
+	# preload list is hard to undo; add it once the domain is final and every subdomain is known to be HTTPS.
+	header ?Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	import lms_routes
+}
+
+www.{$LMS_BASE_DOMAIN} {
+	redir https://{$LMS_BASE_DOMAIN}{uri} 308
+}
+
+# The host customers point their CNAME at. It must resolve to this server, but it is nobody's address: without
+# this block it would be looked up as the organisation slug of its first label.
+{$CUSTOM_DOMAIN_TARGET} {
+	redir https://{$LMS_BASE_DOMAIN}{uri} 302
+}
+
+# SCORM packages run their own scripts, so they are served from an origin of their own (SCORM_CONTENT_ORIGIN =
+# https://SCORM_CONTENT_HOST) on a separate registrable domain, which shares no cookies with the LMS. The API
+# answers only /scorm-content there and sets the package pages' own CSP, Referrer-Policy and frame-ancestors, so
+# no security_headers here. An ordinary certificate (HTTP-01 / TLS-ALPN-01) is enough.
+{$SCORM_CONTENT_HOST} {
+	encode zstd gzip
+	header {
+		-Server
+		?Strict-Transport-Security "max-age=31536000"
+	}
+	handle /scorm-content/* {
+		reverse_proxy api:4000
+	}
+	handle {
+		respond 404
+	}
+}
+
+# Customers' verified custom domains (learn.university.edu): any other host, with a certificate obtained on
+# demand at the first TLS handshake, but only after the API's ask endpoint approves the host. Unknown, pending
+# and archived hosts get no certificate (the handshake fails), so nobody can make Caddy request certificates
+# for arbitrary names.
+https:// {
+	tls {
+		on_demand
+	}
+	import security_headers
+	# Not includeSubDomains: the customer's other subdomains are not ours.
+	header ?Strict-Transport-Security "max-age=31536000"
+	import lms_routes
+}
+
+# Plain HTTP for hosts Caddy has no named site for (custom domains): redirect to HTTPS. Named sites get their
+# redirects automatically, and ACME HTTP-01 challenges are answered before this.
+http:// {
+	redir https://{host}{uri} 308
+}

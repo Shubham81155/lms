@@ -1724,6 +1724,42 @@
                             "error"
                           ]
                         },
+                        "recheck": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "failingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "removesAt": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "txtName",
+                            "txtValue",
+                            "checkedAt",
+                            "error",
+                            "failingSince",
+                            "removesAt"
+                          ]
+                        },
                         "target": {
                           "type": "string",
                           "nullable": true
@@ -1734,6 +1770,7 @@
                         "customDomain",
                         "verifiedAt",
                         "pending",
+                        "recheck",
                         "target"
                       ]
                     }
@@ -1863,6 +1900,42 @@
                             "error"
                           ]
                         },
+                        "recheck": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "failingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "removesAt": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "txtName",
+                            "txtValue",
+                            "checkedAt",
+                            "error",
+                            "failingSince",
+                            "removesAt"
+                          ]
+                        },
                         "target": {
                           "type": "string",
                           "nullable": true
@@ -1873,6 +1946,7 @@
                         "customDomain",
                         "verifiedAt",
                         "pending",
+                        "recheck",
                         "target"
                       ]
                     }
@@ -2013,6 +2087,42 @@
                             "error"
                           ]
                         },
+                        "recheck": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "failingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "removesAt": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "txtName",
+                            "txtValue",
+                            "checkedAt",
+                            "error",
+                            "failingSince",
+                            "removesAt"
+                          ]
+                        },
                         "target": {
                           "type": "string",
                           "nullable": true
@@ -2023,6 +2133,7 @@
                         "customDomain",
                         "verifiedAt",
                         "pending",
+                        "recheck",
                         "target"
                       ]
                     }
@@ -2164,6 +2275,42 @@
                             "error"
                           ]
                         },
+                        "recheck": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "failingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "removesAt": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "txtName",
+                            "txtValue",
+                            "checkedAt",
+                            "error",
+                            "failingSince",
+                            "removesAt"
+                          ]
+                        },
                         "target": {
                           "type": "string",
                           "nullable": true
@@ -2216,6 +2363,7 @@
                         "customDomain",
                         "verifiedAt",
                         "pending",
+                        "recheck",
                         "target",
                         "check"
                       ]
@@ -3204,6 +3352,832 @@
           },
           "403": {
             "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/offboarding": {
+      "get": {
+        "operationId": "getAdminOffboarding",
+        "summary": "Administrators: the organisation's scheduled deletion (if any) and its 20 most recent full exports.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "deletable": {
+                          "type": "boolean"
+                        },
+                        "graceDays": {
+                          "type": "number"
+                        },
+                        "deletion": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "scheduledAt": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "requestedBy": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "byOperator": {
+                              "type": "boolean"
+                            },
+                            "canCancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "scheduledAt",
+                            "requestedAt",
+                            "requestedBy",
+                            "byOperator",
+                            "canCancel"
+                          ]
+                        },
+                        "exports": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "QUEUED",
+                                  "RUNNING",
+                                  "READY",
+                                  "FAILED",
+                                  "EXPIRED"
+                                ]
+                              },
+                              "isFinal": {
+                                "type": "boolean"
+                              },
+                              "sizeBytes": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "completedAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "error": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "status",
+                              "isFinal",
+                              "sizeBytes",
+                              "createdAt",
+                              "completedAt",
+                              "expiresAt",
+                              "error"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "slug",
+                        "name",
+                        "deletable",
+                        "graceDays",
+                        "deletion",
+                        "exports"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/offboarding/deletion": {
+      "delete": {
+        "operationId": "deleteAdminOffboardingDeletion",
+        "summary": "Administrators: cancel the scheduled deletion (403 when the platform operator scheduled it). Administrators are e-mailed. Audited.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "deletable": {
+                          "type": "boolean"
+                        },
+                        "graceDays": {
+                          "type": "number"
+                        },
+                        "deletion": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "scheduledAt": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "requestedBy": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "byOperator": {
+                              "type": "boolean"
+                            },
+                            "canCancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "scheduledAt",
+                            "requestedAt",
+                            "requestedBy",
+                            "byOperator",
+                            "canCancel"
+                          ]
+                        },
+                        "exports": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "QUEUED",
+                                  "RUNNING",
+                                  "READY",
+                                  "FAILED",
+                                  "EXPIRED"
+                                ]
+                              },
+                              "isFinal": {
+                                "type": "boolean"
+                              },
+                              "sizeBytes": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "completedAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "error": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "status",
+                              "isFinal",
+                              "sizeBytes",
+                              "createdAt",
+                              "completedAt",
+                              "expiresAt",
+                              "error"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "slug",
+                        "name",
+                        "deletable",
+                        "graceDays",
+                        "deletion",
+                        "exports"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postAdminOffboardingDeletion",
+        "summary": "Administrators: schedule the organisation and all its data for deletion in ORG_DELETION_GRACE_DAYS (30 by default). `confirmSlug` must be the organisation's address. It stays usable until then and the administrators are e-mailed; a final export is taken before the deletion. Not the platform operator's organisation (409). Audited.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confirmSlug": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "confirmSlug"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "deletable": {
+                          "type": "boolean"
+                        },
+                        "graceDays": {
+                          "type": "number"
+                        },
+                        "deletion": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "scheduledAt": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "requestedBy": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "byOperator": {
+                              "type": "boolean"
+                            },
+                            "canCancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "scheduledAt",
+                            "requestedAt",
+                            "requestedBy",
+                            "byOperator",
+                            "canCancel"
+                          ]
+                        },
+                        "exports": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "QUEUED",
+                                  "RUNNING",
+                                  "READY",
+                                  "FAILED",
+                                  "EXPIRED"
+                                ]
+                              },
+                              "isFinal": {
+                                "type": "boolean"
+                              },
+                              "sizeBytes": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "completedAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "error": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "status",
+                              "isFinal",
+                              "sizeBytes",
+                              "createdAt",
+                              "completedAt",
+                              "expiresAt",
+                              "error"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "slug",
+                        "name",
+                        "deletable",
+                        "graceDays",
+                        "deletion",
+                        "exports"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/offboarding/export": {
+      "post": {
+        "operationId": "postAdminOffboardingExport",
+        "summary": "Administrators: queue a full export: a ZIP of every table of the organisation (JSON lines) and its stored files, without passwords, tokens, secrets or keys. A background job builds it; it can be downloaded for 7 days. Audited. 409 while one is already being prepared.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "QUEUED",
+                            "RUNNING",
+                            "READY",
+                            "FAILED",
+                            "EXPIRED"
+                          ]
+                        },
+                        "isFinal": {
+                          "type": "boolean"
+                        },
+                        "sizeBytes": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "completedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "error": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tenantId",
+                        "status",
+                        "isFinal",
+                        "sizeBytes",
+                        "createdAt",
+                        "completedAt",
+                        "expiresAt",
+                        "error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/offboarding/export/{id}/download": {
+      "get": {
+        "operationId": "getAdminOffboardingExportIdDownload",
+        "summary": "Administrators: download a ready export of their organisation. Audited. 409 while it is being built, 410 once expired.",
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ZIP (attachment). With S3 storage the answer is instead a 302 to a link valid for 5 minutes.",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Withdrawn",
             "content": {
               "application/json": {
                 "schema": {
@@ -4324,6 +5298,26 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "customDomainLiveToken": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainRecheckedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainRecheckError": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainFailingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainWarnedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "tier": {
                           "type": "string",
                           "enum": [
@@ -4340,6 +5334,17 @@
                             "TRIAL",
                             "ARCHIVED"
                           ]
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "trialRemindersSent": {
+                          "type": "number"
+                        },
+                        "trialExpiredAt": {
+                          "type": "string",
+                          "nullable": true
                         },
                         "logoUrl": {
                           "type": "string",
@@ -4376,6 +5381,21 @@
                         "setupChecklist": {
                           "type": "boolean"
                         },
+                        "deletionScheduledAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "deletionRequestedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "deletionRequestedBy": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "deletionByOperator": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string"
                         },
@@ -4406,8 +5426,16 @@
                         "customDomainCheckedAt",
                         "customDomainError",
                         "customDomainVerifiedAt",
+                        "customDomainLiveToken",
+                        "customDomainRecheckedAt",
+                        "customDomainRecheckError",
+                        "customDomainFailingSince",
+                        "customDomainWarnedAt",
                         "tier",
                         "status",
+                        "trialEndsAt",
+                        "trialRemindersSent",
+                        "trialExpiredAt",
                         "logoUrl",
                         "primaryColor",
                         "secondaryColor",
@@ -4417,6 +5445,10 @@
                         "coppaCompliant",
                         "seatQuota",
                         "setupChecklist",
+                        "deletionScheduledAt",
+                        "deletionRequestedAt",
+                        "deletionRequestedBy",
+                        "deletionByOperator",
                         "createdAt",
                         "updatedAt",
                         "userCount",
@@ -4598,6 +5630,26 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "customDomainLiveToken": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainRecheckedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainRecheckError": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainFailingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainWarnedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "tier": {
                           "type": "string",
                           "enum": [
@@ -4614,6 +5666,17 @@
                             "TRIAL",
                             "ARCHIVED"
                           ]
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "trialRemindersSent": {
+                          "type": "number"
+                        },
+                        "trialExpiredAt": {
+                          "type": "string",
+                          "nullable": true
                         },
                         "logoUrl": {
                           "type": "string",
@@ -4650,6 +5713,21 @@
                         "setupChecklist": {
                           "type": "boolean"
                         },
+                        "deletionScheduledAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "deletionRequestedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "deletionRequestedBy": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "deletionByOperator": {
+                          "type": "boolean"
+                        },
                         "createdAt": {
                           "type": "string"
                         },
@@ -4668,8 +5746,16 @@
                         "customDomainCheckedAt",
                         "customDomainError",
                         "customDomainVerifiedAt",
+                        "customDomainLiveToken",
+                        "customDomainRecheckedAt",
+                        "customDomainRecheckError",
+                        "customDomainFailingSince",
+                        "customDomainWarnedAt",
                         "tier",
                         "status",
+                        "trialEndsAt",
+                        "trialRemindersSent",
+                        "trialExpiredAt",
                         "logoUrl",
                         "primaryColor",
                         "secondaryColor",
@@ -4679,6 +5765,10 @@
                         "coppaCompliant",
                         "seatQuota",
                         "setupChecklist",
+                        "deletionScheduledAt",
+                        "deletionRequestedAt",
+                        "deletionRequestedBy",
+                        "deletionByOperator",
                         "createdAt",
                         "updatedAt"
                       ]
@@ -24043,6 +25133,297 @@
         }
       }
     },
+    "/api/v1/operator/exports/{exportId}/download": {
+      "get": {
+        "operationId": "getOperatorExportsExportIdDownload",
+        "summary": "Platform operator: download any ready export, including the final export of a deleted organisation. Audited.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "exportId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ZIP (attachment). With S3 storage the answer is instead a 302 to a link valid for 5 minutes.",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Withdrawn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/offboarding": {
+      "get": {
+        "operationId": "getOperatorOffboarding",
+        "summary": "Platform operator: organisations scheduled for deletion, and the deleted ones with their final export and how long their address stays reserved.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "scheduled": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "slug": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "scheduledAt": {
+                                "type": "string"
+                              },
+                              "requestedBy": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "byOperator": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "tenantId",
+                              "slug",
+                              "name",
+                              "scheduledAt",
+                              "requestedBy",
+                              "byOperator"
+                            ]
+                          }
+                        },
+                        "deleted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "slug": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "deletedAt": {
+                                "type": "string"
+                              },
+                              "requestedBy": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "slugHeldUntil": {
+                                "type": "string"
+                              },
+                              "summary": {
+                                "nullable": true
+                              },
+                              "finalExport": {
+                                "type": "object",
+                                "nullable": true,
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "tenantId": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "QUEUED",
+                                      "RUNNING",
+                                      "READY",
+                                      "FAILED",
+                                      "EXPIRED"
+                                    ]
+                                  },
+                                  "isFinal": {
+                                    "type": "boolean"
+                                  },
+                                  "sizeBytes": {
+                                    "type": "number",
+                                    "nullable": true
+                                  },
+                                  "createdAt": {
+                                    "type": "string"
+                                  },
+                                  "completedAt": {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  "expiresAt": {
+                                    "type": "string",
+                                    "nullable": true
+                                  },
+                                  "error": {
+                                    "type": "string",
+                                    "nullable": true
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "tenantId",
+                                  "status",
+                                  "isFinal",
+                                  "sizeBytes",
+                                  "createdAt",
+                                  "completedAt",
+                                  "expiresAt",
+                                  "error"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "slug",
+                              "name",
+                              "deletedAt",
+                              "requestedBy",
+                              "slugHeldUntil",
+                              "finalExport"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "scheduled",
+                        "deleted"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/operator/requests": {
       "get": {
         "operationId": "getOperatorRequests",
@@ -24285,7 +25666,7 @@
     "/api/v1/operator/requests/{id}/approve": {
       "post": {
         "operationId": "postOperatorRequestsIdApprove",
-        "summary": "Platform operator: approve a pending request. Creates the organisation with the chosen plan and seats, and invites the request's contact as its administrator. A request is decided once.",
+        "summary": "Platform operator: approve a pending request. Creates the organisation with the chosen plan and seats (and a free trial of `trialDays`, default ORG_TRIAL_DAYS; 0: active, paid), and invites the request's contact as its administrator. A request is decided once.",
         "tags": [
           "operator"
         ],
@@ -24336,6 +25717,11 @@
                   "note": {
                     "type": "string",
                     "maxLength": 1000
+                  },
+                  "trialDays": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 365
                   }
                 },
                 "additionalProperties": false
@@ -24481,6 +25867,10 @@
                               "type": "string",
                               "nullable": true
                             },
+                            "customDomainFailingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
                             "tier": {
                               "type": "string",
                               "enum": [
@@ -24491,6 +25881,18 @@
                             },
                             "status": {
                               "type": "string"
+                            },
+                            "trialEndsAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "trialExpiredAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "readOnlyUntil": {
+                              "type": "string",
+                              "nullable": true
                             },
                             "seatQuota": {
                               "type": "number",
@@ -24539,8 +25941,12 @@
                             "name",
                             "customDomain",
                             "pendingCustomDomain",
+                            "customDomainFailingSince",
                             "tier",
                             "status",
+                            "trialEndsAt",
+                            "trialExpiredAt",
+                            "readOnlyUntil",
                             "seatQuota",
                             "seatsUsed",
                             "features",
@@ -24848,6 +26254,247 @@
         }
       }
     },
+    "/api/v1/operator/support-passes": {
+      "get": {
+        "operationId": "getOperatorSupportPasses",
+        "summary": "Platform operator: support passes in force across organisations, soonest to expire first.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "organization": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "slug": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "slug",
+                              "name",
+                              "status"
+                            ]
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "READ_ONLY",
+                              "FULL"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "grantedByEmail": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "expiresAt": {
+                            "type": "string"
+                          },
+                          "lastEnteredAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "lastEnteredByEmail": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "organization",
+                          "scope",
+                          "reason",
+                          "grantedByEmail",
+                          "createdAt",
+                          "expiresAt",
+                          "lastEnteredAt",
+                          "lastEnteredByEmail"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/support-passes/{id}/enter": {
+      "post": {
+        "operationId": "postOperatorSupportPassesIdEnter",
+        "summary": "Platform operator: a one-time link (valid two minutes) to /support/enter at the organisation's own address, which opens a support session there. 404 when the pass is not in force; 409 for a suspended organisation or the operator's own.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/operator/tenants": {
       "get": {
         "operationId": "getOperatorTenants",
@@ -24896,6 +26543,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "customDomainFailingSince": {
+                            "type": "string",
+                            "nullable": true
+                          },
                           "tier": {
                             "type": "string",
                             "enum": [
@@ -24906,6 +26557,18 @@
                           },
                           "status": {
                             "type": "string"
+                          },
+                          "trialEndsAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "trialExpiredAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "readOnlyUntil": {
+                            "type": "string",
+                            "nullable": true
                           },
                           "seatQuota": {
                             "type": "number",
@@ -24954,8 +26617,12 @@
                           "name",
                           "customDomain",
                           "pendingCustomDomain",
+                          "customDomainFailingSince",
                           "tier",
                           "status",
+                          "trialEndsAt",
+                          "trialExpiredAt",
+                          "readOnlyUntil",
                           "seatQuota",
                           "seatsUsed",
                           "features",
@@ -24995,7 +26662,7 @@
       },
       "post": {
         "operationId": "postOperatorTenants",
-        "summary": "Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live.",
+        "summary": "Platform operator: create an organisation and its first administrator, who is e-mailed an invitation to choose a password. `trialDays` (default ORG_TRIAL_DAYS): a free trial of that many days (status TRIAL), 0 for an active (paid) organisation. Seats default to 100; null means unlimited. A `customDomain` starts out waiting for DNS verification (`pendingCustomDomain`), not live.",
         "tags": [
           "operator"
         ],
@@ -25061,6 +26728,11 @@
                     "type": "string",
                     "maxLength": 254,
                     "format": "email"
+                  },
+                  "trialDays": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 365
                   }
                 },
                 "required": [
@@ -25106,6 +26778,10 @@
                               "type": "string",
                               "nullable": true
                             },
+                            "customDomainFailingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
                             "tier": {
                               "type": "string",
                               "enum": [
@@ -25116,6 +26792,18 @@
                             },
                             "status": {
                               "type": "string"
+                            },
+                            "trialEndsAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "trialExpiredAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "readOnlyUntil": {
+                              "type": "string",
+                              "nullable": true
                             },
                             "seatQuota": {
                               "type": "number",
@@ -25164,8 +26852,12 @@
                             "name",
                             "customDomain",
                             "pendingCustomDomain",
+                            "customDomainFailingSince",
                             "tier",
                             "status",
+                            "trialEndsAt",
+                            "trialExpiredAt",
+                            "readOnlyUntil",
                             "seatQuota",
                             "seatsUsed",
                             "features",
@@ -25346,6 +27038,10 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "customDomainFailingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "tier": {
                           "type": "string",
                           "enum": [
@@ -25356,6 +27052,18 @@
                         },
                         "status": {
                           "type": "string"
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "trialExpiredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "readOnlyUntil": {
+                          "type": "string",
+                          "nullable": true
                         },
                         "seatQuota": {
                           "type": "number",
@@ -25404,8 +27112,12 @@
                         "name",
                         "customDomain",
                         "pendingCustomDomain",
+                        "customDomainFailingSince",
                         "tier",
                         "status",
+                        "trialEndsAt",
+                        "trialExpiredAt",
+                        "readOnlyUntil",
                         "seatQuota",
                         "seatsUsed",
                         "features",
@@ -25572,6 +27284,42 @@
                             "error"
                           ]
                         },
+                        "recheck": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "failingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "removesAt": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "txtName",
+                            "txtValue",
+                            "checkedAt",
+                            "error",
+                            "failingSince",
+                            "removesAt"
+                          ]
+                        },
                         "target": {
                           "type": "string",
                           "nullable": true
@@ -25582,6 +27330,7 @@
                         "customDomain",
                         "verifiedAt",
                         "pending",
+                        "recheck",
                         "target"
                       ]
                     }
@@ -25720,6 +27469,42 @@
                             "error"
                           ]
                         },
+                        "recheck": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "failingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "removesAt": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "txtName",
+                            "txtValue",
+                            "checkedAt",
+                            "error",
+                            "failingSince",
+                            "removesAt"
+                          ]
+                        },
                         "target": {
                           "type": "string",
                           "nullable": true
@@ -25730,6 +27515,7 @@
                         "customDomain",
                         "verifiedAt",
                         "pending",
+                        "recheck",
                         "target"
                       ]
                     }
@@ -25879,6 +27665,42 @@
                             "error"
                           ]
                         },
+                        "recheck": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "failingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "removesAt": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "txtName",
+                            "txtValue",
+                            "checkedAt",
+                            "error",
+                            "failingSince",
+                            "removesAt"
+                          ]
+                        },
                         "target": {
                           "type": "string",
                           "nullable": true
@@ -25889,6 +27711,7 @@
                         "customDomain",
                         "verifiedAt",
                         "pending",
+                        "recheck",
                         "target"
                       ]
                     }
@@ -26039,6 +27862,42 @@
                             "error"
                           ]
                         },
+                        "recheck": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "txtName": {
+                              "type": "string"
+                            },
+                            "txtValue": {
+                              "type": "string"
+                            },
+                            "checkedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "error": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "failingSince": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "removesAt": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "txtName",
+                            "txtValue",
+                            "checkedAt",
+                            "error",
+                            "failingSince",
+                            "removesAt"
+                          ]
+                        },
                         "target": {
                           "type": "string",
                           "nullable": true
@@ -26091,6 +27950,7 @@
                         "customDomain",
                         "verifiedAt",
                         "pending",
+                        "recheck",
                         "target",
                         "check"
                       ]
@@ -26156,10 +28016,779 @@
         }
       }
     },
+    "/api/v1/operator/tenants/{id}/deletion": {
+      "delete": {
+        "operationId": "deleteOperatorTenantsIdDeletion",
+        "summary": "Platform operator: cancel an organisation's scheduled deletion. Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "deletable": {
+                          "type": "boolean"
+                        },
+                        "graceDays": {
+                          "type": "number"
+                        },
+                        "deletion": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "scheduledAt": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "requestedBy": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "byOperator": {
+                              "type": "boolean"
+                            },
+                            "canCancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "scheduledAt",
+                            "requestedAt",
+                            "requestedBy",
+                            "byOperator",
+                            "canCancel"
+                          ]
+                        },
+                        "exports": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "QUEUED",
+                                  "RUNNING",
+                                  "READY",
+                                  "FAILED",
+                                  "EXPIRED"
+                                ]
+                              },
+                              "isFinal": {
+                                "type": "boolean"
+                              },
+                              "sizeBytes": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "completedAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "error": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "status",
+                              "isFinal",
+                              "sizeBytes",
+                              "createdAt",
+                              "completedAt",
+                              "expiresAt",
+                              "error"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "slug",
+                        "name",
+                        "deletable",
+                        "graceDays",
+                        "deletion",
+                        "exports"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postOperatorTenantsIdDeletion",
+        "summary": "Platform operator: schedule an organisation's deletion (as POST /admin/offboarding/deletion); only the operator can cancel it. Never the operator's own organisation. Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confirmSlug": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "confirmSlug"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "deletable": {
+                          "type": "boolean"
+                        },
+                        "graceDays": {
+                          "type": "number"
+                        },
+                        "deletion": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "scheduledAt": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "requestedBy": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "byOperator": {
+                              "type": "boolean"
+                            },
+                            "canCancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "scheduledAt",
+                            "requestedAt",
+                            "requestedBy",
+                            "byOperator",
+                            "canCancel"
+                          ]
+                        },
+                        "exports": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "QUEUED",
+                                  "RUNNING",
+                                  "READY",
+                                  "FAILED",
+                                  "EXPIRED"
+                                ]
+                              },
+                              "isFinal": {
+                                "type": "boolean"
+                              },
+                              "sizeBytes": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "completedAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "error": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "status",
+                              "isFinal",
+                              "sizeBytes",
+                              "createdAt",
+                              "completedAt",
+                              "expiresAt",
+                              "error"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "slug",
+                        "name",
+                        "deletable",
+                        "graceDays",
+                        "deletion",
+                        "exports"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants/{id}/export": {
+      "post": {
+        "operationId": "postOperatorTenantsIdExport",
+        "summary": "Platform operator: queue a full export of an organisation (as POST /admin/offboarding/export). Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "QUEUED",
+                            "RUNNING",
+                            "READY",
+                            "FAILED",
+                            "EXPIRED"
+                          ]
+                        },
+                        "isFinal": {
+                          "type": "boolean"
+                        },
+                        "sizeBytes": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "completedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "error": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "tenantId",
+                        "status",
+                        "isFinal",
+                        "sizeBytes",
+                        "createdAt",
+                        "completedAt",
+                        "expiresAt",
+                        "error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants/{id}/offboarding": {
+      "get": {
+        "operationId": "getOperatorTenantsIdOffboarding",
+        "summary": "Platform operator: an organisation's scheduled deletion and exports, final ones included (as GET /admin/offboarding).",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenantId": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "deletable": {
+                          "type": "boolean"
+                        },
+                        "graceDays": {
+                          "type": "number"
+                        },
+                        "deletion": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "scheduledAt": {
+                              "type": "string"
+                            },
+                            "requestedAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "requestedBy": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "byOperator": {
+                              "type": "boolean"
+                            },
+                            "canCancel": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "scheduledAt",
+                            "requestedAt",
+                            "requestedBy",
+                            "byOperator",
+                            "canCancel"
+                          ]
+                        },
+                        "exports": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "tenantId": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "QUEUED",
+                                  "RUNNING",
+                                  "READY",
+                                  "FAILED",
+                                  "EXPIRED"
+                                ]
+                              },
+                              "isFinal": {
+                                "type": "boolean"
+                              },
+                              "sizeBytes": {
+                                "type": "number",
+                                "nullable": true
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "completedAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "error": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "tenantId",
+                              "status",
+                              "isFinal",
+                              "sizeBytes",
+                              "createdAt",
+                              "completedAt",
+                              "expiresAt",
+                              "error"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "tenantId",
+                        "slug",
+                        "name",
+                        "deletable",
+                        "graceDays",
+                        "deletion",
+                        "exports"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/operator/tenants/{id}/status": {
       "patch": {
         "operationId": "patchOperatorTenantsIdStatus",
-        "summary": "Platform operator: suspend an organisation (nobody can sign in to it) or make it active again. Not the operator's own organisation. Audited in both trails.",
+        "summary": "Platform operator: suspend an organisation (nobody can sign in to it) or make it active again; making it active ends any trial it had. Not the operator's own organisation. Audited in both trails.",
         "tags": [
           "operator"
         ],
@@ -26235,6 +28864,10 @@
                           "type": "string",
                           "nullable": true
                         },
+                        "customDomainFailingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "tier": {
                           "type": "string",
                           "enum": [
@@ -26245,6 +28878,18 @@
                         },
                         "status": {
                           "type": "string"
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "trialExpiredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "readOnlyUntil": {
+                          "type": "string",
+                          "nullable": true
                         },
                         "seatQuota": {
                           "type": "number",
@@ -26293,8 +28938,12 @@
                         "name",
                         "customDomain",
                         "pendingCustomDomain",
+                        "customDomainFailingSince",
                         "tier",
                         "status",
+                        "trialEndsAt",
+                        "trialExpiredAt",
+                        "readOnlyUntil",
                         "seatQuota",
                         "seatsUsed",
                         "features",
@@ -26351,6 +29000,910 @@
           },
           "409": {
             "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants/{id}/trial": {
+      "patch": {
+        "operationId": "patchOperatorTenantsIdTrial",
+        "summary": "Platform operator: extend a trial by `days`, from its end or from now if it already ended; an ended (read-only) or lapsed (suspended) trial runs again and reminders are sent afresh. Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365
+                  }
+                },
+                "required": [
+                  "days"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingCustomDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainFailingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "tier": {
+                          "type": "string",
+                          "enum": [
+                            "STARTER",
+                            "PROFESSIONAL",
+                            "ENTERPRISE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "trialExpiredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "readOnlyUntil": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "seatQuota": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "seatsUsed": {
+                          "type": "number"
+                        },
+                        "features": {
+                          "type": "object",
+                          "properties": {
+                            "lti13": {
+                              "type": "boolean"
+                            },
+                            "sso": {
+                              "type": "boolean"
+                            },
+                            "webhooks": {
+                              "type": "boolean"
+                            },
+                            "scim": {
+                              "type": "boolean"
+                            },
+                            "aiAssistant": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "lti13",
+                            "sso",
+                            "webhooks",
+                            "scim",
+                            "aiAssistant"
+                          ]
+                        },
+                        "overrides": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "slug",
+                        "name",
+                        "customDomain",
+                        "pendingCustomDomain",
+                        "customDomainFailingSince",
+                        "tier",
+                        "status",
+                        "trialEndsAt",
+                        "trialExpiredAt",
+                        "readOnlyUntil",
+                        "seatQuota",
+                        "seatsUsed",
+                        "features",
+                        "overrides"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postOperatorTenantsIdTrial",
+        "summary": "Platform operator: start a free trial of `days` for an active organisation (status TRIAL). Its administrators are e-mailed 7 days and 1 day before the end; then it is read-only (changes answer 402 TRIAL_ENDED) for ORG_TRIAL_GRACE_DAYS, then suspended. Not the operator's own organisation (409). Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365
+                  }
+                },
+                "required": [
+                  "days"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingCustomDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainFailingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "tier": {
+                          "type": "string",
+                          "enum": [
+                            "STARTER",
+                            "PROFESSIONAL",
+                            "ENTERPRISE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "trialExpiredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "readOnlyUntil": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "seatQuota": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "seatsUsed": {
+                          "type": "number"
+                        },
+                        "features": {
+                          "type": "object",
+                          "properties": {
+                            "lti13": {
+                              "type": "boolean"
+                            },
+                            "sso": {
+                              "type": "boolean"
+                            },
+                            "webhooks": {
+                              "type": "boolean"
+                            },
+                            "scim": {
+                              "type": "boolean"
+                            },
+                            "aiAssistant": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "lti13",
+                            "sso",
+                            "webhooks",
+                            "scim",
+                            "aiAssistant"
+                          ]
+                        },
+                        "overrides": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "slug",
+                        "name",
+                        "customDomain",
+                        "pendingCustomDomain",
+                        "customDomainFailingSince",
+                        "tier",
+                        "status",
+                        "trialEndsAt",
+                        "trialExpiredAt",
+                        "readOnlyUntil",
+                        "seatQuota",
+                        "seatsUsed",
+                        "features",
+                        "overrides"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants/{id}/trial/convert": {
+      "post": {
+        "operationId": "postOperatorTenantsIdTrialConvert",
+        "summary": "Platform operator: convert a trial organisation (running, ended or suspended after it lapsed) to an active, paid one. Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingCustomDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainFailingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "tier": {
+                          "type": "string",
+                          "enum": [
+                            "STARTER",
+                            "PROFESSIONAL",
+                            "ENTERPRISE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "trialExpiredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "readOnlyUntil": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "seatQuota": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "seatsUsed": {
+                          "type": "number"
+                        },
+                        "features": {
+                          "type": "object",
+                          "properties": {
+                            "lti13": {
+                              "type": "boolean"
+                            },
+                            "sso": {
+                              "type": "boolean"
+                            },
+                            "webhooks": {
+                              "type": "boolean"
+                            },
+                            "scim": {
+                              "type": "boolean"
+                            },
+                            "aiAssistant": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "lti13",
+                            "sso",
+                            "webhooks",
+                            "scim",
+                            "aiAssistant"
+                          ]
+                        },
+                        "overrides": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "slug",
+                        "name",
+                        "customDomain",
+                        "pendingCustomDomain",
+                        "customDomainFailingSince",
+                        "tier",
+                        "status",
+                        "trialEndsAt",
+                        "trialExpiredAt",
+                        "readOnlyUntil",
+                        "seatQuota",
+                        "seatsUsed",
+                        "features",
+                        "overrides"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/tenants/{id}/trial/end": {
+      "post": {
+        "operationId": "postOperatorTenantsIdTrialEnd",
+        "summary": "Platform operator: end a running trial now; the organisation becomes read-only, then is suspended after the grace period. Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "customDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingCustomDomain": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "customDomainFailingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "tier": {
+                          "type": "string",
+                          "enum": [
+                            "STARTER",
+                            "PROFESSIONAL",
+                            "ENTERPRISE"
+                          ]
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "trialExpiredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "readOnlyUntil": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "seatQuota": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "seatsUsed": {
+                          "type": "number"
+                        },
+                        "features": {
+                          "type": "object",
+                          "properties": {
+                            "lti13": {
+                              "type": "boolean"
+                            },
+                            "sso": {
+                              "type": "boolean"
+                            },
+                            "webhooks": {
+                              "type": "boolean"
+                            },
+                            "scim": {
+                              "type": "boolean"
+                            },
+                            "aiAssistant": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "lti13",
+                            "sso",
+                            "webhooks",
+                            "scim",
+                            "aiAssistant"
+                          ]
+                        },
+                        "overrides": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "slug",
+                        "name",
+                        "customDomain",
+                        "pendingCustomDomain",
+                        "customDomainFailingSince",
+                        "tier",
+                        "status",
+                        "trialEndsAt",
+                        "trialExpiredAt",
+                        "readOnlyUntil",
+                        "seatQuota",
+                        "seatsUsed",
+                        "features",
+                        "overrides"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/trial-settings": {
+      "get": {
+        "operationId": "getOperatorTrialSettings",
+        "summary": "Platform operator: the trial defaults: `defaultDays` (ORG_TRIAL_DAYS, 0 = new organisations start active) and `graceDays` (ORG_TRIAL_GRACE_DAYS, read-only days after a trial ends before suspension).",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "defaultDays": {
+                          "type": "number"
+                        },
+                        "graceDays": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "defaultDays",
+                        "graceDays"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
             "content": {
               "application/json": {
                 "schema": {
@@ -33345,6 +36898,743 @@
         }
       }
     },
+    "/api/v1/support/enter": {
+      "post": {
+        "operationId": "postSupportEnter",
+        "summary": "Public: exchange the one-time handoff token of /support/enter?token= (valid once, for two minutes) for a support session in the pass's organisation, as its \"Platform support\" account. Sets the session cookie. 410 when the link was used, expired or its pass is no longer in force; 403 when the organisation is suspended. Audited.",
+        "tags": [
+          "support"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "passId": {
+                          "type": "string"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "READ_ONLY",
+                            "FULL"
+                          ]
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        },
+                        "operatorEmail": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "passId",
+                        "scope",
+                        "expiresAt",
+                        "operatorEmail"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Withdrawn",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/support/exit": {
+      "post": {
+        "operationId": "postSupportExit",
+        "summary": "End the support session (the pass stays in force until it expires or is revoked). Answers where to go next: the platform console. 409 for an ordinary session. Audited.",
+        "tags": [
+          "support"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "redirect": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "redirect"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/support/passes": {
+      "get": {
+        "operationId": "getSupportPasses",
+        "summary": "Administrators: this organisation's support passes for the platform operator, newest first (the last 50).",
+        "tags": [
+          "support"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "READ_ONLY",
+                              "FULL"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "grantedByEmail": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "expiresAt": {
+                            "type": "string"
+                          },
+                          "revokedAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "revokedByEmail": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "lastEnteredAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "lastEnteredByEmail": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "ACTIVE",
+                              "REVOKED",
+                              "EXPIRED"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "scope",
+                          "reason",
+                          "grantedByEmail",
+                          "createdAt",
+                          "expiresAt",
+                          "revokedAt",
+                          "revokedByEmail",
+                          "lastEnteredAt",
+                          "lastEnteredByEmail",
+                          "status"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postSupportPasses",
+        "summary": "Administrators: grant the platform operator a support pass for 1, 4, 24 or 72 hours, READ_ONLY (default) or FULL (changes allowed, each one audited). One pass is in force at a time (409); the platform operator organisation cannot grant one (409); not from a support session (403). Audited.",
+        "tags": [
+          "support"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "READ_ONLY",
+                      "FULL"
+                    ],
+                    "default": "READ_ONLY"
+                  },
+                  "hours": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          1
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          4
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          24
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          72
+                        ]
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "hours",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "READ_ONLY",
+                            "FULL"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "grantedByEmail": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        },
+                        "revokedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "revokedByEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "lastEnteredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "lastEnteredByEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ACTIVE",
+                            "REVOKED",
+                            "EXPIRED"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "scope",
+                        "reason",
+                        "grantedByEmail",
+                        "createdAt",
+                        "expiresAt",
+                        "revokedAt",
+                        "revokedByEmail",
+                        "lastEnteredAt",
+                        "lastEnteredByEmail",
+                        "status"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/support/passes/{id}/revoke": {
+      "post": {
+        "operationId": "postSupportPassesIdRevoke",
+        "summary": "Administrators: withdraw a support pass. A support session under it ends at once. Not from a support session (403). Audited.",
+        "tags": [
+          "support"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "READ_ONLY",
+                            "FULL"
+                          ]
+                        },
+                        "reason": {
+                          "type": "string"
+                        },
+                        "grantedByEmail": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        },
+                        "revokedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "revokedByEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "lastEnteredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "lastEnteredByEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ACTIVE",
+                            "REVOKED",
+                            "EXPIRED"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "scope",
+                        "reason",
+                        "grantedByEmail",
+                        "createdAt",
+                        "expiresAt",
+                        "revokedAt",
+                        "revokedByEmail",
+                        "lastEnteredAt",
+                        "lastEnteredByEmail",
+                        "status"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/support/session": {
+      "get": {
+        "operationId": "getSupportSession",
+        "summary": "The current support session (scope, operator e-mail, when it ends), or null for an ordinary session. A READ_ONLY support session gets 403 with code SUPPORT_READ_ONLY for any change.",
+        "tags": [
+          "support"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "passId": {
+                          "type": "string"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": [
+                            "READ_ONLY",
+                            "FULL"
+                          ]
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        },
+                        "operatorEmail": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "passId",
+                        "scope",
+                        "expiresAt",
+                        "operatorEmail"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/terms": {
       "get": {
         "operationId": "getTerms",
@@ -34346,6 +38636,81 @@
           },
           "409": {
             "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/trial": {
+      "get": {
+        "operationId": "getTrial",
+        "summary": "The caller's organisation's free trial: NONE (no trial), TRIAL (running, with `daysLeft`) or READ_ONLY (ended: changes answer 402 with code TRIAL_ENDED until `readOnlyUntil`, when it is suspended; signing out, exports and privacy requests still work).",
+        "tags": [
+          "trial"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "TRIAL",
+                            "READ_ONLY"
+                          ]
+                        },
+                        "trialEndsAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "daysLeft": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "readOnlyUntil": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "state",
+                        "trialEndsAt",
+                        "daysLeft",
+                        "readOnlyUntil"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
             "content": {
               "application/json": {
                 "schema": {

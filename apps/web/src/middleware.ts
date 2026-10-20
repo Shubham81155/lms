@@ -16,8 +16,10 @@ export async function middleware(req: NextRequest) {
   // The session cookie is lms_token, or __Host-lms_token in production; this matches both.
   if (cookie.includes("lms_token=")) {
     try {
+      // Pass on the client address the proxy set, so the API's per-IP limits count the visitor, not this server.
+      const forwardedFor = req.headers.get("x-forwarded-for");
       const res = await fetch(`${API_URL}/api/v1/auth/me`, {
-        headers: { cookie },
+        headers: { cookie, ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}) },
         cache: "no-store",
       });
       const user = res.ok ? (await res.json())?.user : null;

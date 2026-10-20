@@ -7,6 +7,7 @@ import { runWithTenant } from '@enterprise-lms/database';
 import { basePrisma, prisma, runInTenantTransaction } from '../lib/prisma';
 import { lookupTenant, resolveTenant } from '../lib/tenant';
 import { tenantUrl } from '../lib/tenant-url';
+import { endSupportSession } from '../lib/support-access';
 import { logAuditEvent } from '../lib/audit';
 import { config } from '../config';
 import {
@@ -228,6 +229,8 @@ router.post('/logout', optionalAuth, async (req: Request, res: Response) => {
   clearAuthCookie(res);
 
   if (req.user) {
+    // Signing out of a platform-operator support session ends it as POST /support/exit does.
+    await endSupportSession(req, 'logout');
     // Sign out invalidates the token itself, not just the browser cookie (so a copied token is dead too).
     await revokeSessions(req.user.id);
     await logAuditEvent({

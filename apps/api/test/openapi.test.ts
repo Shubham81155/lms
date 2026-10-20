@@ -109,6 +109,8 @@ describe('authentication coverage', () => {
     'POST /api/v1/organizations/find',
     'POST /api/v1/organizations/requests',
     'POST /api/v1/organizations/requests/confirm',
+    // The support handoff: guarded by a one-time token the platform operator was given (routes/support.routes.ts).
+    'POST /api/v1/support/enter',
     'POST /api/v1/lti/launch',
     'POST /api/v1/scim/v2/Users',
     'PUT /api/v1/scim/v2/Users/:id',

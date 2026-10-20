@@ -29,8 +29,17 @@ const TenantRecord = z.object({
   customDomainCheckedAt: z.string().nullable(),
   customDomainError: z.string().nullable(),
   customDomainVerifiedAt: z.string().nullable(),
+  customDomainLiveToken: z.string().nullable(),
+  customDomainRecheckedAt: z.string().nullable(),
+  customDomainRecheckError: z.string().nullable(),
+  customDomainFailingSince: z.string().nullable(),
+  customDomainWarnedAt: z.string().nullable(),
   tier: Tier,
   status: z.enum(['ACTIVE', 'SUSPENDED', 'TRIAL', 'ARCHIVED']),
+  /** Free trial (status TRIAL): when it ends, which reminders went out (bits: 1 seven days, 2 one day), and when it ended (read-only). */
+  trialEndsAt: z.string().nullable(),
+  trialRemindersSent: z.number(),
+  trialExpiredAt: z.string().nullable(),
   logoUrl: z.string().nullable(),
   primaryColor: z.string().nullable(),
   secondaryColor: z.string().nullable(),
@@ -42,6 +51,11 @@ const TenantRecord = z.object({
   seatQuota: z.number().nullable(),
   /** Whether the admin area shows the setup checklist (organisations created through onboarding). */
   setupChecklist: z.boolean(),
+  /** Offboarding (GET /admin/offboarding): when the organisation is to be deleted, who asked, and whether the platform operator did. */
+  deletionScheduledAt: z.string().nullable(),
+  deletionRequestedAt: z.string().nullable(),
+  deletionRequestedBy: z.string().nullable(),
+  deletionByOperator: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -128,8 +142,16 @@ export const OperatorTenant = z.object({
   customDomain: z.string().nullable(),
   /** Waiting for DNS verification; not live yet. */
   pendingCustomDomain: z.string().nullable(),
+  /** Since when the live domain's TXT record has been missing; it is removed after the grace period. */
+  customDomainFailingSince: z.string().nullable(),
   tier: Tier,
   status: z.string(),
+  /** When the trial ends (status TRIAL) or ended; null without a trial. */
+  trialEndsAt: z.string().nullable(),
+  /** Set once the trial has ended: read-only until `readOnlyUntil`, then suspended. */
+  trialExpiredAt: z.string().nullable(),
+  /** When an ended trial's read-only period is over and the organisation is suspended. */
+  readOnlyUntil: z.string().nullable(),
   seatQuota: z.number().nullable(),
   seatsUsed: z.number(),
   features: FeatureFlags,
@@ -154,6 +176,20 @@ export const CustomDomainState = z.object({
       checkedAt: z.string().nullable(),
       /** Why the last check failed. */
       error: z.string().nullable(),
+    })
+    .nullable(),
+  /** The periodic re-check of the live domain's TXT record; null without a live domain or one set without verification. */
+  recheck: z
+    .object({
+      txtName: z.string(),
+      txtValue: z.string(),
+      checkedAt: z.string().nullable(),
+      /** Why the last re-check failed (a passing DNS problem included). */
+      error: z.string().nullable(),
+      /** Since when the record has been missing or wrong; null while it is fine. */
+      failingSince: z.string().nullable(),
+      /** When the domain is removed unless the record is back. */
+      removesAt: z.string().nullable(),
     })
     .nullable(),
   /** CUSTOM_DOMAIN_TARGET: the host to point the domain at with a CNAME, when the platform says. */
@@ -462,6 +498,26 @@ export const RESPONSES: ResponseTable = {
   'PATCH /api/v1/operator/tenants/:id': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
   'POST /api/v1/operator/tenants': { response: ok(z.object({ data: z.object({ organization: OperatorTenant, invitation: Invitation }) }), 201), errors: [400, 409] },
   'PATCH /api/v1/operator/tenants/:id/status': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
+  'GET /api/v1/operator/trial-settings': { response: ok(z.object({ data: z.object({ defaultDays: z.number(), graceDays: z.number() }) })) },
+  'POST /api/v1/operator/tenants/:id/trial': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
+  'PATCH /api/v1/operator/tenants/:id/trial': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
+  'POST /api/v1/operator/tenants/:id/trial/end': { response: ok(z.object({ data: OperatorTenant })), errors: [404, 409] },
+  'POST /api/v1/operator/tenants/:id/trial/convert': { response: ok(z.object({ data: OperatorTenant })), errors: [404, 409] },
+  'GET /api/v1/trial': {
+    response: ok(
+      z.object({
+        data: z.object({
+          /** NONE: no trial; TRIAL: running; READ_ONLY: ended, changes are refused (402 TRIAL_ENDED) until it is suspended. */
+          state: z.enum(['NONE', 'TRIAL', 'READ_ONLY']),
+          trialEndsAt: z.string().nullable(),
+          /** Whole days left of a running trial. */
+          daysLeft: z.number().nullable(),
+          /** When the read-only period is over and the organisation is suspended. */
+          readOnlyUntil: z.string().nullable(),
+        }),
+      })
+    ),
+  },
   'GET /api/v1/operator/requests': { response: ok(z.object({ data: z.array(OrganizationRequest), pagination: Pagination })), errors: [400] },
   'POST /api/v1/operator/requests/:id/approve': {
     response: ok(z.object({ data: z.object({ request: OrganizationRequest, organization: OperatorTenant, invitation: Invitation }) })),

@@ -56,8 +56,11 @@ export interface StorageDriver {
 /** Keys are generated here (tenant/uuid); anything else is refused so a key can never escape the folder. */
 const KEY = /^[A-Za-z0-9_-]+\/[0-9a-f-]{36}$/;
 export const newStorageKey = (tenantId: string) => `${tenantId.replace(/[^A-Za-z0-9_-]/g, '_')}/${randomUUID()}`;
+/** Organisation exports (lib/offboarding.ts): exports/<tenant>/<export id>.zip. */
+const EXPORT_KEY = /^exports\/[A-Za-z0-9_-]+\/[0-9a-f-]{36}\.zip$/;
+export const exportStorageKey = (tenantId: string, exportId: string) => `exports/${tenantId.replace(/[^A-Za-z0-9_-]/g, '_')}/${exportId}.zip`;
 const checkKey = (key: string) => {
-  if (!KEY.test(key)) throw new Error(`Invalid storage key: ${key}`);
+  if (!KEY.test(key) && !EXPORT_KEY.test(key)) throw new Error(`Invalid storage key: ${key}`);
   return key;
 };
 

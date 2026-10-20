@@ -17,6 +17,8 @@ FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 COPY --from=build /app /app
+# next start writes its fetch and image caches under .next/cache at run time; everything else stays root-owned.
+RUN mkdir -p /app/apps/web/.next/cache && chown -R node:node /app/apps/web/.next/cache
 USER node
 EXPOSE 3000
 WORKDIR /app/apps/web

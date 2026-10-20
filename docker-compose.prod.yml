@@ -1,0 +1,258 @@
+# Production stack: Caddy (TLS, routing) -> web (Next.js) and api (Express) -> PostgreSQL, Redis, optional ClamAV.
+#
+#   cp .env.production.example .env        # on the server; fill in every REQUIRED value (chmod 600 .env)
+#   docker compose -f docker-compose.prod.yml build
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml ps   # migrate: "exited (0)"; the rest healthy
+#
+# Compose reads .env for ${...} below. Each service gets only the variables listed for it (bare names are taken
+# from .env and left unset when .env does not set them), so the database superuser password and the Cloudflare
+# token never reach the API or web containers. First deploy, DNS and certificates: docs/deployment/dns-and-tls.md.
+#
+# Only Caddy publishes ports (80, 443, 443/udp for HTTP/3). PostgreSQL, Redis and ClamAV sit on an internal
+# network with no route to the internet; the API is on both networks (it calls SMTP, Turnstile, AI providers...).
+
+name: enterprise-lms
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-api-image: &api-image
+  image: enterprise-lms/api:${LMS_IMAGE_TAG:-latest}
+  build:
+    context: .
+    dockerfile: deploy/Dockerfile.api
+
+services:
+  # ------------------------------------------------------------------------------------------------ edge
+  caddy:
+    build:
+      context: deploy/caddy
+    image: enterprise-lms/caddy:${LMS_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      LMS_BASE_DOMAIN: ${TENANT_BASE_DOMAIN:?set TENANT_BASE_DOMAIN}
+      SCORM_CONTENT_HOST: ${SCORM_CONTENT_HOST:?set SCORM_CONTENT_HOST}
+      CUSTOM_DOMAIN_TARGET: ${CUSTOM_DOMAIN_TARGET:?set CUSTOM_DOMAIN_TARGET}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+      ACME_CA: ${ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}
+      TLS_ASK_SECRET: ${TLS_ASK_SECRET:?set TLS_ASK_SECRET}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN}
+      EDGE_MAX_BODY: ${EDGE_MAX_BODY:-110MB}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # certificates and ACME account: back this up or lose rate-limit headroom on restore
+      - caddy-config:/config
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
+  # ------------------------------------------------------------------------------------------------ apps
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+      args:
+        API_URL: http://api:4000
+    image: enterprise-lms/web:${LMS_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Server side only (route-protection middleware); browsers call /api/v1 on their own origin, which Caddy
+      # sends straight to the API.
+      API_URL: http://api:4000
+    networks: [edge]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *logging
+
+  # Applies pending Prisma migrations as the database owner, then exits. The API starts only after it succeeded.
+  # The migrations grant lms_app its table privileges, so they must run after the role exists (init script).
+  migrate:
+    <<: *api-image
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+    working_dir: /app
+    command: ["npm", "run", "db:deploy", "-w", "@enterprise-lms/database"]
+    environment:
+      NODE_ENV: production
+      # Prisma's migrate uses DIRECT_URL (the owner); DATABASE_URL must be set for the schema to load.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_lms}?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_lms}?schema=public
+    networks: [backend]
+    logging: *logging
+
+  api:
+    <<: *api-image
+    restart: unless-stopped
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      # The unprivileged role: row-level security is enforced (the API exits at start-up in production if this
+      # role could bypass it). No DIRECT_URL here: the API never needs the owner.
+      DATABASE_URL: postgresql://lms_app:${LMS_APP_DB_PASSWORD:?set LMS_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_lms}?schema=public
+      REDIS_URL: redis://redis:6379
+      # Caddy is the one proxy in front of the API (browser /api/* goes straight to it); see the Caddyfile.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      TENANT_BASE_DOMAIN: ${TENANT_BASE_DOMAIN:?set TENANT_BASE_DOMAIN}
+      APP_URL: ${APP_URL:-https://${TENANT_BASE_DOMAIN}}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://${TENANT_BASE_DOMAIN}}
+      SCORM_CONTENT_ORIGIN: https://${SCORM_CONTENT_HOST:?set SCORM_CONTENT_HOST}
+      CUSTOM_DOMAIN_TARGET: ${CUSTOM_DOMAIN_TARGET:?set CUSTOM_DOMAIN_TARGET}
+      TLS_ASK_SECRET: ${TLS_ASK_SECRET:?set TLS_ASK_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?set PII_ENCRYPTION_KEY}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_DIR: /app/storage
+      CLAMAV_URL: ${CLAMAV_URL:-}
+      # Optional: passed through only when set in .env (see .env.production.example for each).
+      JWT_EXPIRES_IN:
+      BCRYPT_ROUNDS:
+      DEFAULT_TENANT_SLUG:
+      PLATFORM_OPERATOR_TENANT:
+      CUSTOM_DOMAIN_DNS_TIMEOUT_MS:
+      CUSTOM_DOMAIN_RECHECK_INTERVAL_SECONDS:
+      CUSTOM_DOMAIN_RECHECK_GRACE_DAYS:
+      LOG_LEVEL:
+      LOG_REQUEST_BODIES:
+      LOGIN_RATE_LIMIT_MAX:
+      ORG_REGISTRATION_ENABLED:
+      ORG_REQUEST_RATE_LIMIT_MAX:
+      ORG_TRIAL_DAYS:
+      ORG_TRIAL_GRACE_DAYS:
+      TRIAL_JOB_INTERVAL_SECONDS:
+      TURNSTILE_SITE_KEY:
+      TURNSTILE_SECRET_KEY:
+      TOKEN_FLOW_RATE_LIMIT_MAX:
+      FIND_ORG_RATE_LIMIT_MAX:
+      API_RATE_LIMIT_MAX:
+      API_WRITE_RATE_LIMIT_MAX:
+      MAX_FAILED_LOGINS:
+      LOCKOUT_MINUTES:
+      SMTP_URL:
+      MAIL_FROM:
+      WEBHOOK_RETRY_INTERVAL_SECONDS:
+      EMAIL_DISPATCH_INTERVAL_SECONDS:
+      LIVEKIT_URL:
+      LIVEKIT_API_KEY:
+      LIVEKIT_API_SECRET:
+      PLAGIARISM_WEBHOOK_SECRET:
+      PLAGIARISM_SUBMIT_URL:
+      PLAGIARISM_SUBMIT_INTERVAL_SECONDS:
+      API_PUBLIC_URL:
+      COPYLEAKS_EMAIL:
+      COPYLEAKS_API_KEY:
+      COPYLEAKS_SANDBOX:
+      AI_PROVIDER:
+      AI_API_KEY:
+      AI_MODEL:
+      AI_TIMEOUT_MS:
+      AI_REQUESTS_PER_HOUR:
+      S3_BUCKET:
+      S3_REGION:
+      S3_ENDPOINT:
+      S3_ACCESS_KEY_ID:
+      S3_SECRET_ACCESS_KEY:
+      S3_FORCE_PATH_STYLE:
+      UPLOAD_MAX_MB:
+      CLAMAV_TIMEOUT_MS:
+      FILE_SCAN_SWEEP_INTERVAL_SECONDS:
+      ORG_DELETION_GRACE_DAYS:
+      ORG_DELETED_SLUG_HOLD_DAYS:
+      OFFBOARDING_JOB_INTERVAL_SECONDS:
+    volumes:
+      - uploads:/app/storage # STORAGE_DRIVER=local only; unused with s3
+    networks: [edge, backend]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s # ts-node compiles the sources at start-up
+    logging: *logging
+
+  # ------------------------------------------------------------------------------------------------ data
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    shm_size: 256mb
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-enterprise_lms}
+      LMS_APP_DB_PASSWORD: ${LMS_APP_DB_PASSWORD:?set LMS_APP_DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs only when pgdata is empty (first start).
+      - ./deploy/init-db-prod.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  # Shared rate-limit counters for the API. Nothing durable: no persistence.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging: *logging
+
+  # Virus scanning of uploads (opt-in): COMPOSE_PROFILES=scan and CLAMAV_URL=tcp://clamav:3310 in .env. Needs about
+  # 2-3 GB of memory and a few minutes to load signatures on first start (freshclam, inside, keeps them updated,
+  # hence the edge network for egress). Its StreamMaxLength must be at least UPLOAD_MAX_MB.
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: [scan]
+    restart: unless-stopped
+    volumes:
+      - clamav-db:/var/lib/clamav
+    networks: [backend, edge]
+    logging: *logging
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+
+volumes:
+  pgdata:
+  uploads:
+  caddy-data:
+  caddy-config:
+  clamav-db:

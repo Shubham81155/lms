@@ -57,10 +57,27 @@ model Tenant {
   customDomainError       String?
   /// When the live customDomain was proved (set to the migration time for domains that predate verification).
   customDomainVerifiedAt  DateTime?
+  // The live domain is re-checked periodically (lib/custom-domain-recheck.ts): its TXT record must stay.
+  /// The token the live customDomain was proved with; null for domains set without verification (not re-checked).
+  customDomainLiveToken   String?
+  customDomainRecheckedAt DateTime?
+  /// Why the last re-check of the live domain failed (a transient DNS error included).
+  customDomainRecheckError String?
+  /// Since when the live domain's TXT record has been definitely missing or wrong; removed after the grace period.
+  customDomainFailingSince DateTime?
+  /// When the administrators were warned about the current failure.
+  customDomainWarnedAt     DateTime?
 
   // Created through registration or by the platform operator: the admin area shows the setup checklist.
   // Organisations that existed before onboarding was added never see it.
   setupChecklist Boolean @default(false)
+
+  // Trial (status TRIAL, lib/trial.ts): it ends at trialEndsAt; then trialExpiredAt is set and the organisation is
+  // read-only for ORG_TRIAL_GRACE_DAYS, after which it is suspended. Converting to paid clears all three.
+  trialEndsAt        DateTime?
+  /// Reminder e-mails sent for the current end date, a bitmask: 1 = seven days before, 2 = one day before.
+  trialRemindersSent Int       @default(0)
+  trialExpiredAt     DateTime?
 
   // Compliance & Data Residency
   dataRegion     String  @default("us-east-1")
@@ -111,11 +128,21 @@ model Tenant {
   /// When true, only administrators publish courses; instructors submit them for review first.
   requireCourseApproval Boolean @default(false)
 
+  // Offboarding (lib/offboarding.ts): when set, the organisation and all its data are deleted at this time,
+  // after a final export. It stays usable until then and the deletion can be cancelled.
+  deletionScheduledAt   DateTime?
+  deletionRequestedAt   DateTime?
+  /// Who asked: "<e-mail> (administrator)" or "<e-mail> (platform operator)".
+  deletionRequestedBy   String?
+  /// Scheduled by the platform operator: only the operator can cancel it.
+  deletionByOperator    Boolean   @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([slug])
   @@index([customDomain])
+  @@index([status, trialEndsAt])
 }
 
 model Campus {
@@ -297,6 +324,8 @@ model User {
   @@unique([tenantId, email])
   @@unique([tenantId, idpSubjectId])
   @@index([tenantId, role])
+  // "Find my organisation" looks an address up across organisations (find_tenants_for_email).
+  @@index([email])
 }
 
 // Only the SHA-256 hash of the emailed token is stored.
@@ -1250,4 +1279,94 @@ model OrganizationRequest {
 
   @@index([status, createdAt])
   @@index([contactEmail])
+}
+
+// ---------------------------------------------------------
+// OFFBOARDING: full exports and organisation deletion (lib/offboarding.ts)
+// ---------------------------------------------------------
+
+/// A full export of one organisation's data (a ZIP in storage under exports/). Platform-level, not under row-level
+/// security, and with no foreign key to Tenant: the final export taken before a deletion outlives the organisation.
+model TenantExport {
+  id                  String    @id @default(uuid())
+  tenantId            String
+  /// Who asked; null for the final export the deletion job takes itself.
+  requestedById       String?
+  /// The organisation of the requester (the platform operator's when the operator asked).
+  requestedByTenantId String?
+  /// QUEUED | RUNNING | READY | FAILED | EXPIRED
+  status              String    @default("QUEUED")
+  /// Taken before the organisation was deleted; kept for the platform operator.
+  isFinal             Boolean   @default(false)
+  storageKey          String?   @unique
+  sizeBytes           BigInt?
+  error               String?
+  createdAt           DateTime  @default(now())
+  startedAt           DateTime?
+  completedAt         DateTime?
+  /// After this the file is removed and the export is EXPIRED.
+  expiresAt           DateTime?
+
+  @@index([tenantId, createdAt])
+  @@index([status, createdAt])
+}
+
+/// What is left of a deleted organisation: the operator's record, and its address stays reserved until slugHeldUntil.
+model TenantDeletion {
+  id             String   @id @default(uuid())
+  tenantId       String   @unique
+  slug           String
+  name           String
+  deletedAt      DateTime @default(now())
+  requestedBy    String?
+  /// Storage key of the final export (exports/...), while it is kept.
+  finalExportId  String?
+  finalExportKey String?
+  slugHeldUntil  DateTime
+  /// Row counts deleted per table, and files removed.
+  summaryJson    Json?
+
+  @@index([slug, slugHeldUntil])
+  @@index([deletedAt])
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Consented support access (apps/api/src/lib/support-access.ts). An organisation's administrator grants the
+// platform operator a time-limited pass; the operator enters through a one-time handoff link.
+
+/// A support pass. Row-level security like every tenant table; the operator lists passes in force through
+/// the active_support_passes() database function. No relation to Tenant, like TenantExport.
+model SupportPass {
+  id                 String    @id @default(uuid())
+  tenantId           String
+  /// READ_ONLY (looking only) | FULL (may change things; every change is audited)
+  scope              String    @default("READ_ONLY")
+  reason             String
+  grantedById        String?
+  grantedByEmail     String
+  expiresAt          DateTime
+  revokedAt          DateTime?
+  revokedByEmail     String?
+  lastEnteredAt      DateTime?
+  lastEnteredByEmail String?
+  createdAt          DateTime  @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([expiresAt])
+}
+
+/// One-time link that turns a pass into a support session at the organisation's own address. Only the
+/// SHA-256 hash of the token is stored; not covered by row-level security, like PasswordResetToken.
+model SupportHandoff {
+  id             String    @id @default(uuid())
+  tenantId       String
+  passId         String
+  tokenHash      String    @unique
+  operatorUserId String?
+  operatorEmail  String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([passId])
 }

@@ -13,6 +13,8 @@ export interface SessionState {
   tokenVersion: number;
   /** Status of the user's organisation; a suspended or archived one ends every session in it. */
   tenantStatus: string;
+  /** When the organisation's trial ended (lib/trial.ts); while it is still a TRIAL, the organisation is read-only. */
+  tenantTrialExpiredAt: Date | null;
 }
 
 /** Shown when the organisation of a token (session, SCIM) has been suspended or archived. */
@@ -20,6 +22,14 @@ export const TENANT_SUSPENDED_MESSAGE = 'This organisation has been suspended. C
 
 export function tenantIsBlocked(status: string | null | undefined): boolean {
   return status === 'SUSPENDED' || status === 'ARCHIVED';
+}
+
+/** Shown when a change is refused because the organisation's trial has ended (read-only until it is suspended). */
+export const TRIAL_ENDED_MESSAGE = 'Your trial has ended — contact us to continue.';
+
+/** An expired trial in its grace period: people can still sign in and look, but not change anything. */
+export function tenantIsReadOnly(state: Pick<SessionState, 'tenantStatus' | 'tenantTrialExpiredAt'> | null | undefined): boolean {
+  return state?.tenantStatus === 'TRIAL' && !!state.tenantTrialExpiredAt;
 }
 
 const TTL_MS = config.NODE_ENV === 'test' ? 0 : 10_000;
@@ -44,10 +54,10 @@ export async function loadSession(userId: string, tenantId: string, fresh = fals
   if (hit && hit.expires > Date.now()) return hit.state;
 
   const row = await runWithTenant(tenantId, () =>
-    prisma.user.findFirst({ where: { id: userId }, select: { role: true, status: true, tokenVersion: true, tenant: { select: { status: true } } } })
+    prisma.user.findFirst({ where: { id: userId }, select: { role: true, status: true, tokenVersion: true, tenant: { select: { status: true, trialExpiredAt: true } } } })
   );
   const state = row
-    ? { role: String(row.role), status: String(row.status), tokenVersion: row.tokenVersion ?? 0, tenantStatus: String(row.tenant.status) }
+    ? { role: String(row.role), status: String(row.status), tokenVersion: row.tokenVersion ?? 0, tenantStatus: String(row.tenant.status), tenantTrialExpiredAt: row.tenant.trialExpiredAt ?? null }
     : null;
   if (TTL_MS > 0) {
     if (cache.size > 10_000) cache.clear();

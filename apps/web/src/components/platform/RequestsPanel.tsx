@@ -5,6 +5,7 @@ import { Check, ChevronLeft, ChevronRight, Clock, Globe, Mail, Phone, X } from "
 import { api } from "@/lib/api";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
+import { TrialDaysField, parseTrialDays } from "@/components/platform/TrialControls";
 import { TIERS, holdText, invitationMessage, tierLabel, type InvitationResult, type Org, type OrgRequest, type Pagination, type RequestStatus, type Tier } from "@/lib/platform";
 
 const input = "w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
@@ -115,16 +116,19 @@ const RequestCard: React.FC<{ request: OrgRequest; onDecided: (text: string) => 
   const [tier, setTier] = useState<Tier>("STARTER");
   const [seats, setSeats] = useState("100");
   const [note, setNote] = useState("");
+  const [trialDays, setTrialDays] = useState("0");
   const [reason, setReason] = useState("");
 
   const seatsValue = seats.trim() === "" ? null : Number(seats);
   const seatsOk = seatsValue === null || (Number.isInteger(seatsValue) && seatsValue >= 1);
+  const trialDaysValue = parseTrialDays(trialDays);
 
   const approve = () =>
     run(async () => {
       const res = await api.post<{ data: { organization: Org; invitation: InvitationResult } }>(`/api/v1/operator/requests/${r.id}/approve`, {
         tier,
         seatQuota: seatsValue,
+        trialDays: trialDaysValue ?? 0,
         ...(note.trim() ? { note: note.trim() } : {}),
       });
       onDecided(`"${r.organizationName}" is approved and created. ${invitationMessage(res.data.invitation, r.contactEmail)}`);
@@ -218,7 +222,7 @@ const RequestCard: React.FC<{ request: OrgRequest; onDecided: (text: string) => 
 
       {r.status === "PENDING" && mode === "approve" && (
         <div className="rounded-xl border border-brand/40 bg-brand/5 p-3 space-y-3" role="group" aria-label={`Approve ${r.organizationName}`}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
               Plan
               <select className={input} value={tier} onChange={(e) => setTier(e.target.value as Tier)}>
@@ -235,6 +239,7 @@ const RequestCard: React.FC<{ request: OrgRequest; onDecided: (text: string) => 
               Note (optional, internal)
               <input className={input} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
+            <TrialDaysField value={trialDays} onChange={setTrialDays} className={input} />
           </div>
           <p className="text-[11px] text-ink-muted">
             Creates <span className="font-semibold text-ink">{r.organizationName}</span> at <span className="font-mono text-ink">{r.slug}</span> and e-mails {r.contactEmail} a link to set a password.
@@ -242,7 +247,7 @@ const RequestCard: React.FC<{ request: OrgRequest; onDecided: (text: string) => 
           {!seatsOk && <Banner kind="error">Seats must be a whole number of at least 1, or blank.</Banner>}
           {error && <Banner kind="error">{error}</Banner>}
           <div className="flex gap-2">
-            <button type="button" className={primary} disabled={busy || !seatsOk} onClick={approve}>
+            <button type="button" className={primary} disabled={busy || !seatsOk || trialDaysValue === null} onClick={approve}>
               {busy ? "Approving…" : "Approve and create"}
             </button>
             <button type="button" className={ghost} disabled={busy} onClick={() => setMode(null)}>Cancel</button>

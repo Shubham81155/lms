@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Globe, Plus, X } from "lucide-react";
+import { Archive, Globe, Plus, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAction, useApiData } from "@/hooks/useApiData";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { FEATURE_LABELS } from "@/components/admin/PlatformPanels";
 import { CustomDomainEditor } from "@/components/admin/CustomDomainPanel";
+import { TrialControls, TrialDaysField, parseTrialDays } from "@/components/platform/TrialControls";
+import { OffboardingPanel } from "@/components/admin/OffboardingPanel";
+import { DeletedOrganisations, DeletionBadge, useOffboardingOverview } from "@/components/platform/OffboardingControls";
 import { TIERS, invitationMessage, isValidSlug, suggestSlug, tierLabel, type InvitationResult, type Org, type Tier } from "@/lib/platform";
 
 const field = "bg-canvas border border-line rounded-lg px-2 py-1 text-xs text-ink focus:outline-none focus:border-brand";
@@ -32,6 +35,8 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
   const [confirming, setConfirming] = useState<{ id: string; to: "ACTIVE" | "SUSPENDED" } | null>(null);
   const [creating, setCreating] = useState(false);
   const [domainFor, setDomainFor] = useState<string | null>(null);
+  const [dataFor, setDataFor] = useState<string | null>(null);
+  const offboarding = useOffboardingOverview(refreshKey);
   const [done, setDone] = useState<string | null>(null);
   const focusRef = useRef<HTMLTableRowElement | null>(null);
 
@@ -44,6 +49,7 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
   }, [focusId, list.data]);
 
   const orgs = list.data?.data ?? [];
+  const deletions = new Map((offboarding.data?.data.scheduled ?? []).map((d) => [d.tenantId, d]));
 
   const patch = (id: string, body: Record<string, unknown>) =>
     run(async () => {
@@ -125,6 +131,8 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
                       </td>
                       <td className="px-3 py-3">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLE[t.status] ?? STATUS_STYLE.ARCHIVED}`}>{t.status.toLowerCase()}</span>
+                        {!own && <TrialControls org={t} onChanged={async (_o, text) => { setDone(text); await reload(); }} />}
+                        {deletions.get(t.id) && <DeletionBadge scheduledAt={deletions.get(t.id)!.scheduledAt} byOperator={deletions.get(t.id)!.byOperator} />}
                       </td>
                       <td className="px-3 py-3">
                         <select aria-label={`Plan for ${t.name}`} value={t.tier} disabled={busy} onChange={(e) => patch(t.id, { tier: e.target.value })} className={field}>
@@ -200,6 +208,15 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
                         >
                           <Globe className="h-3 w-3" /> Domain
                         </button>
+                        <button
+                          type="button"
+                          className={`${ghost} mr-2`}
+                          aria-expanded={dataFor === t.id}
+                          aria-label={`Export and deletion of ${t.name}`}
+                          onClick={() => setDataFor((id) => (id === t.id ? null : t.id))}
+                        >
+                          <Archive className="h-3 w-3" /> Data
+                        </button>
                         {!own && (t.status === "SUSPENDED" ? (
                           <button type="button" className={ghost} disabled={busy} onClick={() => { clearError(); setConfirming({ id: t.id, to: "ACTIVE" }); }}>Reactivate</button>
                         ) : t.status !== "ARCHIVED" ? (
@@ -222,6 +239,18 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
                         )}
                       </td>
                     </tr>
+                    {dataFor === t.id && (
+                      <tr className="bg-canvas/50">
+                        <td colSpan={6} className="px-3 py-4">
+                          <div className="flex justify-end">
+                            <button type="button" aria-label="Close" onClick={() => setDataFor(null)} className="rounded-lg p-1 text-ink-muted hover:bg-raised hover:text-ink">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <OffboardingPanel operator tenantId={t.id} onChanged={offboarding.reload} />
+                        </td>
+                      </tr>
+                    )}
                     {domainFor === t.id && (
                       <tr className="bg-canvas/50">
                         <td colSpan={6} className="px-3 py-4">
@@ -246,6 +275,7 @@ export const OrganisationsPanel: React.FC<{ ownTenantId?: string; focusId?: stri
         </div>
       )}
       <p className="text-[11px] text-ink-subtle">Outlined features are set for that organisation (↺ returns them to the plan default); the rest follow its plan.</p>
+      <DeletedOrganisations overview={offboarding} />
     </section>
   );
 };
@@ -262,6 +292,7 @@ const NewOrganisationForm: React.FC<{ onCancel: () => void; onCreated: (text: st
   const [first, setFirst] = useState("");
   const [last, setLast] = useState("");
   const [email, setEmail] = useState("");
+  const [trialDays, setTrialDays] = useState("0");
   const [availability, setAvailability] = useState<{ slug: string; available: boolean; reason?: string } | null>(null);
 
   const effectiveSlug = slugTouched ? slug : suggestSlug(name);
@@ -289,7 +320,8 @@ const NewOrganisationForm: React.FC<{ onCancel: () => void; onCreated: (text: st
   const seatsValue = seats.trim() === "" ? null : Number(seats);
   const seatsOk = seatsValue === null || (Number.isInteger(seatsValue) && seatsValue >= 1);
   const taken = availability?.slug === effectiveSlug && !availability.available;
-  const ready = name.trim().length >= 2 && slugOk && !taken && seatsOk && first.trim() && last.trim() && /\S+@\S+\.\S+/.test(email.trim());
+  const trialDaysValue = parseTrialDays(trialDays);
+  const ready = name.trim().length >= 2 && slugOk && !taken && seatsOk && trialDaysValue !== null && first.trim() && last.trim() && /\S+@\S+\.\S+/.test(email.trim());
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -303,6 +335,7 @@ const NewOrganisationForm: React.FC<{ onCancel: () => void; onCreated: (text: st
         adminFirstName: first.trim(),
         adminLastName: last.trim(),
         adminEmail: email.trim(),
+        trialDays: trialDaysValue ?? 0,
       });
       const pending = res.data.organization.pendingCustomDomain;
       onCreated(
@@ -364,6 +397,7 @@ const NewOrganisationForm: React.FC<{ onCancel: () => void; onCreated: (text: st
           Seats (blank for no limit)
           <input className={input} type="number" min={1} value={seats} onChange={(e) => setSeats(e.target.value)} />
         </label>
+        <TrialDaysField value={trialDays} onChange={setTrialDays} className={input} />
         <label className="space-y-1 text-[11px] font-semibold text-ink-muted md:col-span-2">
           Custom domain (optional: it works once its DNS TXT record is verified)
           <input className={input} value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="learn.college.edu" />
