@@ -191,6 +191,7 @@ services:
       S3_FORCE_PATH_STYLE:
       UPLOAD_MAX_MB:
       CLAMAV_TIMEOUT_MS:
+      METRICS_TOKEN:
       FILE_SCAN_SWEEP_INTERVAL_SECONDS:
       ORG_DELETION_GRACE_DAYS:
       ORG_DELETED_SLUG_HOLD_DAYS:
@@ -255,6 +256,110 @@ services:
     networks: [backend, edge]
     logging: *logging
 
+  # ------------------------------------------------------------------------------------------------ operations
+  # Nightly database backups (opt-in: COMPOSE_PROFILES=backup, or --profile backup). The only service besides migrate
+  # that holds the database owner's password; it writes dumps to the `backups` volume, optionally encrypts them and
+  # copies them to S3-compatible storage, and serves the freshness metrics Prometheus reads (:9199, internal).
+  # Restore and drills: docs/deployment/operations.md. Settings: .env.production.example ("Backups").
+  backup:
+    build:
+      context: deploy/backup
+    image: enterprise-lms/backup:${LMS_IMAGE_TAG:-latest}
+    profiles: [backup]
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-enterprise_lms}
+      # Optional: passed through only when set in .env.
+      BACKUP_AT:
+      BACKUP_KEEP_DAYS:
+      BACKUP_ENCRYPTION_PASSPHRASE:
+      BACKUP_S3_BUCKET:
+      BACKUP_S3_PREFIX:
+      BACKUP_S3_ENDPOINT:
+      DRILL_REQUIRED_TABLES:
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${BACKUP_S3_REGION:-us-east-1}
+    volumes:
+      - backups:/backups
+    networks: [backend, edge] # edge only for the upload to S3
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9199/backup.txt"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *logging
+
+  # Monitoring (opt-in: COMPOSE_PROFILES=monitoring, or --profile monitoring): Prometheus scrapes the API's /metrics
+  # (needs METRICS_TOKEN in .env, the same value for the api) and the backup service, evaluates deploy/monitoring/alerts.yml
+  # and hands alerts to Alertmanager (ALERT_WEBHOOK_URL and/or ALERT_SMTP_*). The UI listens on 127.0.0.1 only:
+  # reach it through an SSH tunnel (ssh -L 9090:127.0.0.1:9090 server).
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: [monitoring]
+    restart: unless-stopped
+    depends_on:
+      alertmanager: { condition: service_started }
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        [ -n "$$METRICS_TOKEN" ] || { echo "METRICS_TOKEN is not set in .env (the API's /metrics needs it)" >&2; exit 1; }
+        printf '%s' "$$METRICS_TOKEN" > /tmp/metrics_token
+        exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus \
+          --storage.tsdb.retention.time=$${PROMETHEUS_RETENTION:-30d} --web.listen-address=:9090
+    environment:
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      PROMETHEUS_RETENTION: ${PROMETHEUS_RETENTION:-30d}
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    networks: [backend, edge] # backend: api and backup; edge: so the published port works (backend is internal)
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    profiles: [monitoring]
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/usr/local/bin/alertmanager-entrypoint.sh"]
+    environment:
+      ALERT_WEBHOOK_URL:
+      ALERT_SMTP_SMARTHOST:
+      ALERT_SMTP_USER:
+      ALERT_SMTP_PASSWORD:
+      ALERT_SMTP_REQUIRE_TLS:
+      ALERT_EMAIL_FROM:
+      ALERT_EMAIL_TO:
+    volumes:
+      - ./deploy/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml.tmpl:ro
+      - ./deploy/monitoring/alertmanager-entrypoint.sh:/usr/local/bin/alertmanager-entrypoint.sh:ro
+      - alertmanager-data:/alertmanager
+    networks: [backend, edge] # edge: it sends the webhook / SMTP
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9093/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
 networks:
   edge: {}
   backend:
@@ -266,3 +371,6 @@ volumes:
   caddy-data:
   caddy-config:
   clamav-db:
+  backups:
+  prometheus-data:
+  alertmanager-data:

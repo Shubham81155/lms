@@ -67,6 +67,11 @@ const envSchema = z.object({
    * The proxy sends it as ?secret= or the X-TLS-Ask-Secret header. Unset: the endpoint answers 404 to everything.
    */
   TLS_ASK_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(16, 'TLS_ASK_SECRET must be at least 16 characters').optional()),
+  /**
+   * Bearer token for GET /metrics (Prometheus). Unset: the endpoint answers 404 to everything. Keep /metrics off the
+   * public proxy: only the monitoring system, on the internal network, should reach it.
+   */
+  METRICS_TOKEN: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(16, 'METRICS_TOKEN must be at least 16 characters').optional()),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_REQUEST_BODIES: z
     .enum(['true', 'false'])

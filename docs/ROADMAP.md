@@ -113,7 +113,8 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | Load test (100k exam takers), multi-region HA / DR | Open | targets in `load_testing_sla.md` |
 | Redis cache, read replicas, PgBouncer | Open | Redis is used for shared rate limits only |
 | **Production stack** (`docker-compose.prod.yml`: Caddy with a wildcard certificate by DNS-01 and certificates on demand for verified custom domains, web, API as the unprivileged `lms_app` role, one-shot migrate as the owner, PostgreSQL, Redis, optional ClamAV; `docs/deployment/dns-and-tls.md`) | Done | images build, the Caddyfile validates and the stack starts locally (2026-10-20); not yet deployed with real DNS and certificates; the product domain name is a placeholder |
-| Monitoring and alerting, automated backups, restore drills | Open | the deployment guide describes manual backups |
+| **Backups and restore drills** (`backup` profile: nightly `pg_dump -Fc`, retention, optional AES-256 encryption, optional S3-compatible copy, `restore.sh`, `restore-drill.sh`; `docs/deployment/operations.md`) | Done | run for real in Docker against a throwaway PostgreSQL (backup, encryption, wrong-passphrase refusal, restore, live restore guard, drill pass and fail, retention, failure metrics); the S3 upload has not been run against a real bucket |
+| **Monitoring and alerting** (`monitoring` profile: Prometheus scraping the API's `/metrics` and the backup service, 14 alert rules, Alertmanager to a webhook and/or e-mail) | Done | configs validated with promtool/amtool and started in Docker; `ApiDown` fired and reached Alertmanager; not run against the full stack, a real webhook or SMTP server; no Grafana dashboards, no log shipping, no certificate-expiry alerts |
 | Terraform / infrastructure as code | Open | |
 
 ## Suggested next steps (highest value first)
@@ -126,6 +127,6 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 4. Run the S3 driver against a real bucket, SCORM against packages from Articulate, Captivate and iSpring, and
    virus scanning against a real ClamAV daemon (the Phase 3-4 screens were checked in a browser on 2026-10-18).
 5. Try the Copyleaks adapter with a real account (sandbox mode first); try camera proctoring with real webcams and lighting.
-6. Backups, monitoring and alerting for a live deployment.
+6. Switch on the `backup` and `monitoring` profiles on the live server (S3 bucket and write-only key, alert webhook or SMTP, `METRICS_TOKEN`), send a test alert, and run the first restore drill from a dump downloaded from the bucket.
 7. Daily digest e-mails and SMS/push channels.
 8. DSAR request queue (log, deadline tracking) and a data-retention scheduler.

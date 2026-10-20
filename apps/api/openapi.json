@@ -96,14 +96,14 @@
     "/ready": {
       "get": {
         "operationId": "getReady",
-        "summary": "Readiness probe: 200 only when the database answers, otherwise 503.",
+        "summary": "Readiness probe: 200 only when the database answers (and Redis, when REDIS_URL is set), otherwise 503; `checks` names each dependency as ok, failed or skipped.",
         "tags": [
           "system"
         ],
         "security": [],
         "responses": {
           "200": {
-            "description": "The database answers; the instance can take traffic.",
+            "description": "The database (and Redis, when configured) answers; the instance can take traffic.",
             "content": {
               "application/json": {
                 "schema": {
@@ -117,18 +117,43 @@
                     },
                     "timestamp": {
                       "type": "string"
+                    },
+                    "checks": {
+                      "type": "object",
+                      "properties": {
+                        "database": {
+                          "type": "string",
+                          "enum": [
+                            "ok",
+                            "failed"
+                          ]
+                        },
+                        "redis": {
+                          "type": "string",
+                          "enum": [
+                            "ok",
+                            "failed",
+                            "skipped"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "database",
+                        "redis"
+                      ]
                     }
                   },
                   "required": [
                     "status",
-                    "timestamp"
+                    "timestamp",
+                    "checks"
                   ]
                 }
               }
             }
           },
           "503": {
-            "description": "The database does not answer. Load balancers should stop routing here.",
+            "description": "The database or Redis does not answer (see `checks`). Load balancers should stop routing here.",
             "content": {
               "application/json": {
                 "schema": {
@@ -139,10 +164,93 @@
                       "enum": [
                         "unavailable"
                       ]
+                    },
+                    "checks": {
+                      "type": "object",
+                      "properties": {
+                        "database": {
+                          "type": "string",
+                          "enum": [
+                            "ok",
+                            "failed"
+                          ]
+                        },
+                        "redis": {
+                          "type": "string",
+                          "enum": [
+                            "ok",
+                            "failed",
+                            "skipped"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "database",
+                        "redis"
+                      ]
                     }
                   },
                   "required": [
-                    "status"
+                    "status",
+                    "checks"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "getMetrics",
+        "summary": "Prometheus metrics (text exposition format) for the monitoring system: process metrics, request durations by route pattern, background job runs and last success, queue depths, database up. Authorization: Bearer METRICS_TOKEN (401 otherwise); 404 while METRICS_TOKEN is unset. Not for browsers; keep it off the public proxy.",
+        "tags": [
+          "system"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Prometheus text exposition format.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or wrong bearer token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "METRICS_TOKEN is not set: metrics are off.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
                   ]
                 }
               }

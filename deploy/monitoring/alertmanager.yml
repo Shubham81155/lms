@@ -1,0 +1,40 @@
+# Alertmanager configuration TEMPLATE. alertmanager-entrypoint.sh turns it into /tmp/alertmanager.yml at start:
+# lines marked [webhook] are kept only if ALERT_WEBHOOK_URL is set, lines marked [email] only if ALERT_SMTP_SMARTHOST,
+# ALERT_EMAIL_TO and ALERT_EMAIL_FROM are set, and the __PLACEHOLDERS__ are filled from the environment. With neither
+# configured the alerts are still visible in Prometheus and Alertmanager but go nowhere (the entrypoint warns).
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: '__ALERT_SMTP_SMARTHOST__' # [email]
+  smtp_from: '__ALERT_EMAIL_FROM__' # [email]
+  smtp_auth_username: '__ALERT_SMTP_USER__' # [email-auth]
+  smtp_auth_password_file: /tmp/smtp_password # [email-auth]
+  smtp_require_tls: __ALERT_SMTP_REQUIRE_TLS__ # [email]
+
+route:
+  receiver: ops
+  group_by: [alertname]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    # Critical alerts repeat more often.
+    - matchers: ['severity="critical"']
+      receiver: ops
+      repeat_interval: 1h
+
+receivers:
+  - name: ops
+    webhook_configs: # [webhook]
+      - url_file: /tmp/webhook_url # [webhook]
+        send_resolved: true # [webhook]
+    email_configs: # [email]
+      - to: '__ALERT_EMAIL_TO__' # [email]
+        send_resolved: true # [email]
+        headers: # [email]
+          subject: '[LMS {{ .Status | toUpper }}] {{ .CommonLabels.alertname }}' # [email]
+
+inhibit_rules:
+  # When the API is down, its other alerts add nothing.
+  - source_matchers: ['alertname="ApiDown"']
+    target_matchers: ['alertname=~"HighServerErrorRate|HighLatencyP95|ApiHighMemory|ApiEventLoopLag|BackgroundJob.*|OffboardingJobStale"']
+    equal: []

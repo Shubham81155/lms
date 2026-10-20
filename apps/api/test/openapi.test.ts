@@ -92,6 +92,8 @@ describe('authentication coverage', () => {
     // The reverse proxy's TLS check: guarded by TLS_ASK_SECRET, and off without it.
     'GET /internal/tls/allowed',
     'GET /ready',
+    // Prometheus scrape: guarded by METRICS_TOKEN, off without it.
+    'GET /metrics',
     'DELETE /api/v1/scim/v2/Users/:id',
     'PATCH /api/v1/scim/v2/Users/:id',
     'POST /api/v1/auth/forgot-password',

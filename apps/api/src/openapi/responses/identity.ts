@@ -10,8 +10,9 @@ import type { ResponseTable } from './types';
 
 // ---- server.ts
 const Health = z.object({ status: z.literal('healthy'), timestamp: z.string(), service: z.string() });
-const Ready = z.object({ status: z.literal('ready'), timestamp: z.string() });
-const Unavailable = z.object({ status: z.literal('unavailable') });
+const ReadyChecks = z.object({ database: z.enum(['ok', 'failed']), redis: z.enum(['ok', 'failed', 'skipped']) });
+const Ready = z.object({ status: z.literal('ready'), timestamp: z.string(), checks: ReadyChecks });
+const Unavailable = z.object({ status: z.literal('unavailable'), checks: ReadyChecks });
 
 const FeatureFlags = z.object({
   lti13: z.boolean(),
@@ -121,8 +122,15 @@ export const RESPONSES: ResponseTable = {
   // ---- server.ts
   'GET /health': { response: { status: 200, schema: Health, description: 'The process is up.' } },
   'GET /ready': {
-    response: { status: 200, schema: Ready, description: 'The database answers; the instance can take traffic.' },
-    otherResponses: [{ status: 503, schema: Unavailable, description: 'The database does not answer. Load balancers should stop routing here.' }],
+    response: { status: 200, schema: Ready, description: 'The database (and Redis, when configured) answers; the instance can take traffic.' },
+    otherResponses: [{ status: 503, schema: Unavailable, description: 'The database or Redis does not answer (see `checks`). Load balancers should stop routing here.' }],
+  },
+  'GET /metrics': {
+    response: { status: 200, contentType: 'text/plain', schema: z.string(), description: 'Prometheus text exposition format.' },
+    otherResponses: [
+      { status: 401, schema: z.object({ error: z.string() }), description: 'Missing or wrong bearer token.' },
+      { status: 404, schema: z.object({ error: z.string() }), description: 'METRICS_TOKEN is not set: metrics are off.' },
+    ],
   },
   'GET /api/v1/tenant/config': {
     response: { status: 200, schema: TenantConfig, description: 'Branding and feature flags of the tenant found from the host or x-tenant-id header.' },

@@ -28,8 +28,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Readiness probe: 200 only when the database answers, otherwise 503. */
+        /** Readiness probe: 200 only when the database answers (and Redis, when REDIS_URL is set), otherwise 503; `checks` names each dependency as ok, failed or skipped. */
         get: operations["getReady"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prometheus metrics (text exposition format) for the monitoring system: process metrics, request durations by route pattern, background job runs and last success, queue depths, database up. Authorization: Bearer METRICS_TOKEN (401 otherwise); 404 while METRICS_TOKEN is unset. Not for browsers; keep it off the public proxy. */
+        get: operations["getMetrics"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3940,7 +3957,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The database answers; the instance can take traffic. */
+            /** @description The database (and Redis, when configured) answers; the instance can take traffic. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3950,10 +3967,16 @@ export interface operations {
                         /** @enum {string} */
                         status: "ready";
                         timestamp: string;
+                        checks: {
+                            /** @enum {string} */
+                            database: "ok" | "failed";
+                            /** @enum {string} */
+                            redis: "ok" | "failed" | "skipped";
+                        };
                     };
                 };
             };
-            /** @description The database does not answer. Load balancers should stop routing here. */
+            /** @description The database or Redis does not answer (see `checks`). Load balancers should stop routing here. */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -3962,6 +3985,54 @@ export interface operations {
                     "application/json": {
                         /** @enum {string} */
                         status: "unavailable";
+                        checks: {
+                            /** @enum {string} */
+                            database: "ok" | "failed";
+                            /** @enum {string} */
+                            redis: "ok" | "failed" | "skipped";
+                        };
+                    };
+                };
+            };
+        };
+    };
+    getMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prometheus text exposition format. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Missing or wrong bearer token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                    };
+                };
+            };
+            /** @description METRICS_TOKEN is not set: metrics are off. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
                     };
                 };
             };

@@ -12,6 +12,17 @@ function redis(): Redis | null {
   return client;
 }
 
+/** Whether Redis answers a PING: null when no Redis is configured (or in tests), so a check can be skipped. */
+export async function redisHealthy(): Promise<boolean | null> {
+  const r = redis();
+  if (!r) return null;
+  try {
+    return (await r.ping()) === 'PONG';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The offline queue must stay on: the rate-limit store loads its Lua script as soon as it is created,
  * which is before the connection is up. A command that cannot get through within `commandTimeout`

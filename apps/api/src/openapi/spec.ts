@@ -14,6 +14,8 @@ extendZodWithOpenApi(z);
 const SERVER_OPERATIONS: Operation[] = [
   { method: 'get', path: '/health', security: 'none' },
   { method: 'get', path: '/ready', security: 'none' },
+  // Guarded by the METRICS_TOKEN bearer token, not a session; 404 while the token is unset.
+  { method: 'get', path: '/metrics', security: 'none' },
   { method: 'get', path: '/api/v1/tenant/config', security: 'none' },
   { method: 'get', path: '/api/v1/openapi.json', security: 'none' },
   // Mounted in server.ts outside /api/v1 (routes/internal-tls.routes.ts): guarded by TLS_ASK_SECRET, not a session.
@@ -22,7 +24,8 @@ const SERVER_OPERATIONS: Operation[] = [
 
 const EXTRA_DOCS: Record<string, { summary: string; tag: string }> = {
   'GET /health': { summary: 'Liveness probe: the process is up. Makes no compliance claims.', tag: 'system' },
-  'GET /ready': { summary: 'Readiness probe: 200 only when the database answers, otherwise 503.', tag: 'system' },
+  'GET /ready': { summary: 'Readiness probe: 200 only when the database answers (and Redis, when REDIS_URL is set), otherwise 503; `checks` names each dependency as ok, failed or skipped.', tag: 'system' },
+  'GET /metrics': { summary: 'Prometheus metrics (text exposition format) for the monitoring system: process metrics, request durations by route pattern, background job runs and last success, queue depths, database up. Authorization: Bearer METRICS_TOKEN (401 otherwise); 404 while METRICS_TOKEN is unset. Not for browsers; keep it off the public proxy.', tag: 'system' },
   'GET /api/v1/openapi.json': { summary: 'This description of the API.', tag: 'system' },
   'GET /api/v1/tenant/config': { summary: 'Branding and feature flags of the tenant resolved from the host or x-tenant-id (used by the login page). 404 when no organisation uses the address; 403 with code TENANT_SUSPENDED when it is suspended.', tag: 'tenant' },
 };

@@ -14,7 +14,8 @@ import { TENANT_SUSPENDED_MESSAGE, tenantIsBlocked } from './lib/session';
 import { ORG_SLUG } from './lib/organizations';
 import { baseDomainHost, isUnderBaseDomain, platformHostnames } from './lib/platform-hosts';
 import { tenantFeatures } from './lib/features';
-import { rateLimitStore } from './lib/rate-limit-store';
+import { rateLimitStore, redisHealthy } from './lib/rate-limit-store';
+import { httpMetrics, metricsHandler } from './lib/metrics';
 
 import { apiMounts, rawBodyMounts } from './mounts';
 import { buildOpenApi } from './openapi/spec';
@@ -33,6 +34,7 @@ const app = express();
 const PORT = config.PORT;
 
 app.use(requestId);
+app.use(httpMetrics);
 
 // Needed for correct client IPs (rate limiting, audit) when behind a reverse proxy.
 if (config.TRUST_PROXY > 0) app.set('trust proxy', config.TRUST_PROXY);
@@ -210,17 +212,25 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString(), service: 'enterprise-lms-api' });
 });
 
-// Readiness: only report ready when the database answers, so load balancers stop routing to an
-// instance that has lost it.
+// Readiness: only report ready when the database answers (and Redis, when one is configured), so load balancers
+// stop routing to an instance that has lost it. `checks` says which dependency failed.
 app.get('/ready', async (_req: Request, res: Response) => {
+  const checks: Record<string, 'ok' | 'failed' | 'skipped'> = { database: 'ok', redis: 'skipped' };
   try {
     await basePrisma.$queryRaw`SELECT 1`;
-    res.json({ status: 'ready', timestamp: new Date().toISOString() });
   } catch (error) {
-    logger.error({ err: error }, 'readiness check failed');
-    res.status(503).json({ status: 'unavailable' });
+    logger.error({ err: error }, 'readiness check failed: database');
+    checks.database = 'failed';
   }
+  const redis = await redisHealthy();
+  if (redis !== null) checks.redis = redis ? 'ok' : 'failed';
+  if (Object.values(checks).includes('failed')) return res.status(503).json({ status: 'unavailable', checks });
+  return res.json({ status: 'ready', timestamp: new Date().toISOString(), checks });
 });
+
+// Prometheus metrics. Off (404) without METRICS_TOKEN; otherwise Authorization: Bearer <METRICS_TOKEN>. Meant for the
+// monitoring system on the internal network: the public proxy should not route it (deploy/Caddyfile).
+app.get('/metrics', metricsHandler);
 
 // The reverse proxy's on-demand TLS check (which hosts may get a certificate). Off without TLS_ASK_SECRET.
 app.use('/internal/tls', internalTlsRoutes);

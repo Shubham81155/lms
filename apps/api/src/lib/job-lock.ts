@@ -1,5 +1,6 @@
 import { basePrisma } from './prisma';
 import { logger } from './logger';
+import { jobRan } from './metrics';
 
 // Background jobs (trial expiry, scheduled deletions, domain re-checks, ...) run in every API process, so on
 // several machines each would do the same work at once. A job takes a PostgreSQL advisory lock for its run:
@@ -20,14 +21,23 @@ const JOB_LOCK_NAMESPACE = 7_420_001;
  * taken elsewhere. `maxMs` bounds how long the lock may be held (the holding transaction times out after it).
  */
 export async function withJobLock<T>(name: string, fn: () => Promise<T>, maxMs = 10 * 60_000): Promise<T | null> {
-  return basePrisma.$transaction(
-    async (tx) => {
-      const [row] = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(${JOB_LOCK_NAMESPACE}::int, ${lockKey(name)}::int) AS locked`;
-      if (!row?.locked) return null;
-      return fn();
-    },
-    { timeout: maxMs, maxWait: 10_000 }
-  );
+  let ran = false;
+  try {
+    const result = await basePrisma.$transaction(
+      async (tx) => {
+        const [row] = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(${JOB_LOCK_NAMESPACE}::int, ${lockKey(name)}::int) AS locked`;
+        if (!row?.locked) return null;
+        ran = true;
+        return fn();
+      },
+      { timeout: maxMs, maxWait: 10_000 }
+    );
+    jobRan(name, ran ? 'ok' : 'skipped');
+    return result;
+  } catch (err) {
+    jobRan(name, 'error');
+    throw err;
+  }
 }
 
 const timers = new Map<string, NodeJS.Timeout>();

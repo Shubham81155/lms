@@ -11,6 +11,8 @@ The production stack is `docker-compose.prod.yml` at the repository root:
 | `postgres` | PostgreSQL 16, volume `pgdata`; `deploy/init-db-prod.sh` creates `lms_app` on first start | internal network only |
 | `redis` | shared rate-limit counters (no persistence) | internal network only |
 | `clamav` | optional virus scanning (`COMPOSE_PROFILES=scan`) | internal network only (+ egress for signature updates) |
+| `backup` | optional nightly database backups (`COMPOSE_PROFILES=backup`) | internal network only (+ egress for the S3 copy) |
+| `prometheus`, `alertmanager` | optional metrics and alerts (`COMPOSE_PROFILES=monitoring`) | Prometheus UI on 127.0.0.1 only; Alertmanager internal (+ egress for notifications) |
 
 Configuration lives in one `.env` file next to the compose file, copied from `.env.production.example`.
 Compose hands each container only the variables it needs: the database superuser password and the Cloudflare
@@ -177,7 +179,7 @@ What must be backed up, and how:
 
 | What | Where | How |
 |---|---|---|
-| Database | volume `pgdata` | nightly logical dump, kept off the server: `docker compose -f docker-compose.prod.yml exec -T postgres pg_dump -U postgres -Fc enterprise_lms > lms-$(date +%F).dump`. Test a restore (`pg_restore`) regularly. For point-in-time recovery use a managed PostgreSQL or WAL archiving (e.g. pgBackRest/WAL-G) instead. |
+| Database | volume `pgdata` | the `backup` service (`COMPOSE_PROFILES=backup`): nightly `pg_dump -Fc`, retention, optional encryption and a copy to S3-compatible storage; `restore.sh` and a monthly `restore-drill.sh`. Setup, restore steps and the drill: [operations.md](operations.md). For point-in-time recovery use a managed PostgreSQL or WAL archiving (e.g. pgBackRest/WAL-G) instead. |
 | Uploaded files | volume `uploads` (`STORAGE_DRIVER=local`) or the S3 bucket | copy the volume (`docker run --rm -v enterprise-lms_uploads:/d -v $PWD:/b alpine tar czf /b/uploads.tgz -C /d .`) or enable bucket versioning/replication |
 | `PII_ENCRYPTION_KEY`, `JWT_SECRET`, the rest of `.env` | the server | a password manager or secret store, **separately** from the database dumps: dumps are useless without the key, and dangerous next to it |
 | Certificates | volume `caddy-data` | optional; restoring it avoids re-issuing (rate limits) |

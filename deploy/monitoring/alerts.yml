@@ -1,0 +1,132 @@
+# Alert rules. The metric names and labels come from apps/api/src/lib/metrics.ts and deploy/backup/backup.sh:
+# change them together. What each alert means and what to do first: docs/deployment/operations.md.
+groups:
+  - name: lms-availability
+    rules:
+      - alert: ApiDown
+        expr: up{job="lms-api"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "The API cannot be scraped"
+          description: "Prometheus has not reached api:4000/metrics for 2 minutes: the API is down, unreachable, or METRICS_TOKEN differs between the api and monitoring containers."
+
+      - alert: DatabaseDown
+        expr: lms_db_up == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "The API cannot reach PostgreSQL"
+          description: "lms_db_up has been 0 for a minute. Check the postgres container, its disk and connection limit."
+
+  - name: lms-http
+    rules:
+      - alert: HighServerErrorRate
+        expr: |
+          sum(rate(http_request_duration_seconds_count{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(http_request_duration_seconds_count[5m])), 0.001) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "More than 5% of requests fail with a 5xx"
+          description: "{{ $value | humanizePercentage }} of requests over the last 5 minutes. Look at the API log for the failing routes (the route label of http_request_duration_seconds shows which)."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 2
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "95% of requests take longer than 2 seconds"
+          description: "p95 latency is {{ $value | humanizeDuration }}. Check database load, slow routes and the API's memory."
+
+  - name: lms-jobs
+    rules:
+      # Background jobs report their last success per process (lib/job-lock.ts). The defaults run hourly or faster, so
+      # 3 hours without a success is a stuck job. If you raise a job's interval in .env, raise the threshold with it.
+      # `max by (job)` so that with several API replicas one that never gets the lock does not raise the alert.
+      - alert: BackgroundJobStale
+        expr: time() - max by (job) (lms_job_last_success_timestamp_seconds{job!="offboarding"}) > 3 * 3600
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Background job {{ $labels.job }} has not succeeded for over 3 hours"
+          description: "Hourly jobs (billing-overdue, trial-lifecycle, recheck-custom-domains) normally succeed every hour. See the API log for 'background job failed'."
+
+      # The offboarding job runs every minute by default (OFFBOARDING_JOB_INTERVAL_SECONDS).
+      - alert: OffboardingJobStale
+        expr: time() - max by (job) (lms_job_last_success_timestamp_seconds{job="offboarding"}) > 1800
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "The offboarding job has not succeeded for 30 minutes"
+          description: "Exports and scheduled deletions are not being processed."
+
+      - alert: BackgroundJobFailing
+        expr: sum by (job) (increase(lms_job_runs_total{result="error"}[1h])) >= 3
+        labels: { severity: warning }
+        annotations:
+          summary: "Background job {{ $labels.job }} failed {{ $value }} times in the last hour"
+          description: "See the API log for the error."
+
+  - name: lms-queues
+    rules:
+      - alert: EmailQueueBacklog
+        expr: lms_email_queue_depth > 500
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value }} notification e-mails are waiting to be sent"
+          description: "Is SMTP_URL reachable and accepting mail? The dispatcher retries; a backlog that does not shrink means delivery is failing."
+
+      - alert: WebhookRetryBacklog
+        expr: lms_webhook_retry_queue_depth > 200
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $value }} webhook deliveries are waiting for a retry"
+          description: "Customer endpoints are failing or slow. The organisation's integrations screen shows which."
+
+  - name: lms-process
+    rules:
+      - alert: ApiHighMemory
+        expr: process_resident_memory_bytes{job="lms-api"} > 1.5 * 1024 * 1024 * 1024
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "The API uses {{ $value | humanize1024 }}B of memory"
+          description: "A steady climb suggests a leak, a sudden jump a large export or upload. Restart if it keeps growing and report it."
+
+      - alert: ApiEventLoopLag
+        expr: nodejs_eventloop_lag_p99_seconds{job="lms-api"} > 1
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "The API's event loop is blocked for up to {{ $value | humanizeDuration }}"
+          description: "CPU-bound work is starving requests."
+
+  - name: lms-backup
+    rules:
+      - alert: BackupTargetDown
+        expr: up{job="lms-backup"} == 0
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "The backup service cannot be scraped"
+          description: "Start it: docker compose -f docker-compose.prod.yml --profile backup up -d backup. Without it there are no backups."
+
+      - alert: BackupStale
+        expr: time() - backup_last_success_timestamp_seconds > 26 * 3600
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "No successful database backup for over 26 hours"
+          description: "Nightly backups run at BACKUP_AT. A value of 0 (never) means none has succeeded yet. See `docker compose logs backup`."
+
+      - alert: BackupFailed
+        expr: backup_last_run_success == 0
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "The last database backup run failed"
+          description: "pg_dump, encryption or the upload to S3 failed: `docker compose logs backup` has the error."
