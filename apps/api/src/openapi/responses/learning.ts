@@ -292,6 +292,13 @@ export const RESPONSES: ResponseTable = {
     response: body(z.object({ message: z.string(), id: z.string(), status: z.literal('ARCHIVED') })),
     errors: [404],
   },
+  'PUT /api/v1/courses/:id/instructors': {
+    response: data(z.array(z.object({
+      isPrimary: z.boolean(),
+      user: z.object({ id: z.string(), firstName: z.string(), lastName: z.string(), email: z.string(), role: z.string() }),
+    }))),
+    errors: [400, 403, 404],
+  },
   'GET /api/v1/courses/:id/modules': { response: data(z.array(ModuleWithLessons)), errors: [403, 404] },
   'GET /api/v1/courses/:id/progress': {
     response: data(z.object({ completedLessonIds: z.array(z.string()), totalLessons: z.number(), progressPercent: z.number() })),

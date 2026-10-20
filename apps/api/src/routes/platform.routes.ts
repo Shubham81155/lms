@@ -275,11 +275,13 @@ export const ssoSchema = z.object({
   clientSecret: z.string().min(8).max(2048).optional(),
   enabled: z.boolean(),
   allowedDomains: z.array(domain).max(50).default([]),
-});
+  /** Create a learner account at someone's first sign-in. Only with allowedDomains, so it never admits the whole world. */
+  autoCreateAccounts: z.boolean().default(false),
+}).refine((b) => !b.autoCreateAccounts || b.allowedDomains.length > 0, { message: 'Creating accounts at first sign-in needs at least one allowed e-mail domain', path: ['allowedDomains'] });
 
-const ssoView = (c: any, customDomain: string | null) => ({
-  issuer: c.issuer, clientId: c.clientId, enabled: c.enabled, allowedDomains: c.allowedDomains, hasSecret: true,
-  redirectUris: redirectUrisFor({ customDomain }),
+const ssoView = (c: any, tenant: { slug: string; customDomain: string | null }) => ({
+  issuer: c.issuer, clientId: c.clientId, enabled: c.enabled, allowedDomains: c.allowedDomains, autoCreateAccounts: c.autoCreateAccounts, hasSecret: true,
+  redirectUris: redirectUrisFor(tenant),
 });
 
 router.get(
@@ -288,10 +290,11 @@ router.get(
     const tenantId = tenantIdOf(req);
     const [c, tenant] = await Promise.all([
       prisma.ssoConnection.findUnique({ where: { tenantId } }),
-      prisma.tenant.findUnique({ where: { id: tenantId }, select: { customDomain: true } }),
+      prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true, customDomain: true } }),
     ]);
+    const domain = { slug: tenant?.slug ?? '', customDomain: tenant?.customDomain ?? null };
     // Always listed, even before a connection exists, so the administrator can register them first.
-    return res.json({ data: c ? ssoView(c, tenant?.customDomain ?? null) : null, redirectUris: redirectUrisFor({ customDomain: tenant?.customDomain ?? null }) });
+    return res.json({ data: c ? ssoView(c, domain) : null, redirectUris: redirectUrisFor(domain) });
   })
 );
 
@@ -321,14 +324,15 @@ router.put(
       clientId: body.clientId,
       enabled: body.enabled,
       allowedDomains: [...new Set(body.allowedDomains)],
+      autoCreateAccounts: body.autoCreateAccounts,
       ...(body.clientSecret ? { clientSecretEnc: encryptSecret(body.clientSecret) } : {}),
     };
     const saved = existing
       ? await prisma.ssoConnection.update({ where: { tenantId }, data })
       : await prisma.ssoConnection.create({ data: { tenantId, ...data, clientSecretEnc: encryptSecret(body.clientSecret!) } });
-    await audit(req, 'SSO_CONFIG_UPDATED', 'SSO', saved.id, { issuer: data.issuer, clientId: data.clientId, enabled: data.enabled, allowedDomains: data.allowedDomains, secretChanged: !!body.clientSecret });
-    const owner = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { customDomain: true } });
-    return res.json({ data: ssoView(saved, owner?.customDomain ?? null) });
+    await audit(req, 'SSO_CONFIG_UPDATED', 'SSO', saved.id, { issuer: data.issuer, clientId: data.clientId, enabled: data.enabled, allowedDomains: data.allowedDomains, autoCreateAccounts: data.autoCreateAccounts, secretChanged: !!body.clientSecret });
+    const owner = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true, customDomain: true } });
+    return res.json({ data: ssoView(saved, { slug: owner?.slug ?? '', customDomain: owner?.customDomain ?? null }) });
   })
 );
 
@@ -352,7 +356,9 @@ export const samlSchema = z.object({
   emailAttribute: z.string().trim().min(1).max(200).default('email'),
   enabled: z.boolean(),
   allowedDomains: z.array(domain).max(50).default([]),
-});
+  /** As for OIDC: a learner account at the first sign-in, only with allowedDomains. */
+  autoCreateAccounts: z.boolean().default(false),
+}).refine((b) => !b.autoCreateAccounts || b.allowedDomains.length > 0, { message: 'Creating accounts at first sign-in needs at least one allowed e-mail domain', path: ['allowedDomains'] });
 
 /** What the administrator hands to the IdP: one entity id and ACS URL per origin the tenant can sign in from. */
 const samlSp = (tenant: { slug: string; customDomain: string | null }) => {
@@ -368,7 +374,7 @@ const samlView = (c: any) => {
     /* an expired pinned certificate is still shown, without details */
   }
   return {
-    entryPoint: c.entryPoint, idpIssuer: c.idpIssuer, emailAttribute: c.emailAttribute, enabled: c.enabled, allowedDomains: c.allowedDomains,
+    entryPoint: c.entryPoint, idpIssuer: c.idpIssuer, emailAttribute: c.emailAttribute, enabled: c.enabled, allowedDomains: c.allowedDomains, autoCreateAccounts: c.autoCreateAccounts,
     keyKind: key?.kind ?? null, keyFingerprint: key?.fingerprint ?? null, keyExpires: key?.notAfter ?? null,
   };
 };
@@ -417,12 +423,12 @@ router.put(
     }
     const data = {
       entryPoint: body.entryPoint, idpIssuer: body.idpIssuer, emailAttribute: body.emailAttribute, enabled: body.enabled,
-      allowedDomains: [...new Set(body.allowedDomains)], ...(pem ? { idpCert: pem } : {}),
+      allowedDomains: [...new Set(body.allowedDomains)], autoCreateAccounts: body.autoCreateAccounts, ...(pem ? { idpCert: pem } : {}),
     };
     const saved = existing
       ? await prisma.samlConnection.update({ where: { tenantId }, data })
       : await prisma.samlConnection.create({ data: { tenantId, ...data, idpCert: pem! } });
-    await audit(req, 'SAML_CONFIG_UPDATED', 'SSO', saved.id, { entryPoint: data.entryPoint, idpIssuer: data.idpIssuer, enabled: data.enabled, allowedDomains: data.allowedDomains, keyFingerprint: fingerprint ?? 'unchanged' });
+    await audit(req, 'SAML_CONFIG_UPDATED', 'SSO', saved.id, { entryPoint: data.entryPoint, idpIssuer: data.idpIssuer, enabled: data.enabled, allowedDomains: data.allowedDomains, autoCreateAccounts: data.autoCreateAccounts, keyFingerprint: fingerprint ?? 'unchanged' });
     return res.json({ data: samlView(saved) });
   })
 );

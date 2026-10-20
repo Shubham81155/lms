@@ -102,7 +102,7 @@ describe('authentication cannot be bypassed', () => {
 
   describe('server-side session checks', () => {
     const session = (over: Record<string, unknown> = {}) =>
-      fake.user.findFirst.mockResolvedValue({ role: 'STUDENT', status: 'ACTIVE', tokenVersion: 0, ...over });
+      fake.user.findFirst.mockResolvedValue({ role: 'STUDENT', status: 'ACTIVE', tokenVersion: 0, tenant: { status: 'ACTIVE' }, ...over });
 
     it('rejects a token issued before the user token version was bumped', async () => {
       session({ tokenVersion: 3 });
@@ -121,6 +121,13 @@ describe('authentication cannot be bypassed', () => {
       expect((await request(app).get('/api/v1/courses').set('Authorization', `Bearer ${tokenFor()}`)).status).toBe(401);
       fake.user.findFirst.mockResolvedValue(null);
       expect((await request(app).get('/api/v1/courses').set('Authorization', `Bearer ${tokenFor()}`)).status).toBe(401);
+    });
+
+    it('rejects a valid token of a suspended organisation with 403', async () => {
+      session({ tenant: { status: 'SUSPENDED' } });
+      const res = await request(app).get('/api/v1/courses').set('Authorization', `Bearer ${tokenFor()}`);
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('TENANT_SUSPENDED');
     });
 
     it('uses the role stored in the database, not the one in the token', async () => {
@@ -144,7 +151,7 @@ describe('authentication cannot be bypassed', () => {
   });
 
   it('enforces roles: a student token cannot reach admin routes', async () => {
-    fake.user.findFirst.mockResolvedValue({ role: 'STUDENT', status: 'ACTIVE', tokenVersion: 0 });
+    fake.user.findFirst.mockResolvedValue({ role: 'STUDENT', status: 'ACTIVE', tokenVersion: 0, tenant: { status: 'ACTIVE' } });
     const res = await request(app)
       .get('/api/v1/admin/stats')
       .set('Authorization', `Bearer ${tokenFor()}`);
@@ -310,10 +317,12 @@ describe('POST /auth/login', () => {
     expect(fake.user.findFirst).not.toHaveBeenCalled();
   });
 
-  it('rejects a suspended tenant', async () => {
+  it('rejects a suspended tenant, saying it is suspended', async () => {
     fake.tenant.findFirst.mockResolvedValue({ id: 'ten_1', status: 'SUSPENDED' });
     const res = await login({ email: 'a@x.edu', password: PASSWORD });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('TENANT_SUSPENDED');
+    expect(fake.user.findFirst).not.toHaveBeenCalled();
   });
 
   it('does not accept a plaintext value stored as the password hash', async () => {

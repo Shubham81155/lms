@@ -906,6 +906,7 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
     plagiarismStatus: check ? 'PENDING' : null,
     plagiarismAttempts: 0,
     plagiarismNextAttemptAt: check ? now : null,
+    plagiarismScanId: null,
   };
   const { submission, version } = await runInTenantTransaction(tenantId, async (tx) => {
     const submission = await tx.assignmentSubmission.upsert({

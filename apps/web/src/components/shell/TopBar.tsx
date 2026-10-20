@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, ChevronRight, Menu, Search } from "lucide-react";
+import { Bell, ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import clsx from "clsx";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -24,10 +24,13 @@ interface TopBarProps {
   currentLabel: string;
   drawerOpen: boolean;
   onOpenMenu: () => void;
+  /** Desktop only: whether the sidebar rail is shrunk to icons, and how to switch it. */
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
 }
 
 /** What stays across the top once navigation lives in the sidebar: where you are, search, alerts, theme. */
-export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, drawerOpen, onOpenMenu }) => {
+export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, drawerOpen, onOpenMenu, sidebarCollapsed, onToggleSidebar }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [query, setQuery] = useState("");
   const notifications = useNotifications();
@@ -48,6 +51,17 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
       <div className="lg:hidden">
         <BrandLogo href={`/${area}`} compact />
       </div>
+      <button
+        type="button"
+        onClick={onToggleSidebar}
+        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-expanded={!sidebarCollapsed}
+        aria-controls="app-sidebar"
+        className="hidden rounded-xl border border-line bg-surface p-2 text-ink-muted outline-none transition-colors hover:bg-raised hover:text-ink focus-visible:ring-2 focus-visible:ring-brand lg:inline-flex"
+      >
+        {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+      </button>
 
       <nav aria-label="Breadcrumb" className="hidden items-center gap-1.5 text-sm lg:flex">
         <span className="text-ink-muted">{AREA_LABEL[area]}</span>

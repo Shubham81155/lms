@@ -1,4 +1,5 @@
-import { prisma } from './prisma';
+import type { Prisma } from '@enterprise-lms/database';
+import { prisma, runInTenantTransaction } from './prisma';
 import { HttpError } from './http';
 
 export const FEATURE_KEYS = ['lti13', 'sso', 'webhooks', 'scim', 'aiAssistant'] as const;
@@ -37,10 +38,21 @@ export async function requireFeature(tenantId: string, key: FeatureKey): Promise
   }
 }
 
-/** Throws 409 when the tenant has a seat quota and every seat is taken by an active/invited user. */
-export async function assertSeatAvailable(tenantId: string): Promise<void> {
-  const t = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { seatQuota: true } });
+/**
+ * Throws 409 when the tenant has a seat quota and every seat is taken by an active/invited user. The tenant
+ * row stays locked until the transaction ends, so a check and an insert in it cannot race another one.
+ */
+async function assertSeatAvailable(tenantId: string, tx: Prisma.TransactionClient): Promise<void> {
+  const [t] = await tx.$queryRaw<{ seatQuota: number | null }[]>`SELECT "seatQuota" FROM "Tenant" WHERE id = ${tenantId} FOR UPDATE`;
   if (t?.seatQuota == null) return;
-  const used = await prisma.user.count({ where: { tenantId, status: { in: ['ACTIVE', 'INVITED'] } } });
+  const used = await tx.user.count({ where: { tenantId, status: { in: ['ACTIVE', 'INVITED'] } } });
   if (used >= t.seatQuota) throw new HttpError(409, `Seat quota of ${t.seatQuota} reached`);
+}
+
+/** Creates an account in `fn` only if a seat is free, with the seat check and the insert in one transaction. */
+export function withSeat<T>(tenantId: string, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  return runInTenantTransaction(tenantId, async (tx) => {
+    await assertSeatAvailable(tenantId, tx);
+    return fn(tx);
+  });
 }

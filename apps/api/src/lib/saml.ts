@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import { SAML, generateServiceProviderMetadata, Profile, ValidateInResponseTo } from '@node-saml/node-saml';
 import { config } from '../config';
 import { assertSafeWebhookUrl as assertSafeUrl } from './webhooks';
+import { splitName } from './sso-user';
+import { cookieName } from './cookie-name';
 
 // SAML 2.0 web-browser SSO as a service provider. XML signature and condition checking is done by
 // @node-saml/node-saml; this file adds the parts it leaves to the application:
@@ -15,7 +17,7 @@ import { assertSafeWebhookUrl as assertSafeUrl } from './webhooks';
 export class SamlError extends Error {}
 
 const FLOW_AUDIENCE = 'saml-flow';
-export const SAML_FLOW_COOKIE = 'lms_saml';
+export const SAML_FLOW_COOKIE = cookieName('lms_saml');
 const CLOCK_SKEW_MS = 60_000;
 const MAX_ASSERTION_AGE_MS = 10 * 60_000;
 
@@ -140,6 +142,25 @@ export function responseSucceeded(samlResponseBase64: string): boolean {
  * Stable identifier to bind to the account, or null when the IdP issues a different one each time
  * (a transient NameID), in which case the account is found by e-mail on every sign-in.
  */
+// Name attributes as Azure AD / Entra, Okta, Google, Shibboleth (eduPerson OIDs) and ADFS send them.
+const GIVEN_NAME = ['givenName', 'firstName', 'given_name', 'urn:oid:2.5.4.42', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'];
+const SURNAME = ['sn', 'surname', 'lastName', 'family_name', 'urn:oid:2.5.4.4', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'];
+const DISPLAY_NAME = ['displayName', 'cn', 'name', 'urn:oid:2.16.840.1.113730.3.1.241', 'http://schemas.microsoft.com/identity/claims/displayname'];
+
+/** The person's names from the assertion's attributes, for an account created at first sign-in. */
+export function namesFromProfile(profile: Profile): { firstName: string | null; lastName: string | null } {
+  const bag = profile as unknown as Record<string, unknown>;
+  const pick = (keys: string[]) => {
+    for (const k of keys) {
+      const v = bag[k];
+      const s = typeof v === 'string' ? v : Array.isArray(v) && typeof v[0] === 'string' ? v[0] : null;
+      if (s?.trim()) return s.trim();
+    }
+    return null;
+  };
+  return splitName(pick(GIVEN_NAME), pick(SURNAME), pick(DISPLAY_NAME));
+}
+
 export function subjectFromProfile(profile: Profile, idpIssuer: string): string | null {
   if (!profile.nameID || /:transient$/i.test(profile.nameIDFormat ?? '')) return null;
   const subject = `saml:${idpIssuer}|${profile.nameID}`;

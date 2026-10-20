@@ -526,3 +526,49 @@ describe('gradebook responses match the API description', () => {
     expect(parsedLearner.success, JSON.stringify(learner.body)).toBe(true);
   });
 });
+
+describe('administrators choose who teaches a course', () => {
+  const PATH = '/api/v1/courses/c2/instructors';
+  const team = () => admin.courseInstructor.findMany({ where: { courseId: 'c2' }, orderBy: { userId: 'asc' }, select: { userId: true, isPrimary: true } });
+
+  it('replaces the team, notifies the people added and audits the change', async () => {
+    const a = await as('admin');
+    const res = await a.put(PATH).send({ instructors: [{ userId: 'teacher', isPrimary: true }, { userId: 'ta' }] });
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(2);
+    expect(await team()).toEqual([{ userId: 'ta', isPrimary: false }, { userId: 'teacher', isPrimary: true }]);
+    expect(await admin.notification.count({ where: { userId: 'teacher', title: 'You now teach "Course c2"' } })).toBe(1);
+    expect(await admin.notification.count({ where: { userId: 'teacher2', title: { contains: 'You now teach' } } })).toBe(0);
+    const log = await admin.auditLog.findFirst({ where: { action: 'COURSE_INSTRUCTORS_CHANGED', resourceId: 'c2' }, orderBy: { createdAt: 'desc' } });
+    expect(log?.diffJson).toMatchObject({ added: ['teacher', 'ta'], removed: ['teacher2'] });
+
+    // The new teacher now sees the course among their own; the removed one no longer can edit it.
+    expect((await (await as('teacher2')).put('/api/v1/courses/c2').send({ title: 'Hijack' })).status).toBe(403);
+  });
+
+  it('refuses a bad team', async () => {
+    const a = await as('admin');
+    const bad = (instructors: unknown[]) => a.put(PATH).send({ instructors });
+    expect((await bad([{ userId: 'teacher' }])).status).toBe(400); // no main teacher
+    expect((await bad([{ userId: 'teacher', isPrimary: true }, { userId: 'teacher2', isPrimary: true }])).status).toBe(400);
+    expect((await bad([{ userId: 'teacher', isPrimary: true }, { userId: 'teacher', isPrimary: false }])).status).toBe(400);
+    expect((await bad([{ userId: 'ta', isPrimary: true }])).status).toBe(400); // assistants cannot be the main teacher
+    expect((await bad([{ userId: 's1', isPrimary: true }])).status).toBe(400); // learners cannot teach
+    expect((await bad([{ userId: 'm-teacher', isPrimary: true }])).status).toBe(400); // another organisation
+    expect((await a.put('/api/v1/courses/m1/instructors').send({ instructors: [] })).status).toBe(404);
+    expect(await team()).toEqual([{ userId: 'ta', isPrimary: false }, { userId: 'teacher', isPrimary: true }]);
+  });
+
+  it('is for administrators only', async () => {
+    expect((await (await as('teacher')).put(PATH).send({ instructors: [{ userId: 'teacher', isPrimary: true }] })).status).toBe(403);
+    expect((await (await as('s1')).put(PATH).send({ instructors: [] })).status).toBe(403);
+  });
+
+  it('can leave a course without teachers, and put them back', async () => {
+    const a = await as('admin');
+    expect((await a.put(PATH).send({ instructors: [] })).status).toBe(200);
+    expect(await team()).toEqual([]);
+    expect((await a.put(PATH).send({ instructors: [{ userId: 'teacher2', isPrimary: true }] })).status).toBe(200);
+    expect(await team()).toEqual([{ userId: 'teacher2', isPrimary: true }]);
+  });
+});

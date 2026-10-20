@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { ResponseDoc } from './responses/types';
 import { forgotSchema, loginSchema, resetSchema, verifySchema } from '../routes/auth.routes';
+import { confirmRequestSchema, organizationRequestSchema, slugQuery } from '../routes/organizations.routes';
+import { approveSchema, createTenantSchema, rejectSchema as rejectRequestSchema, requestListQuery, tenantStatusSchema } from '../routes/operator.routes';
 import { createCourseSchema, listQuery as courseListQuery, updateCourseSchema } from '../routes/courses.routes';
 import {
   assignmentSubmissionSchema,
@@ -331,15 +333,23 @@ const message = z.object({ message: z.string() });
 /** Keyed `METHOD /express/style/path`. */
 export const DOCS: Record<string, OperationDoc> = {
   'POST /api/v1/auth/login': {
-    summary: 'Sign in. Sets the session cookie; no token is returned to JavaScript.',
+    summary: 'Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended.',
     body: loginSchema,
     response: ok(z.object({ user: PublicUser })),
     errors: [400, 401, 403, 423, 429],
   },
   'POST /api/v1/auth/logout': { summary: 'Sign out. Invalidates the session token, not just the cookie.', response: ok(message) },
-  'GET /api/v1/auth/me': { summary: 'The signed-in user. Rejects sessions whose account was since locked or suspended.', response: ok(z.object({ user: PublicUser })) },
+  'GET /api/v1/auth/me': {
+    summary: 'The signed-in user. Rejects sessions whose account was since locked or suspended. `platformOperator` is true for super administrators of the platform operator organisation.',
+    response: ok(z.object({ user: PublicUser.extend({ platformOperator: z.boolean() }) })),
+  },
   'POST /api/v1/auth/forgot-password': { summary: 'Request a password reset e-mail. Always answers the same way, whether or not the address exists.', body: forgotSchema, response: ok(message), errors: [429] },
-  'POST /api/v1/auth/reset-password': { summary: 'Set a new password with a single-use reset token. Signs out every existing session.', body: resetSchema, response: ok(message), errors: [400, 429] },
+  'POST /api/v1/auth/reset-password': {
+    summary: 'Set a new password with a single-use reset token (also accepts an invitation). Signs out every existing session. `organization` names where to sign in, and its address.',
+    body: resetSchema,
+    response: ok(z.object({ message: z.string(), organization: z.object({ slug: z.string(), name: z.string(), url: z.string() }).optional() })),
+    errors: [400, 429],
+  },
   'POST /api/v1/auth/verify-email': { summary: 'Confirm an e-mail address with a single-use token.', body: verifySchema, response: ok(message), errors: [400, 429] },
 
   'GET /api/v1/courses': {
@@ -474,6 +484,35 @@ export const DOCS: Record<string, OperationDoc> = {
 
   // ---- bodies the handlers read without parseBody
   'GET /api/v1/operator/tenants': { summary: 'Platform operator: every organisation with its plan tier, features, seat quota and seats in use.' },
+  'POST /api/v1/operator/tenants': {
+    summary: 'Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited.',
+    body: createTenantSchema,
+    errors: [400, 409],
+  },
+  'PATCH /api/v1/operator/tenants/:id/status': {
+    summary: "Platform operator: suspend an organisation (nobody can sign in to it) or make it active again. Not the operator's own organisation. Audited in both trails.",
+    body: tenantStatusSchema,
+    errors: [400, 404, 409],
+  },
+  'GET /api/v1/operator/requests': { summary: 'Platform operator: organisation registration requests with the given status (default PENDING), newest first, a page at a time (`page`, `limit`, default 25). Only requests whose applicant confirmed their e-mail are listed. `expired`: a pending request older than its 30-day hold, which no longer reserves its address.', query: requestListQuery },
+  'POST /api/v1/operator/requests/:id/approve': {
+    summary: "Platform operator: approve a pending request. Creates the organisation with the chosen plan and seats, and invites the request's contact as its administrator. A request is decided once.",
+    body: approveSchema,
+    errors: [400, 404, 409],
+  },
+  'POST /api/v1/operator/requests/:id/reject': { summary: 'Platform operator: reject a pending request, freeing its address; the applicant is e-mailed the reason.', body: rejectRequestSchema, errors: [400, 404, 409] },
+  'GET /api/v1/organizations/availability': { summary: "Public: whether a new organisation could use this address. `url` is the web address it would have; `reason` says why not: invalid, reserved, taken (an organisation has it) or pending (another open request holds it).", query: slugQuery },
+  'GET /api/v1/organizations/lookup': { summary: "Public: an active organisation's name by its address, so the login page can confirm which organisation people sign in to.", query: slugQuery },
+  'POST /api/v1/organizations/requests': {
+    summary:
+      'Public: ask for an organisation. The applicant is e-mailed a link to confirm their address (valid 24 hours, during which the request holds the web address); only then does the request reach the platform operator. At most 3 open requests per e-mail address (429). 503 when the server cannot send e-mail. Off when ORG_REGISTRATION_ENABLED=false.',
+    body: organizationRequestSchema,
+  },
+  'POST /api/v1/organizations/requests/confirm': {
+    summary:
+      "Public: confirm the applicant's e-mail with the token from the confirmation link. The request goes to the platform operator's queue (operators are notified) and holds its address for 30 days. Confirming again reports the request's current state; 410 when the link has expired, 409 when the request was closed or its address taken meanwhile.",
+    body: confirmRequestSchema,
+  },
   'PATCH /api/v1/operator/tenants/:id': {
     summary: "Platform operator: change an organisation's tier, seat quota (not below the seats in use) or feature overrides (null returns a feature to the tier's default). Audited in the operator's and the organisation's trail.",
     body: planSchema,

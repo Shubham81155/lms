@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { canAccess, routeForRole } from "@/lib/roles";
+import { canView, homeFor, type Viewer } from "@/lib/roles";
 
 const API_URL = (process.env.API_URL || "http://localhost:4000").replace(/\/+$/, "");
 
@@ -12,32 +12,35 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const cookie = req.headers.get("cookie") ?? "";
 
-  let role: string | null = null;
+  let viewer: Viewer | null = null;
+  // The session cookie is lms_token, or __Host-lms_token in production; this matches both.
   if (cookie.includes("lms_token=")) {
     try {
       const res = await fetch(`${API_URL}/api/v1/auth/me`, {
         headers: { cookie },
         cache: "no-store",
       });
-      if (res.ok) role = (await res.json())?.user?.role ?? null;
+      const user = res.ok ? (await res.json())?.user : null;
+      if (user?.role) viewer = { role: user.role, platformOperator: user.platformOperator === true };
     } catch {
-      role = null;
+      viewer = null;
     }
   }
 
-  if (!role) {
+  if (!viewer) {
     const login = new URL("/login", req.url);
     login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
   }
 
-  if (!canAccess(role, pathname)) {
-    return NextResponse.redirect(new URL(routeForRole(role), req.url));
+  // Platform operators only use the platform console; everyone else stays out of it.
+  if (!canView(viewer, pathname)) {
+    return NextResponse.redirect(new URL(homeFor(viewer), req.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/student/:path*", "/teacher/:path*", "/admin/:path*", "/audit/:path*"],
+  matcher: ["/student/:path*", "/teacher/:path*", "/admin/:path*", "/audit/:path*", "/platform/:path*"],
 };

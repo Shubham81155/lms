@@ -1,7 +1,12 @@
 import { prisma } from './prisma';
+import { withSeat } from './features';
+import { HttpError } from './http';
+import { logAuditEvent } from './audit';
+import { dispatchWebhook } from './webhooks';
 
-// Account matching shared by every single sign-on protocol (OIDC and SAML). SSO never creates
-// accounts; it only signs in people who already exist in the tenant.
+// Account matching shared by every single sign-on protocol (OIDC and SAML). By default SSO only signs in
+// people who already exist in the tenant. An organisation can let it create a learner account at someone's
+// first sign-in, but only for its own allowed e-mail domains and only from a trusted e-mail address.
 
 export type SsoProvider = 'OIDC' | 'SAML';
 
@@ -17,10 +22,18 @@ export interface SsoIdentity {
    */
   emailTrusted: boolean;
   allowedDomains: string[];
+  /** The connection's autoCreateAccounts setting; ignored unless allowedDomains is non-empty. */
+  autoCreate?: boolean;
+  /** Names from the provider, used only when an account is created. */
+  firstName?: string | null;
+  lastName?: string | null;
+  /** For the audit entry of a created account. */
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 export type SsoResolution =
-  | { ok: true; user: { id: string; email: string; role: string; tenantId: string } }
+  | { ok: true; user: { id: string; email: string; role: string; tenantId: string }; created?: boolean }
   | { ok: false; reason: string };
 
 /**
@@ -41,7 +54,10 @@ export async function resolveSsoUser(id: SsoIdentity): Promise<SsoResolution> {
   if (!user) {
     if (!email || !id.emailTrusted) return { ok: false, reason: 'no verified email' };
     user = await prisma.user.findFirst({ where: { tenantId: id.tenantId, email } });
-    if (!user) return { ok: false, reason: 'no matching account' };
+    if (!user) {
+      if (!id.autoCreate || id.allowedDomains.length === 0) return { ok: false, reason: 'no matching account' };
+      return createSsoUser(id, email);
+    }
     if (id.subject && user.idpSubjectId && user.idpSubjectId !== id.subject && user.idpProvider === id.provider) {
       return { ok: false, reason: 'account is bound to a different identity' };
     }
@@ -60,4 +76,47 @@ export async function resolveSsoUser(id: SsoIdentity): Promise<SsoResolution> {
     },
   });
   return { ok: true, user };
+}
+
+/** Given and family name from the provider, or a full name split at its last space. */
+export function splitName(given?: string | null, family?: string | null, full?: string | null): { firstName: string | null; lastName: string | null } {
+  if (given?.trim() || family?.trim()) return { firstName: given?.trim() || null, lastName: family?.trim() || null };
+  const parts = full?.trim().split(/\s+/) ?? [];
+  if (parts.length === 0 || !parts[0]) return { firstName: null, lastName: null };
+  return parts.length === 1 ? { firstName: parts[0], lastName: null } : { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] };
+}
+
+const clean = (v: string | null | undefined, max = 100) => v?.replace(/\s+/g, ' ').trim().slice(0, max) || null;
+
+/** First sign-in of someone from an allowed domain: a learner account, bound to this identity. */
+async function createSsoUser(id: SsoIdentity, email: string): Promise<SsoResolution> {
+  let user;
+  try {
+    // The seat check and the insert are one transaction, so two first sign-ins cannot both take the last seat.
+    user = await withSeat(id.tenantId, (tx) => tx.user.create({
+      data: {
+        tenantId: id.tenantId,
+        email,
+        firstName: clean(id.firstName) ?? email.split('@')[0].slice(0, 100),
+        lastName: clean(id.lastName) ?? '-',
+        role: 'STUDENT', // staff are promoted by an administrator
+        status: 'ACTIVE',
+        passwordHash: null, // signs in through the identity provider
+        emailVerified: true,
+        lastLoginAt: new Date(),
+        ...(id.subject ? { idpProvider: id.provider, idpSubjectId: id.subject } : {}),
+      },
+    }));
+  } catch (err: any) {
+    if (err instanceof HttpError && err.status === 409) return { ok: false, reason: 'no seats left' };
+    // Two first sign-ins at once: the other one created the account, so sign in as it.
+    if (err?.code === 'P2002') return resolveSsoUser({ ...id, autoCreate: false });
+    throw err;
+  }
+  await logAuditEvent({
+    tenantId: id.tenantId, userId: user.id, action: 'SSO_USER_CREATED', resourceType: 'USER', resourceId: user.id,
+    ipAddress: id.ipAddress, userAgent: id.userAgent, diffJson: { provider: id.provider, email },
+  });
+  void dispatchWebhook(id.tenantId, 'user.provisioned', { userId: user.id, email });
+  return { ok: true, user, created: true };
 }

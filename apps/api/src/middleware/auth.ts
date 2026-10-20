@@ -3,9 +3,12 @@ import jwt from 'jsonwebtoken';
 import { runWithTenant } from '@enterprise-lms/database';
 import { UserRole } from '@enterprise-lms/security';
 import { config } from '../config';
-import { loadSession, sessionIsValid } from '../lib/session';
+import { loadSession, sessionIsValid, tenantIsBlocked, TENANT_SUSPENDED_MESSAGE } from '../lib/session';
+import { HttpError } from '../lib/http';
+import { cookieName } from '../lib/cookie-name';
 
-export const AUTH_COOKIE = 'lms_token';
+/** The session cookie: `__Host-lms_token` in production (see lib/cookie-name.ts), `lms_token` elsewhere. */
+export const AUTH_COOKIE = cookieName('lms_token');
 
 export interface AuthUser {
   id: string;
@@ -54,9 +57,13 @@ export function setAuthCookie(res: Response, token: string): void {
   });
 }
 
-/** Issues the session cookie for a user, stamped with their current token version. */
+/**
+ * Issues the session cookie for a user, stamped with their current token version. Refuses (403) when the
+ * organisation is suspended, whichever sign-in path (password, SSO, LTI) got here.
+ */
 export async function startSession(res: Response, user: { id: string; role: string; email: string; tenantId: string }): Promise<void> {
   const state = await loadSession(user.id, user.tenantId, true);
+  if (tenantIsBlocked(state?.tenantStatus)) throw new HttpError(403, TENANT_SUSPENDED_MESSAGE);
   setAuthCookie(res, generateToken({ ...user, tokenVersion: state?.tokenVersion ?? 0 }));
 }
 
@@ -85,15 +92,16 @@ export function verifyToken(token: string): (AuthUser & { tv: number }) | null {
 }
 
 /**
- * Verifies the token and re-checks the user server-side (still active, token not revoked). The role
- * comes from the database, not the token, so a demotion applies immediately.
+ * Verifies the token and re-checks the user server-side (still active, token not revoked, organisation
+ * not suspended). The role comes from the database, not the token, so a demotion applies immediately.
  */
-async function authenticate(req: Request): Promise<AuthUser | null> {
+async function authenticate(req: Request): Promise<AuthUser | null | 'TENANT_SUSPENDED'> {
   const token = extractToken(req);
   const claims = token ? verifyToken(token) : null;
   if (!claims) return null;
   const state = await loadSession(claims.id, claims.tenantId);
   if (!sessionIsValid(state, claims.tv)) return null;
+  if (tenantIsBlocked(state.tenantStatus)) return 'TENANT_SUSPENDED';
   return { id: claims.id, role: state.role as UserRole, email: claims.email, tenantId: claims.tenantId };
 }
 
@@ -105,6 +113,8 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
   authenticate(req).then(
     (user) => {
       if (!user) return res.status(401).json({ error: 'Unauthorized: Invalid or expired token' });
+      // 403, not 401: the session is fine, the organisation is not. The web app shows the message.
+      if (user === 'TENANT_SUSPENDED') return res.status(403).json({ error: TENANT_SUSPENDED_MESSAGE, code: 'TENANT_SUSPENDED' });
       req.user = user;
       req.tenantId = user.tenantId;
       // Everything downstream (handlers, audit logging) runs scoped to this tenant at the database.
@@ -118,7 +128,7 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
 export const optionalAuth = (req: Request, _res: Response, next: NextFunction) => {
   authenticate(req).then(
     (user) => {
-      if (!user) return next();
+      if (!user || user === 'TENANT_SUSPENDED') return next();
       req.user = user;
       req.tenantId = user.tenantId;
       return runWithTenant(user.tenantId, () => next());

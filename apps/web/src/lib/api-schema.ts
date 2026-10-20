@@ -45,7 +45,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Branding and feature flags of the tenant resolved from the host or x-tenant-id (used by the login page). */
+        /** Branding and feature flags of the tenant resolved from the host or x-tenant-id (used by the login page). 404 when no organisation uses the address; 403 with code TENANT_SUSPENDED when it is suspended. */
         get: operations["getTenantConfig"];
         put?: never;
         post?: never;
@@ -862,7 +862,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in. Sets the session cookie; no token is returned to JavaScript. */
+        /** Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended. */
         post: operations["postAuthLogin"];
         delete?: never;
         options?: never;
@@ -894,7 +894,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The signed-in user. Rejects sessions whose account was since locked or suspended. */
+        /** The signed-in user. Rejects sessions whose account was since locked or suspended. `platformOperator` is true for super administrators of the platform operator organisation. */
         get: operations["getAuthMe"];
         put?: never;
         post?: never;
@@ -998,7 +998,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Set a new password with a single-use reset token. Signs out every existing session. */
+        /** Set a new password with a single-use reset token (also accepts an invitation). Signs out every existing session. `organization` names where to sign in, and its address. */
         post: operations["postAuthResetPassword"];
         delete?: never;
         options?: never;
@@ -1594,6 +1594,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/courses/{id}/instructors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Set who teaches a course (administrators only). Teachers must be active or invited instructors or teaching assistants of the organisation; exactly one main teacher, who must be an instructor. People added are notified. */
+        put: operations["putCoursesIdInstructors"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/courses/{id}/lessons/{lessonId}": {
         parameters: {
             query?: never;
@@ -2025,6 +2042,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/copyleaks/{tenantSlug}/{submissionId}/{status}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Status webhooks from Copyleaks (completed, error, creditsChecked, indexed), authenticated by the x-lms-token header (an HMAC of the tenant, submission and scan id) set when the scan was sent. A result for a superseded scan is acknowledged and dropped. */
+        post: operations["postIntegrationsCopyleaksTenantSlugSubmissionIdStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/livekit": {
         parameters: {
             query?: never;
@@ -2281,6 +2315,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operator/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: organisation registration requests with the given status (default PENDING), newest first, a page at a time (`page`, `limit`, default 25). Only requests whose applicant confirmed their e-mail are listed. `expired`: a pending request older than its 30-day hold, which no longer reserves its address. */
+        get: operations["getOperatorRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: approve a pending request. Creates the organisation with the chosen plan and seats, and invites the request's contact as its administrator. A request is decided once. */
+        post: operations["postOperatorRequestsIdApprove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: reject a pending request, freeing its address; the applicant is e-mailed the reason. */
+        post: operations["postOperatorRequestsIdReject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operator/tenants": {
         parameters: {
             query?: never;
@@ -2291,7 +2376,8 @@ export interface paths {
         /** Platform operator: every organisation with its plan tier, features, seat quota and seats in use. */
         get: operations["getOperatorTenants"];
         put?: never;
-        post?: never;
+        /** Platform operator: create an organisation (active) and its first administrator, who is e-mailed an invitation to choose a password. Seats default to 100; null means unlimited. */
+        post: operations["postOperatorTenants"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2313,6 +2399,91 @@ export interface paths {
         head?: never;
         /** Platform operator: change an organisation's tier, seat quota (not below the seats in use) or feature overrides (null returns a feature to the tier's default). Audited in the operator's and the organisation's trail. */
         patch: operations["patchOperatorTenantsId"];
+        trace?: never;
+    };
+    "/api/v1/operator/tenants/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Platform operator: suspend an organisation (nobody can sign in to it) or make it active again. Not the operator's own organisation. Audited in both trails. */
+        patch: operations["patchOperatorTenantsIdStatus"];
+        trace?: never;
+    };
+    "/api/v1/organizations/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public: whether a new organisation could use this address. `url` is the web address it would have; `reason` says why not: invalid, reserved, taken (an organisation has it) or pending (another open request holds it). */
+        get: operations["getOrganizationsAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public: an active organisation's name by its address, so the login page can confirm which organisation people sign in to. */
+        get: operations["getOrganizationsLookup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Public: ask for an organisation. The applicant is e-mailed a link to confirm their address (valid 24 hours, during which the request holds the web address); only then does the request reach the platform operator. At most 3 open requests per e-mail address (429). 503 when the server cannot send e-mail. Off when ORG_REGISTRATION_ENABLED=false. */
+        post: operations["postOrganizationsRequests"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/requests/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Public: confirm the applicant's e-mail with the token from the confirmation link. The request goes to the platform operator's queue (operators are notified) and holds its address for 30 days. Confirming again reports the request's current state; 410 when the link has expired, 409 when the request was closed or its address taken meanwhile. */
+        post: operations["postOrganizationsRequestsConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/posts/{id}/endorse": {
@@ -4210,6 +4381,7 @@ export interface operations {
                             emailAttribute: string;
                             enabled: boolean;
                             allowedDomains: string[];
+                            autoCreateAccounts: boolean;
                             /** @enum {string|null} */
                             keyKind: "CERTIFICATE" | "PUBLIC KEY" | null;
                             keyFingerprint: string | null;
@@ -4262,6 +4434,8 @@ export interface operations {
                     enabled: boolean;
                     /** @default [] */
                     allowedDomains?: string[];
+                    /** @default false */
+                    autoCreateAccounts?: boolean;
                 };
             };
         };
@@ -4279,6 +4453,7 @@ export interface operations {
                             emailAttribute: string;
                             enabled: boolean;
                             allowedDomains: string[];
+                            autoCreateAccounts: boolean;
                             /** @enum {string|null} */
                             keyKind: "CERTIFICATE" | "PUBLIC KEY" | null;
                             keyFingerprint: string | null;
@@ -4533,6 +4708,7 @@ export interface operations {
                             clientId: string;
                             enabled: boolean;
                             allowedDomains: string[];
+                            autoCreateAccounts: boolean;
                             /** @enum {boolean} */
                             hasSecret: true;
                             redirectUris: string[];
@@ -4578,6 +4754,8 @@ export interface operations {
                     enabled: boolean;
                     /** @default [] */
                     allowedDomains?: string[];
+                    /** @default false */
+                    autoCreateAccounts?: boolean;
                 };
             };
         };
@@ -4594,6 +4772,7 @@ export interface operations {
                             clientId: string;
                             enabled: boolean;
                             allowedDomains: string[];
+                            autoCreateAccounts: boolean;
                             /** @enum {boolean} */
                             hasSecret: true;
                             redirectUris: string[];
@@ -4759,6 +4938,7 @@ export interface operations {
                             coppaCompliant: boolean;
                             featureFlags?: unknown;
                             seatQuota: number | null;
+                            setupChecklist: boolean;
                             createdAt: string;
                             updatedAt: string;
                             userCount: number;
@@ -4844,6 +5024,7 @@ export interface operations {
                             coppaCompliant: boolean;
                             featureFlags?: unknown;
                             seatQuota: number | null;
+                            setupChecklist: boolean;
                             createdAt: string;
                             updatedAt: string;
                         };
@@ -7404,6 +7585,7 @@ export interface operations {
                                 slug: string;
                                 name: string;
                             };
+                            platformOperator: boolean;
                         };
                     };
                 };
@@ -7724,6 +7906,11 @@ export interface operations {
                 content: {
                     "application/json": {
                         message: string;
+                        organization?: {
+                            slug: string;
+                            name: string;
+                            url: string;
+                        };
                     };
                 };
             };
@@ -10702,6 +10889,85 @@ export interface operations {
             };
         };
     };
+    putCoursesIdInstructors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    instructors: {
+                        userId: string;
+                        /** @default false */
+                        isPrimary?: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            isPrimary: boolean;
+                            user: {
+                                id: string;
+                                firstName: string;
+                                lastName: string;
+                                email: string;
+                                role: string;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     deleteCoursesIdLessonsLessonId: {
         parameters: {
             query?: never;
@@ -13013,6 +13279,80 @@ export interface operations {
             };
         };
     };
+    postIntegrationsCopyleaksTenantSlugSubmissionIdStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenantSlug: string;
+                submissionId: string;
+                status: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Copyleaks status webhook. `recorded` stores the aggregated score (alerting staff at 30% or more), `failed` marks the check failed, `ignored` acknowledges other statuses and results for a superseded scan. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "recorded" | "failed" | "ignored";
+                        alerted?: number;
+                        reason?: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     postIntegrationsLivekit: {
         parameters: {
             query?: never;
@@ -14005,6 +14345,316 @@ export interface operations {
             };
         };
     };
+    getOperatorRequests: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "APPROVED" | "REJECTED";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            organizationName: string;
+                            slug: string;
+                            institutionType: string;
+                            country: string | null;
+                            website: string | null;
+                            expectedLearners: number | null;
+                            contactFirstName: string;
+                            contactLastName: string;
+                            contactEmail: string;
+                            contactPhone: string | null;
+                            message: string | null;
+                            /** @enum {string} */
+                            status: "PENDING" | "APPROVED" | "REJECTED";
+                            decisionNote: string | null;
+                            decidedAt: string | null;
+                            decidedByEmail: string | null;
+                            createdTenantId: string | null;
+                            createdAt: string;
+                            verifiedAt: string | null;
+                            holdExpiresAt: string | null;
+                            expired: boolean;
+                        }[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorRequestsIdApprove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @default STARTER
+                     * @enum {string}
+                     */
+                    tier?: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                    /** @default 100 */
+                    seatQuota?: number | null;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            request: {
+                                id: string;
+                                organizationName: string;
+                                slug: string;
+                                institutionType: string;
+                                country: string | null;
+                                website: string | null;
+                                expectedLearners: number | null;
+                                contactFirstName: string;
+                                contactLastName: string;
+                                contactEmail: string;
+                                contactPhone: string | null;
+                                message: string | null;
+                                /** @enum {string} */
+                                status: "PENDING" | "APPROVED" | "REJECTED";
+                                decisionNote: string | null;
+                                decidedAt: string | null;
+                                decidedByEmail: string | null;
+                                createdTenantId: string | null;
+                                createdAt: string;
+                                verifiedAt: string | null;
+                                holdExpiresAt: string | null;
+                                expired: boolean;
+                            };
+                            organization: {
+                                id: string;
+                                slug: string;
+                                name: string;
+                                customDomain: string | null;
+                                /** @enum {string} */
+                                tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                                status: string;
+                                seatQuota: number | null;
+                                seatsUsed: number;
+                                features: {
+                                    lti13: boolean;
+                                    sso: boolean;
+                                    webhooks: boolean;
+                                    scim: boolean;
+                                    aiAssistant: boolean;
+                                };
+                                overrides: {
+                                    [key: string]: boolean;
+                                };
+                            };
+                            /** @enum {string} */
+                            invitation: "sent" | "failed" | "not_configured";
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorRequestsIdReject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            organizationName: string;
+                            slug: string;
+                            institutionType: string;
+                            country: string | null;
+                            website: string | null;
+                            expectedLearners: number | null;
+                            contactFirstName: string;
+                            contactLastName: string;
+                            contactEmail: string;
+                            contactPhone: string | null;
+                            message: string | null;
+                            /** @enum {string} */
+                            status: "PENDING" | "APPROVED" | "REJECTED";
+                            decisionNote: string | null;
+                            decidedAt: string | null;
+                            decidedByEmail: string | null;
+                            createdTenantId: string | null;
+                            createdAt: string;
+                            verifiedAt: string | null;
+                            holdExpiresAt: string | null;
+                            expired: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getOperatorTenants: {
         parameters: {
             query?: never;
@@ -14056,6 +14706,107 @@ export interface operations {
             };
             /** @description Not allowed */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorTenants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    slug: string;
+                    /**
+                     * @default STARTER
+                     * @enum {string}
+                     */
+                    tier?: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                    /** @default 100 */
+                    seatQuota?: number | null;
+                    customDomain?: string;
+                    adminFirstName: string;
+                    adminLastName: string;
+                    /** Format: email */
+                    adminEmail: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            organization: {
+                                id: string;
+                                slug: string;
+                                name: string;
+                                customDomain: string | null;
+                                /** @enum {string} */
+                                tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                                status: string;
+                                seatQuota: number | null;
+                                seatsUsed: number;
+                                features: {
+                                    lti13: boolean;
+                                    sso: boolean;
+                                    webhooks: boolean;
+                                    scim: boolean;
+                                    aiAssistant: boolean;
+                                };
+                                overrides: {
+                                    [key: string]: boolean;
+                                };
+                            };
+                            /** @enum {string} */
+                            invitation: "sent" | "failed" | "not_configured";
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14160,6 +14911,370 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchOperatorTenantsIdStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "ACTIVE" | "SUSPENDED";
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            customDomain: string | null;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            status: string;
+                            seatQuota: number | null;
+                            seatsUsed: number;
+                            features: {
+                                lti13: boolean;
+                                sso: boolean;
+                                webhooks: boolean;
+                                scim: boolean;
+                                aiAssistant: boolean;
+                            };
+                            overrides: {
+                                [key: string]: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOrganizationsAvailability: {
+        parameters: {
+            query: {
+                slug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            slug: string;
+                            available: boolean;
+                            /** @enum {string} */
+                            reason?: "invalid" | "reserved" | "taken" | "pending";
+                            url?: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOrganizationsLookup: {
+        parameters: {
+            query: {
+                slug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            slug: string;
+                            name: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOrganizationsRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    organizationName: string;
+                    slug: string;
+                    /** @enum {string} */
+                    institutionType: "UNIVERSITY" | "COLLEGE" | "SCHOOL" | "TRAINING_PROVIDER" | "COMPANY" | "OTHER";
+                    country?: string;
+                    /** Format: uri */
+                    website?: string;
+                    expectedLearners?: number;
+                    contactFirstName: string;
+                    contactLastName: string;
+                    /** Format: email */
+                    contactEmail: string;
+                    contactPhone?: string;
+                    message?: string;
+                    /** @enum {boolean} */
+                    acceptTerms: true;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            status: "UNVERIFIED";
+                            slug: string;
+                            contactEmail: string;
+                            url: string;
+                            confirmBy: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOrganizationsRequestsConfirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            status: "PENDING" | "APPROVED" | "REJECTED";
+                            slug: string;
+                            organizationName: string;
+                            contactEmail: string;
+                            url: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Withdrawn */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

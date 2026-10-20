@@ -32,6 +32,8 @@ const TenantRecord = z.object({
   coppaCompliant: z.boolean(),
   featureFlags: z.unknown(),
   seatQuota: z.number().nullable(),
+  /** Whether the admin area shows the setup checklist (organisations created through onboarding). */
+  setupChecklist: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -79,6 +81,36 @@ export const FeatureFlags = z.object({
   webhooks: z.boolean(),
   scim: z.boolean(),
   aiAssistant: z.boolean(),
+});
+
+export const Invitation = z.enum(['sent', 'failed', 'not_configured']);
+
+export const OrganizationRequest = z.object({
+  id: z.string(),
+  organizationName: z.string(),
+  slug: z.string(),
+  institutionType: z.string(),
+  country: z.string().nullable(),
+  website: z.string().nullable(),
+  expectedLearners: z.number().int().nullable(),
+  contactFirstName: z.string(),
+  contactLastName: z.string(),
+  contactEmail: z.string(),
+  contactPhone: z.string().nullable(),
+  message: z.string().nullable(),
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+  decisionNote: z.string().nullable(),
+  decidedAt: z.string().nullable(),
+  decidedByEmail: z.string().nullable(),
+  /** The organisation an approval created. */
+  createdTenantId: z.string().nullable(),
+  createdAt: z.string(),
+  /** When the applicant confirmed their e-mail. */
+  verifiedAt: z.string().nullable(),
+  /** Until when the request reserves its address. */
+  holdExpiresAt: z.string().nullable(),
+  /** Pending past its hold: it no longer keeps others from the address. */
+  expired: z.boolean(),
 });
 
 export const OperatorTenant = z.object({
@@ -269,6 +301,7 @@ export const SsoConnectionView = z.object({
   clientId: z.string(),
   enabled: z.boolean(),
   allowedDomains: z.array(z.string()),
+  autoCreateAccounts: z.boolean(),
   /** Always true: the client secret is stored encrypted and never returned. */
   hasSecret: z.literal(true),
   redirectUris: z.array(z.string()),
@@ -280,6 +313,7 @@ export const SamlConnectionView = z.object({
   emailAttribute: z.string(),
   enabled: z.boolean(),
   allowedDomains: z.array(z.string()),
+  autoCreateAccounts: z.boolean(),
   /** What kind of key is pinned; null if it can no longer be read (for example an expired certificate). */
   keyKind: z.enum(['CERTIFICATE', 'PUBLIC KEY']).nullable(),
   keyFingerprint: z.string().nullable(),
@@ -368,6 +402,60 @@ export const RESPONSES: ResponseTable = {
   'GET /api/v1/admin/features': { response: ok(z.object({ data: FeatureFlags })) },
   'GET /api/v1/operator/tenants': { response: ok(z.object({ data: z.array(OperatorTenant) })) },
   'PATCH /api/v1/operator/tenants/:id': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
+  'POST /api/v1/operator/tenants': { response: ok(z.object({ data: z.object({ organization: OperatorTenant, invitation: Invitation }) }), 201), errors: [400, 409] },
+  'PATCH /api/v1/operator/tenants/:id/status': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
+  'GET /api/v1/operator/requests': { response: ok(z.object({ data: z.array(OrganizationRequest), pagination: Pagination })), errors: [400] },
+  'POST /api/v1/operator/requests/:id/approve': {
+    response: ok(z.object({ data: z.object({ request: OrganizationRequest, organization: OperatorTenant, invitation: Invitation }) })),
+    errors: [400, 404, 409],
+  },
+  'POST /api/v1/operator/requests/:id/reject': { response: ok(z.object({ data: OrganizationRequest })), errors: [400, 404, 409] },
+  'GET /api/v1/organizations/availability': {
+    response: ok(
+      z.object({
+        data: z.object({
+          slug: z.string(),
+          available: z.boolean(),
+          reason: z.enum(['invalid', 'reserved', 'taken', 'pending']).optional(),
+          /** The organisation's web address, when the slug is available. */
+          url: z.string().optional(),
+        }),
+      })
+    ),
+    errors: [400, 429],
+  },
+  'GET /api/v1/organizations/lookup': { response: ok(z.object({ data: z.object({ slug: z.string(), name: z.string() }) })), errors: [400, 404, 429] },
+  'POST /api/v1/organizations/requests': {
+    response: ok(
+      z.object({
+        data: z.object({
+          status: z.literal('UNVERIFIED'),
+          slug: z.string(),
+          contactEmail: z.string(),
+          /** The web address the organisation would have. */
+          url: z.string(),
+          /** The confirmation link works until then. */
+          confirmBy: z.string(),
+        }),
+      }),
+      201
+    ),
+    errors: [400, 403, 409, 429, 503],
+  },
+  'POST /api/v1/organizations/requests/confirm': {
+    response: ok(
+      z.object({
+        data: z.object({
+          status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+          slug: z.string(),
+          organizationName: z.string(),
+          contactEmail: z.string(),
+          url: z.string(),
+        }),
+      })
+    ),
+    errors: [400, 409, 410, 429],
+  },
   'GET /api/v1/admin/usage': { response: ok(z.object({ data: UsageReport })) },
   'GET /api/v1/admin/export': {
     response: { status: 200, schema: TenantExport, description: 'Tenant data as a JSON download (Content-Disposition: attachment). No credentials or secrets. Streamed; if it fails midway the connection is cut and the file is truncated.' },

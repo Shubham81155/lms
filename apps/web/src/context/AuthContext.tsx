@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
-import { canAccess, routeForRole, type Role } from "@/lib/roles";
+import { PUBLIC_PATHS, canView, homeFor, type Role } from "@/lib/roles";
 
 export interface UserSession {
   id: string;
@@ -14,6 +14,10 @@ export interface UserSession {
   tenantName: string;
   /** Used in public links, e.g. certificate verification. */
   tenantSlug: string;
+  /** The organisation's own web address (subdomain or custom domain), when the API reports it. */
+  organizationUrl: string | null;
+  /** Super administrator of the platform operator organisation: may use /platform. */
+  platformOperator: boolean;
   targetRoute: string;
 }
 
@@ -24,7 +28,9 @@ interface ApiUser {
   lastName: string;
   role: Role;
   tenantId: string;
-  tenant?: { name?: string; slug?: string };
+  tenant?: { name?: string; slug?: string; logoUrl?: string | null };
+  platformOperator?: boolean;
+  organizationUrl?: string | null;
 }
 
 interface AuthContextType {
@@ -49,7 +55,10 @@ function toSession(u: ApiUser): UserSession {
     tenantId: u.tenantId,
     tenantName: u.tenant?.name ?? "",
     tenantSlug: u.tenant?.slug ?? "",
-    targetRoute: routeForRole(u.role),
+    organizationUrl: u.organizationUrl ?? null,
+    platformOperator: u.platformOperator === true,
+    // Operators land in the platform console; everyone else in their role's area.
+    targetRoute: homeFor({ role: u.role, platformOperator: u.platformOperator === true }),
   };
 }
 
@@ -83,16 +92,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (isLoading) return;
 
-    const publicPaths = ["/", "/login", "/forgot-password", "/reset-password", "/verify-email", "/verify"];
     // Links from notifications and emails sign people in themselves (see DeepLink), keeping the destination.
-    if (publicPaths.includes(pathname) || ["/courses/", "/quizzes/", "/assignments/"].some((p) => pathname.startsWith(p))) return;
+    if (PUBLIC_PATHS.includes(pathname) || ["/courses/", "/quizzes/", "/assignments/"].some((p) => pathname.startsWith(p))) return;
 
     if (!user) {
       router.replace("/login");
       return;
     }
 
-    if (!canAccess(user.role, pathname)) {
+    if (!canView(user, pathname)) {
       router.replace(user.targetRoute || "/login");
     }
   }, [user, isLoading, pathname, router]);

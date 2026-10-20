@@ -4,8 +4,9 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { runWithTenant } from '@enterprise-lms/database';
-import { prisma, runInTenantTransaction } from '../lib/prisma';
-import { resolveTenant } from '../lib/tenant';
+import { basePrisma, prisma, runInTenantTransaction } from '../lib/prisma';
+import { lookupTenant, resolveTenant } from '../lib/tenant';
+import { tenantUrl } from '../lib/tenant-url';
 import { logAuditEvent } from '../lib/audit';
 import { config } from '../config';
 import {
@@ -23,7 +24,7 @@ import {
   optionalAuth,
   startSession,
 } from '../middleware/auth';
-import { invalidateSessionCache, revokeSessions } from '../lib/session';
+import { invalidateSessionCache, revokeSessions, TENANT_SUSPENDED_MESSAGE, tenantIsBlocked } from '../lib/session';
 
 const router = Router();
 
@@ -90,9 +91,11 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
     const { email, password, mfaCode } = parseResult.data;
     const invalid = () => res.status(401).json({ error: 'Invalid email or password' });
 
-    const tenant = await resolveTenant(req.tenantHints);
-    if (!tenant) {
+    const tenant = await lookupTenant(req.tenantHints);
+    if (!tenant || tenantIsBlocked(tenant.status)) {
       await verifyPassword(password, null); // keep timing similar to the unknown-user path
+      // Whether an organisation is suspended is not a secret of any account; its login page says so too.
+      if (tenant) return res.status(403).json({ error: TENANT_SUSPENDED_MESSAGE, code: 'TENANT_SUSPENDED' });
       return invalid();
     }
 
@@ -263,7 +266,9 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Session is no longer valid' });
     }
 
-    return res.status(200).json({ user });
+    // Platform operators (super administrators of PLATFORM_OPERATOR_TENANT) also get the platform admin page.
+    const platformOperator = user.role === 'SUPER_ADMIN' && !!config.PLATFORM_OPERATOR_TENANT && user.tenant?.slug === config.PLATFORM_OPERATOR_TENANT;
+    return res.status(200).json({ user: { ...user, platformOperator } });
   } catch (error: any) {
     logger.error({ err: error }, 'Error in GET /api/v1/auth/me');
     return res.status(500).json({ error: 'Internal server error retrieving user profile' });
@@ -287,7 +292,7 @@ router.post('/forgot-password', tokenFlowLimiter, async (req: Request, res: Resp
 
     const tenant = await resolveTenant(req.tenantHints);
     if (tenant) {
-      await runWithTenant(tenant.id, () => sendResetLink(req, tenant.id, parsed.data.email));
+      await runWithTenant(tenant.id, () => sendResetLink(req, tenant, parsed.data.email));
     }
 
     return res.status(200).json(GENERIC_FORGOT_RESPONSE);
@@ -297,7 +302,8 @@ router.post('/forgot-password', tokenFlowLimiter, async (req: Request, res: Resp
   }
 });
 
-async function sendResetLink(req: Request, tenantId: string, email: string): Promise<void> {
+async function sendResetLink(req: Request, tenant: { id: string; slug: string; customDomain: string | null }, email: string): Promise<void> {
+  const tenantId = tenant.id;
   {
     const user = await prisma.user.findFirst({
       where: { tenantId, email: email.toLowerCase(), status: 'ACTIVE' },
@@ -322,7 +328,7 @@ async function sendResetLink(req: Request, tenantId: string, email: string): Pro
       await sendMail({
         to: user.email,
         subject: 'Reset your password',
-        text: `Use this link to choose a new password (valid for 1 hour):\n${config.APP_URL}/reset-password?token=${token}\n\nIf you did not request this, you can ignore this email.`,
+        text: `Use this link to choose a new password (valid for 1 hour):\n${tenantUrl(tenant)}/reset-password?token=${token}\n\nIf you did not request this, you can ignore this email.`,
       });
 
       await logAuditEvent({
@@ -398,7 +404,12 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
       })
     );
 
-    return res.status(200).json({ message: changed === 'INVITED' ? 'Your account is ready. You can now sign in.' : 'Password updated. You can now sign in.' });
+    // Which organisation to sign in to, and its address: the link may have been opened on another host.
+    const tenant = await basePrisma.tenant.findUnique({ where: { id: record.tenantId }, select: { slug: true, name: true, customDomain: true } });
+    return res.status(200).json({
+      message: changed === 'INVITED' ? 'Your account is ready. You can now sign in.' : 'Password updated. You can now sign in.',
+      ...(tenant ? { organization: { slug: tenant.slug, name: tenant.name, url: tenantUrl(tenant) } } : {}),
+    });
   } catch (error: any) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/reset-password');
     return res.status(500).json({ error: 'Failed to reset password' });
@@ -479,10 +490,11 @@ router.post('/resend-verification', authenticateJWT, tokenFlowLimiter, async (re
       },
     });
 
+    const tenant = await basePrisma.tenant.findUnique({ where: { id: req.user!.tenantId }, select: { slug: true, customDomain: true } });
     await sendMail({
       to: user.email,
       subject: 'Verify your email address',
-      text: `Confirm your email address (valid for 24 hours):\n${config.APP_URL}/verify-email?token=${token}`,
+      text: `Confirm your email address (valid for 24 hours):\n${tenant ? tenantUrl(tenant) : config.APP_URL}/verify-email?token=${token}`,
     });
 
     return res.status(200).json({ message: 'Verification email sent' });

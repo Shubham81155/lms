@@ -57,6 +57,27 @@ export const OnceSecret: React.FC<{ label: string; value: string; onDismiss: () 
   );
 };
 
+const splitDomains = (text: string) => text.split(/[\s,]+/).filter(Boolean);
+
+/** Shared by both protocols: create learner accounts at first sign-in, only once domains are listed. */
+const AutoCreateToggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void; domains: string; available: boolean }> = ({ checked, onChange, domains, available }) => {
+  const list = splitDomains(domains);
+  const usable = list.length > 0;
+  return (
+    <div className="md:col-span-2 space-y-1">
+      <label className="flex items-center gap-2 text-xs text-ink">
+        <input type="checkbox" checked={checked && usable} onChange={(e) => onChange(e.target.checked)} disabled={!available || !usable} className="rounded border-line bg-canvas text-brand-fg" />
+        Create an account at first sign-in
+      </label>
+      <p className="pl-6 text-[11px] text-ink-subtle">
+        {usable
+          ? `Anyone with an e-mail address at ${list.join(" or ")} who signs in through your identity provider gets a learner account, counted against your seats. Make staff instructors or administrators in People afterwards.`
+          : "List your allowed e-mail domains first. Without this, only people you have invited or imported can sign in."}
+      </p>
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // OpenID Connect
 // ---------------------------------------------------------------------------
@@ -66,6 +87,7 @@ interface SsoView {
   clientId: string;
   enabled: boolean;
   allowedDomains: string[];
+  autoCreateAccounts: boolean;
   hasSecret: boolean;
   redirectUris: string[];
 }
@@ -78,6 +100,7 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
   const [clientSecret, setClientSecret] = useState("");
   const [domains, setDomains] = useState("");
   const [enabled, setEnabled] = useState(false);
+  const [autoCreate, setAutoCreate] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const conn = data?.data ?? null;
@@ -87,6 +110,7 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
       setClientId(conn.clientId);
       setDomains(conn.allowedDomains.join(", "));
       setEnabled(conn.enabled);
+      setAutoCreate(conn.autoCreateAccounts);
     }
   }, [conn]);
 
@@ -98,7 +122,8 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
         issuer: issuer.trim(),
         clientId: clientId.trim(),
         enabled,
-        allowedDomains: domains.split(/[\s,]+/).filter(Boolean),
+        allowedDomains: splitDomains(domains),
+        autoCreateAccounts: autoCreate && splitDomains(domains).length > 0,
         ...(clientSecret ? { clientSecret } : {}),
       });
       setClientSecret("");
@@ -125,7 +150,7 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
         <h3 id="sso-heading" className="font-bold text-base text-ink">OpenID Connect sign-in</h3>
         <p className="text-xs text-ink-muted">
           Let people sign in with your identity provider (Okta, Microsoft Entra ID, Google Workspace and others).
-          Accounts must already exist; sign-in never creates them.
+          Only people who already have an account can sign in, unless you let sign-in create learner accounts below.
         </p>
       </div>
 
@@ -175,6 +200,7 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} disabled={!available} className="rounded border-line bg-canvas text-brand-fg" />
           Enable single sign-on on the login page
         </label>
+        <AutoCreateToggle checked={autoCreate} onChange={setAutoCreate} domains={domains} available={available} />
         <div className="md:col-span-2 flex items-center gap-3">
           <button className={primaryBtn} disabled={busy || isLoading || !available}>{busy ? "Saving…" : "Save"}</button>
           {conn && (
@@ -289,6 +315,7 @@ interface SamlView {
   emailAttribute: string;
   enabled: boolean;
   allowedDomains: string[];
+  autoCreateAccounts: boolean;
   keyKind: "CERTIFICATE" | "PUBLIC KEY" | null;
   keyFingerprint: string | null;
   keyExpires: string | null;
@@ -317,6 +344,7 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
   const [emailAttr, setEmailAttr] = useState("email");
   const [domains, setDomains] = useState("");
   const [enabled, setEnabled] = useState(false);
+  const [autoCreate, setAutoCreate] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const conn = data?.data ?? null;
@@ -327,6 +355,7 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
     setEmailAttr(conn.emailAttribute);
     setDomains(conn.allowedDomains.join(", "));
     setEnabled(conn.enabled);
+    setAutoCreate(conn.autoCreateAccounts);
   }, [conn]);
 
   const save = (e: React.FormEvent) => {
@@ -338,7 +367,8 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
         idpIssuer: issuer.trim(),
         emailAttribute: emailAttr.trim() || "email",
         enabled,
-        allowedDomains: domains.split(/[\s,]+/).filter(Boolean),
+        allowedDomains: splitDomains(domains),
+        autoCreateAccounts: autoCreate && splitDomains(domains).length > 0,
         ...(cert.trim() ? { idpCert: cert.trim() } : {}),
       });
       setCert("");
@@ -366,7 +396,7 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
       <div>
         <h3 id="saml-h" className="font-bold text-base text-ink">SAML 2.0 sign-in</h3>
         <p className="text-xs text-ink-muted">
-          For identity providers that use SAML (ADFS, Shibboleth, Okta SAML and others). Accounts must already exist; sign-in never creates them.
+          For identity providers that use SAML (ADFS, Shibboleth, Okta SAML and others). Only people who already have an account can sign in, unless you let sign-in create learner accounts below.
           Assertions must be signed by the certificate you paste here.
         </p>
       </div>
@@ -424,6 +454,7 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} disabled={!available} className="rounded border-line bg-canvas text-brand-fg" />
           Enable SAML sign-in on the login page
         </label>
+        <AutoCreateToggle checked={autoCreate} onChange={setAutoCreate} domains={domains} available={available} />
         <div className="md:col-span-2 flex items-center gap-3">
           <button className={primaryBtn} disabled={busy || isLoading || !available}>{busy ? "Saving…" : "Save"}</button>
           {conn && (

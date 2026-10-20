@@ -2,7 +2,7 @@
 
 import React from "react";
 import clsx from "clsx";
-import { LogOut, PanelLeftClose, PanelLeftOpen, UserCog, X } from "lucide-react";
+import { LogOut, UserCog, X } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { initialsOf, roleTitle, type Area, type NavItem, type NavSection } from "@/lib/navigation";
 
@@ -12,6 +12,7 @@ const AVATAR: Record<Area, string> = {
   teacher: "bg-orchid/15 text-orchid border-orchid/40",
   admin: "bg-accent/15 text-accent border-accent/40",
   audit: "bg-success/15 text-success border-success/40",
+  platform: "bg-orchid/15 text-orchid border-orchid/40",
 };
 
 interface SidebarProps {
@@ -22,7 +23,6 @@ interface SidebarProps {
   variant: "rail" | "drawer";
   collapsed?: boolean;
   onSelect: (item: NavItem) => void;
-  onToggleCollapsed?: () => void;
   onClose?: () => void;
   user: { name?: string; role?: string } | null;
   onOpenPrivacy: () => void;
@@ -39,7 +39,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   variant,
   collapsed = false,
   onSelect,
-  onToggleCollapsed,
   onClose,
   user,
   onOpenPrivacy,
@@ -135,19 +134,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <LogOut className="h-[18px] w-[18px] shrink-0" />
           <span className={compact ? "sr-only" : "truncate"}>Sign out</span>
         </button>
-        {variant === "rail" && onToggleCollapsed && (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            aria-expanded={!collapsed}
-            aria-controls="app-sidebar"
-            title={compact ? "Expand sidebar" : undefined}
-            className={clsx(rowBase, footerRow, compact && "justify-center px-0")}
-          >
-            {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px] shrink-0" /> : <PanelLeftClose className="h-[18px] w-[18px] shrink-0" />}
-            <span className={compact ? "sr-only" : "truncate"}>{collapsed ? "Expand sidebar" : "Collapse sidebar"}</span>
-          </button>
-        )}
       </div>
     </div>
   );

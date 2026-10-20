@@ -1,7 +1,8 @@
 import { config } from '../config';
+import { subdomainOrigin, tenantScheme } from './tenant-url';
 
 // Which origin an SSO round trip should use. A tenant can be served from the platform's own address
-// (APP_URL) or from its custom domain, and the identity provider must send the browser back to the
+// (APP_URL), from its own subdomain of TENANT_BASE_DOMAIN, or from its custom domain, and the identity provider must send the browser back to the
 // same host that started the flow: the flow cookie is host-only and the redirect URI sent in the
 // token exchange must match the one sent to the authorisation endpoint.
 //
@@ -12,20 +13,20 @@ import { config } from '../config';
 const CALLBACK_PATH = '/api/v1/auth/sso/callback';
 
 export interface TenantDomain {
+  /** Gives the tenant its subdomain origin when TENANT_BASE_DOMAIN is set. */
+  slug?: string;
   customDomain: string | null;
 }
 
 export const appOrigin = () => new URL(config.APP_URL).origin;
 
-/** The platform address first, then the tenant's custom domain when it has one. */
+/** The platform address first, then the tenant's subdomain, then its custom domain when it has one. */
 export function allowedOrigins(tenant: TenantDomain): string[] {
-  const app = new URL(config.APP_URL);
-  const origins = [app.origin];
-  if (tenant.customDomain) {
-    // Production custom domains are always https; elsewhere follow APP_URL so local setups work.
-    const scheme = config.NODE_ENV === 'production' ? 'https:' : app.protocol;
-    origins.push(`${scheme}//${tenant.customDomain.toLowerCase()}`);
-  }
+  const origins = [new URL(config.APP_URL).origin];
+  const sub = tenant.slug ? subdomainOrigin(tenant.slug) : null;
+  if (sub && !origins.includes(sub)) origins.push(sub);
+  // Production custom domains are always https; elsewhere follow APP_URL so local setups work.
+  if (tenant.customDomain) origins.push(`${tenantScheme()}//${tenant.customDomain.toLowerCase()}`);
   return origins;
 }
 

@@ -8,7 +8,7 @@ import { GlobalRole, UserStatus } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
 import { httpUrl, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { COURSE_STAFF_ROLES, canSeeAllCourses, isAdminRole } from '../lib/access';
-import { assertSeatAvailable } from '../lib/features';
+import { withSeat } from '../lib/features';
 import { sendInvitation } from '../lib/invitations';
 import { dispatchWebhook } from '../lib/webhooks';
 import { parseCsv } from '../lib/csv';
@@ -118,14 +118,13 @@ router.post(
     if (await prisma.user.findFirst({ where: { tenantId, email: input.email }, select: { id: true } })) {
       throw new HttpError(409, 'A person with this e-mail address already exists');
     }
-    await assertSeatAvailable(tenantId);
 
     let created;
     try {
-      created = await prisma.user.create({
+      created = await withSeat(tenantId, (tx) => tx.user.create({
         data: { tenantId, email: input.email, firstName: input.firstName, lastName: input.lastName, role: input.role, status: 'INVITED', passwordHash: null, emailVerified: false },
         select: safeUserSelect,
-      });
+      }));
     } catch (err: any) {
       if (err?.code === 'P2002') throw new HttpError(409, 'A person with this e-mail address already exists');
       throw err;

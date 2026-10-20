@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { brandTokens } from "@/lib/branding";
 import { useTheme } from "@/context/ThemeContext";
@@ -14,14 +14,18 @@ export interface Branding {
 }
 
 const BrandingContext = createContext<Branding | null>(null);
+/** Loads the branding again, after the person picks another organisation on the sign-in page. */
+const BrandingReloadContext = createContext<() => void>(() => {});
 
 /**
  * The organisation's white-label settings (GET /tenant/config, public; the API picks the organisation from the
- * host name). Applies the favicon and, when it is legible, the brand colour; BrandLogo shows the logo and name.
+ * host name: the organisation's own subdomain or custom domain). Applies the favicon and, when it is legible, the brand colour; BrandLogo shows the logo and name.
  */
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [branding, setBranding] = useState<Branding | null>(null);
+  const [version, setVersion] = useState(0);
   const { theme } = useTheme();
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
     let alive = true;
@@ -32,7 +36,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       alive = false;
     };
-  }, []);
+  }, [version]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -57,7 +61,12 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     link.href = branding.faviconUrl;
   }, [branding?.faviconUrl]);
 
-  return <BrandingContext.Provider value={branding}>{children}</BrandingContext.Provider>;
+  return (
+    <BrandingReloadContext.Provider value={reload}>
+      <BrandingContext.Provider value={branding}>{children}</BrandingContext.Provider>
+    </BrandingReloadContext.Provider>
+  );
 };
 
 export const useBranding = () => useContext(BrandingContext);
+export const useReloadBranding = () => useContext(BrandingReloadContext);

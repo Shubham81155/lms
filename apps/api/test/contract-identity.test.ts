@@ -189,9 +189,11 @@ describe('server and tenant', () => {
     expect(res.status).toBe(200);
     conforms('GET /api/v1/tenant/config', res);
     expect(res.body.features.sso).toBe(true);
-    const missing = await request(app).get('/api/v1/tenant/config').set('x-tenant-id', 'suspended');
-    expect(missing.status).toBe(404);
-    conforms('GET /api/v1/tenant/config', missing);
+    // A suspended organisation says so, so its login page can tell visitors why nobody can sign in.
+    const suspended = await request(app).get('/api/v1/tenant/config').set('x-tenant-id', 'suspended');
+    expect(suspended.status).toBe(403);
+    expect(suspended.body.code).toBe('TENANT_SUSPENDED');
+    conforms('GET /api/v1/tenant/config', suspended);
   });
 
   it('GET /api/v1/openapi.json', async () => {

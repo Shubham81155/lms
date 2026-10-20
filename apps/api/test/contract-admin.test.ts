@@ -321,11 +321,11 @@ describe('OIDC single sign-on', () => {
     expect(empty.redirectUris.length).toBeGreaterThan(0);
 
     const put = check('PUT /api/v1/admin/sso', await a.put('/api/v1/admin/sso').send({ issuer, clientId: 'lms', clientSecret: CLIENT_SECRET, enabled: true, allowedDomains: ['x.edu'] }));
-    expect(keys(put.data)).toEqual(['allowedDomains', 'clientId', 'enabled', 'hasSecret', 'issuer', 'redirectUris']);
+    expect(keys(put.data)).toEqual(['allowedDomains', 'autoCreateAccounts', 'clientId', 'enabled', 'hasSecret', 'issuer', 'redirectUris']);
     expect(JSON.stringify(put)).not.toContain(CLIENT_SECRET);
 
     const got = check('GET /api/v1/admin/sso', await a.get('/api/v1/admin/sso'));
-    expect(keys(got.data)).toEqual(['allowedDomains', 'clientId', 'enabled', 'hasSecret', 'issuer', 'redirectUris']);
+    expect(keys(got.data)).toEqual(['allowedDomains', 'autoCreateAccounts', 'clientId', 'enabled', 'hasSecret', 'issuer', 'redirectUris']);
     expect(got.data.hasSecret).toBe(true);
     expect(JSON.stringify(got)).not.toContain(CLIENT_SECRET);
     expect(JSON.stringify((await a.get('/api/v1/admin/audit-logs?limit=100')).body)).not.toContain(CLIENT_SECRET);
@@ -352,7 +352,7 @@ describe('SAML single sign-on', () => {
     expect(keys(empty.sp)).toEqual(['acsUrls', 'entityIds', 'metadataUrls']);
 
     const put = check('PUT /api/v1/admin/saml', await a.put('/api/v1/admin/saml').send(body()));
-    expect(keys(put.data)).toEqual(['allowedDomains', 'emailAttribute', 'enabled', 'entryPoint', 'idpIssuer', 'keyExpires', 'keyFingerprint', 'keyKind']);
+    expect(keys(put.data)).toEqual(['allowedDomains', 'autoCreateAccounts', 'emailAttribute', 'enabled', 'entryPoint', 'idpIssuer', 'keyExpires', 'keyFingerprint', 'keyKind']);
     expect(put.data).toMatchObject({ keyKind: 'PUBLIC KEY', keyExpires: null });
     expect(put.data.keyFingerprint).toMatch(/^[0-9a-f]{64}$/);
 
@@ -495,6 +495,52 @@ describe('two-factor authentication', () => {
 });
 
 // ---------------------------------------------------------------------------
+describe('organisation registration and the platform operator', () => {
+  const ask = (slug: string) => ({
+    organizationName: `College ${slug}`, slug, institutionType: 'COLLEGE', contactFirstName: 'Ann', contactLastName: 'Lee', contactEmail: `ann@${slug}.edu`, acceptTerms: true,
+  });
+
+  const outbox: { to: string; text: string }[] = [];
+  const confirm = async (slug: string) => {
+    const mail = outbox.find((m) => m.to === `ann@${slug}.edu`)!;
+    const token = decodeURIComponent(mail.text.match(/confirm=([^\s]+)/)![1]);
+    return check('POST /api/v1/organizations/requests/confirm', await request(app).post('/api/v1/organizations/requests/confirm').send({ token }));
+  };
+
+  it('public: availability, lookup, requests and confirming them', async () => {
+    (await import('../src/lib/mailer.js')).setMailer({ async send(m) { outbox.push(m); } });
+    const free = check('GET /api/v1/organizations/availability', await request(app).get('/api/v1/organizations/availability?slug=contract-college'));
+    expect(free.data).toMatchObject({ slug: 'contract-college', available: true });
+    expect(typeof free.data.url).toBe('string');
+    const found = check('GET /api/v1/organizations/lookup', await request(app).get('/api/v1/organizations/lookup?slug=harvard'));
+    expect(found.data).toEqual({ slug: 'harvard', name: 'Harvard U' });
+    const sent = check('POST /api/v1/organizations/requests', await request(app).post('/api/v1/organizations/requests').send(ask('contract-college')));
+    expect(sent.data).toMatchObject({ status: 'UNVERIFIED', slug: 'contract-college', contactEmail: 'ann@contract-college.edu' });
+    check('POST /api/v1/organizations/requests', await request(app).post('/api/v1/organizations/requests').send(ask('contract-other')));
+    expect((await confirm('contract-college')).data).toMatchObject({ status: 'PENDING', slug: 'contract-college' });
+    await confirm('contract-other');
+  });
+
+  it('operator: list, approve, reject, create and suspend', async () => {
+    const op = await as('operator', 'ops');
+    const pending = check('GET /api/v1/operator/requests', await op.get('/api/v1/operator/requests'));
+    expect(pending.pagination).toMatchObject({ page: 1, total: 2 });
+    const one = pending.data.find((r: any) => r.slug === 'contract-college');
+    const other = pending.data.find((r: any) => r.slug === 'contract-other');
+    const approved = check('POST /api/v1/operator/requests/:id/approve', await op.post(`/api/v1/operator/requests/${one.id}/approve`).send({ tier: 'PROFESSIONAL', seatQuota: 20 }));
+    expect(approved.data.organization).toMatchObject({ slug: 'contract-college', tier: 'PROFESSIONAL', seatQuota: 20, seatsUsed: 1, status: 'ACTIVE' });
+    expect(approved.data.request).toMatchObject({ status: 'APPROVED', createdTenantId: approved.data.organization.id, decidedByEmail: 'operator@x.edu' });
+    const rejected = check('POST /api/v1/operator/requests/:id/reject', await op.post(`/api/v1/operator/requests/${other.id}/reject`).send({ reason: 'Not an eligible institution.' }));
+    expect(rejected.data).toMatchObject({ status: 'REJECTED', decisionNote: 'Not an eligible institution.' });
+
+    const made = check('POST /api/v1/operator/tenants', await op.post('/api/v1/operator/tenants').send({ name: 'Direct College', slug: 'contract-direct', adminFirstName: 'Bo', adminLastName: 'Ray', adminEmail: 'bo@direct.edu' }), 201);
+    expect(made.data.organization).toMatchObject({ slug: 'contract-direct', tier: 'STARTER', seatQuota: 100 });
+    const off = check('PATCH /api/v1/operator/tenants/:id/status', await op.patch(`/api/v1/operator/tenants/${made.data.organization.id}/status`).send({ status: 'SUSPENDED' }));
+    expect(off.data.status).toBe('SUSPENDED');
+    check('PATCH /api/v1/operator/tenants/:id/status', await op.patch(`/api/v1/operator/tenants/${made.data.organization.id}/status`).send({ status: 'ACTIVE' }));
+  });
+});
+
 describe('coverage', () => {
   it('exercised every operation in the table', () => {
     const missing = Object.keys(RESPONSES).filter((k) => !covered.has(k));

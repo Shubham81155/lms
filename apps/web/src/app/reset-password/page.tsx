@@ -1,10 +1,11 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { AuthCard, buttonClass, inputClass } from "@/components/AuthCard";
+import { orgLoginUrl } from "@/lib/org-address";
 
 const MIN_LENGTH = 10;
 
@@ -12,6 +13,9 @@ function ResetForm() {
   const params = useSearchParams();
   const token = params.get("token") ?? "";
   const invited = params.get("invite") === "1";
+  const router = useRouter();
+  // The API names the account's organisation and its web address, so sign-in afterwards happens there.
+  const [org, setOrg] = useState<{ name: string; loginUrl: string } | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [done, setDone] = useState(false);
@@ -31,7 +35,8 @@ function ResetForm() {
     }
     setBusy(true);
     try {
-      await api.post("/api/v1/auth/reset-password", { token, password });
+      const r = await api.post<{ message?: string; organization?: { slug: string; name: string; url?: string } }>("/api/v1/auth/reset-password", { token, password });
+      if (r?.organization) setOrg({ name: r.organization.name, loginUrl: orgLoginUrl(r.organization.url) });
       setDone(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
@@ -39,6 +44,15 @@ function ResetForm() {
       setBusy(false);
     }
   };
+
+  // Straight on to sign-in at the organisation's own address (possibly another host), after a moment to read
+  // the confirmation.
+  const loginHref = org?.loginUrl ?? "/login";
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => (loginHref.startsWith("/") ? router.push(loginHref) : window.location.assign(loginHref)), 2500);
+    return () => clearTimeout(t);
+  }, [done, loginHref, router]);
 
   if (!token) {
     return (
@@ -57,11 +71,11 @@ function ResetForm() {
   return (
     <AuthCard title={invited ? "Welcome. Choose a password" : "Choose a new password"}>
       {done ? (
-        <p className="text-xs text-center text-success">
-          {invited ? "Your account is ready." : "Password updated."}{" "}
-          <Link href="/login" className="text-brand-fg hover:underline underline-offset-2">
+        <p className="text-xs text-center text-success" role="status">
+          {invited ? (org?.name ? `Your account for ${org.name} is ready.` : "Your account is ready.") : "Password updated."}{" "}
+          <a href={loginHref} className="text-brand-fg hover:underline underline-offset-2">
             Sign in
-          </Link>
+          </a>
         </p>
       ) : (
         <form onSubmit={submit} className="space-y-4">

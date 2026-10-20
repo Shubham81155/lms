@@ -3,9 +3,9 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 import { runWithTenant } from '@enterprise-lms/database';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { invalidateSessionCache } from '../lib/session';
+import { invalidateSessionCache, tenantIsBlocked, TENANT_SUSPENDED_MESSAGE } from '../lib/session';
 import { logAuditEvent } from '../lib/audit';
-import { assertSeatAvailable, tenantFeatures } from '../lib/features';
+import { withSeat, tenantFeatures } from '../lib/features';
 import { hashOneTimeToken } from '../lib/one-time-token';
 import { HttpError } from '../lib/http';
 import { dispatchWebhook } from '../lib/webhooks';
@@ -52,8 +52,12 @@ async function scimAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (!token) return fail(res, new ScimError(401, 'Bearer token required'));
-  const row = await prisma.scimToken.findUnique({ where: { tokenHash: hashOneTimeToken(token) } });
+  const row = await prisma.scimToken.findUnique({
+    where: { tokenHash: hashOneTimeToken(token) },
+    select: { tenantId: true, revokedAt: true, tenant: { select: { status: true } } },
+  });
   if (!row || row.revokedAt) return fail(res, new ScimError(401, 'Invalid token'));
+  if (tenantIsBlocked(row.tenant.status)) return fail(res, new ScimError(403, TENANT_SUSPENDED_MESSAGE));
   req.tenantId = row.tenantId;
   return runWithTenant(row.tenantId, async () => {
     if (!(await tenantFeatures(row.tenantId)).scim) return fail(res, new ScimError(403, 'SCIM is not enabled for this organisation'));
@@ -132,9 +136,8 @@ router.post('/Users', handle(async (req, res) => {
   const email = (b.emails?.find((e) => e.primary)?.value ?? b.userName).toLowerCase();
   if (email !== b.userName.toLowerCase()) throw new ScimError(400, 'userName must equal the primary email', 'invalidValue');
   if (await prisma.user.findFirst({ where: { tenantId, email } })) throw new ScimError(409, 'User already exists', 'uniqueness');
-  await assertSeatAvailable(tenantId);
 
-  const u = await prisma.user.create({
+  const u = await withSeat(tenantId, (tx) => tx.user.create({
     data: {
       tenantId,
       email,
@@ -148,7 +151,7 @@ router.post('/Users', handle(async (req, res) => {
       idpSubjectId: b.externalId ?? null,
     },
     select: SELECT,
-  });
+  }));
   await logAuditEvent({ tenantId, action: 'SCIM_USER_CREATED', resourceType: 'USER', resourceId: u.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] });
   void dispatchWebhook(tenantId, 'user.provisioned', { userId: u.id, email: u.email });
   return sendScim(res, 201, toScim(u, req));

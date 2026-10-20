@@ -91,7 +91,7 @@ describe('gradebook CSV export', () => {
     expect(res.headers['content-type']).toMatch(/text\/csv/);
     expect(res.headers['content-disposition']).toBe('attachment; filename="grades-CS_101.csv"');
 
-    const lines = res.text.replace(/^﻿/, '').trim().split(/\r?\n/);
+    const lines = res.text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
     expect(lines[0]).toBe('name,email,Quiz 1 (%),Essay (%),course_raw_%,course_curved_%,letter,grade_status');
     expect(lines).toHaveLength(3);
     expect(lines[1]).toContain('pending,missing,,,,');

@@ -72,7 +72,6 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
           variant="rail"
           collapsed={collapsed}
           onSelect={select}
-          onToggleCollapsed={toggleCollapsed}
           user={sidebarUser}
           onOpenPrivacy={openPrivacy}
           onSignOut={logout}
@@ -114,7 +113,15 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar area={area} search={search} currentLabel={current.label} drawerOpen={mobileOpen} onOpenMenu={openMobile} />
+        <TopBar
+          area={area}
+          search={search}
+          currentLabel={current.label}
+          drawerOpen={mobileOpen}
+          onOpenMenu={openMobile}
+          sidebarCollapsed={collapsed}
+          onToggleSidebar={toggleCollapsed}
+        />
         <div id="main-content" tabIndex={-1} className="flex flex-1 flex-col outline-none">
           {children}
         </div>

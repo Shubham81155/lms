@@ -7,7 +7,8 @@
     "build": "tsc --noEmit -p ../../tsconfig.json",
     "start": "ts-node --transpile-only src/server.ts",
     "test": "vitest run",
-    "openapi": "ts-node src/openapi/build.ts"
+    "openapi": "ts-node src/openapi/build.ts",
+    "platform:bootstrap": "ts-node src/scripts/platform-bootstrap.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

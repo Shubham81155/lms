@@ -37,6 +37,17 @@ const envSchema = z.object({
   /** Slug of the organisation whose super administrators manage every organisation's plan. Unset: nobody can, through the API. */
   PLATFORM_OPERATOR_TENANT: z.string().min(1).optional(),
   APP_URL: z.string().url().default('http://localhost:3000'),
+  /**
+   * Parent domain under which every organisation gets its own address, `<slug>.<TENANT_BASE_DOMAIN>`, as host[:port]
+   * (e.g. lms.example.com; in development localhost:3000, since browsers resolve *.localhost locally). Unset: a
+   * single address (APP_URL) serves the default organisation and organisations with a custom domain.
+   */
+  TENANT_BASE_DOMAIN: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?$/, 'TENANT_BASE_DOMAIN must be a host name, optionally with a port')
+    .optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   LOG_REQUEST_BODIES: z
     .enum(['true', 'false'])
@@ -44,6 +55,13 @@ const envSchema = z.object({
     .transform((v) => v === 'true'),
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+  /** Whether institutions may ask to register an organisation from the public site (the operator approves each). */
+  ORG_REGISTRATION_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  /** Organisation registration requests per IP per hour. */
+  ORG_REQUEST_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),
   TOKEN_FLOW_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   /** Optional. When set, rate-limit counters are shared by every API instance; otherwise they are per process. */
   REDIS_URL: z.string().url().optional(),
@@ -52,23 +70,37 @@ const envSchema = z.object({
   API_WRITE_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   MAX_FAILED_LOGINS: z.coerce.number().int().positive().default(5),
   LOCKOUT_MINUTES: z.coerce.number().int().positive().default(15),
-  /** Shared secret for inbound plagiarism-provider callbacks; the endpoint is off when unset. */
   /** smtp:// or smtps:// URL of the mail server. Without it, mail is printed in development and dropped in production. */
   SMTP_URL: z.string().url().optional(),
   MAIL_FROM: z.string().min(3).default('Enterprise LMS <no-reply@localhost>'),
-  /** How often queued notification e-mails are sent, in seconds. 0 turns the background sender off. */
   /** Seconds between webhook retry sweeps; 0 turns the background worker off. */
   WEBHOOK_RETRY_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(30),
+  /** How often queued notification e-mails are sent, in seconds. 0 turns the background sender off. */
   EMAIL_DISPATCH_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(60),
   /** LiveKit media server for live classes. All three are needed; without them live classes are off. */
   LIVEKIT_URL: z.string().url().optional(),
   LIVEKIT_API_KEY: z.string().min(3).optional(),
   LIVEKIT_API_SECRET: z.string().min(32, 'LIVEKIT_API_SECRET must be at least 32 characters').optional(),
+  /** Shared secret for inbound plagiarism-provider callbacks; the endpoint is off when unset. */
   PLAGIARISM_WEBHOOK_SECRET: z.string().min(32, 'PLAGIARISM_WEBHOOK_SECRET must be at least 32 characters').optional(),
   /** Outbound similarity checks: where text submissions are sent. Needs PLAGIARISM_WEBHOOK_SECRET (signs the request) and API_PUBLIC_URL (callback address). */
   PLAGIARISM_SUBMIT_URL: z.string().url().optional(),
   /** Public base URL of this API as the provider sees it, e.g. https://api.example.com */
   API_PUBLIC_URL: z.string().url().optional(),
+  /**
+   * Copyleaks (https://copyleaks.com) as the similarity provider, instead of PLAGIARISM_SUBMIT_URL: the account
+   * e-mail and API key from its API dashboard. Also needs PLAGIARISM_WEBHOOK_SECRET and API_PUBLIC_URL.
+   */
+  COPYLEAKS_EMAIL: z.string().email().optional(),
+  COPYLEAKS_API_KEY: z.string().min(10, 'COPYLEAKS_API_KEY looks too short').optional(),
+  /** Sandbox scans return made-up results and use no credits; for trying the integration. */
+  COPYLEAKS_SANDBOX: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /** Overridable for tests only. */
+  COPYLEAKS_ID_URL: z.string().url().default('https://id.copyleaks.com'),
+  COPYLEAKS_API_URL: z.string().url().default('https://api.copyleaks.com'),
   /** Seconds between outbound plagiarism submission sweeps; 0 turns the background worker off. */
   PLAGIARISM_SUBMIT_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(30),
   /**
@@ -127,7 +159,9 @@ const envSchema = z.object({
   /** How often files stored before scanning was set up are scanned, in seconds (0 turns the sweep off). */
   FILE_SCAN_SWEEP_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(300),
 }).refine((c) => c.STORAGE_DRIVER !== 's3' || !!c.S3_BUCKET, { message: 'STORAGE_DRIVER=s3 needs S3_BUCKET' })
-  .refine((c) => !c.S3_ACCESS_KEY_ID === !c.S3_SECRET_ACCESS_KEY, { message: 'Set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither' });
+  .refine((c) => !c.S3_ACCESS_KEY_ID === !c.S3_SECRET_ACCESS_KEY, { message: 'Set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither' })
+  .refine((c) => !c.COPYLEAKS_EMAIL === !c.COPYLEAKS_API_KEY, { message: 'Set both COPYLEAKS_EMAIL and COPYLEAKS_API_KEY, or neither' })
+  .refine((c) => !(c.COPYLEAKS_API_KEY && c.PLAGIARISM_SUBMIT_URL), { message: 'Use either Copyleaks or PLAGIARISM_SUBMIT_URL, not both' });
 
 export type AppConfig = z.infer<typeof envSchema> & { corsOrigins: string[] };
 

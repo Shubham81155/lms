@@ -177,6 +177,12 @@ export default function Home() {
             </a>
             <ThemeToggle />
             <Link
+              href="/register"
+              className="hidden sm:inline text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors"
+            >
+              Register your organisation
+            </Link>
+            <Link
               href="/login"
               className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold shadow-md shadow-brand/20 transition-all flex items-center gap-1.5"
             >
@@ -213,13 +219,18 @@ export default function Home() {
                   <span>Sign in to your portal</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-                <a
-                  href="#platform"
-                  className="px-7 py-3.5 border border-line hover:border-brand bg-surface/60 text-ink rounded-2xl text-sm font-bold flex items-center justify-center transition-colors"
+                <Link
+                  href="/register"
+                  className="px-7 py-3.5 border border-line hover:border-brand bg-surface/60 text-ink rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-colors"
                 >
-                  Explore the platform
-                </a>
+                  <Building2 className="h-4 w-4 text-brand-fg" />
+                  <span>Register your organisation</span>
+                </Link>
               </div>
+              <p className="text-xs text-ink-subtle">
+                New to ApexLMS? Register your college, school or company; our team reviews each request and e-mails your
+                administrator a link to get started. <a href="#platform" className="text-brand-fg hover:underline underline-offset-2">Explore the platform</a>
+              </p>
             </div>
             <PortalPreview />
           </div>
@@ -309,14 +320,25 @@ export default function Home() {
             <div aria-hidden="true" className="absolute -top-24 -right-16 h-64 w-64 rounded-full bg-on-brand/10 blur-2xl" />
             <div className="relative space-y-5">
               <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-on-brand text-balance">Ready to get to class?</h2>
-              <p className="text-on-brand/80 max-w-md mx-auto">Use the account your institution gave you to sign in.</p>
-              <Link
-                href="/login"
-                className="inline-flex px-7 py-3.5 bg-on-brand text-brand hover:bg-on-brand/90 rounded-2xl text-sm font-bold items-center gap-2 shadow-xl shadow-black/20 transition-all"
-              >
-                <span>Sign in</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <p className="text-on-brand/80 max-w-md mx-auto">
+                Use the account your institution gave you to sign in, or bring your institution on board.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/login"
+                  className="inline-flex px-7 py-3.5 bg-on-brand text-brand hover:bg-on-brand/90 rounded-2xl text-sm font-bold items-center gap-2 shadow-xl shadow-black/20 transition-all"
+                >
+                  <span>Sign in</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex px-7 py-3.5 border border-on-brand/60 text-on-brand hover:bg-on-brand/10 rounded-2xl text-sm font-bold items-center gap-2 transition-all"
+                >
+                  <Building2 className="h-4 w-4" />
+                  <span>Register your organisation</span>
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -332,6 +354,9 @@ export default function Home() {
             </Link>
             <Link href="/forgot-password" className="hover:text-brand-fg transition-colors">
               Forgot password
+            </Link>
+            <Link href="/register" className="hover:text-brand-fg transition-colors">
+              Register your organisation
             </Link>
           </div>
         </div>

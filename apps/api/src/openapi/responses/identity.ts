@@ -229,6 +229,14 @@ export const RESPONSES: ResponseTable = {
     },
     errors: [400, 401, 404, 500, 503],
   },
+  'POST /api/v1/integrations/copyleaks/:tenantSlug/:submissionId/:status': {
+    response: {
+      status: 200,
+      schema: z.object({ status: z.enum(['recorded', 'failed', 'ignored']), alerted: z.number().optional(), reason: z.string().optional() }),
+      description: 'Copyleaks status webhook. `recorded` stores the aggregated score (alerting staff at 30% or more), `failed` marks the check failed, `ignored` acknowledges other statuses and results for a superseded scan.',
+    },
+    errors: [400, 401, 404, 500, 503],
+  },
   'POST /api/v1/integrations/livekit': {
     response: {
       status: 200,

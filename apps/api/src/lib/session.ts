@@ -11,27 +11,47 @@ export interface SessionState {
   role: string;
   status: string;
   tokenVersion: number;
+  /** Status of the user's organisation; a suspended or archived one ends every session in it. */
+  tenantStatus: string;
+}
+
+/** Shown when the organisation of a token (session, SCIM) has been suspended or archived. */
+export const TENANT_SUSPENDED_MESSAGE = 'This organisation has been suspended. Contact the platform operator.';
+
+export function tenantIsBlocked(status: string | null | undefined): boolean {
+  return status === 'SUSPENDED' || status === 'ARCHIVED';
 }
 
 const TTL_MS = config.NODE_ENV === 'test' ? 0 : 10_000;
-const cache = new Map<string, { state: SessionState | null; expires: number }>();
+const cache = new Map<string, { state: SessionState | null; tenantId: string; expires: number }>();
 
 export function invalidateSessionCache(userId: string): void {
   cache.delete(userId);
 }
 
-/** Current state of a user, or null if the user no longer exists. Cached briefly per process. */
+/** Drops every cached session of an organisation, so a change of its status applies at once in this process. */
+export function invalidateTenantSessions(tenantId: string): void {
+  for (const [userId, entry] of cache) if (entry.tenantId === tenantId) cache.delete(userId);
+}
+
+/**
+ * Current state of a user, or null if the user no longer exists. Cached briefly per process; a change of
+ * organisation status clears that organisation's entries here (invalidateTenantSessions) and applies within
+ * TTL_MS in other processes.
+ */
 export async function loadSession(userId: string, tenantId: string, fresh = false): Promise<SessionState | null> {
   const hit = fresh ? undefined : cache.get(userId);
   if (hit && hit.expires > Date.now()) return hit.state;
 
   const row = await runWithTenant(tenantId, () =>
-    prisma.user.findFirst({ where: { id: userId }, select: { role: true, status: true, tokenVersion: true } })
+    prisma.user.findFirst({ where: { id: userId }, select: { role: true, status: true, tokenVersion: true, tenant: { select: { status: true } } } })
   );
-  const state = row ? { role: String(row.role), status: String(row.status), tokenVersion: row.tokenVersion ?? 0 } : null;
+  const state = row
+    ? { role: String(row.role), status: String(row.status), tokenVersion: row.tokenVersion ?? 0, tenantStatus: String(row.tenant.status) }
+    : null;
   if (TTL_MS > 0) {
     if (cache.size > 10_000) cache.clear();
-    cache.set(userId, { state, expires: Date.now() + TTL_MS });
+    cache.set(userId, { state, tenantId, expires: Date.now() + TTL_MS });
   }
   return state;
 }
@@ -48,7 +68,7 @@ export async function revokeSessions(
   invalidateSessionCache(userId);
 }
 
-/** True when a token's user may still use it. */
+/** True when a token's user may still use it. A blocked organisation is checked separately (it gets its own 403). */
 export function sessionIsValid(state: SessionState | null, tokenVersion: number): state is SessionState {
   return !!state && state.status === 'ACTIVE' && state.tokenVersion === tokenVersion;
 }

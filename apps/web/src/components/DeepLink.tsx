@@ -19,7 +19,8 @@ export function DeepLink() {
   useEffect(() => {
     if (isLoading) return;
     if (!user) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-    else router.replace(resolveDeepLink(pathname, user.role));
+    // Course links mean nothing in the platform console; operators go to its overview.
+    else router.replace(user.platformOperator ? "/platform" : resolveDeepLink(pathname, user.role));
   }, [user, isLoading, pathname, router]);
 
   return (

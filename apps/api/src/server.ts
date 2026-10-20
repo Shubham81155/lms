@@ -9,7 +9,10 @@ import { logger } from './lib/logger';
 import { requestId, sendError } from './lib/http';
 import { findRlsBypassReason } from '@enterprise-lms/database';
 import { prisma, basePrisma } from './lib/prisma';
-import { resolveTenant } from './lib/tenant';
+import { lookupTenant, resolveTenant } from './lib/tenant';
+import { TENANT_SUSPENDED_MESSAGE, tenantIsBlocked } from './lib/session';
+import { ORG_SLUG } from './lib/organizations';
+import { baseDomainHost, isUnderBaseDomain, platformHostnames } from './lib/platform-hosts';
 import { tenantFeatures } from './lib/features';
 import { rateLimitStore } from './lib/rate-limit-store';
 
@@ -75,22 +78,51 @@ app.use(cookieParser());
 // authenticated the tenant comes from the verified token (middleware/auth.ts), never from here.
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
 
+/**
+ * The organisation slug a host names. Under TENANT_BASE_DOMAIN only `<slug>.<base>` counts (the base itself
+ * names none); without it, the first label of any multi-label host is tried, as before.
+ */
+function subdomainSlug(host: string): string {
+  const base = config.TENANT_BASE_DOMAIN?.split(':')[0];
+  if (base) {
+    if (!host.endsWith(`.${base}`)) return '';
+    const sub = host.slice(0, -(base.length + 1));
+    return ORG_SLUG.test(sub) ? sub : '';
+  }
+  const first = host.split('.')[0];
+  return host.includes('.') && !IPV4.test(host) && first !== 'www' ? first : '';
+}
+
+const PLATFORM_HOSTS = platformHostnames();
+
 const tenantResolver = (req: Request, _res: Response, next: NextFunction) => {
   const headerTenant = req.headers['x-tenant-id'];
   // Behind the Next.js proxy / a load balancer the original host arrives in X-Forwarded-Host.
-  // It is only believed when a trusted proxy is configured, otherwise clients could spoof it.
+  // It is only believed when a trusted proxy is configured, otherwise clients could spoof it. Of several
+  // values the rightmost is the one the nearest proxy added; anything to its left came from the client.
+  // (Next.js rewrites send a single value, the Host header of the request they received.)
   const forwarded = config.TRUST_PROXY > 0 ? req.headers['x-forwarded-host'] : undefined;
-  const rawHost = String(Array.isArray(forwarded) ? forwarded[0] : forwarded || req.headers.host || '');
-  const host = rawHost.split(',')[0].trim().split(':')[0].toLowerCase();
+  const forwardedHost = (Array.isArray(forwarded) ? forwarded.join(',') : forwarded ?? '')
+    .split(',')
+    .map((h) => h.trim())
+    .filter(Boolean)
+    .pop();
+  const rawHost = (forwardedHost ?? String(req.headers.host ?? '')).trim().toLowerCase();
+  const host = rawHost.split(':')[0];
   const hasDomain = host.includes('.') && !IPV4.test(host);
+  // Under TENANT_BASE_DOMAIN a host names an organisation by its subdomain only: never as a custom domain
+  // (so none can claim another's address), and an unknown subdomain names no organisation at all. The base
+  // itself and the platform's own hosts (APP_URL, API_PUBLIC_URL, ...) keep the default organisation.
+  const underBase = isUnderBaseDomain(host);
+  const onSubdomain = underBase && host !== baseDomainHost() && !PLATFORM_HOSTS.includes(host);
 
-  req.publicHost = rawHost.split(',')[0].trim().toLowerCase();
+  req.publicHost = rawHost;
 
   req.tenantHints = [
     typeof headerTenant === 'string' ? headerTenant.trim() : '',
-    hasDomain ? host : '', // custom domain, e.g. learn.university.edu
-    hasDomain && host.split('.')[0] !== 'www' ? host.split('.')[0] : '', // subdomain slug
-    config.DEFAULT_TENANT_SLUG,
+    hasDomain && !underBase ? host : '', // custom domain, e.g. learn.university.edu
+    subdomainSlug(host), // <slug>.<TENANT_BASE_DOMAIN>
+    onSubdomain ? '' : config.DEFAULT_TENANT_SLUG,
   ].filter(Boolean);
 
   next();
@@ -189,8 +221,10 @@ app.get('/api/v1/openapi.json', (_req: Request, res: Response) => {
 // Tenant Metadata & Branding Endpoint (public; used to brand the login page)
 app.get('/api/v1/tenant/config', async (req: Request, res: Response) => {
   try {
-    const resolved = await resolveTenant(req.tenantHints);
+    const resolved = await lookupTenant(req.tenantHints);
     if (!resolved) return res.status(404).json({ error: 'Tenant not found' });
+    // A suspended organisation still exists: say so, rather than that nobody uses the address.
+    if (tenantIsBlocked(resolved.status)) return res.status(403).json({ error: TENANT_SUSPENDED_MESSAGE, code: 'TENANT_SUSPENDED' });
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: resolved.id },

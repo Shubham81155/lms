@@ -22,7 +22,7 @@ const EXTRA_DOCS: Record<string, { summary: string; tag: string }> = {
   'GET /health': { summary: 'Liveness probe: the process is up. Makes no compliance claims.', tag: 'system' },
   'GET /ready': { summary: 'Readiness probe: 200 only when the database answers, otherwise 503.', tag: 'system' },
   'GET /api/v1/openapi.json': { summary: 'This description of the API.', tag: 'system' },
-  'GET /api/v1/tenant/config': { summary: 'Branding and feature flags of the tenant resolved from the host or x-tenant-id (used by the login page).', tag: 'tenant' },
+  'GET /api/v1/tenant/config': { summary: 'Branding and feature flags of the tenant resolved from the host or x-tenant-id (used by the login page). 404 when no organisation uses the address; 403 with code TENANT_SUSPENDED when it is suspended.', tag: 'tenant' },
 };
 
 /** How callers prove who they are, per route kind. Signed provider callbacks are described in their summaries. */
@@ -79,7 +79,7 @@ export function allOperations(): Operation[] {
 
 export function buildOpenApi() {
   const registry = new OpenAPIRegistry();
-  registry.registerComponent('securitySchemes', 'cookieAuth', { type: 'apiKey', in: 'cookie', name: 'lms_token', description: 'httpOnly session cookie set by POST /api/v1/auth/login.' });
+  registry.registerComponent('securitySchemes', 'cookieAuth', { type: 'apiKey', in: 'cookie', name: 'lms_token', description: 'httpOnly session cookie set by POST /api/v1/auth/login. In production it is named `__Host-lms_token`.' });
   registry.registerComponent('securitySchemes', 'bearerAuth', { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', description: 'The same session token, for API clients.' });
   registry.registerComponent('securitySchemes', 'scimToken', { type: 'http', scheme: 'bearer', description: 'SCIM bearer token created by a tenant administrator.' });
   const errorSchema = registry.register('ErrorResponse', ErrorResponse);

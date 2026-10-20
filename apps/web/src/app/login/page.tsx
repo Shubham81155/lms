@@ -14,7 +14,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrandLogo } from "@/components/BrandLogo";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 
 // Error codes the API puts in /login?error= after a failed single sign-on round trip.
 const SSO_ERRORS: Record<string, string> = {
@@ -35,14 +35,26 @@ function LoginForm() {
   const [mfaCode, setMfaCode] = useState("");
   const [needsMfa, setNeedsMfa] = useState(false);
   const [sso, setSso] = useState<{ oidc: boolean; saml: boolean }>({ oidc: false, saml: false });
-
-  // Offer single sign-on only when this organisation has it switched on.
+  // The organisation is the one this web address belongs to (its own subdomain or custom domain); the header
+  // shows its name and logo. Offer single sign-on only when it has it switched on.
+  // An address that names no organisation (e.g. a mistyped subdomain) has nobody to sign in to.
+  const [noOrganisation, setNoOrganisation] = useState(false);
+  // A suspended organisation: nobody can sign in until the platform operator reactivates it.
+  const [suspended, setSuspended] = useState(false);
   useEffect(() => {
     let alive = true;
     api
       .get<{ enabled: boolean; oidc?: boolean; saml?: boolean }>("/api/v1/auth/sso/status")
       .then((r) => alive && setSso({ oidc: !!r.oidc, saml: !!r.saml }))
       .catch(() => alive && setSso({ oidc: false, saml: false }));
+    api
+      .get("/api/v1/tenant/config")
+      .then(() => alive && setNoOrganisation(false))
+      .catch((e) => {
+        if (!alive || !(e instanceof ApiError)) return;
+        setNoOrganisation(e.status === 404);
+        setSuspended(e.status === 403 && e.details?.code === "TENANT_SUSPENDED");
+      });
     return () => {
       alive = false;
     };
@@ -107,6 +119,20 @@ function LoginForm() {
               Enter your institutional credentials to access your portal.
             </p>
           </div>
+
+          {noOrganisation && (
+            <div role="status" className="p-3.5 bg-accent/10 border border-accent/30 rounded-2xl flex items-start gap-2.5 text-xs text-ink">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-accent" />
+              <span>No organisation uses this web address. Check the address your organisation gave you, or register your organisation below.</span>
+            </div>
+          )}
+
+          {suspended && (
+            <div role="status" className="p-3.5 bg-danger/10 border border-danger/30 rounded-2xl flex items-start gap-2.5 text-xs text-danger">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>This organisation has been suspended, so nobody can sign in to it for now. Contact the platform operator.</span>
+            </div>
+          )}
 
           {/* Error Banner */}
           {errorMsg && (
@@ -239,6 +265,13 @@ function LoginForm() {
                 ))}
             </div>
           )}
+
+          <p className="text-center text-[11px] text-ink-muted">
+            New organisation?{" "}
+            <Link href="/register" className="font-semibold text-brand-fg hover:underline underline-offset-2">
+              Register your organisation
+            </Link>
+          </p>
         </div>
       </main>
     </div>

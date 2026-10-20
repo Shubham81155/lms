@@ -12,6 +12,7 @@ import { assertAttachable, linkOrUpload } from '../lib/stored-files';
 import { recomputeCourseProgress } from '../lib/course-progress';
 import { copyCourse } from '../lib/course-copy';
 import { approvalRequired, assertMayPublish } from './course-review.routes';
+import { notify } from '../lib/notify';
 import { canSeeAllCourses, isAdminRole, requireContentAccess, requireCourseAccess, requireCourseEditor } from '../lib/access';
 
 const router = Router();
@@ -394,6 +395,71 @@ router.delete(
     });
 
     return res.status(200).json({ message: 'Course archived successfully', id: archived.id, status: archived.status });
+  })
+);
+
+export const courseInstructorsSchema = z.object({
+  /** The course's whole teaching team; replaces the current one. Empty leaves the course without teachers. */
+  instructors: z
+    .array(z.object({ userId: idSchema, isPrimary: z.boolean().default(false) }))
+    .max(20)
+    .refine((l) => new Set(l.map((i) => i.userId)).size === l.length, 'A person is listed twice')
+    .refine((l) => l.length === 0 || l.filter((i) => i.isPrimary).length === 1, 'Choose exactly one main teacher'),
+});
+
+/**
+ * PUT /api/v1/courses/:id/instructors - set who teaches a course (administrators only).
+ * Teachers must be instructors or teaching assistants of this organisation who are active or invited; the main
+ * teacher must be an instructor. People added are notified.
+ */
+router.put(
+  '/:id/instructors',
+  authenticateJWT,
+  requireRole('SUPER_ADMIN', 'TENANT_ADMIN'),
+  route('Failed to change the teachers', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const id = String(req.params.id);
+    const { instructors } = parseBody(req, courseInstructorsSchema);
+    const course = await prisma.course.findFirst({ where: { id, tenantId }, select: { id: true, title: true, instructors: { select: { userId: true, isPrimary: true } } } });
+    if (!course) throw new HttpError(404, 'Course not found');
+
+    const people = await prisma.user.findMany({
+      where: { tenantId, id: { in: instructors.map((i) => i.userId) } },
+      select: { id: true, role: true, status: true, firstName: true, lastName: true },
+    });
+    const byId = new Map(people.map((p) => [p.id, p]));
+    for (const i of instructors) {
+      const p = byId.get(i.userId);
+      if (!p) throw new HttpError(400, 'A chosen teacher is not in this organisation');
+      if (!['INSTRUCTOR', 'TEACHING_ASSISTANT'].includes(p.role)) throw new HttpError(400, `${p.firstName} ${p.lastName} is not an instructor or teaching assistant`);
+      if (!['ACTIVE', 'INVITED'].includes(p.status)) throw new HttpError(400, `${p.firstName} ${p.lastName}'s account is ${p.status.toLowerCase()}`);
+      if (i.isPrimary && p.role !== 'INSTRUCTOR') throw new HttpError(400, 'The main teacher must be an instructor, not a teaching assistant');
+    }
+
+    await runInTenantTransaction(tenantId, async (tx) => {
+      await tx.courseInstructor.deleteMany({ where: { courseId: id } });
+      if (instructors.length) await tx.courseInstructor.createMany({ data: instructors.map((i) => ({ courseId: id, userId: i.userId, isPrimary: i.isPrimary })) });
+    });
+
+    const before = new Set(course.instructors.map((i) => i.userId));
+    const added = instructors.filter((i) => !before.has(i.userId)).map((i) => i.userId);
+    const removed = course.instructors.filter((i) => !instructors.some((n) => n.userId === i.userId)).map((i) => i.userId);
+    await Promise.all(
+      added.map((userId) =>
+        notify({ tenantId, userId, category: 'COURSE', title: `You now teach "${course.title}"`, body: 'An administrator added you to this course.', link: `/courses/${id}` })
+      )
+    );
+    await logAuditEvent({
+      tenantId, userId: req.user!.id, action: 'COURSE_INSTRUCTORS_CHANGED', resourceType: 'COURSE', resourceId: id,
+      ipAddress: req.ip, userAgent: req.headers['user-agent'],
+      diffJson: { before: course.instructors, after: instructors, added, removed },
+    });
+
+    const saved = await prisma.courseInstructor.findMany({
+      where: { courseId: id },
+      select: { isPrimary: true, user: { select: { id: true, firstName: true, lastName: true, email: true, role: true } } },
+    });
+    return res.json({ data: saved });
   })
 );
 

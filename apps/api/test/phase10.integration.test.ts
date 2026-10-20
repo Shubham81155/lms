@@ -320,6 +320,19 @@ describe('SP-initiated sign-in', () => {
     expect(await admin.user.count()).toBe(before);
   });
 
+  it('creates a learner from the assertion name attributes when the organisation allows it', async () => {
+    const a = await as('admin');
+    const conf = { entryPoint: ENTRY, idpIssuer: IDP, enabled: true, emailAttribute: 'email' };
+    expect((await a.put('/api/v1/admin/saml').send({ ...conf, allowedDomains: [], autoCreateAccounts: true })).status).toBe(400);
+    await a.put('/api/v1/admin/saml').send({ ...conf, allowedDomains: ['x.edu'], autoCreateAccounts: true });
+    ok(await signIn({ email: 'newcomer@x.edu', 'urn:oid:2.5.4.42': 'Grace', 'urn:oid:2.5.4.4': 'Hopper' }, { nameId: 'nid-newcomer' }));
+    expect(await admin.user.findFirst({ where: { tenantId: 't-h', email: 'newcomer@x.edu' } })).toMatchObject({
+      role: 'STUDENT', status: 'ACTIVE', firstName: 'Grace', lastName: 'Hopper', idpProvider: 'SAML', idpSubjectId: `saml:${IDP}|nid-newcomer`,
+    });
+    refused(await signIn({ email: 'outsider@partner.org' }, { nameId: 'nid-outsider' }));
+    await a.put('/api/v1/admin/saml').send({ ...conf, allowedDomains: [], autoCreateAccounts: false });
+  });
+
   it('refuses suspended accounts, other domains, and accounts bound to a different identity', async () => {
     refused(await signIn({ email: 'susp@x.edu' }, { nameId: 'nid-susp' }));
     refused(await signIn({ email: 'bound@x.edu' }, { nameId: 'attacker' }));

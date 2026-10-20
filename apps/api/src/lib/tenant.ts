@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { tenantIsBlocked } from './session';
 
 export interface ResolvedTenant {
   id: string;
@@ -15,15 +16,20 @@ export interface ResolvedTenant {
  * The result's `id` is the only tenant identifier the rest of the system uses.
  */
 export async function resolveTenant(hints: string[] | undefined): Promise<ResolvedTenant | null> {
+  const tenant = await lookupTenant(hints);
+  return tenant && !tenantIsBlocked(tenant.status) ? tenant : null;
+}
+
+/** The tenant the hints name, whatever its status; only for telling people why they cannot sign in. */
+export async function lookupTenant(hints: string[] | undefined): Promise<ResolvedTenant | null> {
   for (const hint of hints ?? []) {
     if (!hint) continue;
     const tenant = await prisma.tenant.findFirst({
       where: { OR: [{ id: hint }, { slug: hint }, { customDomain: hint }] },
       select: { id: true, slug: true, name: true, status: true, customDomain: true },
     });
-    if (tenant) {
-      return tenant.status === 'SUSPENDED' || tenant.status === 'ARCHIVED' ? null : tenant;
-    }
+    if (tenant) return tenant;
   }
   return null;
 }
+

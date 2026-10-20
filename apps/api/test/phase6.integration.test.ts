@@ -339,6 +339,52 @@ describe('OIDC sign-in', () => {
 });
 
 // ---------------------------------------------------------------------------
+describe('accounts created at first sign-in (OIDC)', () => {
+  const conf = (over: object) => ({ issuer: ISSUER, clientId: CLIENT_ID, enabled: true, allowedDomains: [], autoCreateAccounts: false, ...over });
+  const created = (email: string) => admin.user.findFirst({ where: { tenantId: 't-h', email } });
+
+  it('is off by default, and needs allowed domains to be switched on', async () => {
+    const a = await as('admin');
+    expect((await a.get('/api/v1/admin/sso')).body.data.autoCreateAccounts).toBe(false);
+    refused(await signIn({ sub: 'sub-new0', email: 'new0@x.edu', email_verified: true }));
+    expect(await created('new0@x.edu')).toBeNull();
+    const res = await a.put('/api/v1/admin/sso').send(conf({ autoCreateAccounts: true }));
+    expect(res.status).toBe(400);
+    const on = await a.put('/api/v1/admin/sso').send(conf({ autoCreateAccounts: true, allowedDomains: ['x.edu'] }));
+    expect(on.body.data).toMatchObject({ autoCreateAccounts: true, allowedDomains: ['x.edu'] });
+  });
+
+  it('creates a learner bound to the identity, once', async () => {
+    const r = await signIn({ sub: 'sub-new1', email: 'New1@X.edu', email_verified: true, given_name: 'Nia', family_name: 'Patel' });
+    expect(r.callback.headers.location).toBe(`${APP}/`);
+    const u = await created('new1@x.edu');
+    expect(u).toMatchObject({ role: 'STUDENT', status: 'ACTIVE', firstName: 'Nia', lastName: 'Patel', emailVerified: true, passwordHash: null, idpProvider: 'OIDC', idpSubjectId: 'sub-new1' });
+    expect((await r.agent.get('/api/v1/auth/me').set('x-tenant-id', 'harvard')).body.user).toMatchObject({ id: u!.id, role: 'STUDENT' });
+    expect(await admin.auditLog.count({ where: { action: 'SSO_USER_CREATED', resourceId: u!.id } })).toBe(1);
+
+    const before = await admin.user.count();
+    expect((await signIn({ sub: 'sub-new1', email: 'new1@x.edu', email_verified: true })).callback.headers.location).toBe(`${APP}/`);
+    expect(await admin.user.count()).toBe(before);
+  });
+
+  it('splits a full name when the provider sends no given or family name', async () => {
+    await signIn({ sub: 'sub-new2', email: 'new2@x.edu', email_verified: true, name: 'Ada King Lovelace' });
+    expect(await created('new2@x.edu')).toMatchObject({ firstName: 'Ada King', lastName: 'Lovelace' });
+  });
+
+  it('never creates from an unverified e-mail, another domain, or past the seat quota', async () => {
+    refused(await signIn({ sub: 'sub-new3', email: 'new3@x.edu', email_verified: false }));
+    refused(await signIn({ sub: 'sub-new4', email: 'new4@elsewhere.org', email_verified: true }));
+    await admin.tenant.update({ where: { id: 't-h' }, data: { seatQuota: await admin.user.count({ where: { tenantId: 't-h', status: { in: ['ACTIVE', 'INVITED'] } } }) } });
+    refused(await signIn({ sub: 'sub-new5', email: 'new5@x.edu', email_verified: true }));
+    await admin.tenant.update({ where: { id: 't-h' }, data: { seatQuota: null } });
+    for (const e of ['new3@x.edu', 'new4@elsewhere.org', 'new5@x.edu']) expect(await created(e)).toBeNull();
+    const reasons = (await admin.auditLog.findMany({ where: { action: 'SSO_LOGIN_FAILED' } })).map((f) => (f.diffJson as any).reason);
+    expect(reasons).toContain('no seats left');
+    await (await as('admin')).put('/api/v1/admin/sso').send(conf({}));
+  });
+});
+
 describe('custom domains', () => {
   const CB = (origin: string) => `${origin}/api/v1/auth/sso/callback`;
   const CUSTOM = 'http://learn.harvard.edu'; // tests run with APP_URL on http, so custom domains follow it

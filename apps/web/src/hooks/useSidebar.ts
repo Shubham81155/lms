@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 
 const COLLAPSED_KEY = "lms_sidebar_collapsed";
 const DESKTOP_QUERY = "(min-width: 1024px)";
+/** Below this width the rail starts as icons only, so the page keeps its room, until the person chooses. */
+const ROOMY_QUERY = "(min-width: 1280px)";
 
 /**
  * Sidebar state: the desktop rail can be collapsed (remembered per browser) and below the desktop
@@ -17,9 +19,11 @@ export function useSidebar() {
 
   useEffect(() => {
     try {
-      setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
+      const stored = localStorage.getItem(COLLAPSED_KEY);
+      setCollapsed(stored === null ? !window.matchMedia(ROOMY_QUERY).matches : stored === "1");
     } catch {
-      /* storage can be blocked; the sidebar then just starts expanded */
+      /* storage can be blocked; the sidebar then follows the window width */
+      setCollapsed(!window.matchMedia(ROOMY_QUERY).matches);
     }
     setReady(true);
   }, []);

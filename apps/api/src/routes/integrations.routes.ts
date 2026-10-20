@@ -1,12 +1,13 @@
 import crypto from 'crypto';
 import express, { Router, Request, Response } from 'express';
-import { runWithTenant } from '@enterprise-lms/database';
+import { Prisma, runWithTenant } from '@enterprise-lms/database';
 import { z } from 'zod';
 import { config } from '../config';
 import { basePrisma, prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
 import { notify } from '../lib/notify';
 import { httpUrl } from '../lib/validate';
+import { COPYLEAKS_TOKEN_HEADER, copyleaksConfigured, validCopyleaksToken } from '../lib/copyleaks';
 import { liveConfigured, parseRoomName, secondsBetween, verifyWebhook } from '../lib/livekit';
 
 // Inbound callbacks from third-party services. These must be mounted BEFORE the global JSON
@@ -35,6 +36,50 @@ const bodySchema = z.object({
   score: z.number().min(0).max(100),
   reportUrl: httpUrl.refine((u) => u.startsWith('https://'), 'reportUrl must be https').optional(),
 });
+
+const SUBMISSION_FOR_RESULT = { id: true, assignment: { select: { id: true, title: true, courseId: true } } } as const;
+
+/**
+ * Stores a similarity result on a submission (run inside the tenant) and alerts the course staff when it is
+ * high. `only` narrows which state of the row may be written. Returns how many staff were alerted, or null
+ * when the row no longer matches and nothing was written.
+ */
+async function recordPlagiarismResult(
+  tenantId: string,
+  submission: { id: string; assignment: { id: string; title: string; courseId: string } },
+  score: number,
+  reportUrl: string | null,
+  only: Prisma.AssignmentSubmissionWhereInput = {}
+): Promise<number | null> {
+  const written = await prisma.assignmentSubmission.updateMany({
+    where: { ...only, id: submission.id },
+    data: { plagiarismScore: score, plagiarismReportUrl: reportUrl, plagiarismStatus: 'COMPLETE', plagiarismNextAttemptAt: null },
+  });
+  if (written.count !== 1) return null;
+
+  let alerted = 0;
+  if (score >= PLAGIARISM_ALERT_PERCENT) {
+    const staff = await prisma.courseInstructor.findMany({ where: { courseId: submission.assignment.courseId }, select: { userId: true } });
+    await Promise.all(
+      staff.map((s) =>
+        notify({
+          tenantId,
+          userId: s.userId,
+          category: 'GRADE',
+          title: `High similarity on "${submission.assignment.title}"`,
+          body: `A submission scored ${Math.round(score)}% similarity.`,
+          link: `/assignments/${submission.assignment.id}/submissions/${submission.id}`,
+        })
+      )
+    );
+    alerted = staff.length;
+  }
+  await logAuditEvent({
+    tenantId, action: 'PLAGIARISM_RESULT_RECORDED', resourceType: 'ASSIGNMENT_SUBMISSION', resourceId: submission.id,
+    diffJson: { score },
+  });
+  return alerted;
+}
 
 /**
  * POST /api/v1/integrations/plagiarism/:tenantSlug
@@ -72,37 +117,77 @@ router.post(
       return await runWithTenant(tenant.id, async () => {
         const submission = await prisma.assignmentSubmission.findFirst({
           where: { id: parsed.submissionId, assignment: { tenantId: tenant.id } },
-          select: { id: true, assignment: { select: { id: true, title: true, courseId: true } } },
+          select: SUBMISSION_FOR_RESULT,
         });
         if (!submission) return fail(404, 'Not found');
 
-        await prisma.assignmentSubmission.update({
-          where: { id: submission.id },
-          data: { plagiarismScore: parsed.score, plagiarismReportUrl: parsed.reportUrl ?? null, plagiarismStatus: 'COMPLETE', plagiarismNextAttemptAt: null },
-        });
+        const alerted = await recordPlagiarismResult(tenant.id, submission, parsed.score, parsed.reportUrl ?? null);
+        return res.json({ status: 'recorded', alerted: alerted ?? 0 });
+      });
+    } catch (err) {
+      return fail(500, 'Failed to process callback');
+    }
+  }
+);
 
-        let alerted = 0;
-        if (parsed.score >= PLAGIARISM_ALERT_PERCENT) {
-          const staff = await prisma.courseInstructor.findMany({ where: { courseId: submission.assignment.courseId }, select: { userId: true } });
-          await Promise.all(
-            staff.map((s) =>
-              notify({
-                tenantId: tenant.id,
-                userId: s.userId,
-                category: 'GRADE',
-                title: `High similarity on "${submission.assignment.title}"`,
-                body: `A submission scored ${Math.round(parsed.score)}% similarity.`,
-                link: `/assignments/${submission.assignment.id}/submissions/${submission.id}`,
-              })
-            )
-          );
-          alerted = staff.length;
-        }
-        await logAuditEvent({
-          tenantId: tenant.id, action: 'PLAGIARISM_RESULT_RECORDED', resourceType: 'ASSIGNMENT_SUBMISSION', resourceId: submission.id,
-          diffJson: { score: parsed.score },
+const copyleaksBodySchema = z.object({
+  scannedDocument: z.object({ scanId: z.string().min(1).max(64) }),
+  results: z.object({ score: z.object({ aggregatedScore: z.number() }) }).optional(),
+  error: z.object({ code: z.number().optional(), message: z.string().optional() }).optional(),
+});
+
+/**
+ * POST /api/v1/integrations/copyleaks/:tenantSlug/:submissionId/:status
+ * Status webhooks from Copyleaks (status is completed, error, creditsChecked or indexed). The x-lms-token
+ * header, set when the scan was sent, is an HMAC of the tenant, submission and scan id. A result for a scan
+ * that is no longer the submission's current one (the learner handed in again) is acknowledged and dropped.
+ */
+router.post(
+  '/copyleaks/:tenantSlug/:submissionId/:status',
+  express.json({ type: '*/*', limit: '5mb' }),
+  async (req: Request, res: Response) => {
+    const fail = (status: number, error: string) => res.status(status).json({ error, requestId: req.id });
+    try {
+      if (!copyleaksConfigured() || !config.PLAGIARISM_WEBHOOK_SECRET) return fail(503, 'Copyleaks is not configured');
+      const tenantSlug = String(req.params.tenantSlug);
+      const submissionId = String(req.params.submissionId);
+      const parsed = copyleaksBodySchema.safeParse(req.body);
+      const token = String(req.headers[COPYLEAKS_TOKEN_HEADER] ?? '');
+      if (!parsed.success || !token) return fail(401, 'Invalid token');
+      const scanId = parsed.data.scannedDocument.scanId;
+      if (!validCopyleaksToken(tenantSlug, submissionId, scanId, token)) return fail(401, 'Invalid token');
+
+      const tenant = await basePrisma.tenant.findUnique({ where: { slug: tenantSlug }, select: { id: true } });
+      if (!tenant) return fail(404, 'Not found');
+
+      return await runWithTenant(tenant.id, async () => {
+        const submission = await prisma.assignmentSubmission.findFirst({
+          where: { id: submissionId, assignment: { tenantId: tenant.id } },
+          select: { ...SUBMISSION_FOR_RESULT, plagiarismScanId: true },
         });
-        return res.json({ status: 'recorded', alerted });
+        if (!submission) return fail(404, 'Not found');
+        if (submission.plagiarismScanId !== scanId) return res.json({ status: 'ignored', reason: 'superseded' });
+        // Only the first outcome of the current scan counts; a repeat (or a forged late one) changes nothing.
+        const open = { plagiarismScanId: scanId, plagiarismStatus: { in: ['PENDING', 'SUBMITTED'] } };
+
+        const status = String(req.params.status);
+        if (status === 'completed') {
+          if (!parsed.data.results) return fail(400, 'Invalid callback payload');
+          const score = Math.min(100, Math.max(0, parsed.data.results.score.aggregatedScore));
+          const alerted = await recordPlagiarismResult(tenant.id, submission, score, null, open);
+          if (alerted === null) return res.json({ status: 'ignored', reason: 'already settled' });
+          return res.json({ status: 'recorded', alerted });
+        }
+        if (status === 'error') {
+          const written = await prisma.assignmentSubmission.updateMany({ where: { ...open, id: submission.id }, data: { plagiarismStatus: 'FAILED', plagiarismNextAttemptAt: null } });
+          if (written.count !== 1) return res.json({ status: 'ignored', reason: 'already settled' });
+          await logAuditEvent({
+            tenantId: tenant.id, action: 'PLAGIARISM_CHECK_FAILED', resourceType: 'ASSIGNMENT_SUBMISSION', resourceId: submission.id,
+            diffJson: { provider: 'copyleaks', code: parsed.data.error?.code ?? null, message: parsed.data.error?.message?.slice(0, 200) ?? null },
+          });
+          return res.json({ status: 'failed' });
+        }
+        return res.json({ status: 'ignored', reason: status.slice(0, 40) });
       });
     } catch (err) {
       return fail(500, 'Failed to process callback');

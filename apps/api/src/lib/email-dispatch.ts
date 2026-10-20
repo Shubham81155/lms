@@ -4,6 +4,7 @@ import { basePrisma, prisma } from './prisma';
 import { logger } from './logger';
 import { sendMail } from './mailer';
 import { hourInZone, inQuietHours } from './notify';
+import { tenantUrl } from './tenant-url';
 
 // Sends the e-mails queued by notify() (emailStatus = PENDING). Safe to run on several instances at
 // once: each notification is claimed with a conditional update before it is sent, so it goes out
@@ -17,15 +18,18 @@ const DEFAULT_BATCH = 100;
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-/** Only same-app paths and https links become clickable; anything else is omitted. */
-export function absoluteLink(link: string | null): string | null {
+/**
+ * Only same-app paths and https links become clickable; anything else is omitted. Paths are made absolute on
+ * `base`, the recipient's organisation address (APP_URL when not given).
+ */
+export function absoluteLink(link: string | null, base: string = config.APP_URL): string | null {
   if (!link) return null;
-  if (link.startsWith('/') && !link.startsWith('//')) return `${config.APP_URL.replace(/\/+$/, '')}${link}`;
+  if (link.startsWith('/') && !link.startsWith('//')) return `${base.replace(/\/+$/, '')}${link}`;
   return /^https:\/\//i.test(link) ? link : null;
 }
 
-export function renderEmail(n: { title: string; body: string | null; link: string | null }, tenantName: string) {
-  const url = absoluteLink(n.link);
+export function renderEmail(n: { title: string; body: string | null; link: string | null }, tenantName: string, base?: string) {
+  const url = absoluteLink(n.link, base);
   const footer = `You are receiving this because of your notification settings at ${tenantName}. You can change them in the app.`;
   const text = [n.title, n.body ?? '', url ? `Open: ${url}` : '', '', footer].filter((l, i) => l !== '' || i > 2).join('\n');
   const html =
@@ -46,7 +50,7 @@ export interface DispatchResult {
   dropped: number;
 }
 
-async function processTenant(tenant: { id: string; name: string }, now: Date, batch: number, totals: DispatchResult) {
+async function processTenant(tenant: { id: string; name: string; slug: string; customDomain: string | null }, now: Date, batch: number, totals: DispatchResult) {
   const pending = await prisma.notification.findMany({
     where: { emailStatus: 'PENDING' },
     orderBy: { createdAt: 'asc' },
@@ -83,7 +87,7 @@ async function processTenant(tenant: { id: string; name: string }, now: Date, ba
     if (claimed.count !== 1) continue;
 
     try {
-      await sendMail({ to: user.email, ...renderEmail(n, tenant.name) });
+      await sendMail({ to: user.email, ...renderEmail(n, tenant.name, tenantUrl(tenant)) });
       await prisma.notification.update({ where: { id: n.id }, data: { emailStatus: 'SENT', emailedAt: new Date() } });
       totals.sent++;
     } catch (err) {
@@ -99,7 +103,7 @@ async function processTenant(tenant: { id: string; name: string }, now: Date, ba
 export async function dispatchPendingEmails(opts: { now?: Date; batch?: number } = {}): Promise<DispatchResult> {
   const now = opts.now ?? new Date();
   const totals: DispatchResult = { sent: 0, failed: 0, held: 0, dropped: 0 };
-  const tenants = await basePrisma.tenant.findMany({ where: { status: { in: ['ACTIVE', 'TRIAL'] } }, select: { id: true, name: true } });
+  const tenants = await basePrisma.tenant.findMany({ where: { status: { in: ['ACTIVE', 'TRIAL'] } }, select: { id: true, name: true, slug: true, customDomain: true } });
   for (const tenant of tenants) {
     try {
       await runWithTenant(tenant.id, () => processTenant(tenant, now, opts.batch ?? DEFAULT_BATCH, totals));

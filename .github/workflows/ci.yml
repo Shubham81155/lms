@@ -1,0 +1,133 @@
+# Continuous integration: lint, type checks, the API description, tests and the web build.
+#
+# The test suites start their own throwaway PostgreSQL (embedded-postgres, see
+# packages/database/test-utils/embedded.ts), so `npm test` needs no database service. The Postgres
+# service container in the "migrations" job checks separately that the real migrations apply cleanly
+# to the same server version the docker-compose stack runs (postgres:16).
+#
+# Redis and ClamAV are not needed: both are optional in apps/api/src/config.ts, and the tests that
+# exercise them use stubs.
+#
+# Not run here: `npm run format:check` (Prettier currently reports most of the repository; add it once
+# `npm run format` has been applied and committed).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  checks:
+    name: Lint, type checks, API description
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Generate Prisma client
+        run: npm run db:generate -w @enterprise-lms/database
+
+      # Each check runs even when an earlier one failed, so one run reports every problem.
+      - name: Lint
+        run: npm run lint
+      - name: Type check (API and packages)
+        if: success() || failure()
+        run: npm run typecheck
+      - name: Type check (web)
+        if: success() || failure()
+        working-directory: apps/web
+        run: npx tsc --noEmit -p .
+      - name: OpenAPI description and web types are up to date
+        if: success() || failure()
+        run: |
+          npm run api:sync
+          git diff --exit-code apps/api/openapi.json apps/web/src/lib/api-schema.ts \
+            || { echo "::error::apps/api/openapi.json or apps/web/src/lib/api-schema.ts is stale. Run 'npm run api:sync' and commit the result."; exit 1; }
+
+  migrations:
+    name: Migrations apply to PostgreSQL 16
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: enterprise_lms
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d enterprise_lms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/enterprise_lms?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/enterprise_lms?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Generate Prisma client
+        run: npm run db:generate -w @enterprise-lms/database
+      - name: prisma migrate deploy
+        run: npm run db:deploy -w @enterprise-lms/database
+      - name: Migration status
+        run: npm run db:status -w @enterprise-lms/database
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Generate Prisma client
+        run: npm run db:generate -w @enterprise-lms/database
+      # apps/api/test/setup-env.ts sets every variable config.ts validates (JWT_SECRET, PII_ENCRYPTION_KEY,
+      # rate limits, ...) and each integration suite points DATABASE_URL at its own embedded PostgreSQL,
+      # so no secrets or database URL are passed here.
+      - name: npm test
+        run: npm test
+
+  build-web:
+    name: Web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: next build
+        env:
+          # Baked into the /api/v1 rewrite at build time; the value only matters for a deployed image.
+          API_URL: http://localhost:4000
+        run: npm run build -w @enterprise-lms/web

@@ -7,10 +7,12 @@ import { logAuditEvent } from '../lib/audit';
 import { logger } from '../lib/logger';
 import { tenantFeatures } from '../lib/features';
 import { startSession } from '../middleware/auth';
+import { cookiePath } from '../lib/cookie-name';
 import { appOrigin, originFor } from '../lib/sso-origin';
 import { resolveSsoUser } from '../lib/sso-user';
 import {
   SAML_FLOW_COOKIE, SamlError, emailFromProfile, metadataXml, newRequestId, readSamlFlow, responseSucceeded, safeEqual, samlFor, signSamlFlow, subjectFromProfile,
+  namesFromProfile,
 } from '../lib/saml';
 
 // Mounted at /api/v1/auth/saml. SP-initiated SAML 2.0 web SSO (HTTP-Redirect out, HTTP-POST back).
@@ -26,7 +28,7 @@ const loginUrl = (origin: string, error?: string) => `${origin}/login${error ? `
 // cross-site POST. In production (https) the flow cookie is therefore SameSite=None; Secure.
 const cookieOpts = () => {
   const prod = config.NODE_ENV === 'production';
-  return { httpOnly: true, secure: prod, sameSite: (prod ? 'none' : 'lax') as 'none' | 'lax', path: '/api/v1/auth/saml' };
+  return { httpOnly: true, secure: prod, sameSite: (prod ? 'none' : 'lax') as 'none' | 'lax', path: cookiePath('/api/v1/auth/saml') };
 };
 
 async function activeConnection(tenantId: string) {
@@ -102,6 +104,10 @@ router.post('/acs', async (req: Request, res: Response) => {
         email: emailFromProfile(profile, conn.emailAttribute),
         emailTrusted: true,
         allowedDomains: conn.allowedDomains,
+        autoCreate: conn.autoCreateAccounts,
+        ...namesFromProfile(profile),
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
       });
       if (!result.ok) return fail(result.reason);
 

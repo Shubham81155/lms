@@ -44,6 +44,10 @@ model Tenant {
   secondaryColor String? @default("#3b82f6")
   faviconUrl     String?
 
+  // Created through registration or by the platform operator: the admin area shows the setup checklist.
+  // Organisations that existed before onboarding was added never see it.
+  setupChecklist Boolean @default(false)
+
   // Compliance & Data Residency
   dataRegion     String  @default("us-east-1")
   ferpaCompliant Boolean @default(true)
@@ -657,6 +661,8 @@ model AssignmentSubmission {
   plagiarismStatus        String?
   plagiarismAttempts      Int       @default(0)
   plagiarismNextAttemptAt DateTime?
+  /// The provider's id for the current check (Copyleaks scan id); reset when the text changes.
+  plagiarismScanId        String?
   rubricScoresJson    Json? // { [criterionId]: points } when the assignment has a rubric
   appeal              GradeAppeal?
   /// Every version the learner handed in, oldest first; this row always holds the latest one.
@@ -1050,6 +1056,8 @@ model SsoConnection {
   clientSecretEnc  String   @db.Text
   enabled          Boolean  @default(false)
   allowedDomains   String[] @default([]) // e-mail domains accepted; empty = any
+  /// Creates a learner account at the first sign-in of someone from an allowed domain (needs allowedDomains).
+  autoCreateAccounts Boolean @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -1086,6 +1094,8 @@ model SamlConnection {
   emailAttribute String   @default("email")
   enabled        Boolean  @default(false)
   allowedDomains String[] @default([])
+  /// Creates a learner account at the first sign-in of someone from an allowed domain (needs allowedDomains).
+  autoCreateAccounts Boolean @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -1190,4 +1200,40 @@ model Announcement {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId, courseId, createdAt])
+}
+
+// A request from an institution to get an organisation on the platform, decided by the platform operator.
+// Platform-level (no tenant until approved, then createdTenantId); not under row-level security.
+model OrganizationRequest {
+  id               String    @id @default(uuid())
+  organizationName String
+  slug             String // unique among requests holding it (partial index on holdsSlug in the migration)
+  institutionType  String // UNIVERSITY | COLLEGE | SCHOOL | TRAINING_PROVIDER | COMPANY | OTHER
+  country          String?
+  website          String?
+  expectedLearners Int?
+  contactFirstName String
+  contactLastName  String
+  contactEmail     String
+  contactPhone     String?
+  message          String?   @db.Text
+  status           String    @default("UNVERIFIED") // UNVERIFIED (e-mail not confirmed) | PENDING | APPROVED | REJECTED
+  decisionNote     String?   @db.Text
+  decidedAt        DateTime?
+  decidedByEmail   String?
+  createdTenantId  String?
+  ipAddress        String?
+  /// SHA-256 of the e-mail confirmation token; the token itself is only in the applicant's e-mail.
+  verificationTokenHash String?   @unique
+  verificationExpiresAt DateTime?
+  verifiedAt            DateTime?
+  /// Whether the request currently reserves its slug; released when it is decided or its hold expires.
+  holdsSlug             Boolean   @default(false)
+  /// When the hold lapses: 24 hours while unconfirmed, 30 days after confirmation.
+  holdExpiresAt         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([contactEmail])
 }

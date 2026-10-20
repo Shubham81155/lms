@@ -9,19 +9,24 @@ import {
   FileCheck,
   GraduationCap,
   FileQuestion,
+  Inbox,
   KeyRound,
   LayoutGrid,
   MessageSquare,
   ScrollText,
   ShieldCheck,
   Sparkles,
+  UsersRound,
   Webhook,
   type LucideIcon,
 } from "lucide-react";
 import { routeForRole, type Role } from "@/lib/roles";
 
-/** The three signed-in areas. Which one a person lands in follows from their role (see roles.ts). */
-export type Area = "student" | "teacher" | "admin" | "audit";
+/**
+ * The signed-in areas. Which one a person lands in follows from their role (see roles.ts); "platform" is the
+ * platform console, used only (and exclusively) by platform operators.
+ */
+export type Area = "student" | "teacher" | "admin" | "audit" | "platform";
 
 export interface NavItem {
   key: string;
@@ -52,6 +57,7 @@ export const AREA_LABEL: Record<Area, string> = {
   teacher: "Teaching",
   admin: "Administration",
   audit: "Audit",
+  platform: "Platform",
 };
 
 const tab = (key: string, label: string, icon: LucideIcon, href: string): NavItem => ({ key, label, icon, kind: "tab", href });
@@ -125,6 +131,25 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
       id: "review",
       title: "Review",
       items: [tab("log", "Audit log", ScrollText, "/audit")],
+    },
+  ],
+  platform: [
+    {
+      id: "operate",
+      title: "Platform",
+      items: [
+        tab("overview", "Overview", LayoutGrid, "/platform"),
+        tab("requests", "Registration requests", Inbox, "/platform#requests"),
+        tab("organisations", "Organisations", Building, "/platform#organisations"),
+      ],
+    },
+    {
+      id: "team",
+      title: "Platform team",
+      items: [
+        tab("operators", "Operators", UsersRound, "/platform#operators"),
+        tab("audit", "Audit log", ScrollText, "/platform#audit"),
+      ],
     },
   ],
 };

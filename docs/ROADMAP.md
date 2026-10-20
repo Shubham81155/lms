@@ -27,13 +27,16 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 |---|---|---|
 | Auth: cookie/JWT sessions, lockout, password reset, e-mail verification | Done | |
 | RBAC + per-course access rules | Done | `api_authorization.md` |
+| **Organisation registration with operator approval**: public request (address availability, institution details, contact), e-mails to the applicant, in-app alert to operators; the platform operator approves (creates the organisation with a plan and seats, invites its first administrator) or rejects (reason e-mailed); operators can also create organisations directly and suspend/reactivate them; `lms_org` cookie picks the organisation on a shared address; `npm run platform:bootstrap` creates the operator organisation | Done | requests are not e-mail-verified before review (the invitation proves the address on approval); no trial expiry or billing |
 | Tenant branding, feature flags by plan, seat quota, usage metering | Done | plans, quotas and feature overrides are set by the platform operator (`PLATFORM_OPERATOR_TENANT`), not by the organisation's own admins |
 | SCIM 2.0 provisioning | Done | |
 | MFA (TOTP + recovery codes) | Done | login page asks for the code |
 | **OIDC single sign-on** (PKCE, per-tenant provider, custom-domain aware, no auto-provisioning) + login button | Done | works with SCIM-provisioned users |
 | **SAML 2.0 single sign-on** (pinned signing certificate, per-tenant audience, request-bound responses, custom-domain aware) | Done | SP-initiated; no single logout or encrypted assertions |
+| **Accounts created at first SSO sign-in** (OIDC and SAML, per organisation, off by default; only for the organisation's allowed e-mail domains and a trusted e-mail; learner role; seat quota applies; audited) | Done | names from OIDC given/family name or SAML givenName/sn (incl. OID and Microsoft claim names); tested against stand-in identity providers only |
 | WebAuthn / passkeys | Open | |
 | Course / module / lesson CRUD, catalogue, enrolment, certificates | Done | |
+| **Administrators oversee courses, teachers run them**: the admin Courses tab is a table (course, teachers, learners, status) with Teachers (assign/change, one main instructor, people added are notified), Grades (approve final grades) and Archive; no course creation or teaching tools in the admin area | Done | the API still lets administrators create courses (e.g. for integrations); only the admin screen leaves it out |
 | **Academic terms** and **course copy** into a new term (material only, dates moved by the gap between terms, uploaded files duplicated) | Done | admin Terms panel, "Copy" tool on each course |
 | **Publishing review** (optional per organisation: instructors submit drafts, administrators approve or request changes) | Done | off by default |
 | Course versioning, CSV / Common Cartridge import | Open | |
@@ -66,7 +69,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | Bloom's-taxonomy mastery analytics | Done | from tagged questions |
 | Proctoring telemetry and flagging | Done | the quiz screen reports tab switches, leaving full screen and copy/paste |
 | **Camera and microphone proctoring** (per quiz; detection in the browser, events only, no recording) | Done | face threshold tuned on synthetic video only; not yet tried with real webcams |
-| **Plagiarism provider callbacks** (HMAC-signed, replay-limited) | Done | outbound submission is queued, signed, retried with backoff and sent to a configurable provider URL (`PLAGIARISM_SUBMIT_URL`); tested against a local stand-in, no native Turnitin/Copyleaks adapter, queued/in-progress/failed status shown on the teacher grading panel |
+| **Plagiarism provider callbacks** (HMAC-signed, replay-limited) | Done | outbound submission is queued, signed, retried with backoff and sent either to Copyleaks (`COPYLEAKS_EMAIL`/`COPYLEAKS_API_KEY`, status webhooks authenticated by a per-scan HMAC header, results for replaced text dropped) or to a configurable provider URL (`PLAGIARISM_SUBMIT_URL`); both tested against local stand-ins only, not yet a real Copyleaks account; no Turnitin adapter; queued/in-progress/failed status shown on the teacher grading panel |
 | **Rubrics** (per-criterion scoring, learner-visible breakdown) | Done | teacher editor and grading screen included |
 | **Grade appeals** (14-day window, instructor decision, reopens an approved course grade) | Done | assignments only; learner and teacher screens included |
 | Peer review | Open | |
@@ -105,6 +108,6 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 
 1. Run the S3 driver against a real bucket, SCORM against packages from Articulate, Captivate and iSpring, and
    virus scanning against a real ClamAV daemon (the Phase 3-4 screens were checked in a browser on 2026-10-18).
-2. Turnitin/Copyleaks adapter for the plagiarism queue; try camera proctoring with real webcams and lighting.
+2. Try the Copyleaks adapter with a real account (sandbox mode first); try camera proctoring with real webcams and lighting.
 3. Daily digest e-mails and SMS/push channels.
 4. DSAR request queue (log, deadline tracking) and a data-retention scheduler.
