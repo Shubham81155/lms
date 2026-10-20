@@ -898,7 +898,7 @@ describe('LTI 1.3 launch', () => {
 
   const token = (over: Record<string, unknown> = {}, key: crypto.KeyObject = privateKey) =>
     jwt.sign(
-      { iss: 'https://platform.example.edu', aud: 'client-1', sub: 'u1', email: 's4@x.edu', nonce: 'n-1', [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1', [`${CLAIM}/target_link_uri`]: 'https://lms/courses/c1', ...over },
+      { iss: 'https://platform.example.edu', aud: 'client-1', sub: 'u1', email: 's4@x.edu', nonce: `n-${crypto.randomUUID()}`, [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1', [`${CLAIM}/target_link_uri`]: 'https://lms/courses/c1', ...over },
       key,
       { algorithm: 'RS256', keyid: 'k1', expiresIn: '5m' }
     );
@@ -923,6 +923,22 @@ describe('LTI 1.3 launch', () => {
     expect((await launch(jwt.sign({ iss: 'x' }, 'secret'))).status).toBe(401); // HS256 not accepted
     const expired = jwt.sign({ iss: 'https://platform.example.edu', aud: 'client-1', nonce: 'n', email: 's4@x.edu', [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1' }, privateKey, { algorithm: 'RS256', keyid: 'k1', expiresIn: -60 });
     expect((await launch(expired)).status).toBe(401);
+  });
+
+  it('accepts a launch token once: a replay of the same token is refused', async () => {
+    const t = token();
+    expect((await launch(t)).status).toBe(200);
+    const again = await launch(t);
+    expect(again.status).toBe(401);
+    expect(again.body.error).toMatch(/already used/);
+  });
+
+  it('refuses a token without an expiry or issued long ago', async () => {
+    const claims = { iss: 'https://platform.example.edu', aud: 'client-1', email: 's4@x.edu', [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1' };
+    const sign = (extra: Record<string, unknown>, opts: jwt.SignOptions) => jwt.sign({ ...claims, nonce: `n-${crypto.randomUUID()}`, ...extra }, privateKey, { algorithm: 'RS256', keyid: 'k1', ...opts });
+    expect((await launch(sign({}, {}))).status).toBe(401); // no exp
+    const old = Math.floor(Date.now() / 1000) - 3600;
+    expect((await launch(sign({ iat: old }, { expiresIn: '2h' }))).status).toBe(401); // issued an hour ago
   });
 
   it('does not accept launches into a tenant that lacks the deployment', async () => {

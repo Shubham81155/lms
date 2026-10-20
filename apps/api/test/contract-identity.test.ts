@@ -323,7 +323,7 @@ describe('SAML single sign-on', () => {
 describe('LTI 1.3 launch', () => {
   const token = (over: Record<string, unknown> = {}) =>
     jwt.sign(
-      { iss: 'https://platform.example.edu', aud: 'client-1', sub: 'u1', email: 's4@x.edu', nonce: 'n-1', [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1', [`${CLAIM}/target_link_uri`]: 'https://lms/courses/c1', ...over },
+      { iss: 'https://platform.example.edu', aud: 'client-1', sub: 'u1', email: 's4@x.edu', nonce: `n-${crypto.randomUUID()}`, [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1', [`${CLAIM}/target_link_uri`]: 'https://lms/courses/c1', ...over },
       ltiKeys.privateKey,
       { algorithm: 'RS256', keyid: 'k1', expiresIn: '5m' }
     );

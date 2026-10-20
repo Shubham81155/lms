@@ -8,6 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { MfaSettings } from "@/components/MfaSettings";
 import { MyDataRequests } from "@/components/MyDataRequests";
+import { useT } from "@/lib/i18n";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 const card = "bg-canvas border border-line rounded-2xl p-5 space-y-3";
 const input =
@@ -18,7 +20,9 @@ const input =
  * backed by /api/v1/privacy/me/*. Every action is written to the audit trail by the API.
  */
 export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  useEscapeKey(onClose);
   const { user, logout } = useAuth();
+  const t = useT();
   const directory = useApiData<{ data: { optOut: boolean } }>("/api/v1/privacy/me/directory");
   const exportAction = useAction();
   const directoryAction = useAction();
@@ -58,11 +62,11 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="privacy-h" className="font-bold text-base text-ink">Account security and privacy</h3>
-              <p className="text-xs text-ink-muted">Two-step sign-in, and your rights under GDPR and FERPA. Each action is recorded in the audit trail.</p>
+              <h3 id="privacy-h" className="font-bold text-base text-ink">{t("privacy.title")}</h3>
+              <p className="text-xs text-ink-muted">{t("privacy.subtitle")}</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors">
+          <button onClick={onClose} aria-label={t("common.close")} className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -74,20 +78,19 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
           <section className={card} aria-labelledby="export-h">
             <div className="flex items-center gap-2">
               <Download className="h-4 w-4 text-brand-fg" />
-              <h4 id="export-h" className="text-sm font-bold text-ink">Download your data</h4>
+              <h4 id="export-h" className="text-sm font-bold text-ink">{t("privacy.export.title")}</h4>
             </div>
             <p className="text-xs text-ink-muted leading-relaxed">
-              A JSON file with your profile, enrolments, grades, quiz attempts, submissions, forum posts, notifications,
-              live-class attendance, learning activity and recent account activity.
+              {t("privacy.export.body")}
             </p>
             {exportAction.error && <Banner kind="error">{exportAction.error}</Banner>}
-            {exported && !exportAction.error && <Banner kind="ok">Your data has been downloaded.</Banner>}
+            {exported && !exportAction.error && <Banner kind="ok">{t("privacy.export.done")}</Banner>}
             <button
               onClick={downloadMyData}
               disabled={exportAction.busy}
               className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all"
             >
-              {exportAction.busy ? "Preparing…" : "Download my data"}
+              {exportAction.busy ? t("privacy.export.busy") : t("privacy.export.button")}
             </button>
           </section>
 
@@ -97,14 +100,14 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
           <section className={card} aria-labelledby="dir-h">
             <div className="flex items-center gap-2">
               <EyeOff className="h-4 w-4 text-accent" />
-              <h4 id="dir-h" className="text-sm font-bold text-ink">Hide my name from classmates</h4>
+              <h4 id="dir-h" className="text-sm font-bold text-ink">{t("privacy.directory.title")}</h4>
             </div>
             <p className="text-xs text-ink-muted leading-relaxed">
-              Other students see &ldquo;Anonymous learner&rdquo; instead of your name on leaderboards and in forums. Your teachers and administrators still see it.
+              {t("privacy.directory.body")}
             </p>
             {(directory.error || directoryAction.error) && <Banner kind="error">{directory.error || directoryAction.error}</Banner>}
             <label className="flex items-center justify-between p-3 rounded-xl bg-surface border border-line cursor-pointer">
-              <span className="text-xs text-ink">{optOut ? "Hidden from classmates" : "Visible to classmates"}</span>
+              <span className="text-xs text-ink">{optOut ? t("privacy.directory.hidden") : t("privacy.directory.visible")}</span>
               <input
                 type="checkbox"
                 role="switch"
@@ -120,24 +123,22 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
           <section className="bg-canvas border border-danger/30 rounded-2xl p-5 space-y-3" aria-labelledby="erase-h">
             <div className="flex items-center gap-2">
               <Trash2 className="h-4 w-4 text-danger" />
-              <h4 id="erase-h" className="text-sm font-bold text-ink">Erase my account</h4>
+              <h4 id="erase-h" className="text-sm font-bold text-ink">{t("privacy.erase.title")}</h4>
             </div>
             <p className="text-xs text-ink-muted leading-relaxed">
-              Your name, e-mail, sign-in details, notifications and anything you wrote (submissions, forum posts) are removed
-              and you are signed out everywhere. Grades and scores stay on record, as the institution must keep them, but no
-              longer identify you. The audit trail cannot be edited and keeps its existing entries.
+              {t("privacy.erase.body")}
             </p>
             <div className="flex items-start gap-2 p-3 rounded-xl bg-danger/10 border border-danger/30 text-[11px] text-danger">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>This cannot be undone. Download your data first if you want a copy.</span>
+              <span>{t("privacy.erase.warning")}</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="space-y-1">
-                <span className="text-[11px] text-ink-muted">Type your e-mail address to confirm</span>
+                <span className="text-[11px] text-ink-muted">{t("privacy.erase.confirmEmail")}</span>
                 <input className={input} type="email" autoComplete="off" value={confirmEmail} onChange={(e) => setConfirmEmail(e.target.value)} placeholder={user?.email} />
               </label>
               <label className="space-y-1">
-                <span className="text-[11px] text-ink-muted">Password (leave empty if you use single sign-on)</span>
+                <span className="text-[11px] text-ink-muted">{t("privacy.erase.password")}</span>
                 <input className={input} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
               </label>
             </div>
@@ -147,7 +148,7 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
               disabled={!emailMatches || eraseAction.busy}
               className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-on-brand rounded-xl text-xs font-bold transition-all"
             >
-              {eraseAction.busy ? "Erasing…" : "Erase my account"}
+              {eraseAction.busy ? t("privacy.erase.busy") : t("privacy.erase.title")}
             </button>
           </section>
         </div>

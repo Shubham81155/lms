@@ -229,6 +229,8 @@ const envSchema = z.object({
   DSAR_DUE_DAYS: z.coerce.number().int().min(1).max(90).default(30),
   /** How often administrators are warned about data requests that are due soon or overdue, in seconds (0: never). */
   DSAR_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(21_600),
+  /** How often the personal-data breach clock is checked (administrators are warned before and after the 72-hour deadline), in seconds (0: never). */
+  BREACH_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(3600),
   /** How often organisations' data-retention policies are looked at, in seconds (each runs at most daily; 0: never). */
   RETENTION_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(3600),
   /** Most rows of one data class a retention run removes; the next run continues. */

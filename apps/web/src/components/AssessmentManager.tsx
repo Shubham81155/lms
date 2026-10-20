@@ -62,6 +62,7 @@ export const AssessmentManager: React.FC<{ onClose: () => void; /** Open on this
               key={t}
               role="tab"
               aria-selected={tab === t}
+              tabIndex={tab === t ? 0 : -1}
               onClick={() => setTab(t)}
               className={`rounded-xl px-3 py-1.5 capitalize transition-all ${tab === t ? "bg-brand text-on-brand" : "text-ink-muted hover:bg-surface hover:text-ink"}`}
             >

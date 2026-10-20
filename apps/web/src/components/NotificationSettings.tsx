@@ -136,7 +136,7 @@ export const NotificationSettings: React.FC<{ onDone: () => void }> = ({ onDone 
         <legend className="text-ink-muted font-semibold">Mute categories</legend>
         <div className="grid grid-cols-2 gap-1.5">
           {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-            <label key={key} className="flex items-center gap-1.5 text-ink">
+            <label key={key} className="flex min-h-6 items-center gap-1.5 text-ink">
               <input type="checkbox" checked={muted.includes(key)} onChange={(e) => setMuted((m) => (e.target.checked ? [...m, key] : m.filter((x) => x !== key)))} />
               {label}
             </label>
@@ -145,7 +145,7 @@ export const NotificationSettings: React.FC<{ onDone: () => void }> = ({ onDone 
       </fieldset>
 
       <fieldset className="space-y-2">
-        <label className="flex items-center gap-2 text-ink">
+        <label className="flex min-h-6 items-center gap-2 text-ink">
           <input type="checkbox" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} />
           Quiet hours (e-mail waits until they end)
         </label>
@@ -204,7 +204,7 @@ export const NotificationSettings: React.FC<{ onDone: () => void }> = ({ onDone 
             </label>
             <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="What the summary includes">
               {Object.entries(DIGEST_SECTION_LABELS).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-1.5 text-ink">
+                <label key={key} className="flex min-h-6 items-center gap-1.5 text-ink">
                   <input type="checkbox" checked={sections.includes(key)} onChange={(e) => setSections((s) => (e.target.checked ? [...s, key] : s.filter((x) => x !== key)))} />
                   {label}
                 </label>

@@ -9,6 +9,7 @@ import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { LiveRoom, type JoinInfo } from "@/components/LiveRoom";
 import { fromLocalInput, LiveSessionView, scheduleProblem, startsIn, toLocalInput } from "@/lib/live";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface AttendanceRow { userId: string; name: string; email: string; minutes: number; present: boolean; joinCount: number; inRoomNow: boolean }
 interface Attendance { data: AttendanceRow[]; summary: { enrolled: number; present: number } }
@@ -49,6 +50,7 @@ const AttendanceTable: React.FC<{ sessionId: string }> = ({ sessionId }) => {
 };
 
 export const LiveClasses: React.FC<{ onClose: () => void; /** Open on this course when the person may use it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
+  useEscapeKey(onClose);
   const { user } = useAuth();
   const { courses, isLoading: loadingCourses } = useStaffCourses();
   const [courseId, setCourseId] = useState("");

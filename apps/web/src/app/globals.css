@@ -3,6 +3,24 @@
 @tailwind utilities;
 
 /*
+ * Hindi. No web font is loaded: Latin text keeps the system stack and Devanagari uses Noto Sans Devanagari where
+ * installed, else the system's own face (Nirmala UI on Windows, Kohinoor/Sangam MN on Apple, Noto on Android and
+ * Linux). Devanagari has marks above and below the line, so the small fixed line heights of the UI are loosened.
+ */
+:lang(hi) {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Devanagari", "Nirmala UI", "Kohinoor Devanagari", "Devanagari Sangam MN", Mangal, sans-serif;
+}
+:lang(hi) .text-xs,
+:lang(hi) .text-\[9px\],
+:lang(hi) .text-\[10px\],
+:lang(hi) .text-\[11px\] {
+  line-height: 1.65;
+}
+:lang(hi) .text-sm {
+  line-height: 1.6;
+}
+
+/*
  * Semantic colour tokens (space-separated RGB so Tailwind opacity modifiers work).
  * Used by the public pages (landing, sign-in flow); each has a dark and a light value.
  */
@@ -16,9 +34,9 @@
   --line: 38 46 78;           /* borders, tracks */
   --ink: 236 239 250;         /* primary text */
   --ink-muted: 163 171 198;   /* body text */
-  --ink-subtle: 124 133 166;  /* captions, placeholders */
+  --ink-subtle: 130 139 172;  /* captions, placeholders (4.5:1 on every surface; test/contrast.test.ts) */
   --brand: 79 70 229;         /* filled buttons; white text on it is 6.3:1 */
-  --brand-hover: 99 102 241;
+  --brand-hover: 95 98 240;   /* white text on it is 4.7:1 */
   --brand-fg: 165 180 252;    /* brand-coloured text and icons */
   --on-brand: 255 255 255;
   --accent: 251 191 36;       /* amber highlight */
@@ -47,7 +65,7 @@ html:not(.dark) {
   --brand-hover: 67 56 202;
   --brand-fg: 67 56 202;
   --on-brand: 255 255 255;
-  --accent: 180 83 9;
+  --accent: 161 72 6;
   --success: 4 120 87;
   --danger: 190 18 60;
   --orchid: 109 40 217;
@@ -106,11 +124,11 @@ html:not(.dark) .text-slate-300 {
 }
 
 html:not(.dark) .text-slate-400 {
-  color: #64748b !important;
+  color: #4f5d73 !important;
 }
 
 html:not(.dark) .text-slate-500 {
-  color: #94a3b8 !important;
+  color: #586579 !important;
 }
 
 html:not(.dark) input,
@@ -154,4 +172,33 @@ nextjs-portal,
 [data-support-locked] {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/*
+ * Keyboard focus (WCAG 2.4.7, 1.4.11). In the base layer so any utility (outline-none plus a ring, say) still wins:
+ * controls with no focus style of their own get a 2px ring in the brand text colour (3:1 or better on every
+ * surface in both themes), and form fields, which usually only change their border colour, add a ring beside it.
+ */
+@layer base {
+  :focus-visible {
+    outline: 2px solid rgb(var(--brand-fg));
+    outline-offset: 2px;
+  }
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    box-shadow: 0 0 0 2px rgb(var(--brand-fg) / 0.55);
+  }
+}
+
+/* People who ask their system for less motion get none (WCAG 2.3.3): transitions and animations end at once. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

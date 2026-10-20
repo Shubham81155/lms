@@ -1,12 +1,16 @@
 import { prisma } from './prisma';
 import { eraseUploadsOf } from './stored-files';
 import { revokeSessions } from './session';
+import { consentHistory } from './consent';
 
 // Per-person data rights: a portable export of everything held about a user (GDPR Art. 15/20) and
 // erasure (Art. 17). Erasure anonymises rather than deletes the user row: grades, audit entries and
 // foreign keys stay intact, but nothing that identifies the person is kept. The append-only audit
 // trail cannot be edited, so entries keep the user id, IP address and user agent recorded at the
-// time (retained under the legal-obligation / legitimate-interest exceptions).
+// time (retained under the legal-obligation / legitimate-interest exceptions). The consent history (ConsentRecord)
+// is kept too, as the organisation's evidence of what the person agreed to and withdrew (DPDP Act s.6, GDPR Art.
+// 7(1)): it holds no contact details, only the anonymised user id, the purpose wording and the dates. A minor's
+// guardian address is removed.
 
 export const ERASED_NAME = 'Erased';
 export const erasedEmail = (userId: string) => `erased-${userId}@erased.invalid`;
@@ -17,11 +21,12 @@ export async function buildUserExport(userId: string, tenantId: string) {
     select: {
       id: true, email: true, firstName: true, lastName: true, avatarUrl: true, role: true, status: true, emailVerified: true,
       idpProvider: true, mfaEnabled: true, directoryOptOut: true, lastLoginAt: true, createdAt: true,
+      isMinor: true, guardianEmail: true, guardianConsentAt: true,
     },
   });
   if (!user) return null;
 
-  const [enrollments, quizAttempts, assignments, notifications, preferences, threads, posts, grades, attendance, xapi, activity, guardians, scorm] =
+  const [enrollments, quizAttempts, assignments, notifications, preferences, threads, posts, grades, attendance, xapi, activity, guardians, scorm, consents] =
     await Promise.all([
       prisma.enrollment.findMany({
         where: { userId, tenantId },
@@ -54,10 +59,11 @@ export async function buildUserExport(userId: string, tenantId: string) {
       }),
       prisma.userGuardian.findMany({ where: { OR: [{ studentId: userId }, { guardianId: userId }] }, select: { studentId: true, guardianId: true, relation: true } }),
       prisma.scormAttempt.findMany({ where: { userId, tenantId }, select: { packageId: true, status: true, scorePercent: true, completedAt: true, cmiJson: true, updatedAt: true } }),
+      consentHistory(tenantId, userId),
     ]);
 
   return {
-    exportMetadata: { format: 'LMS_PERSONAL_DATA_EXPORT_V1', generatedAt: new Date().toISOString(), subjectId: userId, regulation: 'GDPR Art. 15/20; FERPA 34 CFR 99.10' },
+    exportMetadata: { format: 'LMS_PERSONAL_DATA_EXPORT_V1', generatedAt: new Date().toISOString(), subjectId: userId, regulation: 'GDPR Art. 15/20; DPDP Act s.11; FERPA 34 CFR 99.10' },
     profile: user,
     enrollments,
     quizAttempts,
@@ -70,6 +76,7 @@ export async function buildUserExport(userId: string, tenantId: string) {
     liveAttendance: attendance,
     learningActivity: xapi.map((x) => x.statementJson),
     guardianLinks: guardians,
+    consents,
     accountActivity: activity,
   };
 }
@@ -96,7 +103,7 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
       email: erasedEmail(userId), firstName: ERASED_NAME, lastName: 'User', avatarUrl: null, passwordHash: null,
       emailVerified: false, idpProvider: null, idpSubjectId: null,
       mfaEnabled: false, mfaSecret: null, mfaRecoveryHashes: [], lockedUntil: null, directoryOptOut: true,
-      status: 'SUSPENDED', erasedAt: new Date(),
+      status: 'SUSPENDED', erasedAt: new Date(), guardianEmail: null,
     },
   });
   await revokeSessions(userId);
@@ -106,6 +113,7 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
   await prisma.notification.deleteMany({ where: { userId, tenantId } });
   await prisma.notificationPreference.deleteMany({ where: { userId } });
   await prisma.userGuardian.deleteMany({ where: { OR: [{ studentId: userId }, { guardianId: userId }] } });
+  await prisma.guardianConsentRequest.deleteMany({ where: { tenantId, userId } });
 
   // Free text the person wrote can contain anything; scores and grades are kept for the record.
   await prisma.assignmentSubmission.updateMany({ where: { userId, assignment: { tenantId } }, data: { submissionText: null, fileUrl: null } });

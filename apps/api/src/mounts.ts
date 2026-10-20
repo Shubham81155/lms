@@ -4,6 +4,7 @@ import coursesRoutes from './routes/courses.routes';
 import enrollmentsRoutes from './routes/enrollments.routes';
 import usersRoutes from './routes/users.routes';
 import privacyRoutes from './routes/privacy.routes';
+import dpdpRoutes from './routes/dpdp.routes';
 import assessmentsRoutes from './routes/assessments.routes';
 import adminRoutes from './routes/admin.routes';
 import analyticsRoutes from './routes/analytics.routes';
@@ -63,6 +64,7 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1/enrollments', router: enrollmentsRoutes },
   { prefix: '/api/v1/users', router: usersRoutes },
   { prefix: '/api/v1/privacy', router: privacyRoutes },
+  { prefix: '/api/v1/privacy', router: dpdpRoutes },
   { prefix: '/api/v1', router: assessmentsRoutes },
   { prefix: '/api/v1/admin', router: adminRoutes },
   { prefix: '/api/v1/analytics', router: analyticsRoutes },

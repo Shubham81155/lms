@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useXApiStream, XApiStatementItem } from "@/hooks/useAnalytics";
 import { plural } from "@/lib/plural";
+import { activateOnKey } from "@/lib/a11y";
 
 interface LrsAnalyticsViewerProps {
   onClose: () => void;
@@ -125,7 +126,11 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                 return (
                   <div
                     key={stmt.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
                     onClick={() => setSelectedStatement(stmt)}
+                    onKeyDown={activateOnKey(() => setSelectedStatement(stmt))}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
                         ? "bg-cyan-950/30 border-cyan-600/60 shadow-md"

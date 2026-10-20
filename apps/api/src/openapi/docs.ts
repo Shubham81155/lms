@@ -46,6 +46,7 @@ import { enrollSchema, listQuery as enrollmentListQuery, updateProgressSchema } 
 import { OFFBOARDING_DOCS } from './responses/offboarding';
 import { BILLING_DOCS } from './responses/billing';
 import { DSAR_DOCS } from './responses/privacy-requests';
+import { DPDP_DOCS } from './responses/dpdp';
 
 /**
  * Hand-written detail for the endpoints the web app relies on most. Every route is listed in the
@@ -351,6 +352,7 @@ export const DOCS: Record<string, OperationDoc> = {
   ...OFFBOARDING_DOCS,
   ...BILLING_DOCS,
   ...DSAR_DOCS,
+  ...DPDP_DOCS,
   'POST /api/v1/auth/login': {
     summary: 'Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended. `platformOperator` as in GET /auth/me.',
     body: loginSchema,

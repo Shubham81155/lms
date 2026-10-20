@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, ArrowLeft, Building2, CheckCircle2, Loader2, MailCheck, XCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageSwitcher } from "@/lib/i18n";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Captcha, type CaptchaHandle } from "@/components/Captcha";
 import { api, ApiError } from "@/lib/api";
@@ -317,6 +318,7 @@ export default function RegisterOrganisationPage() {
           <BrandLogo />
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors">Sign in</Link>
+            <LanguageSwitcher />
             <ThemeToggle />
           </div>
         </div>

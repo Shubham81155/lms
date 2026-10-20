@@ -84,7 +84,17 @@ model Tenant {
   ferpaCompliant Boolean @default(true)
   coppaCompliant Boolean @default(false)
 
+  // Grievance officer (DPDP Act s.8(10)): published on the organisation's privacy notice (GET /privacy/grievance-officer).
+  grievanceName    String?
+  grievanceEmail   String?
+  grievancePhone   String?
+  grievanceAddress String?
+  /// Days within which the organisation commits to answer a grievance.
+  grievanceSlaDays Int?
+
   // Relations
+  consentRecords    ConsentRecord[]
+  ltiNonces         LtiNonce[]
   campuses          Campus[]
   users             User[]
   courses           Course[]
@@ -295,6 +305,11 @@ model User {
   directoryOptOut Boolean   @default(false)
   /// Set when the person's data was erased; the row stays so grades, audit and foreign keys keep working.
   erasedAt        DateTime?
+  /// Under 18 (DPDP Act s.9): set by an administrator, or by the person declaring it; needs a guardian's consent.
+  isMinor           Boolean   @default(false)
+  guardianEmail     String?
+  /// When a guardian confirmed consent through the e-mailed link.
+  guardianConsentAt DateTime?
 
   // Relations
   enrollments             Enrollment[]
@@ -1528,3 +1543,107 @@ model RetentionPolicy {
   updatedAt          DateTime  @updatedAt
 }
 
+
+/// What an organisation asks people to consent to (DPDP Act s.6): plain-language text per purpose. Changing the text
+/// or `required` raises `version`, so a person's earlier answer is known to be for the earlier wording.
+model ConsentPurpose {
+  id          String   @id @default(uuid())
+  tenantId    String
+  /// Short stable name, unique in the organisation (e.g. "marketing").
+  key         String
+  title       String
+  description String   @db.Text
+  /// The lawful basis or purpose note shown to the administrator, e.g. "consent; not needed to run a course".
+  lawfulBasis String?  @db.Text
+  required    Boolean  @default(false)
+  active      Boolean  @default(true)
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([tenantId, key])
+}
+
+/// Append-only history of consent given and withdrawn (the runtime role may only read and insert). It holds no
+/// contact details; who, from where and with what browser is in the audit trail. Erasing a person keeps these rows.
+model ConsentRecord {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId       String
+  purposeId    String
+  purposeKey   String
+  /// The purpose's version when this was given or withdrawn.
+  version      Int
+  granted      Boolean
+  /// The wording the person saw (title and description), as evidence of what they agreed to.
+  textSnapshot String   @db.Text
+  /// USER | GUARDIAN | ADMIN
+  source       String   @default("USER")
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, userId, purposeKey, createdAt])
+  @@index([tenantId, purposeKey, createdAt])
+}
+
+/// An LTI launch token's nonce, kept until the token expires so the same launch cannot be replayed.
+model LtiNonce {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  issuer    String
+  nonce     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, issuer, nonce])
+  @@index([expiresAt])
+}
+
+/// Personal-data breach register with the notification clock (DPDP Act s.8(6)).
+model DataBreach {
+  id                   String    @id @default(uuid())
+  tenantId             String
+  title                String
+  description          String    @db.Text
+  /// Kinds of personal data involved, e.g. ["contact details", "grades"].
+  categories           String[]  @default([])
+  /// Estimated number of people affected; null while unknown.
+  affectedEstimate     Int?
+  /// LOW | MEDIUM | HIGH | CRITICAL
+  severity             String
+  /// DETECTED | CONTAINED | NOTIFIED | CLOSED
+  status               String    @default("DETECTED")
+  detectedAt           DateTime
+  occurredAt           DateTime?
+  containment          String?   @db.Text
+  ownerId              String?
+  boardNotifiedAt      DateTime?
+  peopleNotifiedAt     DateTime?
+  /// Why neither the Board nor the people had to be told (required to close without notifying).
+  noNotificationReason String?   @db.Text
+  closedAt             DateTime?
+  /// When the Board has to be told: detectedAt + 72 hours.
+  dueAt                DateTime
+  /// Administrators warned: 1 = due within 24 hours, 2 = overdue.
+  reminderStage        Int       @default(0)
+  createdById          String
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([tenantId, status, dueAt])
+}
+
+/// A minor's request to their guardian, confirmed through an e-mailed link; only the token's hash is stored.
+model GuardianConsentRequest {
+  id            String    @id @default(uuid())
+  tenantId      String
+  userId        String
+  guardianEmail String
+  tokenHash     String    @unique
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([tenantId, userId])
+}

@@ -9,6 +9,7 @@ import { downloadFile, useAction, useApiData } from "@/hooks/useApiData";
 import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { ScormResults } from "@/components/ScormResults";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Category { id: string; name: string; weightPercent: number }
 interface Item { type: "QUIZ" | "ASSIGNMENT"; id: string; title: string; gradeCategoryId: string | null }
@@ -315,6 +316,7 @@ const Grid: React.FC<{ courseId: string; courseCode: string }> = ({ courseId, co
 // ---------------------------------------------------------------------------
 
 export const CourseGradebook: React.FC<{ onClose: () => void; /** Open on this course when the person may use it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
+  useEscapeKey(onClose);
   const { user } = useAuth();
   const { courses, isLoading } = useStaffCourses();
   const [courseId, setCourseId] = useState<string>("");

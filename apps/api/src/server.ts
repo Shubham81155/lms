@@ -30,6 +30,7 @@ import { startCustomDomainRecheck } from './lib/custom-domain-recheck';
 import { startOffboardingJob } from './lib/offboarding';
 import { startTrialJob } from './lib/trial';
 import { startDsarJob } from './lib/data-requests';
+import { startBreachJob } from './lib/breaches';
 import { startRetentionJob } from './lib/retention';
 import { startBillingJob } from './lib/billing';
 
@@ -345,6 +346,7 @@ if (config.NODE_ENV !== 'test') {
     startOffboardingJob();
     startTrialJob();
     startDsarJob();
+    startBreachJob();
     startRetentionJob();
     startBillingJob();
     if (!virusScanner() && config.NODE_ENV === 'production') {

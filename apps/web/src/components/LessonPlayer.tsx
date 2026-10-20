@@ -491,14 +491,14 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
               </button>
 
               <div>
-                <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-ink-muted">Lessons</h4>
+                <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-ink-muted">Lessons</h3>
                 <p className="text-[11px] text-ink-subtle">Select any lesson to open it</p>
               </div>
 
               <div className="space-y-4">
                 {modules.map((module) => (
                   <div key={module.id} className="space-y-2">
-                    <h5 className="text-xs font-bold text-ink">{module.title}</h5>
+                    <h4 className="text-xs font-bold text-ink">{module.title}</h4>
                     {module.lessons.length === 0 && <p className="text-[11px] text-ink-subtle">No lessons in this module yet.</p>}
                     <div className="space-y-1">
                       {module.lessons.map((lesson) => (
@@ -524,7 +524,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
               {onOpenExam && (
                 <div className="space-y-2 border-t border-line pt-4">
-                  <h5 className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle">Assessments</h5>
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle">Assessments</h4>
                   <button
                     onClick={onOpenExam}
                     className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-2 text-xs font-bold text-ink transition-all hover:bg-brand hover:text-on-brand"

@@ -9,6 +9,7 @@ import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { draftProblem, type ChoiceOption } from "@/lib/forms";
 import { BLOOM_LEVELS, QUESTION_TYPES, QuestionFields, blankQuestion, questionBody, type QuestionDraft } from "@/components/assessments/QuestionFields";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 const TYPES = QUESTION_TYPES;
 const BLOOM = BLOOM_LEVELS;
@@ -80,6 +81,7 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
 };
 
 export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  useEscapeKey(onClose);
   const { user } = useAuth();
   const { courses } = useStaffCourses();
   const [q, setQ] = useState("");

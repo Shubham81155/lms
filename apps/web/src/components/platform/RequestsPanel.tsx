@@ -47,6 +47,7 @@ export const RequestsPanel: React.FC<{ onChanged?: () => void; onShowOrganisatio
               key={t.key}
               role="tab"
               aria-selected={status === t.key}
+              tabIndex={status === t.key ? 0 : -1}
               onClick={() => {
                 setDone(null);
                 setStatus(t.key);

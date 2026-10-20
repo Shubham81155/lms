@@ -28,6 +28,7 @@ import { AuditLogPanel } from "@/components/AuditLogPanel";
 import { CourseReviewPanel } from "@/components/admin/CourseReviewPanel";
 import { AdminCourseTable } from "@/components/admin/AdminCourseTable";
 import { plural } from "@/lib/plural";
+import { currentTab } from "@/lib/navigation";
 
 const TABS = ["overview", "courses", "compliance", "sso", "platform", "billing", "audit"] as const;
 type Tab = (typeof TABS)[number];
@@ -154,6 +155,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tab Contents */}
+        <h2 className="sr-only">{currentTab("admin", activeTab).label}</h2>
         {activeTab === "overview" && (
           <SetupChecklist
             seatsUsed={seats?.used ?? null}

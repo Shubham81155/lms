@@ -203,8 +203,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
             {/* Title, Code & Status */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-xs font-semibold text-ink-muted">Course Title</label>
+                <label htmlFor="course-title" className="text-xs font-semibold text-ink-muted">Course Title</label>
                 <input
+                  id="course-title"
                   type="text"
                   value={courseTitle}
                   placeholder="e.g. Introduction to Computer Science"
@@ -215,8 +216,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-ink-muted">Course Code</label>
+                <label htmlFor="course-code" className="text-xs font-semibold text-ink-muted">Course Code</label>
                 <input
+                  id="course-code"
                   type="text"
                   value={courseCode}
                   placeholder="e.g. CS-101"
@@ -245,8 +247,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
             {/* Course Settings Bar */}
             <div className="bg-canvas border border-line rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div>
-                <label className="text-ink-muted font-semibold block mb-1">Publication Status</label>
+                <label htmlFor="course-status" className="text-ink-muted font-semibold block mb-1">Publication Status</label>
                 <select
+                  id="course-status"
                   value={courseStatus}
                   onChange={(e) => setCourseStatus(e.target.value as any)}
                   className="w-full bg-surface border border-line rounded-xl px-3 py-1.5 text-xs text-ink focus:outline-none focus:border-brand font-medium"
@@ -259,11 +262,13 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
 
               <div>
                 <div className="flex justify-between text-ink-muted font-semibold mb-1">
-                  <span>Passing Score</span>
+                  <span id="passing-score-label">Passing Score</span>
                   <span className="text-brand-fg">{passingGradePercent}%</span>
                 </div>
                 <input
                   type="range"
+                  aria-labelledby="passing-score-label"
+                  aria-valuetext={`${passingGradePercent}%`}
                   min="50"
                   max="100"
                   value={passingGradePercent}

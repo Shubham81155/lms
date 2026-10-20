@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useCourseByCode, useForum, useModerationQueue } from "@/hooks/useEngagement";
 import { ReportControl, ReportsPanel, ThreadModerationBar } from "@/components/forum/Moderation";
+import { activateOnKey } from "@/lib/a11y";
 import {
   X,
   MessageSquare,
@@ -235,7 +236,11 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               return (
                 <div
                   key={thread.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isActive}
                   onClick={() => setActiveId(thread.id)}
+                  onKeyDown={activateOnKey(() => setActiveId(thread.id))}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                     isActive
                       ? "bg-brand/15 border-brand/60 shadow-md"
@@ -488,8 +493,9 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
             <form onSubmit={handleCreateThread} className="space-y-3 text-xs">
               <div>
-                <label className="text-ink-muted font-semibold block mb-1">Title</label>
+                <label htmlFor="thread-title" className="text-ink-muted font-semibold block mb-1">Title</label>
                 <input
+                  id="thread-title"
                   type="text"
                   placeholder="e.g. How does Paxos achieve non-blocking consensus?"
                   value={newTitle}
@@ -499,8 +505,9 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               </div>
 
               <div>
-                <label className="text-ink-muted font-semibold block mb-1">Category</label>
+                <label htmlFor="thread-category" className="text-ink-muted font-semibold block mb-1">Category</label>
                 <select
+                  id="thread-category"
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value as any)}
                   className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink focus:outline-none focus:border-brand"
@@ -514,8 +521,9 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               </div>
 
               <div>
-                <label className="text-ink-muted font-semibold block mb-1">Details</label>
+                <label htmlFor="thread-details" className="text-ink-muted font-semibold block mb-1">Details</label>
                 <textarea
+                  id="thread-details"
                   rows={4}
                   placeholder="Provide context, code snippets, or textbook questions..."
                   value={newContent}

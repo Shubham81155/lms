@@ -10,6 +10,7 @@ import { SupportBanner, useSupportSession } from "@/components/shell/SupportBann
 import { useReadOnlyForms } from "@/components/shell/useReadOnlyForms";
 import { useDrawerBehavior, useSidebar } from "@/hooks/useSidebar";
 import { currentTab, visibleSections, type Area, type NavItem } from "@/lib/navigation";
+import { useT } from "@/lib/i18n";
 
 interface AppShellProps {
   area: Area;
@@ -30,6 +31,7 @@ interface AppShellProps {
  */
 export function AppShell({ area, activeKey, onNavigate, actions, search, children }: AppShellProps) {
   const { user, logout } = useAuth();
+  const t = useT();
   const { collapsed, ready, toggleCollapsed, mobileOpen, openMobile, closeMobile } = useSidebar();
   const [showPrivacy, setShowPrivacy] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
@@ -59,7 +61,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-xl focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-on-brand"
       >
-        Skip to content
+        {t("shell.skipToContent")}
       </a>
 
       {/* Desktop rail */}
@@ -96,7 +98,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
           ref={drawerRef}
           role="dialog"
           aria-modal="true"
-          aria-label="Navigation"
+          aria-label={t("shell.navigation")}
           tabIndex={-1}
           inert={!mobileOpen}
           className={clsx(
@@ -124,7 +126,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
         <TopBar
           area={area}
           search={search}
-          currentLabel={current.label}
+          currentLabel={t.dyn(`nav.item.${area}.${current.key}`, current.label)}
           drawerOpen={mobileOpen}
           onOpenMenu={openMobile}
           sidebarCollapsed={collapsed}

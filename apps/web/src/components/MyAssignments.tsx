@@ -9,6 +9,7 @@ import { Banner } from "@/components/admin/IdentityPanels";
 import { SubmissionHistory } from "@/components/SubmissionHistory";
 import { MAX_UPLOAD_MB, UPLOAD_ACCEPT, formatBytes, isUploadLink, uploadFile } from "@/lib/upload";
 import { appealDaysLeft, type Criterion } from "@/lib/forms";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Assignment {
   id: string; courseId: string; title: string; instructions: string; maxPoints: number; dueDate: string | null; rubricJson: Criterion[] | null;
@@ -162,6 +163,7 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
 };
 
 export const MyAssignments: React.FC<{ onClose: () => void; courseId?: string }> = ({ onClose, courseId: initialCourseId }) => {
+  useEscapeKey(onClose);
   const { enrollments, isLoading } = useMyEnrollments();
   const active = enrollments.filter((e) => e.status !== "DROPPED");
   const [courseId, setCourseId] = useState(initialCourseId ?? "");

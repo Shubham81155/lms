@@ -18,6 +18,8 @@ import { requireFeature } from '../lib/features';
 const router = Router();
 
 const CLAIM = 'https://purl.imsglobal.org/spec/lti/claim';
+/** How old an LTI launch token may be, by its iat. */
+const LAUNCH_MAX_AGE_SECONDS = 300;
 export const launchSchema = z.object({ id_token: z.string().min(20).max(20_000) });
 
 type Jwk = crypto.JsonWebKey & { kid?: string };
@@ -60,6 +62,19 @@ router.post(
         throw new HttpError(401, 'LTI token verification failed');
       }
       if (!verified.nonce) throw new HttpError(401, 'LTI token has no nonce');
+      // A launch token is good for minutes, not forever: without exp and a recent iat a captured one could be replayed.
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (typeof verified.exp !== 'number' || typeof verified.iat !== 'number' || verified.iat < nowSec - LAUNCH_MAX_AGE_SECONDS || verified.iat > nowSec + 60) {
+        throw new HttpError(401, 'LTI token is expired or has no issue time');
+      }
+      // One launch, one use: the nonce is remembered until the token would have expired (and expired ones are swept).
+      await prisma.ltiNonce.deleteMany({ where: { tenantId: tenant.id, expiresAt: { lt: new Date() } } });
+      try {
+        await prisma.ltiNonce.create({ data: { tenantId: tenant.id, issuer: deployment.issuer, nonce: String(verified.nonce), expiresAt: new Date(verified.exp * 1000) } });
+      } catch (err: any) {
+        if (err?.code === 'P2002') throw new HttpError(401, 'This LTI launch was already used');
+        throw err;
+      }
 
       const email = typeof verified.email === 'string' ? verified.email.toLowerCase() : '';
       const user = email ? await prisma.user.findFirst({ where: { tenantId: tenant.id, email, status: 'ACTIVE' } }) : null;

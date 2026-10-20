@@ -79,11 +79,12 @@ function ResetForm() {
         </p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          {error && <p className="text-xs text-danger">{error}</p>}
+          {error && <p role="alert" className="text-xs text-danger">{error}</p>}
           <input
             type="password"
             required
             autoComplete="new-password"
+            aria-label="New password"
             placeholder="New password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -93,6 +94,7 @@ function ResetForm() {
             type="password"
             required
             autoComplete="new-password"
+            aria-label="Confirm new password"
             placeholder="Confirm new password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}

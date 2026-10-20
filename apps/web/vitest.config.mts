@@ -1,8 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
-// Pure helpers only (no DOM): the screens themselves are covered by type-checking and the build.
+// Mostly pure helpers (no DOM). Component tests (*.test.tsx) opt into jsdom with a `@vitest-environment jsdom` docblock.
 export default defineConfig({
   resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
-  test: { include: ['test/**/*.test.ts'] },
+  oxc: { jsx: { runtime: 'automatic' } },
+  test: { include: ['test/**/*.test.{ts,tsx}'] },
 });

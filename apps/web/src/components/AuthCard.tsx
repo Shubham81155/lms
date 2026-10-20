@@ -1,6 +1,7 @@
 import React from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageSwitcher } from "@/lib/i18n";
 
 export function AuthCard({
   title,
@@ -17,7 +18,10 @@ export function AuthCard({
       <header className="relative border-b border-line bg-canvas/80 backdrop-blur-md px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <BrandLogo />
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <main className="relative flex-1 flex items-center justify-center p-6">

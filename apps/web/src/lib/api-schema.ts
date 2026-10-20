@@ -3141,6 +3141,164 @@ export interface paths {
         patch: operations["patchPostsIdModerate"];
         trace?: never;
     };
+    "/api/v1/privacy/breaches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: the organisation's personal-data breach register, newest first, with the number open and overdue (Board not notified within 72 hours of detection). */
+        get: operations["getPrivacyBreaches"];
+        put?: never;
+        /** Administrators: register a breach. The 72-hour clock to notify the Data Protection Board starts at detectedAt (default now). Audited. */
+        post: operations["postPrivacyBreaches"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/breaches/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: one breach. */
+        get: operations["getPrivacyBreachesId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Administrators: record containment, owner, who was told and when. The status follows (containment: CONTAINED; Board notified: NOTIFIED) unless given. CLOSED needs boardNotifiedAt or noNotificationReason; a closed breach cannot be changed (409). Audited. */
+        patch: operations["patchPrivacyBreachesId"];
+        trace?: never;
+    };
+    "/api/v1/privacy/consent-purposes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: every consent purpose (inactive ones too) with the lawful-basis note. */
+        get: operations["getPrivacyConsentPurposes"];
+        /** Administrators: create or update purposes by key (purposes left out stay; switch one off with active: false). Changing the wording or `required` raises the version. Audited. */
+        put: operations["putPrivacyConsentPurposes"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The organisation's active consent purposes in plain language, each with your own answer (GRANTED, WITHDRAWN or NONE) and whether it is outdated (you agreed to an older wording). */
+        get: operations["getPrivacyConsents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/consents/{key}/grant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give consent to one purpose. Appends to the consent history (with the wording you saw) and the audit trail. A person under 18 needs a guardian's consent on file first (403). Answering the same way twice records nothing new. */
+        post: operations["postPrivacyConsentsKeyGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/consents/{key}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw consent to one purpose, as easy as giving it and effective at once. For a required purpose the answer carries `consequence` (what withdrawing means; nothing is erased on your behalf). Audited. */
+        post: operations["postPrivacyConsentsKeyWithdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/consents/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: per purpose and wording version, how many people last granted and last withdrew, and how many active people never answered. */
+        get: operations["getPrivacyConsentsReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/grievance-officer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public: the grievance officer and response time of the organisation the address (host) names, for its privacy notice. `officer` is null until one is set. */
+        get: operations["getPrivacyGrievanceOfficer"];
+        /** Administrators: set the grievance officer (name and e-mail together, or both null to clear) and the response time. Audited. */
+        put: operations["putPrivacyGrievanceOfficer"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/guardian-consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public: what the guardian is asked to confirm (organisation and the minor's first name). Changes nothing, so mail scanners opening the link do no harm. The token comes from the e-mailed link; 400 when it is invalid, used or expired. */
+        get: operations["getPrivacyGuardianConsent"];
+        put?: never;
+        /** Public: the guardian confirms consent with the e-mailed token; it works once. Sets the minor's guardian consent and is audited with the guardian's address and browser. */
+        post: operations["postPrivacyGuardianConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/privacy/me/directory": {
         parameters: {
             query?: never;
@@ -3186,6 +3344,41 @@ export interface paths {
         /** Download everything held about you as JSON (GDPR Art. 15/20). */
         get: operations["getPrivacyMeExport"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/me/guardian-consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** E-mail your parent or guardian a single-use consent link (valid 7 days; earlier links stop working; three requests a day, 429). 409 if you are not marked under 18 or consent is already on file; 503 when the platform cannot send e-mail. Audited. */
+        post: operations["postPrivacyMeGuardianConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/me/minor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether you are marked as under 18 and whether a parent or guardian has given consent. */
+        get: operations["getPrivacyMeMinor"];
+        /** Declare yourself under 18 (isMinor must be true; only an administrator can clear it, 403). Audited. */
+        put: operations["putPrivacyMeMinor"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3375,6 +3568,40 @@ export interface paths {
         /** Administrators export a person's data to answer an access request. */
         get: operations["getPrivacyUsersIdExport"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/users/{id}/guardian-consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: e-mail a minor's guardian the single-use consent link. Same rules as the person's own request. */
+        post: operations["postPrivacyUsersIdGuardianConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/users/{id}/minor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Administrators: mark a person as under 18, or clear it (this also forgets the guardian and their consent). Audited. */
+        put: operations["putPrivacyUsersIdMinor"];
         post?: never;
         delete?: never;
         options?: never;
@@ -19699,6 +19926,910 @@ export interface operations {
             };
         };
     };
+    getPrivacyBreaches: {
+        parameters: {
+            query?: {
+                status?: "open" | "DETECTED" | "CONTAINED" | "NOTIFIED" | "CLOSED";
+                overdue?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            description: string;
+                            categories: string[];
+                            affectedEstimate: number | null;
+                            /** @enum {string} */
+                            severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+                            /** @enum {string} */
+                            status: "DETECTED" | "CONTAINED" | "NOTIFIED" | "CLOSED";
+                            detectedAt: string;
+                            occurredAt: string | null;
+                            containment: string | null;
+                            ownerId: string | null;
+                            boardNotifiedAt: string | null;
+                            peopleNotifiedAt: string | null;
+                            noNotificationReason: string | null;
+                            closedAt: string | null;
+                            dueAt: string;
+                            hoursLeft: number | null;
+                            overdue: boolean;
+                            createdById: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        }[];
+                        summary: {
+                            open: number;
+                            overdue: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyBreaches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    description: string;
+                    /** @default [] */
+                    categories?: string[];
+                    affectedEstimate?: number | null;
+                    /** @enum {string} */
+                    severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+                    detectedAt?: string | null;
+                    occurredAt?: string | null;
+                    containment?: string | null;
+                    ownerId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            description: string;
+                            categories: string[];
+                            affectedEstimate: number | null;
+                            /** @enum {string} */
+                            severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+                            /** @enum {string} */
+                            status: "DETECTED" | "CONTAINED" | "NOTIFIED" | "CLOSED";
+                            detectedAt: string;
+                            occurredAt: string | null;
+                            containment: string | null;
+                            ownerId: string | null;
+                            boardNotifiedAt: string | null;
+                            peopleNotifiedAt: string | null;
+                            noNotificationReason: string | null;
+                            closedAt: string | null;
+                            dueAt: string;
+                            hoursLeft: number | null;
+                            overdue: boolean;
+                            createdById: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyBreachesId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            description: string;
+                            categories: string[];
+                            affectedEstimate: number | null;
+                            /** @enum {string} */
+                            severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+                            /** @enum {string} */
+                            status: "DETECTED" | "CONTAINED" | "NOTIFIED" | "CLOSED";
+                            detectedAt: string;
+                            occurredAt: string | null;
+                            containment: string | null;
+                            ownerId: string | null;
+                            boardNotifiedAt: string | null;
+                            peopleNotifiedAt: string | null;
+                            noNotificationReason: string | null;
+                            closedAt: string | null;
+                            dueAt: string;
+                            hoursLeft: number | null;
+                            overdue: boolean;
+                            createdById: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchPrivacyBreachesId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    description?: string;
+                    categories?: string[];
+                    affectedEstimate?: number | null;
+                    /** @enum {string} */
+                    severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+                    occurredAt?: string | null;
+                    containment?: string | null;
+                    ownerId?: string | null;
+                    boardNotifiedAt?: string | null;
+                    peopleNotifiedAt?: string | null;
+                    noNotificationReason?: string | null;
+                    /** @enum {string} */
+                    status?: "DETECTED" | "CONTAINED" | "NOTIFIED" | "CLOSED";
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            description: string;
+                            categories: string[];
+                            affectedEstimate: number | null;
+                            /** @enum {string} */
+                            severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+                            /** @enum {string} */
+                            status: "DETECTED" | "CONTAINED" | "NOTIFIED" | "CLOSED";
+                            detectedAt: string;
+                            occurredAt: string | null;
+                            containment: string | null;
+                            ownerId: string | null;
+                            boardNotifiedAt: string | null;
+                            peopleNotifiedAt: string | null;
+                            noNotificationReason: string | null;
+                            closedAt: string | null;
+                            dueAt: string;
+                            hoursLeft: number | null;
+                            overdue: boolean;
+                            createdById: string;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyConsentPurposes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            key: string;
+                            title: string;
+                            description: string;
+                            required: boolean;
+                            version: number;
+                            lawfulBasis: string | null;
+                            active: boolean;
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putPrivacyConsentPurposes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    purposes: {
+                        key: string;
+                        title: string;
+                        description: string;
+                        lawfulBasis?: string | null;
+                        /** @default false */
+                        required?: boolean;
+                        /** @default true */
+                        active?: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            key: string;
+                            title: string;
+                            description: string;
+                            required: boolean;
+                            version: number;
+                            lawfulBasis: string | null;
+                            active: boolean;
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyConsents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            key: string;
+                            title: string;
+                            description: string;
+                            required: boolean;
+                            version: number;
+                            /** @enum {string} */
+                            status: "GRANTED" | "WITHDRAWN" | "NONE";
+                            answeredAt: string | null;
+                            outdated: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyConsentsKeyGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            purpose: {
+                                key: string;
+                                title: string;
+                                description: string;
+                                required: boolean;
+                                version: number;
+                                /** @enum {string} */
+                                status: "GRANTED" | "WITHDRAWN" | "NONE";
+                                answeredAt: string | null;
+                                outdated: boolean;
+                            };
+                            consequence: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyConsentsKeyWithdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            purpose: {
+                                key: string;
+                                title: string;
+                                description: string;
+                                required: boolean;
+                                version: number;
+                                /** @enum {string} */
+                                status: "GRANTED" | "WITHDRAWN" | "NONE";
+                                answeredAt: string | null;
+                                outdated: boolean;
+                            };
+                            consequence: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyConsentsReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            key: string;
+                            title: string;
+                            required: boolean;
+                            active: boolean;
+                            currentVersion: number;
+                            granted: number;
+                            withdrawn: number;
+                            noAnswer: number;
+                            byVersion: {
+                                version: number;
+                                granted: number;
+                                withdrawn: number;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyGrievanceOfficer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            organisation: string;
+                            officer: {
+                                name: string;
+                                email: string;
+                                phone: string | null;
+                                address: string | null;
+                            } | null;
+                            responseDays: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putPrivacyGrievanceOfficer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string | null;
+                    /** Format: email */
+                    email: string | null;
+                    phone?: string | null;
+                    address?: string | null;
+                    responseDays?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            organisation: string;
+                            officer: {
+                                name: string;
+                                email: string;
+                                phone: string | null;
+                                address: string | null;
+                            } | null;
+                            responseDays: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyGuardianConsent: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            organisation: string;
+                            firstName: string;
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyGuardianConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            confirmedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getPrivacyMeDirectory: {
         parameters: {
             query?: never;
@@ -19908,6 +21039,183 @@ export interface operations {
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyMeGuardianConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    guardianEmail: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            isMinor: boolean;
+                            guardianEmail: string | null;
+                            guardianConsentAt: string | null;
+                            pendingRequestExpiresAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyMeMinor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            isMinor: boolean;
+                            guardianEmail: string | null;
+                            guardianConsentAt: string | null;
+                            pendingRequestExpiresAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putPrivacyMeMinor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    isMinor: boolean;
+                    /** Format: email */
+                    guardianEmail?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            isMinor: boolean;
+                            guardianEmail: string | null;
+                            guardianConsentAt: string | null;
+                            pendingRequestExpiresAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20886,6 +22194,178 @@ export interface operations {
                         guardianLinks: unknown[];
                         accountActivity: unknown[];
                     };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyUsersIdGuardianConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    guardianEmail: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            isMinor: boolean;
+                            guardianEmail: string | null;
+                            guardianConsentAt: string | null;
+                            pendingRequestExpiresAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putPrivacyUsersIdMinor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    isMinor: boolean;
+                    /** Format: email */
+                    guardianEmail?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            isMinor: boolean;
+                            guardianEmail: string | null;
+                            guardianConsentAt: string | null;
+                            pendingRequestExpiresAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not signed in, or the session was revoked */

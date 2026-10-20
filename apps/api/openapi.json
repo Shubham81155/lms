@@ -33132,6 +33132,2112 @@
         }
       }
     },
+    "/api/v1/privacy/breaches": {
+      "get": {
+        "operationId": "getPrivacyBreaches",
+        "summary": "Administrators: the organisation's personal-data breach register, newest first, with the number open and overdue (Board not notified within 72 hours of detection).",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "DETECTED",
+                "CONTAINED",
+                "NOTIFIED",
+                "CLOSED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "required": false,
+            "name": "overdue",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "categories": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "affectedEstimate": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "severity": {
+                            "type": "string",
+                            "enum": [
+                              "LOW",
+                              "MEDIUM",
+                              "HIGH",
+                              "CRITICAL"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "DETECTED",
+                              "CONTAINED",
+                              "NOTIFIED",
+                              "CLOSED"
+                            ]
+                          },
+                          "detectedAt": {
+                            "type": "string"
+                          },
+                          "occurredAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "containment": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "ownerId": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "boardNotifiedAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "peopleNotifiedAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "noNotificationReason": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "closedAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "dueAt": {
+                            "type": "string"
+                          },
+                          "hoursLeft": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "overdue": {
+                            "type": "boolean"
+                          },
+                          "createdById": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "description",
+                          "categories",
+                          "affectedEstimate",
+                          "severity",
+                          "status",
+                          "detectedAt",
+                          "occurredAt",
+                          "containment",
+                          "ownerId",
+                          "boardNotifiedAt",
+                          "peopleNotifiedAt",
+                          "noNotificationReason",
+                          "closedAt",
+                          "dueAt",
+                          "hoursLeft",
+                          "overdue",
+                          "createdById",
+                          "createdAt",
+                          "updatedAt"
+                        ]
+                      }
+                    },
+                    "summary": {
+                      "type": "object",
+                      "properties": {
+                        "open": {
+                          "type": "number"
+                        },
+                        "overdue": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "open",
+                        "overdue"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "summary"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postPrivacyBreaches",
+        "summary": "Administrators: register a breach. The 72-hour clock to notify the Data Protection Board starts at detectedAt (default now). Audited.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "maxItems": 30,
+                    "default": []
+                  },
+                  "affectedEstimate": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "LOW",
+                      "MEDIUM",
+                      "HIGH",
+                      "CRITICAL"
+                    ]
+                  },
+                  "detectedAt": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "occurredAt": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "containment": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "ownerId": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "title",
+                  "description",
+                  "severity"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "categories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "affectedEstimate": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH",
+                            "CRITICAL"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DETECTED",
+                            "CONTAINED",
+                            "NOTIFIED",
+                            "CLOSED"
+                          ]
+                        },
+                        "detectedAt": {
+                          "type": "string"
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "containment": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "ownerId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "boardNotifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "peopleNotifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "noNotificationReason": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "closedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "dueAt": {
+                          "type": "string"
+                        },
+                        "hoursLeft": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "overdue": {
+                          "type": "boolean"
+                        },
+                        "createdById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "description",
+                        "categories",
+                        "affectedEstimate",
+                        "severity",
+                        "status",
+                        "detectedAt",
+                        "occurredAt",
+                        "containment",
+                        "ownerId",
+                        "boardNotifiedAt",
+                        "peopleNotifiedAt",
+                        "noNotificationReason",
+                        "closedAt",
+                        "dueAt",
+                        "hoursLeft",
+                        "overdue",
+                        "createdById",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/breaches/{id}": {
+      "get": {
+        "operationId": "getPrivacyBreachesId",
+        "summary": "Administrators: one breach.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "categories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "affectedEstimate": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH",
+                            "CRITICAL"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DETECTED",
+                            "CONTAINED",
+                            "NOTIFIED",
+                            "CLOSED"
+                          ]
+                        },
+                        "detectedAt": {
+                          "type": "string"
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "containment": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "ownerId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "boardNotifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "peopleNotifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "noNotificationReason": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "closedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "dueAt": {
+                          "type": "string"
+                        },
+                        "hoursLeft": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "overdue": {
+                          "type": "boolean"
+                        },
+                        "createdById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "description",
+                        "categories",
+                        "affectedEstimate",
+                        "severity",
+                        "status",
+                        "detectedAt",
+                        "occurredAt",
+                        "containment",
+                        "ownerId",
+                        "boardNotifiedAt",
+                        "peopleNotifiedAt",
+                        "noNotificationReason",
+                        "closedAt",
+                        "dueAt",
+                        "hoursLeft",
+                        "overdue",
+                        "createdById",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchPrivacyBreachesId",
+        "summary": "Administrators: record containment, owner, who was told and when. The status follows (containment: CONTAINED; Board notified: NOTIFIED) unless given. CLOSED needs boardNotifiedAt or noNotificationReason; a closed breach cannot be changed (409). Audited.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "categories": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "maxItems": 30
+                  },
+                  "affectedEstimate": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 0,
+                    "maximum": 1000000000
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "LOW",
+                      "MEDIUM",
+                      "HIGH",
+                      "CRITICAL"
+                    ]
+                  },
+                  "occurredAt": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "containment": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "ownerId": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "boardNotifiedAt": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "peopleNotifiedAt": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "noNotificationReason": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "DETECTED",
+                      "CONTAINED",
+                      "NOTIFIED",
+                      "CLOSED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "categories": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "affectedEstimate": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "LOW",
+                            "MEDIUM",
+                            "HIGH",
+                            "CRITICAL"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "DETECTED",
+                            "CONTAINED",
+                            "NOTIFIED",
+                            "CLOSED"
+                          ]
+                        },
+                        "detectedAt": {
+                          "type": "string"
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "containment": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "ownerId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "boardNotifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "peopleNotifiedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "noNotificationReason": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "closedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "dueAt": {
+                          "type": "string"
+                        },
+                        "hoursLeft": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "overdue": {
+                          "type": "boolean"
+                        },
+                        "createdById": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "description",
+                        "categories",
+                        "affectedEstimate",
+                        "severity",
+                        "status",
+                        "detectedAt",
+                        "occurredAt",
+                        "containment",
+                        "ownerId",
+                        "boardNotifiedAt",
+                        "peopleNotifiedAt",
+                        "noNotificationReason",
+                        "closedAt",
+                        "dueAt",
+                        "hoursLeft",
+                        "overdue",
+                        "createdById",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/consent-purposes": {
+      "get": {
+        "operationId": "getPrivacyConsentPurposes",
+        "summary": "Administrators: every consent purpose (inactive ones too) with the lawful-basis note.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "version": {
+                            "type": "number"
+                          },
+                          "lawfulBasis": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "title",
+                          "description",
+                          "required",
+                          "version",
+                          "lawfulBasis",
+                          "active",
+                          "updatedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putPrivacyConsentPurposes",
+        "summary": "Administrators: create or update purposes by key (purposes left out stay; switch one off with active: false). Changing the wording or `required` raises the version. Audited.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "purposes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9_-]{1,39}$"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 10,
+                          "maxLength": 2000
+                        },
+                        "lawfulBasis": {
+                          "type": "string",
+                          "nullable": true,
+                          "maxLength": 1000
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "default": true
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "title",
+                        "description"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "purposes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "version": {
+                            "type": "number"
+                          },
+                          "lawfulBasis": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "title",
+                          "description",
+                          "required",
+                          "version",
+                          "lawfulBasis",
+                          "active",
+                          "updatedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/consents": {
+      "get": {
+        "operationId": "getPrivacyConsents",
+        "summary": "The organisation's active consent purposes in plain language, each with your own answer (GRANTED, WITHDRAWN or NONE) and whether it is outdated (you agreed to an older wording).",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "version": {
+                            "type": "number"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "GRANTED",
+                              "WITHDRAWN",
+                              "NONE"
+                            ]
+                          },
+                          "answeredAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "outdated": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "title",
+                          "description",
+                          "required",
+                          "version",
+                          "status",
+                          "answeredAt",
+                          "outdated"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/consents/{key}/grant": {
+      "post": {
+        "operationId": "postPrivacyConsentsKeyGrant",
+        "summary": "Give consent to one purpose. Appends to the consent history (with the wording you saw) and the audit trail. A person under 18 needs a guardian's consent on file first (403). Answering the same way twice records nothing new.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "purpose": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "required": {
+                              "type": "boolean"
+                            },
+                            "version": {
+                              "type": "number"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "GRANTED",
+                                "WITHDRAWN",
+                                "NONE"
+                              ]
+                            },
+                            "answeredAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "outdated": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "title",
+                            "description",
+                            "required",
+                            "version",
+                            "status",
+                            "answeredAt",
+                            "outdated"
+                          ]
+                        },
+                        "consequence": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "purpose",
+                        "consequence"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/consents/{key}/withdraw": {
+      "post": {
+        "operationId": "postPrivacyConsentsKeyWithdraw",
+        "summary": "Withdraw consent to one purpose, as easy as giving it and effective at once. For a required purpose the answer carries `consequence` (what withdrawing means; nothing is erased on your behalf). Audited.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "purpose": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "required": {
+                              "type": "boolean"
+                            },
+                            "version": {
+                              "type": "number"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "GRANTED",
+                                "WITHDRAWN",
+                                "NONE"
+                              ]
+                            },
+                            "answeredAt": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "outdated": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "key",
+                            "title",
+                            "description",
+                            "required",
+                            "version",
+                            "status",
+                            "answeredAt",
+                            "outdated"
+                          ]
+                        },
+                        "consequence": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "purpose",
+                        "consequence"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/consents/report": {
+      "get": {
+        "operationId": "getPrivacyConsentsReport",
+        "summary": "Administrators: per purpose and wording version, how many people last granted and last withdrew, and how many active people never answered.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "currentVersion": {
+                            "type": "number"
+                          },
+                          "granted": {
+                            "type": "number"
+                          },
+                          "withdrawn": {
+                            "type": "number"
+                          },
+                          "noAnswer": {
+                            "type": "number"
+                          },
+                          "byVersion": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "version": {
+                                  "type": "number"
+                                },
+                                "granted": {
+                                  "type": "number"
+                                },
+                                "withdrawn": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "version",
+                                "granted",
+                                "withdrawn"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "title",
+                          "required",
+                          "active",
+                          "currentVersion",
+                          "granted",
+                          "withdrawn",
+                          "noAnswer",
+                          "byVersion"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/grievance-officer": {
+      "get": {
+        "operationId": "getPrivacyGrievanceOfficer",
+        "summary": "Public: the grievance officer and response time of the organisation the address (host) names, for its privacy notice. `officer` is null until one is set.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "organisation": {
+                          "type": "string"
+                        },
+                        "officer": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string"
+                            },
+                            "phone": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "address": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "email",
+                            "phone",
+                            "address"
+                          ]
+                        },
+                        "responseDays": {
+                          "type": "number",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "organisation",
+                        "officer",
+                        "responseDays"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putPrivacyGrievanceOfficer",
+        "summary": "Administrators: set the grievance officer (name and e-mail together, or both null to clear) and the response time. Audited.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "email": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 320,
+                    "format": "email"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 40
+                  },
+                  "address": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 500
+                  },
+                  "responseDays": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 1,
+                    "maximum": 90
+                  }
+                },
+                "required": [
+                  "name",
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "organisation": {
+                          "type": "string"
+                        },
+                        "officer": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "name": {
+                              "type": "string"
+                            },
+                            "email": {
+                              "type": "string"
+                            },
+                            "phone": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "address": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "name",
+                            "email",
+                            "phone",
+                            "address"
+                          ]
+                        },
+                        "responseDays": {
+                          "type": "number",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "organisation",
+                        "officer",
+                        "responseDays"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/guardian-consent": {
+      "get": {
+        "operationId": "getPrivacyGuardianConsent",
+        "summary": "Public: what the guardian is asked to confirm (organisation and the minor's first name). Changes nothing, so mail scanners opening the link do no harm. The token comes from the e-mailed link; 400 when it is invalid, used or expired.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 20,
+              "maxLength": 400
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "organisation": {
+                          "type": "string"
+                        },
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "organisation",
+                        "firstName",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postPrivacyGuardianConsent",
+        "summary": "Public: the guardian confirms consent with the e-mailed token; it works once. Sets the minor's guardian consent and is audited with the guardian's address and browser.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 400
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "confirmedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "confirmedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/privacy/me/directory": {
       "get": {
         "operationId": "getPrivacyMeDirectory",
@@ -33572,6 +35678,318 @@
           },
           "401": {
             "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/me/guardian-consent": {
+      "post": {
+        "operationId": "postPrivacyMeGuardianConsent",
+        "summary": "E-mail your parent or guardian a single-use consent link (valid 7 days; earlier links stop working; three requests a day, 429). 409 if you are not marked under 18 or consent is already on file; 503 when the platform cannot send e-mail. Audited.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "guardianEmail": {
+                    "type": "string",
+                    "maxLength": 320,
+                    "format": "email"
+                  }
+                },
+                "required": [
+                  "guardianEmail"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "isMinor": {
+                          "type": "boolean"
+                        },
+                        "guardianEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "guardianConsentAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingRequestExpiresAt": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "isMinor",
+                        "guardianEmail",
+                        "guardianConsentAt",
+                        "pendingRequestExpiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service this needs is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/me/minor": {
+      "get": {
+        "operationId": "getPrivacyMeMinor",
+        "summary": "Whether you are marked as under 18 and whether a parent or guardian has given consent.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "isMinor": {
+                          "type": "boolean"
+                        },
+                        "guardianEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "guardianConsentAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingRequestExpiresAt": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "isMinor",
+                        "guardianEmail",
+                        "guardianConsentAt",
+                        "pendingRequestExpiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "putPrivacyMeMinor",
+        "summary": "Declare yourself under 18 (isMinor must be true; only an administrator can clear it, 403). Audited.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isMinor": {
+                    "type": "boolean"
+                  },
+                  "guardianEmail": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 320,
+                    "format": "email"
+                  }
+                },
+                "required": [
+                  "isMinor"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "isMinor": {
+                          "type": "boolean"
+                        },
+                        "guardianEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "guardianConsentAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingRequestExpiresAt": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "isMinor",
+                        "guardianEmail",
+                        "guardianConsentAt",
+                        "pendingRequestExpiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
             "content": {
               "application/json": {
                 "schema": {
@@ -35888,6 +38306,308 @@
                     "guardianLinks",
                     "accountActivity"
                   ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/users/{id}/guardian-consent": {
+      "post": {
+        "operationId": "postPrivacyUsersIdGuardianConsent",
+        "summary": "Administrators: e-mail a minor's guardian the single-use consent link. Same rules as the person's own request.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "guardianEmail": {
+                    "type": "string",
+                    "maxLength": 320,
+                    "format": "email"
+                  }
+                },
+                "required": [
+                  "guardianEmail"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "isMinor": {
+                          "type": "boolean"
+                        },
+                        "guardianEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "guardianConsentAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingRequestExpiresAt": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "isMinor",
+                        "guardianEmail",
+                        "guardianConsentAt",
+                        "pendingRequestExpiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service this needs is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy/users/{id}/minor": {
+      "put": {
+        "operationId": "putPrivacyUsersIdMinor",
+        "summary": "Administrators: mark a person as under 18, or clear it (this also forgets the guardian and their consent). Audited.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN",
+          "TENANT_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isMinor": {
+                    "type": "boolean"
+                  },
+                  "guardianEmail": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 320,
+                    "format": "email"
+                  }
+                },
+                "required": [
+                  "isMinor"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "isMinor": {
+                          "type": "boolean"
+                        },
+                        "guardianEmail": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "guardianConsentAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "pendingRequestExpiresAt": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "isMinor",
+                        "guardianEmail",
+                        "guardianConsentAt",
+                        "pendingRequestExpiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }

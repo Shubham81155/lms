@@ -106,6 +106,10 @@ describe('authentication coverage', () => {
     // The unsubscribe link of a digest e-mail: a signed token, not a session (routes/digest.routes.ts).
     'GET /api/v1/notifications/unsubscribe',
     'POST /api/v1/notifications/unsubscribe',
+    // DPDP: the organisation's grievance officer notice and a guardian's consent link (routes/dpdp.routes.ts).
+    'GET /api/v1/privacy/grievance-officer',
+    'GET /api/v1/privacy/guardian-consent',
+    'POST /api/v1/privacy/guardian-consent',
     'POST /api/v1/integrations/livekit',
     'POST /api/v1/integrations/plagiarism/:tenantSlug',
     'POST /api/v1/integrations/copyleaks/:tenantSlug/:submissionId/:status',

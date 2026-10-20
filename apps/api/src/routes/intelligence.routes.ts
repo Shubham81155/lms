@@ -9,6 +9,7 @@ import { canSeeAllCourses, isAdminRole, requireCourseStaff } from '../lib/access
 import { isUuid } from '../lib/xapi';
 import { notify } from '../lib/notify';
 import { assessProctoring, computeAtRisk } from '../lib/risk';
+import { MONITORING_BLOCKED_MESSAGE, minorMonitoringBlocked } from '../lib/guardian';
 
 // Mounted at /api/v1: xAPI Learning Record Store, proctoring telemetry, early-warning analytics.
 
@@ -177,6 +178,8 @@ router.post(
     if (!submission.quiz.requireProctoring) throw new HttpError(400, 'Proctoring is not enabled for this quiz');
     if (CAMERA_EVENTS.includes(body.eventType) && !submission.quiz.proctorCamera) throw new HttpError(400, 'This quiz does not use the camera');
     if (MICROPHONE_EVENTS.includes(body.eventType) && !submission.quiz.proctorMicrophone) throw new HttpError(400, 'This quiz does not use the microphone');
+    // Children's data (DPDP Act s.9): no camera, microphone or snapshot monitoring until a guardian has consented.
+    if ((CAMERA_EVENTS.includes(body.eventType) || MICROPHONE_EVENTS.includes(body.eventType) || body.snapshotUrl) && (await minorMonitoringBlocked(tenantId, req.user!.id))) throw new HttpError(403, MONITORING_BLOCKED_MESSAGE);
 
     const before = assessProctoring(await prisma.proctoringLog.findMany({ where: { submissionId: submission.id }, select: { severity: true } }));
     await prisma.proctoringLog.create({

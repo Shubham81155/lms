@@ -9,6 +9,7 @@ import { useStaffCourses } from "@/hooks/useStaffCourses";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { SubmissionHistory } from "@/components/SubmissionHistory";
 import { round2, rubricDraft, type Criterion } from "@/lib/forms";
+import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 export type { Criterion };
 
@@ -286,6 +287,7 @@ const Resolve: React.FC<{ appeal: Appeal; onDone: () => void }> = ({ appeal, onD
 // ---------------------------------------------------------------------------
 
 export const AssignmentGrading: React.FC<{ onClose: () => void; /** Open on this course when the person may use it. */ initialCourseId?: string | null }> = ({ onClose, initialCourseId }) => {
+  useEscapeKey(onClose);
   const { user } = useAuth();
   const { courses, isLoading } = useStaffCourses();
   const [courseId, setCourseId] = useState("");

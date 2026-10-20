@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { useNotifications } from "@/hooks/useNotifications";
 import { AREA_LABEL, type Area } from "@/lib/navigation";
+import { LanguageSwitcher, useT } from "@/lib/i18n";
 
 export interface TopBarSearch {
   placeholder: string;
@@ -35,13 +36,14 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
   const [query, setQuery] = useState("");
   const notifications = useNotifications();
   const router = useRouter();
+  const t = useT();
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b border-line bg-canvas/85 px-4 backdrop-blur-md sm:px-6">
       <button
         type="button"
         onClick={onOpenMenu}
-        aria-label="Open navigation"
+        aria-label={t("shell.openNavigation")}
         aria-expanded={drawerOpen}
         aria-controls="app-drawer"
         className="rounded-xl border border-line bg-surface p-2 text-ink-muted outline-none transition-colors hover:bg-raised hover:text-ink focus-visible:ring-2 focus-visible:ring-brand lg:hidden"
@@ -54,8 +56,8 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
       <button
         type="button"
         onClick={onToggleSidebar}
-        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-label={sidebarCollapsed ? t("shell.expandSidebar") : t("shell.collapseSidebar")}
+        title={sidebarCollapsed ? t("shell.expandSidebar") : t("shell.collapseSidebar")}
         aria-expanded={!sidebarCollapsed}
         aria-controls="app-sidebar"
         className="hidden rounded-xl border border-line bg-surface p-2 text-ink-muted outline-none transition-colors hover:bg-raised hover:text-ink focus-visible:ring-2 focus-visible:ring-brand lg:inline-flex"
@@ -63,8 +65,8 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
         {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
       </button>
 
-      <nav aria-label="Breadcrumb" className="hidden items-center gap-1.5 text-sm lg:flex">
-        <span className="text-ink-muted">{AREA_LABEL[area]}</span>
+      <nav aria-label={t("shell.breadcrumb")} className="hidden items-center gap-1.5 text-sm lg:flex">
+        <span className="text-ink-muted">{t.dyn(`nav.area.${area}`, AREA_LABEL[area])}</span>
         <ChevronRight className="h-4 w-4 text-ink-subtle" aria-hidden="true" />
         <span aria-current="page" className="font-semibold text-ink">
           {currentLabel}
@@ -98,7 +100,7 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
           <button
             type="button"
             onClick={() => setShowNotifications(!showNotifications)}
-            aria-label={notifications.unreadCount > 0 ? `Notifications, ${notifications.unreadCount} unread` : "Notifications"}
+            aria-label={notifications.unreadCount > 0 ? t("shell.notificationsUnread", { count: notifications.unreadCount }) : t("shell.notifications")}
             aria-expanded={showNotifications}
             className={clsx(
               "relative rounded-xl border p-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand",
@@ -127,6 +129,7 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
           />
         </div>
 
+        <LanguageSwitcher />
         <ThemeToggle />
       </div>
     </header>

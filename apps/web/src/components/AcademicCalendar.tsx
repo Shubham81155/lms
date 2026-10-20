@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { plural } from "@/lib/plural";
+import { activateOnKey } from "@/lib/a11y";
 
 export interface CalendarEvent {
   id: string;
@@ -207,9 +208,14 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({
               </div>
             )}
             {events.map((ev) => (
+              // The card holds its own buttons, so it cannot be a button itself; Enter or Space on it selects the event.
+              // eslint-disable-next-line jsx-a11y/no-static-element-interactions
               <div
                 key={ev.id}
                 onClick={() => onSelectEvent && onSelectEvent(ev)}
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                tabIndex={onSelectEvent ? 0 : undefined}
+                onKeyDown={onSelectEvent ? activateOnKey(() => onSelectEvent(ev)) : undefined}
                 className="bg-canvas border border-line/90 hover:border-line rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all group cursor-pointer shadow-md"
               >
                 <div className="flex items-center gap-4">

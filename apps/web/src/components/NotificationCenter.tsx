@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import type { NotificationItem } from "@/hooks/useNotifications";
 import { NotificationSettings } from "@/components/NotificationSettings";
+import { useT } from "@/lib/i18n";
+import { activateOnKey } from "@/lib/a11y";
 
 export type { NotificationItem };
 import {
@@ -45,6 +47,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
 }) => {
   const [filter, setFilter] = useState<"ALL" | "UNREAD" | "ACADEMIC" | "SECURITY">("ALL");
   const [showSettings, setShowSettings] = useState(false);
+  const t = useT();
 
   if (!isOpen) return null;
 
@@ -69,9 +72,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             <Bell className="h-4 w-4" />
           </div>
           <div>
-            <h4 className="font-bold text-xs text-ink">Notification Center</h4>
+            <h4 className="font-bold text-xs text-ink">{t("notif.title")}</h4>
             <p className="text-[10px] text-ink-muted">
-              {unreadCount > 0 ? `${unreadCount} unread alerts` : "All caught up"}
+              {unreadCount > 0 ? t.plural("notif.unread", unreadCount) : t("notif.allCaughtUp")}
             </p>
           </div>
         </div>
@@ -83,12 +86,12 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               className="text-[10px] font-semibold text-brand-fg hover:text-brand-fg flex items-center gap-1"
             >
               <CheckCheck className="h-3 w-3" />
-              <span>Mark all read</span>
+              <span>{t("notif.markAllRead")}</span>
             </button>
           )}
           <button
             onClick={() => setShowSettings((v) => !v)}
-            aria-label="Notification settings"
+            aria-label={t("notif.settings")}
             aria-pressed={showSettings}
             className={`p-1 rounded-lg transition-colors ${showSettings ? "text-brand-fg bg-raised" : "text-ink-muted hover:text-ink hover:bg-raised"}`}
           >
@@ -96,7 +99,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
           </button>
           <button
             onClick={onClose}
-            aria-label="Close notifications"
+            aria-label={t("notif.close")}
             className="p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-raised transition-colors"
           >
             <X className="h-3.5 w-3.5" />
@@ -111,10 +114,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       {/* Filter Tabs */}
       <div className="bg-canvas/60 border-b border-line px-3 py-2 flex items-center gap-1 overflow-x-auto text-[11px]">
         {[
-          { id: "ALL", label: "All" },
-          { id: "UNREAD", label: `Unread (${unreadCount})` },
-          { id: "ACADEMIC", label: "Academic" },
-          { id: "SECURITY", label: "Security" },
+          { id: "ALL", label: t("notif.filter.all") },
+          { id: "UNREAD", label: t("notif.filter.unread", { count: unreadCount }) },
+          { id: "ACADEMIC", label: t("notif.filter.academic") },
+          { id: "SECURITY", label: t("notif.filter.security") },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -133,18 +136,24 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       {/* Notifications List */}
       <div className="max-h-96 overflow-y-auto divide-y divide-line/80">
         {isLoading && notifications.length === 0 ? (
-          <div className="p-8 text-center text-ink-subtle text-xs">Loading notifications...</div>
+          <div className="p-8 text-center text-ink-subtle text-xs">{t("notif.loading")}</div>
         ) : error && notifications.length === 0 ? (
           <div className="p-8 text-center text-danger text-xs">{error}</div>
         ) : filteredNotifications.length === 0 ? (
           <div className="p-8 text-center text-ink-subtle text-xs">
-            No notifications in this category.
+            {t("notif.empty")}
           </div>
         ) : (
           filteredNotifications.map((notif) => (
+            // A mouse shortcut for "mark as read": the row holds its own buttons, so it cannot be a button itself.
+            // Keyboard users reach the same action with Enter or Space on the row (unread ones only).
+            // eslint-disable-next-line jsx-a11y/no-static-element-interactions
             <div
               key={notif.id}
               onClick={() => markSingleAsRead(notif.id)}
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+              tabIndex={notif.isRead ? undefined : 0}
+              onKeyDown={notif.isRead ? undefined : activateOnKey(() => markSingleAsRead(notif.id))}
               className={`p-3.5 text-xs transition-colors hover:bg-raised/40 cursor-pointer ${
                 !notif.isRead ? "bg-brand/15" : "bg-transparent"
               }`}
@@ -166,7 +175,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         e.stopPropagation();
                         onDismiss(notif.id);
                       }}
-                      aria-label={`Dismiss "${notif.title}"`}
+                      aria-label={t("notif.dismiss", { title: notif.title })}
                       className="rounded p-0.5 text-ink-subtle transition-colors hover:bg-raised hover:text-ink"
                     >
                       <X className="h-3 w-3" />

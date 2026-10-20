@@ -305,6 +305,7 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
               key={tab.id}
               role="tab"
               aria-selected={activeTab === tab.id}
+              tabIndex={activeTab === tab.id ? 0 : -1}
               onClick={() => setActiveTab(tab.id)}
               className={`rounded-xl px-3 py-1.5 transition-all ${
                 activeTab === tab.id ? "bg-purple-600 text-on-brand shadow-md shadow-purple-500/20" : "text-ink-muted hover:bg-surface hover:text-ink"

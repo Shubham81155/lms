@@ -33,9 +33,10 @@ export default function ForgotPasswordPage() {
         </p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          {error && <p className="text-xs text-danger">{error}</p>}
+          {error && <p role="alert" className="text-xs text-danger">{error}</p>}
           <input
             type="email"
+            aria-label="E-mail address"
             required
             autoComplete="email"
             placeholder="name@university.edu"
