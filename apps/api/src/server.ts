@@ -27,6 +27,7 @@ import { startPlagiarismSubmitWorker } from './lib/plagiarism-submit';
 import { startCustomDomainRecheck } from './lib/custom-domain-recheck';
 import { startOffboardingJob } from './lib/offboarding';
 import { startTrialJob } from './lib/trial';
+import { startBillingJob } from './lib/billing';
 
 const app = express();
 const PORT = config.PORT;
@@ -329,6 +330,7 @@ if (config.NODE_ENV !== 'test') {
     startCustomDomainRecheck();
     startOffboardingJob();
     startTrialJob();
+    startBillingJob();
     if (!virusScanner() && config.NODE_ENV === 'production') {
       logger.warn('Uploads are not scanned for viruses: set CLAMAV_URL (e.g. tcp://clamav:3310) to a ClamAV daemon.');
     }

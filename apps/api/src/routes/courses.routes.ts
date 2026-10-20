@@ -1,5 +1,6 @@
 import { Router, Request } from 'express';
 import { z } from 'zod';
+import { assertCourseAllowed } from '../lib/billing';
 import { prisma, runInTenantTransaction } from '../lib/prisma';
 import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
@@ -257,6 +258,7 @@ router.post(
     await assertDepartmentInTenant(input.departmentId);
     await assertTermInTenant(input.termId);
     await assertMayPublish(req, input.status, null);
+    await assertCourseAllowed(tenantId);
 
     const course = await prisma.course.create({
       data: {
@@ -306,6 +308,7 @@ router.post(
     const tenantId = tenantIdOf(req);
     const access = await requireCourseEditor(req, String(req.params.id));
     const input = parseBody(req, copyCourseSchema);
+    await assertCourseAllowed(tenantId);
     const result = await copyCourse(access.course.id, input, { id: req.user!.id, role: req.user!.role, tenantId });
     await logAuditEvent({
       tenantId,

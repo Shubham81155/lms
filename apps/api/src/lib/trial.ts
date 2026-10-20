@@ -5,7 +5,7 @@ import { HttpError } from './http';
 import { logAuditEvent } from './audit';
 import { logger } from './logger';
 import { mailDelivers, sendMail } from './mailer';
-import { invalidateTenantSessions } from './session';
+import { invalidateTenantSessions, PAYMENT_LAPSED } from './session';
 import { startPeriodicJob, withJobLock } from './job-lock';
 import { tenantUrl } from './tenant-url';
 import type { Actor } from './organizations';
@@ -29,6 +29,7 @@ interface TrialFields {
   status: string;
   trialEndsAt: Date | null;
   trialExpiredAt: Date | null;
+  trialRemindersSent?: number;
 }
 
 /** When an ended trial's read-only period is over and the organisation is suspended. */
@@ -45,6 +46,8 @@ export function trialInfo(t: TrialFields, now = new Date()) {
     trialEndsAt: state === 'NONE' ? null : t.trialEndsAt,
     daysLeft: state === 'TRIAL' && t.trialEndsAt ? daysLeft(t.trialEndsAt, now) : null,
     readOnlyUntil: state === 'READ_ONLY' && t.trialExpiredAt ? readOnlyUntil(t.trialExpiredAt) : null,
+    /** The read-only period follows a lapsed subscription (lib/billing.ts), not an ended trial. */
+    paymentLapsed: state === 'READ_ONLY' && ((t.trialRemindersSent ?? 0) & PAYMENT_LAPSED) !== 0,
   };
 }
 

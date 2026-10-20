@@ -15,7 +15,7 @@ router.get(
   '/',
   authenticateJWT,
   route('Failed to load the trial', async (req, res) => {
-    const t = await basePrisma.tenant.findUnique({ where: { id: tenantIdOf(req) }, select: { status: true, trialEndsAt: true, trialExpiredAt: true } });
+    const t = await basePrisma.tenant.findUnique({ where: { id: tenantIdOf(req) }, select: { status: true, trialEndsAt: true, trialExpiredAt: true, trialRemindersSent: true } });
     if (!t) throw new HttpError(404, 'Organisation not found');
     return res.json({ data: trialInfo(t) });
   })

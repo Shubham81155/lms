@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { runWithTenant } from '@enterprise-lms/database';
 import { UserRole } from '@enterprise-lms/security';
 import { config } from '../config';
-import { loadSession, sessionIsValid, tenantIsBlocked, tenantIsReadOnly, TENANT_SUSPENDED_MESSAGE } from '../lib/session';
+import { loadSession, sessionIsValid, tenantIsBlocked, tenantIsReadOnly, PAYMENT_LAPSED, TENANT_SUSPENDED_MESSAGE } from '../lib/session';
 import { refuseTrialWrite } from '../lib/trial-guard';
 import { loadSupportSession, refuseSupportWrite } from '../lib/support-access';
 import { HttpError } from '../lib/http';
@@ -31,6 +31,8 @@ declare global {
       user?: AuthUser;
       /** Set by authentication: the organisation's trial has ended, so changes are refused (lib/trial-guard.ts). */
       tenantReadOnly?: boolean;
+      /** With tenantReadOnly: it is because billing lapsed, not because a trial ended. */
+      tenantPaymentLapsed?: boolean;
     }
   }
 }
@@ -111,6 +113,7 @@ async function authenticate(req: Request): Promise<AuthUser | null | 'TENANT_SUS
   if (!sessionIsValid(state, claims.tv)) return null;
   if (tenantIsBlocked(state.tenantStatus)) return 'TENANT_SUSPENDED';
   req.tenantReadOnly = tenantIsReadOnly(state);
+  req.tenantPaymentLapsed = req.tenantReadOnly && (state.tenantTrialRemindersSent & PAYMENT_LAPSED) !== 0;
   if (claims.sp) {
     // A support session lasts only while its pass is in force: revoked or expired ends it at once.
     const support = await loadSupportSession(claims.sp, claims.tenantId, claims.op ?? '');

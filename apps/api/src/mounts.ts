@@ -37,6 +37,8 @@ import termsRoutes from './routes/terms.routes';
 import courseReviewRoutes from './routes/course-review.routes';
 import scormRoutes from './routes/scorm.routes';
 import scormContentRoutes from './routes/scorm-content.routes';
+import billingRoutes, { billingWebhookRouter } from './routes/billing.routes';
+import operatorBillingRoutes from './routes/operator-billing.routes';
 import offboardingRoutes, { operatorOffboardingRoutes } from './routes/offboarding.routes';
 
 /** Where each router is mounted, in mounting order (order matters: see the notes in server.ts). */
@@ -46,7 +48,10 @@ export interface Mount {
 }
 
 /** Mounted before the JSON body parser: signed provider callbacks need the raw request bytes. */
-export const rawBodyMounts: Mount[] = [{ prefix: '/api/v1/integrations', router: integrationsRoutes }];
+export const rawBodyMounts: Mount[] = [
+  { prefix: '/api/v1/integrations', router: integrationsRoutes },
+  { prefix: '/api/v1/billing/webhook', router: billingWebhookRouter },
+];
 
 export const apiMounts: Mount[] = [
   { prefix: '/api/v1/auth/mfa', router: mfaRoutes },
@@ -64,9 +69,11 @@ export const apiMounts: Mount[] = [
   // Before operatorRoutes, so its own guards (router.use) do not run a second time for these paths.
   { prefix: '/api/v1/operator', router: operatorSupportRouter },
   { prefix: '/api/v1/operator', router: operatorOffboardingRoutes },
+  { prefix: '/api/v1/operator', router: operatorBillingRoutes },
   { prefix: '/api/v1/operator', router: operatorRoutes },
   { prefix: '/api/v1/support', router: supportRoutes },
   { prefix: '/api/v1/trial', router: trialRoutes },
+  { prefix: '/api/v1/billing', router: billingRoutes },
   { prefix: '/api/v1/organizations', router: organizationsRoutes },
   { prefix: '/api/v1/organizations', router: findOrganizationRoutes },
   { prefix: '/api/v1/certificates', router: certificatesRoutes },

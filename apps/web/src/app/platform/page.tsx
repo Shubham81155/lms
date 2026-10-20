@@ -8,10 +8,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useApiData } from "@/hooks/useApiData";
 import { RequestsPanel } from "@/components/platform/RequestsPanel";
 import { OrganisationsPanel } from "@/components/platform/OrganisationsPanel";
+import { PlansPanel } from "@/components/platform/PlansPanel";
 import { SupportPassesPanel } from "@/components/platform/SupportPassesPanel";
 import { summarise, trialsEndingWithin, type Org, type OrgRequest } from "@/lib/platform";
 
-const TABS = ["overview", "requests", "organisations"] as const;
+const TABS = ["overview", "requests", "organisations", "plans"] as const;
 type Tab = (typeof TABS)[number];
 const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
 
@@ -151,6 +152,8 @@ export default function PlatformPage() {
             }}
           />
         )}
+
+        {tab === "plans" && <PlansPanel onChanged={orgs.reload} />}
 
         {tab === "organisations" && <OrganisationsPanel ownTenantId={user?.tenantId} focusId={focusOrg} refreshKey={version} onChanged={orgs.reload} />}
       </main>

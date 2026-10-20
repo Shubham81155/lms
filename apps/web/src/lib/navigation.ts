@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ChartColumn,
   ClipboardCheck,
+  CreditCard,
   FileCheck,
   GraduationCap,
   FileQuestion,
@@ -117,6 +118,7 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
         tab("compliance", "Security & Compliance", ShieldCheck, "/admin#compliance"),
         tab("sso", "Identity & Provisioning", KeyRound, "/admin#sso"),
         tab("platform", "Plan & Integrations", Webhook, "/admin#platform"),
+        tab("billing", "Billing", CreditCard, "/admin#billing"),
         tab("audit", "Audit Log", ScrollText, "/admin#audit"),
       ],
     },
@@ -141,6 +143,7 @@ export const NAVIGATION: Record<Area, NavSection[]> = {
         tab("overview", "Overview", LayoutGrid, "/platform"),
         tab("requests", "Registration requests", Inbox, "/platform#requests"),
         tab("organisations", "Organisations", Building, "/platform#organisations"),
+        tab("plans", "Plans & pricing", CreditCard, "/platform#plans"),
       ],
     },
     {

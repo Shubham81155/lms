@@ -11893,6 +11893,1336 @@
         }
       }
     },
+    "/api/v1/billing": {
+      "get": {
+        "operationId": "getBilling",
+        "summary": "Administrators: the organisation's plan and subscription state, usage against the plan's limits, billing details and whether online payment is set up.",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "tier": {
+                              "type": "string",
+                              "enum": [
+                                "STARTER",
+                                "PROFESSIONAL",
+                                "ENTERPRISE"
+                              ]
+                            },
+                            "seatLimit": {
+                              "type": "number"
+                            },
+                            "courseLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "storageGb": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "monthlyPaise": {
+                              "type": "number"
+                            },
+                            "yearlyPaise": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "code",
+                            "name",
+                            "tier",
+                            "seatLimit",
+                            "courseLimit",
+                            "storageGb",
+                            "monthlyPaise",
+                            "yearlyPaise"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "ACTIVE",
+                            "PAST_DUE",
+                            "CANCELLED"
+                          ]
+                        },
+                        "interval": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "MONTH",
+                            "YEAR"
+                          ]
+                        },
+                        "seats": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "currentPeriodEnd": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "usage": {
+                          "type": "object",
+                          "properties": {
+                            "seats": {
+                              "type": "number"
+                            },
+                            "seatLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "courses": {
+                              "type": "number"
+                            },
+                            "courseLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "storageBytes": {
+                              "type": "number"
+                            },
+                            "storageLimitBytes": {
+                              "type": "number",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "seats",
+                            "seatLimit",
+                            "courses",
+                            "courseLimit",
+                            "storageBytes",
+                            "storageLimitBytes"
+                          ]
+                        },
+                        "profile": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "legalName": {
+                              "type": "string"
+                            },
+                            "gstin": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "address": {
+                              "type": "string"
+                            },
+                            "stateCode": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "legalName",
+                            "gstin",
+                            "address",
+                            "stateCode"
+                          ]
+                        },
+                        "razorpayKeyId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "configured": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "status",
+                        "interval",
+                        "seats",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "usage",
+                        "profile",
+                        "razorpayKeyId",
+                        "configured"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/cancel": {
+      "post": {
+        "operationId": "postBillingCancel",
+        "summary": "Administrators: end the subscription when the paid period ends. 409 when there is none, it is already ending, or the operator assigned the plan by hand. Audited.",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "tier": {
+                              "type": "string",
+                              "enum": [
+                                "STARTER",
+                                "PROFESSIONAL",
+                                "ENTERPRISE"
+                              ]
+                            },
+                            "seatLimit": {
+                              "type": "number"
+                            },
+                            "courseLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "storageGb": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "monthlyPaise": {
+                              "type": "number"
+                            },
+                            "yearlyPaise": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "code",
+                            "name",
+                            "tier",
+                            "seatLimit",
+                            "courseLimit",
+                            "storageGb",
+                            "monthlyPaise",
+                            "yearlyPaise"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "ACTIVE",
+                            "PAST_DUE",
+                            "CANCELLED"
+                          ]
+                        },
+                        "interval": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "MONTH",
+                            "YEAR"
+                          ]
+                        },
+                        "seats": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "currentPeriodEnd": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "usage": {
+                          "type": "object",
+                          "properties": {
+                            "seats": {
+                              "type": "number"
+                            },
+                            "seatLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "courses": {
+                              "type": "number"
+                            },
+                            "courseLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "storageBytes": {
+                              "type": "number"
+                            },
+                            "storageLimitBytes": {
+                              "type": "number",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "seats",
+                            "seatLimit",
+                            "courses",
+                            "courseLimit",
+                            "storageBytes",
+                            "storageLimitBytes"
+                          ]
+                        },
+                        "profile": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "legalName": {
+                              "type": "string"
+                            },
+                            "gstin": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "address": {
+                              "type": "string"
+                            },
+                            "stateCode": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "legalName",
+                            "gstin",
+                            "address",
+                            "stateCode"
+                          ]
+                        },
+                        "razorpayKeyId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "configured": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "status",
+                        "interval",
+                        "seats",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "usage",
+                        "profile",
+                        "razorpayKeyId",
+                        "configured"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices": {
+      "get": {
+        "operationId": "getBillingInvoices",
+        "summary": "Administrators: the organisation's GST invoices, newest first.",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "string"
+                          },
+                          "issuedAt": {
+                            "type": "string"
+                          },
+                          "amountPaise": {
+                            "type": "number"
+                          },
+                          "taxPaise": {
+                            "type": "number"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "issuedAt",
+                          "amountPaise",
+                          "taxPaise",
+                          "status"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices/{id}/pdf": {
+      "get": {
+        "operationId": "getBillingInvoicesIdPdf",
+        "summary": "Administrators: a GST invoice as a PDF (attachment).",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The PDF.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/plans": {
+      "get": {
+        "operationId": "getBillingPlans",
+        "summary": "Administrators: the plans on sale (prices per seat in paise, GST included).",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "STARTER",
+                              "PROFESSIONAL",
+                              "ENTERPRISE"
+                            ]
+                          },
+                          "seatLimit": {
+                            "type": "number"
+                          },
+                          "courseLimit": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "storageGb": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "monthlyPaise": {
+                            "type": "number"
+                          },
+                          "yearlyPaise": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "code",
+                          "name",
+                          "tier",
+                          "seatLimit",
+                          "courseLimit",
+                          "storageGb",
+                          "monthlyPaise",
+                          "yearlyPaise"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/profile": {
+      "put": {
+        "operationId": "putBillingProfile",
+        "summary": "Administrators: save the legal details invoices are issued to (name, GSTIN if registered, address, two-digit GST state code; the GSTIN must start with the state code). Audited.",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "legalName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "gstin": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  },
+                  "stateCode": {
+                    "type": "string",
+                    "pattern": "^(0[1-9]|[12]\\d|3[0-8]|9[79])$"
+                  }
+                },
+                "required": [
+                  "legalName",
+                  "address",
+                  "stateCode"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "legalName": {
+                          "type": "string"
+                        },
+                        "gstin": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "address": {
+                          "type": "string"
+                        },
+                        "stateCode": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "legalName",
+                        "gstin",
+                        "address",
+                        "stateCode"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/resume": {
+      "post": {
+        "operationId": "postBillingResume",
+        "summary": "Administrators: take back a cancellation made for the end of the period. Audited.",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "tier": {
+                              "type": "string",
+                              "enum": [
+                                "STARTER",
+                                "PROFESSIONAL",
+                                "ENTERPRISE"
+                              ]
+                            },
+                            "seatLimit": {
+                              "type": "number"
+                            },
+                            "courseLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "storageGb": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "monthlyPaise": {
+                              "type": "number"
+                            },
+                            "yearlyPaise": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "code",
+                            "name",
+                            "tier",
+                            "seatLimit",
+                            "courseLimit",
+                            "storageGb",
+                            "monthlyPaise",
+                            "yearlyPaise"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "NONE",
+                            "ACTIVE",
+                            "PAST_DUE",
+                            "CANCELLED"
+                          ]
+                        },
+                        "interval": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [
+                            "MONTH",
+                            "YEAR"
+                          ]
+                        },
+                        "seats": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "currentPeriodEnd": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "usage": {
+                          "type": "object",
+                          "properties": {
+                            "seats": {
+                              "type": "number"
+                            },
+                            "seatLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "courses": {
+                              "type": "number"
+                            },
+                            "courseLimit": {
+                              "type": "number",
+                              "nullable": true
+                            },
+                            "storageBytes": {
+                              "type": "number"
+                            },
+                            "storageLimitBytes": {
+                              "type": "number",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "seats",
+                            "seatLimit",
+                            "courses",
+                            "courseLimit",
+                            "storageBytes",
+                            "storageLimitBytes"
+                          ]
+                        },
+                        "profile": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "legalName": {
+                              "type": "string"
+                            },
+                            "gstin": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "address": {
+                              "type": "string"
+                            },
+                            "stateCode": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "legalName",
+                            "gstin",
+                            "address",
+                            "stateCode"
+                          ]
+                        },
+                        "razorpayKeyId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "configured": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "status",
+                        "interval",
+                        "seats",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "usage",
+                        "profile",
+                        "razorpayKeyId",
+                        "configured"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/subscribe": {
+      "post": {
+        "operationId": "postBillingSubscribe",
+        "summary": "Administrators: start a subscription (plan, MONTH or YEAR, seats). Needs billing details (409) and at least as many seats as are in use. Returns Razorpay's hosted payment page (`shortUrl`); the subscription becomes active when the webhook confirms payment. 503 when online payment is not set up. Audited.",
+        "tags": [
+          "billing"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "TENANT_ADMIN",
+          "SUPER_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "interval": {
+                    "type": "string",
+                    "enum": [
+                      "MONTH",
+                      "YEAR"
+                    ]
+                  },
+                  "seats": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000
+                  }
+                },
+                "required": [
+                  "planId",
+                  "interval",
+                  "seats"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "subscriptionId": {
+                          "type": "string"
+                        },
+                        "razorpayKeyId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "shortUrl": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "subscriptionId",
+                        "razorpayKeyId",
+                        "shortUrl"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service this needs is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/webhook": {
+      "post": {
+        "operationId": "postBillingWebhook",
+        "summary": "Razorpay webhook (public; the X-Razorpay-Signature HMAC of the raw body is checked, X-Razorpay-Event-Id makes redelivery harmless). subscription.activated/charged/resumed activate the plan, convert a trial organisation to paid and (charged) issue the invoice; pending/halted make it PAST_DUE; cancelled/completed make the organisation read-only. 400 for a bad signature, 503 without a webhook secret.",
+        "tags": [
+          "billing"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "handled",
+                            "duplicate",
+                            "ignored"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "status"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A service this needs is unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/calendar/events": {
       "get": {
         "operationId": "getCalendarEvents",
@@ -25428,6 +26758,687 @@
         }
       }
     },
+    "/api/v1/operator/organizations/{id}/plan": {
+      "post": {
+        "operationId": "postOperatorOrganizationsIdPlan",
+        "summary": "Platform operator: assign a plan to an organisation by hand (seats default to the plan's limit; `planId` null removes a manual assignment). Applies the tier and seat quota and ends a trial or lapse. 409 for an organisation that pays through Razorpay. Audited in both trails.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "seats": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000
+                  }
+                },
+                "required": [
+                  "planId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "assigned": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "assigned"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/plans": {
+      "get": {
+        "operationId": "getOperatorPlans",
+        "summary": "Platform operator: every plan, inactive ones included.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "tier": {
+                            "type": "string",
+                            "enum": [
+                              "STARTER",
+                              "PROFESSIONAL",
+                              "ENTERPRISE"
+                            ]
+                          },
+                          "seatLimit": {
+                            "type": "number"
+                          },
+                          "courseLimit": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "storageGb": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "monthlyPaise": {
+                            "type": "number"
+                          },
+                          "yearlyPaise": {
+                            "type": "number"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "sortOrder": {
+                            "type": "number"
+                          },
+                          "razorpayRegistered": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "code",
+                          "name",
+                          "tier",
+                          "seatLimit",
+                          "courseLimit",
+                          "storageGb",
+                          "monthlyPaise",
+                          "yearlyPaise",
+                          "active",
+                          "sortOrder",
+                          "razorpayRegistered"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postOperatorPlans",
+        "summary": "Platform operator: create a plan (prices per seat in paise, GST included). Audited.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{1,31}$"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "STARTER",
+                      "PROFESSIONAL",
+                      "ENTERPRISE"
+                    ]
+                  },
+                  "seatLimit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000
+                  },
+                  "courseLimit": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 1,
+                    "maximum": 10000000,
+                    "default": null
+                  },
+                  "storageGb": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 1,
+                    "maximum": 10000000,
+                    "default": null
+                  },
+                  "monthlyPaise": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 100000000
+                  },
+                  "yearlyPaise": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 1000000000
+                  },
+                  "active": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000,
+                    "default": 0
+                  }
+                },
+                "required": [
+                  "code",
+                  "name",
+                  "tier",
+                  "seatLimit",
+                  "monthlyPaise",
+                  "yearlyPaise"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "tier": {
+                          "type": "string",
+                          "enum": [
+                            "STARTER",
+                            "PROFESSIONAL",
+                            "ENTERPRISE"
+                          ]
+                        },
+                        "seatLimit": {
+                          "type": "number"
+                        },
+                        "courseLimit": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "storageGb": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "monthlyPaise": {
+                          "type": "number"
+                        },
+                        "yearlyPaise": {
+                          "type": "number"
+                        },
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "sortOrder": {
+                          "type": "number"
+                        },
+                        "razorpayRegistered": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "tier",
+                        "seatLimit",
+                        "courseLimit",
+                        "storageGb",
+                        "monthlyPaise",
+                        "yearlyPaise",
+                        "active",
+                        "sortOrder",
+                        "razorpayRegistered"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/operator/plans/{id}": {
+      "patch": {
+        "operationId": "patchOperatorPlansId",
+        "summary": "Platform operator: change a plan. A new price is registered with Razorpay on its next use; running subscriptions keep their price. Audited.",
+        "tags": [
+          "operator"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-required-roles": [
+          "SUPER_ADMIN"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "tier": {
+                    "type": "string",
+                    "enum": [
+                      "STARTER",
+                      "PROFESSIONAL",
+                      "ENTERPRISE"
+                    ]
+                  },
+                  "seatLimit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000
+                  },
+                  "courseLimit": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 1,
+                    "maximum": 10000000
+                  },
+                  "storageGb": {
+                    "type": "integer",
+                    "nullable": true,
+                    "minimum": 1,
+                    "maximum": 10000000
+                  },
+                  "monthlyPaise": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 100000000
+                  },
+                  "yearlyPaise": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 1000000000
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "tier": {
+                          "type": "string",
+                          "enum": [
+                            "STARTER",
+                            "PROFESSIONAL",
+                            "ENTERPRISE"
+                          ]
+                        },
+                        "seatLimit": {
+                          "type": "number"
+                        },
+                        "courseLimit": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "storageGb": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "monthlyPaise": {
+                          "type": "number"
+                        },
+                        "yearlyPaise": {
+                          "type": "number"
+                        },
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "sortOrder": {
+                          "type": "number"
+                        },
+                        "razorpayRegistered": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "name",
+                        "tier",
+                        "seatLimit",
+                        "courseLimit",
+                        "storageGb",
+                        "monthlyPaise",
+                        "yearlyPaise",
+                        "active",
+                        "sortOrder",
+                        "razorpayRegistered"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session was revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/operator/requests": {
       "get": {
         "operationId": "getOperatorRequests",
@@ -38696,13 +40707,17 @@
                         "readOnlyUntil": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "paymentLapsed": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
                         "state",
                         "trialEndsAt",
                         "daysLeft",
-                        "readOnlyUntil"
+                        "readOnlyUntil",
+                        "paymentLapsed"
                       ]
                     }
                   },

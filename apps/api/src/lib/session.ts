@@ -15,6 +15,8 @@ export interface SessionState {
   tenantStatus: string;
   /** When the organisation's trial ended (lib/trial.ts); while it is still a TRIAL, the organisation is read-only. */
   tenantTrialExpiredAt: Date | null;
+  /** trialRemindersSent: its PAYMENT_LAPSED bit tells a read-only period caused by unpaid billing from an ended trial. */
+  tenantTrialRemindersSent: number;
 }
 
 /** Shown when the organisation of a token (session, SCIM) has been suspended or archived. */
@@ -26,6 +28,12 @@ export function tenantIsBlocked(status: string | null | undefined): boolean {
 
 /** Shown when a change is refused because the organisation's trial has ended (read-only until it is suspended). */
 export const TRIAL_ENDED_MESSAGE = 'Your trial has ended — contact us to continue.';
+
+/** Set in Tenant.trialRemindersSent (with both reminder bits) when billing lapsed, so the read-only message names payment. */
+export const PAYMENT_LAPSED = 4;
+
+/** Shown instead of TRIAL_ENDED_MESSAGE when the read-only period follows a cancelled or unpaid subscription. */
+export const PAYMENT_LAPSED_MESSAGE = 'Your subscription has lapsed — pay or renew it under Billing to continue.';
 
 /** An expired trial in its grace period: people can still sign in and look, but not change anything. */
 export function tenantIsReadOnly(state: Pick<SessionState, 'tenantStatus' | 'tenantTrialExpiredAt'> | null | undefined): boolean {
@@ -54,10 +62,10 @@ export async function loadSession(userId: string, tenantId: string, fresh = fals
   if (hit && hit.expires > Date.now()) return hit.state;
 
   const row = await runWithTenant(tenantId, () =>
-    prisma.user.findFirst({ where: { id: userId }, select: { role: true, status: true, tokenVersion: true, tenant: { select: { status: true, trialExpiredAt: true } } } })
+    prisma.user.findFirst({ where: { id: userId }, select: { role: true, status: true, tokenVersion: true, tenant: { select: { status: true, trialExpiredAt: true, trialRemindersSent: true } } } })
   );
   const state = row
-    ? { role: String(row.role), status: String(row.status), tokenVersion: row.tokenVersion ?? 0, tenantStatus: String(row.tenant.status), tenantTrialExpiredAt: row.tenant.trialExpiredAt ?? null }
+    ? { role: String(row.role), status: String(row.status), tokenVersion: row.tokenVersion ?? 0, tenantStatus: String(row.tenant.status), tenantTrialExpiredAt: row.tenant.trialExpiredAt ?? null, tenantTrialRemindersSent: row.tenant.trialRemindersSent }
     : null;
   if (TTL_MS > 0) {
     if (cache.size > 10_000) cache.clear();

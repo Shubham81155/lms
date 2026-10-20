@@ -15,6 +15,7 @@ import { AiSettingsPanel } from "@/components/admin/AiSettingsPanel";
 import { SetupChecklist } from "@/components/admin/SetupChecklist";
 import { TrialBanner } from "@/components/admin/TrialBanner";
 import { DeletionBanner, OffboardingPanel } from "@/components/admin/OffboardingPanel";
+import { BillingBanner, BillingPanel } from "@/components/admin/BillingPanel";
 import { SupportAccessPanel } from "@/components/admin/SupportAccessPanel";
 import { LrsAnalyticsViewer } from "@/components/LrsAnalyticsViewer";
 import { CourseAnnouncements } from "@/components/CourseAnnouncements";
@@ -26,7 +27,7 @@ import { CourseReviewPanel } from "@/components/admin/CourseReviewPanel";
 import { AdminCourseTable } from "@/components/admin/AdminCourseTable";
 import { plural } from "@/lib/plural";
 
-const TABS = ["overview", "courses", "compliance", "sso", "platform", "audit"] as const;
+const TABS = ["overview", "courses", "compliance", "sso", "platform", "billing", "audit"] as const;
 type Tab = (typeof TABS)[number];
 const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
 
@@ -80,7 +81,8 @@ export default function AdminDashboard() {
     >
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-8">
-        <TrialBanner />
+        <TrialBanner onOpenBilling={() => setActiveTab("billing")} />
+        <BillingBanner onOpenBilling={() => setActiveTab("billing")} />
         <DeletionBanner
           key={offboardingVersion}
           onManage={() => {
@@ -232,6 +234,12 @@ export default function AdminDashboard() {
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <WebhooksPanel available={!!flags.webhooks} />
             </div>
+          </div>
+        )}
+
+        {activeTab === "billing" && (
+          <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
+            <BillingPanel />
           </div>
         )}
 

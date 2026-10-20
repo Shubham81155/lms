@@ -3,6 +3,7 @@ import { once } from 'events';
 import { z } from 'zod';
 import { createReadStream } from 'fs';
 import { rm } from 'fs/promises';
+import { assertStorageAllowed } from '../lib/billing';
 import { prisma } from '../lib/prisma';
 import { HttpError, route } from '../lib/http';
 import { idSchema, parseQuery } from '../lib/validate';
@@ -81,6 +82,7 @@ async function handleUpload(req: Request, res: Response) {
   const storageKey = newStorageKey(tenantId);
   let scannedAt: Date | null = null;
   try {
+    await assertStorageAllowed(tenantId, sizeBytes);
     const scanner = virusScanner();
     if (scanner) {
       let result;

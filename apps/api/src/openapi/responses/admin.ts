@@ -514,6 +514,8 @@ export const RESPONSES: ResponseTable = {
           daysLeft: z.number().nullable(),
           /** When the read-only period is over and the organisation is suspended. */
           readOnlyUntil: z.string().nullable(),
+          /** READ_ONLY because a subscription lapsed (402 PAYMENT_LAPSED), not because a trial ended. */
+          paymentLapsed: z.boolean(),
         }),
       })
     ),

@@ -93,7 +93,7 @@ describe('setup checklist', () => {
 describe('platform area', () => {
   it('has its tabs, as links inside /platform', () => {
     const tabs = NAVIGATION.platform.flatMap((s) => s.items);
-    expect(tabs.map((t) => t.href)).toEqual(['/platform', '/platform#requests', '/platform#organisations', '/platform#operators', '/platform#audit']);
+    expect(tabs.map((t) => t.href)).toEqual(['/platform', '/platform#requests', '/platform#organisations', '/platform#plans', '/platform#operators', '/platform#audit']);
   });
 
   it('is never reached from the college areas', () => {

@@ -43,6 +43,7 @@ import { patchBody as scimPatchBody, userBody as scimUserBody } from '../routes/
 import { listQuery as notificationListQuery, prefsSchema } from '../routes/notifications.routes';
 import { enrollSchema, listQuery as enrollmentListQuery, updateProgressSchema } from '../routes/enrollments.routes';
 import { OFFBOARDING_DOCS } from './responses/offboarding';
+import { BILLING_DOCS } from './responses/billing';
 
 /**
  * Hand-written detail for the endpoints the web app relies on most. Every route is listed in the
@@ -337,6 +338,7 @@ const message = z.object({ message: z.string() });
 /** Keyed `METHOD /express/style/path`. */
 export const DOCS: Record<string, OperationDoc> = {
   ...OFFBOARDING_DOCS,
+  ...BILLING_DOCS,
   'POST /api/v1/auth/login': {
     summary: 'Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended. `platformOperator` as in GET /auth/me.',
     body: loginSchema,

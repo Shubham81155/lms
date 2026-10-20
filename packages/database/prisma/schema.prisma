@@ -1370,3 +1370,95 @@ model SupportHandoff {
 
   @@index([passId])
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// Billing (apps/api/src/lib/billing.ts). Prices are in paise, per seat per interval, and include GST.
+
+/// A plan the operator sells. Platform-level (no row-level security): everyone reads the active ones.
+model Plan {
+  id                    String     @id @default(uuid())
+  code                  String     @unique
+  name                  String
+  tier                  TenantTier @default(PROFESSIONAL)
+  /// Most seats one subscription can buy.
+  seatLimit             Int
+  courseLimit           Int?
+  storageGb             Int?
+  monthlyPaise          Int
+  yearlyPaise           Int
+  /// The Razorpay plans these prices were registered as (created on first use; cleared when a price changes).
+  razorpayMonthlyPlanId String?
+  razorpayYearlyPlanId  String?
+  active                Boolean    @default(true)
+  sortOrder             Int        @default(0)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+}
+
+/// The legal details invoices are issued to. One per organisation.
+model BillingProfile {
+  id        String   @id @default(uuid())
+  tenantId  String   @unique
+  legalName String
+  gstin     String?
+  address   String
+  /// Two-digit GST state code ("27" = Maharashtra).
+  stateCode String
+  updatedAt DateTime @updatedAt
+}
+
+/// An organisation's subscription. One per organisation; a manual assignment by the operator has no Razorpay id.
+model Subscription {
+  id                     String    @id @default(uuid())
+  tenantId               String    @unique
+  planId                 String
+  /// MONTH | YEAR
+  interval               String
+  seats                  Int
+  /// PENDING (checkout not completed) | ACTIVE | PAST_DUE | CANCELLED
+  status                 String    @default("PENDING")
+  razorpaySubscriptionId String?   @unique
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean   @default(false)
+  /// Since when a charge has been failing; after BILLING_GRACE_DAYS the organisation goes read-only.
+  pastDueSince           DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([status, pastDueSince])
+}
+
+/// A GST tax invoice, one per successful charge. Numbers run INV/<financial year>/<6 digits> without gaps.
+model Invoice {
+  id                String   @id @default(uuid())
+  tenantId          String
+  number            String   @unique
+  financialYear     String
+  issuedAt          DateTime @default(now())
+  razorpayPaymentId String?  @unique
+  description       String
+  taxablePaise      Int
+  cgstPaise         Int      @default(0)
+  sgstPaise         Int      @default(0)
+  igstPaise         Int      @default(0)
+  totalPaise        Int
+  status            String   @default("PAID")
+  /// Who it was issued to and by, as they were then.
+  buyerJson         Json
+  sellerJson        Json
+
+  @@index([tenantId, issuedAt])
+}
+
+/// Last invoice sequence number per financial year. Platform-level, bumped atomically.
+model InvoiceCounter {
+  financialYear String @id
+  lastSeq       Int    @default(0)
+}
+
+/// Razorpay webhook events already handled (by event id), so a redelivery changes nothing.
+model BillingEvent {
+  id         String   @id
+  type       String
+  receivedAt DateTime @default(now())
+}

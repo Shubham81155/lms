@@ -230,7 +230,7 @@ describe('the trial job', () => {
     expect(converted.body.data).toMatchObject({ status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null });
     expect(await tenantRow('t-y')).toMatchObject({ status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null, trialRemindersSent: 0 });
     expect((await yAdmin.get('/api/v1/auth/me')).status).toBe(200);
-    expect((await yAdmin.get('/api/v1/trial')).body.data).toEqual({ state: 'NONE', trialEndsAt: null, daysLeft: null, readOnlyUntil: null });
+    expect((await yAdmin.get('/api/v1/trial')).body.data).toEqual({ state: 'NONE', trialEndsAt: null, daysLeft: null, readOnlyUntil: null, paymentLapsed: false });
     expect((await yAdmin.patch('/api/v1/admin/tenant').send({ primaryColor: '#112233' })).status).not.toBe(402);
   });
 

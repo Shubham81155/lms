@@ -1247,6 +1247,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/billing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: the organisation's plan and subscription state, usage against the plan's limits, billing details and whether online payment is set up. */
+        get: operations["getBilling"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: end the subscription when the paid period ends. 409 when there is none, it is already ending, or the operator assigned the plan by hand. Audited. */
+        post: operations["postBillingCancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: the organisation's GST invoices, newest first. */
+        get: operations["getBillingInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/invoices/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: a GST invoice as a PDF (attachment). */
+        get: operations["getBillingInvoicesIdPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: the plans on sale (prices per seat in paise, GST included). */
+        get: operations["getBillingPlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Administrators: save the legal details invoices are issued to (name, GSTIN if registered, address, two-digit GST state code; the GSTIN must start with the state code). Audited. */
+        put: operations["putBillingProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: take back a cancellation made for the end of the period. Audited. */
+        post: operations["postBillingResume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: start a subscription (plan, MONTH or YEAR, seats). Needs billing details (409) and at least as many seats as are in use. Returns Razorpay's hosted payment page (`shortUrl`); the subscription becomes active when the webhook confirms payment. 503 when online payment is not set up. Audited. */
+        post: operations["postBillingSubscribe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Razorpay webhook (public; the X-Razorpay-Signature HMAC of the raw body is checked, X-Razorpay-Event-Id makes redelivery harmless). subscription.activated/charged/resumed activate the plan, convert a trial organisation to paid and (charged) issue the invoice; pending/halted make it PAST_DUE; cancelled/completed make the organisation read-only. 400 for a bad signature, 503 without a webhook secret. */
+        post: operations["postBillingWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/calendar/events": {
         parameters: {
             query?: never;
@@ -2469,6 +2622,58 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/organizations/{id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Platform operator: assign a plan to an organisation by hand (seats default to the plan's limit; `planId` null removes a manual assignment). Applies the tier and seat quota and ends a trial or lapse. 409 for an organisation that pays through Razorpay. Audited in both trails. */
+        post: operations["postOperatorOrganizationsIdPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform operator: every plan, inactive ones included. */
+        get: operations["getOperatorPlans"];
+        put?: never;
+        /** Platform operator: create a plan (prices per seat in paise, GST included). Audited. */
+        post: operations["postOperatorPlans"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operator/plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Platform operator: change a plan. A new price is registered with Razorpay on its next use; running subscriptions keep their price. Audited. */
+        patch: operations["patchOperatorPlansId"];
         trace?: never;
     };
     "/api/v1/operator/requests": {
@@ -9430,6 +9635,621 @@ export interface operations {
             };
         };
     };
+    getBilling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                                seatLimit: number;
+                                courseLimit: number | null;
+                                storageGb: number | null;
+                                monthlyPaise: number;
+                                yearlyPaise: number;
+                            } | null;
+                            /** @enum {string} */
+                            status: "NONE" | "ACTIVE" | "PAST_DUE" | "CANCELLED";
+                            /** @enum {string|null} */
+                            interval: "MONTH" | "YEAR" | null;
+                            seats: number | null;
+                            currentPeriodEnd: string | null;
+                            cancelAtPeriodEnd: boolean;
+                            usage: {
+                                seats: number;
+                                seatLimit: number | null;
+                                courses: number;
+                                courseLimit: number | null;
+                                storageBytes: number;
+                                storageLimitBytes: number | null;
+                            };
+                            profile: {
+                                legalName: string;
+                                gstin: string | null;
+                                address: string;
+                                stateCode: string;
+                            } | null;
+                            razorpayKeyId: string | null;
+                            configured: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postBillingCancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                                seatLimit: number;
+                                courseLimit: number | null;
+                                storageGb: number | null;
+                                monthlyPaise: number;
+                                yearlyPaise: number;
+                            } | null;
+                            /** @enum {string} */
+                            status: "NONE" | "ACTIVE" | "PAST_DUE" | "CANCELLED";
+                            /** @enum {string|null} */
+                            interval: "MONTH" | "YEAR" | null;
+                            seats: number | null;
+                            currentPeriodEnd: string | null;
+                            cancelAtPeriodEnd: boolean;
+                            usage: {
+                                seats: number;
+                                seatLimit: number | null;
+                                courses: number;
+                                courseLimit: number | null;
+                                storageBytes: number;
+                                storageLimitBytes: number | null;
+                            };
+                            profile: {
+                                legalName: string;
+                                gstin: string | null;
+                                address: string;
+                                stateCode: string;
+                            } | null;
+                            razorpayKeyId: string | null;
+                            configured: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBillingInvoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            number: string;
+                            issuedAt: string;
+                            amountPaise: number;
+                            taxPaise: number;
+                            status: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBillingInvoicesIdPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getBillingPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            seatLimit: number;
+                            courseLimit: number | null;
+                            storageGb: number | null;
+                            monthlyPaise: number;
+                            yearlyPaise: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putBillingProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    legalName: string;
+                    gstin?: string | null;
+                    address: string;
+                    stateCode: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            legalName: string;
+                            gstin: string | null;
+                            address: string;
+                            stateCode: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postBillingResume: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                code: string;
+                                name: string;
+                                /** @enum {string} */
+                                tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                                seatLimit: number;
+                                courseLimit: number | null;
+                                storageGb: number | null;
+                                monthlyPaise: number;
+                                yearlyPaise: number;
+                            } | null;
+                            /** @enum {string} */
+                            status: "NONE" | "ACTIVE" | "PAST_DUE" | "CANCELLED";
+                            /** @enum {string|null} */
+                            interval: "MONTH" | "YEAR" | null;
+                            seats: number | null;
+                            currentPeriodEnd: string | null;
+                            cancelAtPeriodEnd: boolean;
+                            usage: {
+                                seats: number;
+                                seatLimit: number | null;
+                                courses: number;
+                                courseLimit: number | null;
+                                storageBytes: number;
+                                storageLimitBytes: number | null;
+                            };
+                            profile: {
+                                legalName: string;
+                                gstin: string | null;
+                                address: string;
+                                stateCode: string;
+                            } | null;
+                            razorpayKeyId: string | null;
+                            configured: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postBillingSubscribe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    planId: string;
+                    /** @enum {string} */
+                    interval: "MONTH" | "YEAR";
+                    seats: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            subscriptionId: string;
+                            razorpayKeyId: string | null;
+                            shortUrl: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postBillingWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            status: "handled" | "duplicate" | "ignored";
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getCalendarEvents: {
         parameters: {
             query?: never;
@@ -15803,6 +16623,319 @@ export interface operations {
             };
         };
     };
+    postOperatorOrganizationsIdPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    planId: string | null;
+                    seats?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            assigned: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOperatorPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            seatLimit: number;
+                            courseLimit: number | null;
+                            storageGb: number | null;
+                            monthlyPaise: number;
+                            yearlyPaise: number;
+                            active: boolean;
+                            sortOrder: number;
+                            razorpayRegistered: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postOperatorPlans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    /** @enum {string} */
+                    tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                    seatLimit: number;
+                    /** @default null */
+                    courseLimit?: number | null;
+                    /** @default null */
+                    storageGb?: number | null;
+                    monthlyPaise: number;
+                    yearlyPaise: number;
+                    /** @default true */
+                    active?: boolean;
+                    /** @default 0 */
+                    sortOrder?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            seatLimit: number;
+                            courseLimit: number | null;
+                            storageGb: number | null;
+                            monthlyPaise: number;
+                            yearlyPaise: number;
+                            active: boolean;
+                            sortOrder: number;
+                            razorpayRegistered: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchOperatorPlansId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @enum {string} */
+                    tier?: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                    seatLimit?: number;
+                    courseLimit?: number | null;
+                    storageGb?: number | null;
+                    monthlyPaise?: number;
+                    yearlyPaise?: number;
+                    active?: boolean;
+                    sortOrder?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            code: string;
+                            name: string;
+                            /** @enum {string} */
+                            tier: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+                            seatLimit: number;
+                            courseLimit: number | null;
+                            storageGb: number | null;
+                            monthlyPaise: number;
+                            yearlyPaise: number;
+                            active: boolean;
+                            sortOrder: number;
+                            razorpayRegistered: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getOperatorRequests: {
         parameters: {
             query?: {
@@ -21816,6 +22949,7 @@ export interface operations {
                             trialEndsAt: string | null;
                             daysLeft: number | null;
                             readOnlyUntil: string | null;
+                            paymentLapsed: boolean;
                         };
                     };
                 };

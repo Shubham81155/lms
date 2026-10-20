@@ -91,6 +91,22 @@ const envSchema = z.object({
   /** How often trials are checked (reminders, expiry, suspension), in seconds; 0 turns the background job off. */
   TRIAL_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(3600),
   /**
+   * Razorpay billing (lib/billing.ts). Key id and secret from the Razorpay dashboard (live or test mode), and the
+   * secret set on the webhook (https://<api>/api/v1/billing/webhook). Unset: billing is off, subscribing answers 503.
+   */
+  RAZORPAY_KEY_ID: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().min(8).optional()),
+  RAZORPAY_KEY_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().min(8).optional()),
+  RAZORPAY_WEBHOOK_SECRET: z.preprocess((v) => (v === '' ? undefined : v), z.string().trim().min(8).optional()),
+  /** Days a failing charge may stay unpaid before the organisation goes read-only (then suspended after ORG_TRIAL_GRACE_DAYS). */
+  BILLING_GRACE_DAYS: z.coerce.number().int().min(0).max(90).default(7),
+  /** How often overdue subscriptions are checked, in seconds; 0 turns the background job off. */
+  BILLING_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(3600),
+  /** Who invoices are issued by (GST). The state code is the two-digit GST code, e.g. 27. */
+  SELLER_LEGAL_NAME: z.string().trim().default('Your Company Pvt Ltd'),
+  SELLER_GSTIN: z.string().trim().default(''),
+  SELLER_STATE_CODE: z.string().trim().regex(/^\d{2}$/, 'SELLER_STATE_CODE must be two digits').default('27'),
+  SELLER_ADDRESS: z.string().trim().default(''),
+  /**
    * Cloudflare Turnstile CAPTCHA on public forms (organisation registration): the widget's site key and its
    * secret, from the Cloudflare dashboard. Set both or neither. Unset: no CAPTCHA (a warning is logged in production).
    */

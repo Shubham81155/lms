@@ -100,6 +100,7 @@ describe('authentication coverage', () => {
     'POST /api/v1/auth/reset-password',
     'POST /api/v1/auth/saml/acs',
     'POST /api/v1/auth/verify-email',
+    'POST /api/v1/billing/webhook',
     'POST /api/v1/integrations/livekit',
     'POST /api/v1/integrations/plagiarism/:tenantSlug',
     'POST /api/v1/integrations/copyleaks/:tenantSlug/:submissionId/:status',
