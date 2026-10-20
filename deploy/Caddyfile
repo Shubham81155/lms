@@ -20,7 +20,6 @@
 # are not trusted proxies), so the API's tenant resolver reads the real host from X-Forwarded-Host.
 #
 # See docs/deployment/dns-and-tls.md for DNS records, certificates, testing and troubleshooting.
-
 {
 	email {$ACME_EMAIL}
 	# Production Let's Encrypt by default. For a trial run use the staging directory, whose certificates browsers
@@ -28,9 +27,8 @@
 	#   ACME_CA=https://acme-staging-v02.api.letsencrypt.org/directory
 	acme_ca {$ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
 
-	# Hosts under LMS_BASE_DOMAIN that have a site of their own (www, CUSTOM_DOMAIN_TARGET) reuse the wildcard
-	# certificate instead of getting one each.
-	auto_https prefer_wildcard
+	# Hosts under LMS_BASE_DOMAIN that have a site of their own (www, CUSTOM_DOMAIN_TARGET) get an ordinary
+	# certificate each (HTTP-01 / TLS-ALPN-01); everything else under it uses the wildcard.
 
 	# Before getting a certificate for a host it has not seen (customers' verified custom domains), Caddy asks the
 	# API: GET <ask>&domain=<host>, 200 = allowed. Caddy's ask can only call a URL, so the secret goes in the query

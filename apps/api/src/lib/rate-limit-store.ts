@@ -35,8 +35,13 @@ export function rateLimitStore(prefix: string): Store | undefined {
 
 /** The store itself, for a given client (also what the Redis integration test uses). */
 export function redisRateLimitStore(r: Redis, prefix: string): Store {
-  return new RedisStore({
+  const store = new RedisStore({
     prefix: `lms:rl:${prefix}:`,
     sendCommand: (command: string, ...args: string[]) => r.call(command, ...args) as Promise<any>,
   });
+  // The store loads its scripts at once, which can time out while the process is still starting (or Redis is
+  // down). It loads them again on first use, so a failed early load must not end the process as an unhandled
+  // rejection.
+  for (const loading of [store.incrementScriptSha, store.getScriptSha]) loading.catch(() => {});
+  return store;
 }
