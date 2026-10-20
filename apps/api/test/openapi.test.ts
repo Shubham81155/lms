@@ -103,6 +103,9 @@ describe('authentication coverage', () => {
     'POST /api/v1/auth/saml/acs',
     'POST /api/v1/auth/verify-email',
     'POST /api/v1/billing/webhook',
+    // The unsubscribe link of a digest e-mail: a signed token, not a session (routes/digest.routes.ts).
+    'GET /api/v1/notifications/unsubscribe',
+    'POST /api/v1/notifications/unsubscribe',
     'POST /api/v1/integrations/livekit',
     'POST /api/v1/integrations/plagiarism/:tenantSlug',
     'POST /api/v1/integrations/copyleaks/:tenantSlug/:submissionId/:status',

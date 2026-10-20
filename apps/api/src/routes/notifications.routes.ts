@@ -5,6 +5,7 @@ import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
 import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { EMAIL_CATEGORIES, hourInZone, inQuietHours } from '../lib/notify';
+import { DIGEST_FREQUENCIES, DIGEST_SECTIONS } from '../lib/digest';
 
 const router = Router();
 router.use(authenticateJWT);
@@ -35,6 +36,11 @@ export const prefsSchema = z
     quietStartHour: hour.nullable(),
     quietEndHour: hour.nullable(),
     timezone: timeZone,
+    digestFrequency: z.enum(DIGEST_FREQUENCIES),
+    digestHour: hour,
+    /** 0 = Sunday. Used by WEEKLY digests. */
+    digestWeekday: z.number().int().min(0).max(6),
+    digestSections: z.array(z.enum(DIGEST_SECTIONS)).max(DIGEST_SECTIONS.length),
   })
   .partial()
   .refine((p) => (p.quietStartHour == null) === (p.quietEndHour == null) || p.quietStartHour === undefined || p.quietEndHour === undefined, {
@@ -50,6 +56,11 @@ const prefsView = (p: any) => ({
   quietStartHour: p?.quietStartHour ?? null,
   quietEndHour: p?.quietEndHour ?? null,
   timezone: p?.timezone ?? 'UTC',
+  digestFrequency: p?.digestFrequency ?? 'WEEKLY',
+  digestHour: p?.digestHour ?? 8,
+  digestWeekday: p?.digestWeekday ?? 1,
+  digestSections: p?.digestSections ?? [...DIGEST_SECTIONS],
+  lastDigestAt: p?.lastDigestAt ?? null,
 });
 
 /** GET /api/v1/notifications: the caller's own notifications, newest first. */
@@ -96,7 +107,10 @@ router.get(
   })
 );
 
-/** PUT /api/v1/notifications/preferences: channels, muted categories, quiet hours, time zone. */
+/**
+ * PUT /api/v1/notifications/preferences: channels, muted categories, quiet hours, time zone, and the digest
+ * (frequency, hour, weekday, sections). smsEnabled and pushEnabled are stored but nothing delivers them yet.
+ */
 router.put(
   '/preferences',
   route('Failed to save notification preferences', async (req, res) => {
@@ -104,6 +118,7 @@ router.put(
     const data = {
       ...body,
       ...(body.mutedCategories ? { mutedCategories: [...new Set(body.mutedCategories)] } : {}),
+      ...(body.digestSections ? { digestSections: [...new Set(body.digestSections)] } : {}),
     };
     const p = await prisma.notificationPreference.upsert({
       where: { userId: req.user!.id },

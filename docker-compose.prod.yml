@@ -168,6 +168,8 @@ services:
       MAIL_FROM:
       WEBHOOK_RETRY_INTERVAL_SECONDS:
       EMAIL_DISPATCH_INTERVAL_SECONDS:
+      DIGEST_JOB_INTERVAL_SECONDS:
+      DIGEST_MAX_PER_RUN:
       LIVEKIT_URL:
       LIVEKIT_API_KEY:
       LIVEKIT_API_SECRET:
@@ -196,6 +198,10 @@ services:
       ORG_DELETION_GRACE_DAYS:
       ORG_DELETED_SLUG_HOLD_DAYS:
       OFFBOARDING_JOB_INTERVAL_SECONDS:
+      DSAR_DUE_DAYS:
+      DSAR_JOB_INTERVAL_SECONDS:
+      RETENTION_JOB_INTERVAL_SECONDS:
+      RETENTION_ROW_CAP:
     volumes:
       - uploads:/app/storage # STORAGE_DRIVER=local only; unused with s3
     networks: [edge, backend]

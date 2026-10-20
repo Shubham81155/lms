@@ -41,9 +41,11 @@ import { removeDomainQuery, setDomainSchema } from '../lib/custom-domain';
 import { tlsAskQuery } from '../routes/internal-tls.routes';
 import { patchBody as scimPatchBody, userBody as scimUserBody } from '../routes/scim.routes';
 import { listQuery as notificationListQuery, prefsSchema } from '../routes/notifications.routes';
+import { tokenQuery as digestTokenQuery } from '../routes/digest.routes';
 import { enrollSchema, listQuery as enrollmentListQuery, updateProgressSchema } from '../routes/enrollments.routes';
 import { OFFBOARDING_DOCS } from './responses/offboarding';
 import { BILLING_DOCS } from './responses/billing';
+import { DSAR_DOCS } from './responses/privacy-requests';
 
 /**
  * Hand-written detail for the endpoints the web app relies on most. Every route is listed in the
@@ -187,6 +189,15 @@ export const NotificationPreferences = z.object({
   quietStartHour: z.number().nullable(),
   quietEndHour: z.number().nullable(),
   timezone: z.string(),
+  /** OFF, DAILY or WEEKLY digest e-mail (an organisation's people get WEEKLY until they change it). */
+  digestFrequency: z.enum(['OFF', 'DAILY', 'WEEKLY']),
+  /** Hour of day (0-23) in `timezone` the digest goes out. */
+  digestHour: z.number(),
+  /** Weekday (0 = Sunday) of a WEEKLY digest. */
+  digestWeekday: z.number(),
+  /** What the digest covers: deadlines, announcements, grades, forum, live. */
+  digestSections: z.array(z.string()),
+  lastDigestAt: z.string().nullable(),
 });
 
 export const NotificationPreferencesDetail = NotificationPreferences.extend({
@@ -339,6 +350,7 @@ const message = z.object({ message: z.string() });
 export const DOCS: Record<string, OperationDoc> = {
   ...OFFBOARDING_DOCS,
   ...BILLING_DOCS,
+  ...DSAR_DOCS,
   'POST /api/v1/auth/login': {
     summary: 'Sign in. Sets the session cookie; no token is returned to JavaScript. 403 with code TENANT_SUSPENDED when the organisation is suspended. `platformOperator` as in GET /auth/me.',
     body: loginSchema,
@@ -408,8 +420,20 @@ export const DOCS: Record<string, OperationDoc> = {
     query: notificationListQuery,
     response: ok(z.object({ data: z.array(NotificationItem), unreadCount: z.number(), pagination: Pagination })),
   },
-  'GET /api/v1/notifications/preferences': { summary: 'Delivery channels, muted categories, quiet hours and time zone.', response: ok(z.object({ data: NotificationPreferencesDetail })) },
-  'PUT /api/v1/notifications/preferences': { summary: 'Update notification preferences; quiet hours must be set together.', body: prefsSchema, response: ok(z.object({ data: NotificationPreferences })), errors: [400] },
+  'GET /api/v1/notifications/preferences': { summary: 'Delivery channels, muted categories, quiet hours, time zone and the digest e-mail settings (sms and push are stored but nothing delivers them yet).', response: ok(z.object({ data: NotificationPreferencesDetail })) },
+  'PUT /api/v1/notifications/preferences': { summary: 'Update notification preferences, digest frequency/hour/weekday/sections included; quiet hours must be set together.', body: prefsSchema, response: ok(z.object({ data: NotificationPreferences })), errors: [400] },
+  'GET /api/v1/notifications/unsubscribe': {
+    summary: "Public (a signed token from a digest e-mail, no session): which organisation the link belongs to and the person's digest setting. Changes nothing.",
+    query: digestTokenQuery,
+    response: ok(z.object({ data: z.object({ organisation: z.string(), digestFrequency: z.enum(['OFF', 'DAILY', 'WEEKLY']) }) })),
+    errors: [400, 429],
+  },
+  'POST /api/v1/notifications/unsubscribe': {
+    summary: "Public (a signed token from a digest e-mail, no session; also the List-Unsubscribe one-click target): turns the person's digest e-mails off.",
+    query: digestTokenQuery,
+    response: ok(z.object({ data: z.object({ digestFrequency: z.literal('OFF') }) })),
+    errors: [400, 429],
+  },
   'POST /api/v1/notifications/read-all': { summary: 'Mark every notification read.', response: ok(z.object({ data: z.object({ updated: z.number() }) })) },
   'POST /api/v1/notifications/:id/read': { summary: 'Mark one notification read.', response: ok(z.object({ data: z.object({ id: z.string(), read: z.literal(true) }) })), errors: [404] },
   'DELETE /api/v1/notifications/:id': { summary: 'Delete a notification.', response: { status: 204, description: 'Deleted' }, errors: [404] },

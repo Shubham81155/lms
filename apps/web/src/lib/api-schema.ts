@@ -2579,9 +2579,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Delivery channels, muted categories, quiet hours and time zone. */
+        /** Delivery channels, muted categories, quiet hours, time zone and the digest e-mail settings (sms and push are stored but nothing delivers them yet). */
         get: operations["getNotificationsPreferences"];
-        /** Update notification preferences; quiet hours must be set together. */
+        /** Update notification preferences, digest frequency/hour/weekday/sections included; quiet hours must be set together. */
         put: operations["putNotificationsPreferences"];
         post?: never;
         delete?: never;
@@ -2601,6 +2601,24 @@ export interface paths {
         put?: never;
         /** Mark every notification read. */
         post: operations["postNotificationsReadAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public (a signed token from a digest e-mail, no session): which organisation the link belongs to and the person's digest setting. Changes nothing. */
+        get: operations["getNotificationsUnsubscribe"];
+        put?: never;
+        /** Public (a signed token from a digest e-mail, no session; also the List-Unsubscribe one-click target): turns the person's digest e-mails off. */
+        post: operations["postNotificationsUnsubscribe"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3169,6 +3187,161 @@ export interface paths {
         get: operations["getPrivacyMeExport"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: the organisation's request queue, most urgent first, with who filed each, filters (status, kind, overdue, assignee) and the number of open and overdue requests. */
+        get: operations["getPrivacyRequests"];
+        put?: never;
+        /** File a request about your own data: access, erasure, correction, restriction, objection, FERPA directory opt-out or other. It is due in DSAR_DUE_DAYS (30). At most five open requests per person and one per kind (409). You and the administrators are e-mailed. Audited. */
+        post: operations["postPrivacyRequests"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Administrators: hand a request to an active administrator (a first assignment starts the work and tells the person; null puts it back in the queue) or edit its internal notes. Not for a request you filed yourself (403). Audited. */
+        patch: operations["patchPrivacyRequestsId"];
+        trace?: never;
+    };
+    "/api/v1/privacy/requests/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw one of your requests while it is open. Audited. */
+        post: operations["postPrivacyRequestsIdCancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/requests/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download your data (attachment, same file as /privacy/me/export) once an access request of yours was fulfilled with the data attached. 409 for any other request. */
+        get: operations["getPrivacyRequestsIdExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/requests/{id}/fulfil": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: close a request as done and carry out what its kind calls for: an access request gets the data attached for download, an erasure request erases the account (409 for the only administrator), a directory opt-out is applied; other kinds are answered by the resolution text (required for OTHER). The person is e-mailed. Not for a request you filed yourself (403). Audited. */
+        post: operations["postPrivacyRequestsIdFulfil"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: decline a request; the reason is shown to the person and e-mailed. Not for a request you filed yourself (403). Audited. */
+        post: operations["postPrivacyRequestsIdReject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/requests/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The requests you filed, newest first (the last 50). */
+        get: operations["getPrivacyRequestsMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrators: the organisation's data-retention policy (off by default), the classes it can cover with their minimum days, and what the last run did. */
+        get: operations["getPrivacyRetention"];
+        /** Administrators: set how long each class of data is kept (null leaves a class alone). Grades, certificates, submissions and the audit trail are never touched. While dryRun is true a run only counts. Audited. */
+        put: operations["putPrivacyRetention"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy/retention/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: run the policy now. With dryRun, or while the policy is not enabled, it only counts what it would remove. 409 until a policy has been saved. Audited with the counts. */
+        post: operations["postPrivacyRetentionRun"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16444,6 +16617,12 @@ export interface operations {
                             quietStartHour: number | null;
                             quietEndHour: number | null;
                             timezone: string;
+                            /** @enum {string} */
+                            digestFrequency: "OFF" | "DAILY" | "WEEKLY";
+                            digestHour: number;
+                            digestWeekday: number;
+                            digestSections: string[];
+                            lastDigestAt: string | null;
                             emailedCategories: string[];
                             quietNow: boolean;
                         };
@@ -16479,6 +16658,11 @@ export interface operations {
                     quietStartHour?: number | null;
                     quietEndHour?: number | null;
                     timezone?: string;
+                    /** @enum {string} */
+                    digestFrequency?: "OFF" | "DAILY" | "WEEKLY";
+                    digestHour?: number;
+                    digestWeekday?: number;
+                    digestSections?: ("deadlines" | "announcements" | "grades" | "forum" | "live")[];
                 };
             };
         };
@@ -16499,6 +16683,12 @@ export interface operations {
                             quietStartHour: number | null;
                             quietEndHour: number | null;
                             timezone: string;
+                            /** @enum {string} */
+                            digestFrequency: "OFF" | "DAILY" | "WEEKLY";
+                            digestHour: number;
+                            digestWeekday: number;
+                            digestSections: string[];
+                            lastDigestAt: string | null;
                         };
                     };
                 };
@@ -16547,6 +16737,97 @@ export interface operations {
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getNotificationsUnsubscribe: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            organisation: string;
+                            /** @enum {string} */
+                            digestFrequency: "OFF" | "DAILY" | "WEEKLY";
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postNotificationsUnsubscribe: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            digestFrequency: "OFF";
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19627,6 +19908,854 @@ export interface operations {
             };
             /** @description Not signed in, or the session was revoked */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyRequests: {
+        parameters: {
+            query?: {
+                status?: "open" | "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+                kind?: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                overdue?: "true" | "false";
+                assignedToId?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                            /** @enum {string} */
+                            status: "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+                            details: string | null;
+                            receivedAt: string;
+                            dueAt: string;
+                            daysLeft: number | null;
+                            overdue: boolean;
+                            resolution: string | null;
+                            exportAttached: boolean;
+                            closedAt: string | null;
+                            requesterId: string;
+                            requester: {
+                                name: string;
+                                email: string | null;
+                            } | null;
+                            assignedToId: string | null;
+                            notes: string | null;
+                            closedById: string | null;
+                        }[];
+                        pagination: {
+                            page: number;
+                            limit: number;
+                            total: number;
+                            totalPages: number;
+                        };
+                        summary: {
+                            open: number;
+                            overdue: number;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                    details?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                            /** @enum {string} */
+                            status: "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+                            details: string | null;
+                            receivedAt: string;
+                            dueAt: string;
+                            daysLeft: number | null;
+                            overdue: boolean;
+                            resolution: string | null;
+                            exportAttached: boolean;
+                            closedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchPrivacyRequestsId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    assignedToId?: string | null;
+                    notes?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                            /** @enum {string} */
+                            status: "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+                            details: string | null;
+                            receivedAt: string;
+                            dueAt: string;
+                            daysLeft: number | null;
+                            overdue: boolean;
+                            resolution: string | null;
+                            exportAttached: boolean;
+                            closedAt: string | null;
+                            requesterId: string;
+                            requester: {
+                                name: string;
+                                email: string | null;
+                            } | null;
+                            assignedToId: string | null;
+                            notes: string | null;
+                            closedById: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyRequestsIdCancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                            /** @enum {string} */
+                            status: "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+                            details: string | null;
+                            receivedAt: string;
+                            dueAt: string;
+                            daysLeft: number | null;
+                            overdue: boolean;
+                            resolution: string | null;
+                            exportAttached: boolean;
+                            closedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyRequestsIdExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attachment (personal-data-<id>.json). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyRequestsIdFulfil: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    resolution?: string;
+                    attachExport?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                            /** @enum {string} */
+                            status: "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+                            details: string | null;
+                            receivedAt: string;
+                            dueAt: string;
+                            daysLeft: number | null;
+                            overdue: boolean;
+                            resolution: string | null;
+                            exportAttached: boolean;
+                            closedAt: string | null;
+                            requesterId: string;
+                            requester: {
+                                name: string;
+                                email: string | null;
+                            } | null;
+                            assignedToId: string | null;
+                            notes: string | null;
+                            closedById: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyRequestsIdReject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                            /** @enum {string} */
+                            status: "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+                            details: string | null;
+                            receivedAt: string;
+                            dueAt: string;
+                            daysLeft: number | null;
+                            overdue: boolean;
+                            resolution: string | null;
+                            exportAttached: boolean;
+                            closedAt: string | null;
+                            requesterId: string;
+                            requester: {
+                                name: string;
+                                email: string | null;
+                            } | null;
+                            assignedToId: string | null;
+                            notes: string | null;
+                            closedById: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyRequestsMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "ACCESS" | "ERASURE" | "CORRECTION" | "RESTRICTION" | "OBJECTION" | "FERPA_OPT_OUT" | "OTHER";
+                            /** @enum {string} */
+                            status: "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+                            details: string | null;
+                            receivedAt: string;
+                            dueAt: string;
+                            daysLeft: number | null;
+                            overdue: boolean;
+                            resolution: string | null;
+                            exportAttached: boolean;
+                            closedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyRetention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            enabled: boolean;
+                            dryRun: boolean;
+                            notificationsDays: number | null;
+                            tokensDays: number | null;
+                            proctoringDays: number | null;
+                            supportAccessDays: number | null;
+                            infectedFilesDays: number | null;
+                            lastRun: {
+                                at: string;
+                                dryRun: boolean;
+                                counts: {
+                                    [key: string]: number;
+                                };
+                                remaining: {
+                                    [key: string]: number;
+                                };
+                            } | null;
+                            rowCap: number;
+                            classes: {
+                                key: string;
+                                label: string;
+                                min: number;
+                                field: string;
+                                what: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    putPrivacyRetention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    enabled: boolean;
+                    dryRun: boolean;
+                    notificationsDays: number | null;
+                    tokensDays: number | null;
+                    proctoringDays: number | null;
+                    supportAccessDays: number | null;
+                    infectedFilesDays: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            enabled: boolean;
+                            dryRun: boolean;
+                            notificationsDays: number | null;
+                            tokensDays: number | null;
+                            proctoringDays: number | null;
+                            supportAccessDays: number | null;
+                            infectedFilesDays: number | null;
+                            lastRun: {
+                                at: string;
+                                dryRun: boolean;
+                                counts: {
+                                    [key: string]: number;
+                                };
+                                remaining: {
+                                    [key: string]: number;
+                                };
+                            } | null;
+                            rowCap: number;
+                            classes: {
+                                key: string;
+                                label: string;
+                                min: number;
+                                field: string;
+                                what: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyRetentionRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    dryRun?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            at: string;
+                            dryRun: boolean;
+                            counts: {
+                                [key: string]: number;
+                            };
+                            remaining: {
+                                [key: string]: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

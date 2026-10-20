@@ -70,7 +70,7 @@ async function auditTrial(tenantId: string, action: string, diffJson: Record<str
 }
 
 /** E-mails the organisation's administrators (active or still invited). Problems are logged, never thrown. */
-async function mailAdmins(tenant: { id: string; name: string; slug: string; customDomain: string | null }, subject: string, body: string): Promise<number> {
+export async function mailAdmins(tenant: { id: string; name: string; slug: string; customDomain: string | null }, subject: string, body: string): Promise<number> {
   if (!mailDelivers()) return 0;
   const admins = await runWithTenant(tenant.id, () =>
     prisma.user.findMany({ where: { tenantId: tenant.id, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: { in: ['ACTIVE', 'INVITED'] }, erasedAt: null }, select: { email: true, firstName: true } })

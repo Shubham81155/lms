@@ -7,6 +7,7 @@ import { useAction, useApiData, downloadFile } from "@/hooks/useApiData";
 import { useAuth } from "@/context/AuthContext";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { MfaSettings } from "@/components/MfaSettings";
+import { MyDataRequests } from "@/components/MyDataRequests";
 
 const card = "bg-canvas border border-line rounded-2xl p-5 space-y-3";
 const input =
@@ -89,6 +90,8 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
               {exportAction.busy ? "Preparing…" : "Download my data"}
             </button>
           </section>
+
+          <MyDataRequests />
 
           {/* FERPA directory opt-out */}
           <section className={card} aria-labelledby="dir-h">

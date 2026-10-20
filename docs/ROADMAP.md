@@ -108,7 +108,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | **Append-only audit trail** (database role cannot update or delete audit rows) | Done | enforced and tested at the database |
 | OneRoster / SIS-ERP connectors (Banner, PowerSchool, Workday, SAP, Salesforce) | Open | |
 | Open Badges 3.0 issuance | Open | needs server-side signing keys |
-| GDPR access, erasure and FERPA directory opt-out | Done | self-serve JSON export, account erasure (anonymises the person, keeps grades; audit trail is append-only so it keeps ids/IPs) and directory opt-out under `/api/v1/privacy`; every user has a "Privacy & data" dialog in the header, administrators answer requests for others from the Security & Compliance tab. No request queue or retention scheduler yet |
+| GDPR access, erasure and FERPA directory opt-out | Done | self-serve JSON export, account erasure (anonymises the person, keeps grades; audit trail is append-only so it keeps ids/IPs) and directory opt-out under `/api/v1/privacy`; every user has a "Privacy & data" dialog in the header, administrators answer requests for others from the Security & Compliance tab. **Request queue** (`/api/v1/privacy/requests`: access, erasure, correction, restriction, objection, FERPA opt-out, other; 30-day deadline, assign, fulfil with the data attached or the account erased, decline with a reason, e-mails and audit entries, due-soon and overdue warnings to administrators) and **retention policy** (`/api/v1/privacy/retention`, off by default: notifications, used tokens, proctoring evidence, ended support passes, infected uploads; preview mode, daily job, per-run row cap, audited) |
 | Penetration test, SOC 2 / FERPA audit | Open | process, not code |
 | Load test (100k exam takers), multi-region HA / DR | Open | targets in `load_testing_sla.md` |
 | Redis cache, read replicas, PgBouncer | Open | Redis is used for shared rate limits only |
@@ -129,4 +129,4 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 5. Try the Copyleaks adapter with a real account (sandbox mode first); try camera proctoring with real webcams and lighting.
 6. Switch on the `backup` and `monitoring` profiles on the live server (S3 bucket and write-only key, alert webhook or SMTP, `METRICS_TOKEN`), send a test alert, and run the first restore drill from a dump downloaded from the bucket.
 7. Daily digest e-mails and SMS/push channels.
-8. DSAR request queue (log, deadline tracking) and a data-retention scheduler.
+8. Try the DSAR queue and a retention policy with real e-mail delivery and a real storage bucket (tested with a fake mailer and local storage only).

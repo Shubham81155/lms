@@ -11,6 +11,8 @@ import { FeaturesPanel, UsagePanel, WebhooksPanel, type Usage } from "@/componen
 import { BrandingPanel, CampusPanel, CompliancePanel, TermsPanel } from "@/components/admin/OrgPanels";
 import { CustomDomainPanel } from "@/components/admin/CustomDomainPanel";
 import { PrivacyPanel } from "@/components/admin/PrivacyPanel";
+import { DataRequestsPanel } from "@/components/admin/DataRequestsPanel";
+import { RetentionPanel } from "@/components/admin/RetentionPanel";
 import { AiSettingsPanel } from "@/components/admin/AiSettingsPanel";
 import { SetupChecklist } from "@/components/admin/SetupChecklist";
 import { TrialBanner } from "@/components/admin/TrialBanner";
@@ -195,7 +197,13 @@ export default function AdminDashboard() {
               <CompliancePanel />
             </div>
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
+              <DataRequestsPanel />
+            </div>
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <PrivacyPanel />
+            </div>
+            <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
+              <RetentionPanel />
             </div>
             <div id="admin-support" className="bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
               <SupportAccessPanel />

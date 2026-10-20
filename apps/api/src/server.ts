@@ -21,6 +21,7 @@ import { apiMounts, rawBodyMounts } from './mounts';
 import { buildOpenApi } from './openapi/spec';
 import internalTlsRoutes from './routes/internal-tls.routes';
 import { startEmailDispatcher } from './lib/email-dispatch';
+import { startDigestJob } from './lib/digest';
 import { startWebhookRetryWorker } from './lib/webhooks';
 import { startFileScanSweep, virusScanner } from './lib/virus-scan';
 import { captchaEnabled } from './lib/captcha';
@@ -28,6 +29,8 @@ import { startPlagiarismSubmitWorker } from './lib/plagiarism-submit';
 import { startCustomDomainRecheck } from './lib/custom-domain-recheck';
 import { startOffboardingJob } from './lib/offboarding';
 import { startTrialJob } from './lib/trial';
+import { startDsarJob } from './lib/data-requests';
+import { startRetentionJob } from './lib/retention';
 import { startBillingJob } from './lib/billing';
 
 const app = express();
@@ -334,12 +337,15 @@ if (config.NODE_ENV !== 'test') {
       logger.info({ port: PORT }, 'Enterprise LMS API listening');
     });
     startEmailDispatcher();
+    startDigestJob();
     startWebhookRetryWorker();
     startPlagiarismSubmitWorker();
     startFileScanSweep();
     startCustomDomainRecheck();
     startOffboardingJob();
     startTrialJob();
+    startDsarJob();
+    startRetentionJob();
     startBillingJob();
     if (!virusScanner() && config.NODE_ENV === 'production') {
       logger.warn('Uploads are not scanned for viruses: set CLAMAV_URL (e.g. tcp://clamav:3310) to a ClamAV daemon.');

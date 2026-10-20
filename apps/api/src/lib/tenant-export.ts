@@ -26,7 +26,7 @@ const PAGE = 500;
  * Tables never exported: one-time secrets (only their hashes are stored, and they are useless outside this
  * platform) and the platform's own offboarding records.
  */
-const EXCLUDED_MODELS = new Set(['PasswordResetToken', 'EmailVerificationToken', 'TenantExport', 'TenantDeletion', 'OrganizationRequest']);
+const EXCLUDED_MODELS = new Set(['PasswordResetToken', 'EmailVerificationToken', 'TenantExport', 'TenantDeletion', 'OrganizationRequest', 'RetentionPolicy']);
 
 /** Secret fields, named explicitly. Anything else that looks like a secret (SECRET_LIKE) is dropped too. */
 export const DENIED_FIELDS: Record<string, readonly string[]> = {

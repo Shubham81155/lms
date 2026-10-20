@@ -13,7 +13,23 @@ interface Prefs {
   quietEndHour: number | null;
   timezone: string;
   emailedCategories: string[];
+  smsEnabled: boolean;
+  pushEnabled: boolean;
+  digestFrequency: "OFF" | "DAILY" | "WEEKLY";
+  digestHour: number;
+  digestWeekday: number;
+  digestSections: string[];
 }
+
+const DIGEST_SECTION_LABELS: Record<string, string> = {
+  deadlines: "Deadlines coming up",
+  announcements: "Announcements",
+  grades: "Grades",
+  forum: "Discussion replies",
+  live: "Live classes",
+};
+
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const CATEGORY_LABELS: Record<string, string> = {
   GRADE: "Grades",
@@ -47,6 +63,10 @@ export const NotificationSettings: React.FC<{ onDone: () => void }> = ({ onDone 
   const [start, setStart] = useState(22);
   const [end, setEnd] = useState(7);
   const [zone, setZone] = useState("UTC");
+  const [digest, setDigest] = useState<Prefs["digestFrequency"]>("WEEKLY");
+  const [digestHour, setDigestHour] = useState(8);
+  const [digestWeekday, setDigestWeekday] = useState(1);
+  const [sections, setSections] = useState<string[]>(Object.keys(DIGEST_SECTION_LABELS));
   const [saved, setSaved] = useState(false);
 
   const p = data?.data;
@@ -55,6 +75,10 @@ export const NotificationSettings: React.FC<{ onDone: () => void }> = ({ onDone 
     setInApp(p.inAppEnabled);
     setEmail(p.emailEnabled);
     setMuted(p.mutedCategories);
+    setDigest(p.digestFrequency);
+    setDigestHour(p.digestHour);
+    setDigestWeekday(p.digestWeekday);
+    setSections(p.digestSections);
     const hasQuiet = p.quietStartHour !== null && p.quietEndHour !== null;
     setQuiet(hasQuiet);
     if (hasQuiet) {
@@ -67,14 +91,19 @@ export const NotificationSettings: React.FC<{ onDone: () => void }> = ({ onDone 
 
   const save = () =>
     run(async () => {
-      await typedPut("/api/v1/notifications/preferences", {
+      const body = {
         inAppEnabled: inApp,
         emailEnabled: email,
         mutedCategories: muted,
         quietStartHour: quiet ? start : null,
         quietEndHour: quiet ? end : null,
         timezone: zone,
-      });
+        digestFrequency: digest,
+        digestHour,
+        digestWeekday,
+        digestSections: sections as ("deadlines" | "announcements" | "grades" | "forum" | "live")[],
+      };
+      await typedPut("/api/v1/notifications/preferences", body);
       setSaved(true);
     });
 
@@ -129,10 +158,74 @@ export const NotificationSettings: React.FC<{ onDone: () => void }> = ({ onDone 
             <select className={select} aria-label="Quiet hours end" value={end} onChange={(e) => setEnd(Number(e.target.value))}>
               {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
             </select>
-            <input className={`${select} w-40`} aria-label="Time zone" value={zone} onChange={(e) => setZone(e.target.value)} />
+            {digest === "OFF" && <input className={`${select} w-40`} aria-label="Time zone" value={zone} onChange={(e) => setZone(e.target.value)} />}
           </div>
         )}
         {quiet && start === end && <p className="text-[10px] text-accent">Start and end are the same, so no quiet period applies.</p>}
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <legend className="text-ink-muted font-semibold">Summary e-mail</legend>
+        <div className="flex flex-wrap items-center gap-2 text-ink">
+          <label className="flex items-center gap-2">
+            Send me a summary
+            <select className={select} value={digest} onChange={(e) => setDigest(e.target.value as Prefs["digestFrequency"])}>
+              <option value="DAILY">every day</option>
+              <option value="WEEKLY">every week</option>
+              <option value="OFF">never</option>
+            </select>
+          </label>
+          {digest === "WEEKLY" && (
+            <label className="flex items-center gap-2">
+              on
+              <select className={select} value={digestWeekday} onChange={(e) => setDigestWeekday(Number(e.target.value))}>
+                {WEEKDAYS.map((d, n) => (
+                  <option key={d} value={n}>{d}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {digest !== "OFF" && (
+            <label className="flex items-center gap-2">
+              at
+              <select className={select} value={digestHour} onChange={(e) => setDigestHour(Number(e.target.value))}>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>{hourLabel(h)}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        {digest !== "OFF" && (
+          <>
+            <label className="flex flex-wrap items-center gap-2 text-ink-muted">
+              Time zone
+              <input className={`${select} w-40`} value={zone} onChange={(e) => setZone(e.target.value)} />
+            </label>
+            <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="What the summary includes">
+              {Object.entries(DIGEST_SECTION_LABELS).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-1.5 text-ink">
+                  <input type="checkbox" checked={sections.includes(key)} onChange={(e) => setSections((s) => (e.target.checked ? [...s, key] : s.filter((x) => x !== key)))} />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <p className="text-[10px] text-ink-subtle">Things you already got by e-mail are not repeated. Every summary has a link to turn it off.</p>
+          </>
+        )}
+      </fieldset>
+
+      <fieldset className="space-y-1.5" disabled>
+        <legend className="text-ink-muted font-semibold">Text message and push</legend>
+        <label className="flex items-center justify-between gap-3 text-ink-subtle">
+          <span>Text message (SMS)</span>
+          <input type="checkbox" checked={false} disabled readOnly />
+        </label>
+        <label className="flex items-center justify-between gap-3 text-ink-subtle">
+          <span>Push notification</span>
+          <input type="checkbox" checked={false} disabled readOnly />
+        </label>
+        <p className="text-[10px] text-ink-subtle">Not available yet: nothing is sent by text message or push notification.</p>
       </fieldset>
 
       <div className="flex gap-2">

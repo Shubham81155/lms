@@ -9,6 +9,7 @@ import adminRoutes from './routes/admin.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import certificatesRoutes from './routes/certificates.routes';
 import notificationsRoutes from './routes/notifications.routes';
+import digestRoutes from './routes/digest.routes';
 import forumRoutes from './routes/forum.routes';
 import calendarRoutes from './routes/calendar.routes';
 import intelligenceRoutes from './routes/intelligence.routes';
@@ -80,6 +81,8 @@ export const apiMounts: Mount[] = [
   { prefix: '/api/v1/admin', router: platformRoutes },
   { prefix: '/api/v1/admin', router: orgRoutes },
   { prefix: '/api/v1/admin', router: offboardingRoutes },
+  // Public (signed link in a digest e-mail): before the signed-in notification routes, which would answer 401.
+  { prefix: '/api/v1/notifications/unsubscribe', router: digestRoutes },
   { prefix: '/api/v1/notifications', router: notificationsRoutes },
   { prefix: '/api/v1/calendar', router: calendarRoutes },
   { prefix: '/api/v1/files', router: filesRoutes },

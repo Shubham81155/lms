@@ -808,6 +808,13 @@ model NotificationPreference {
   quietStartHour  Int?
   quietEndHour    Int?
   timezone        String   @default("UTC")
+  // Digest e-mail (lib/digest.ts): OFF | DAILY | WEEKLY, sent at digestHour in `timezone` (UTC until the user sets one);
+  // WEEKLY goes out on digestWeekday (0 = Sunday). digestSections: deadlines, announcements, grades, forum, live.
+  digestFrequency String   @default("WEEKLY")
+  digestHour      Int      @default(8)
+  digestWeekday   Int      @default(1)
+  digestSections  String[] @default(["deadlines", "announcements", "grades", "forum", "live"])
+  lastDigestAt    DateTime?
   updatedAt       DateTime @updatedAt
 
   @@index([tenantId])
@@ -1462,3 +1469,62 @@ model BillingEvent {
   type       String
   receivedAt DateTime @default(now())
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// Data-subject requests and retention (apps/api/src/lib/data-requests.ts, lib/retention.ts).
+
+/// A person's request about their own data (GDPR Art. 15-21, FERPA). Its deadline is DSAR_DUE_DAYS after it was
+/// filed. No foreign keys, like "SupportPass": the record outlives an erased account.
+model DataRequest {
+  id             String    @id @default(uuid())
+  tenantId       String
+  requesterId    String
+  /// ACCESS | ERASURE | CORRECTION | RESTRICTION | OBJECTION | FERPA_OPT_OUT | OTHER
+  kind           String
+  /// What the person wrote when filing it.
+  details        String?   @db.Text
+  /// OPEN | IN_PROGRESS | FULFILLED | REJECTED | CANCELLED (by the person)
+  status         String    @default("OPEN")
+  receivedAt     DateTime  @default(now())
+  dueAt          DateTime
+  assignedToId   String?
+  /// Internal: only administrators see it.
+  notes          String?   @db.Text
+  /// What the person is told when it is closed (the answer, or the reason it was rejected).
+  resolution     String?   @db.Text
+  /// An ACCESS request fulfilled with the person's data attached: they can download it from the request.
+  exportAttached Boolean   @default(false)
+  closedAt       DateTime?
+  closedById     String?
+  /// Administrators warned: 1 = due within five days, 2 = overdue.
+  reminderStage  Int       @default(0)
+  updatedAt      DateTime  @updatedAt
+
+  @@index([tenantId, status, dueAt])
+  @@index([tenantId, requesterId, receivedAt])
+}
+
+/// An organisation's data-retention policy (off by default). Each class keeps data for N days, then it is removed;
+/// null leaves a class alone. Grades, certificates, submissions and the audit trail are never touched.
+model RetentionPolicy {
+  tenantId           String    @id
+  enabled            Boolean   @default(false)
+  /// While true, a run only counts what it would remove.
+  dryRun             Boolean   @default(true)
+  notificationsDays  Int?
+  /// Used and expired password-reset and e-mail confirmation tokens.
+  tokensDays         Int?
+  /// Proctoring evidence (snapshot links and event details); the events themselves stay.
+  proctoringDays     Int?
+  /// Ended support passes and their hand-off links.
+  supportAccessDays  Int?
+  /// Uploaded files a scan found infected.
+  infectedFilesDays  Int?
+  lastRunAt          DateTime?
+  lastRunDryRun      Boolean?
+  /// Counts per class from the last run.
+  lastRunJson        Json?
+  updatedById        String?
+  updatedAt          DateTime  @updatedAt
+}
+

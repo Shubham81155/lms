@@ -3,14 +3,47 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
-import { parseBody } from '../lib/validate';
+import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { logAuditEvent } from '../lib/audit';
 import { verifyPassword } from '../lib/password';
 import { buildUserExport, eraseUser, erasureBlocker } from '../lib/privacy';
+import { cancelRequest, fileRequest, fulfilRequest, listRequests, myRequests, rejectRequest, REQUEST_KINDS, REQUEST_STATUSES, requestView, updateRequest } from '../lib/data-requests';
+import { loadPolicy, policyView, retentionPolicySchema, runRetention, savePolicy } from '../lib/retention';
 
-// Mounted at /api/v1/privacy: personal-data export, FERPA directory opt-out and erasure.
+// Mounted at /api/v1/privacy: personal-data export, FERPA directory opt-out, erasure, the data-subject request queue
+// (/requests) and the organisation's data-retention policy (/retention).
 
 const router = Router();
+
+export const fileRequestSchema = z.object({
+  kind: z.enum(REQUEST_KINDS),
+  /** What the person asks for, in their own words. */
+  details: z.string().trim().max(2000).optional(),
+});
+export const requestsQuerySchema = z.object({
+  /** "open" (OPEN and IN_PROGRESS) or one status. */
+  status: z.enum(['open', ...REQUEST_STATUSES]).optional(),
+  kind: z.enum(REQUEST_KINDS).optional(),
+  overdue: z.enum(['true', 'false']).optional(),
+  assignedToId: idSchema.optional(),
+  ...paginationShape,
+});
+export const updateRequestSchema = z
+  .object({
+    /** An active administrator to hand the request to; null puts it back in the queue. */
+    assignedToId: idSchema.nullable().optional(),
+    /** Internal notes, never shown to the person. */
+    notes: z.string().trim().max(4000).nullable().optional(),
+  })
+  .refine((b) => b.assignedToId !== undefined || b.notes !== undefined, { message: 'Nothing to change' });
+export const fulfilRequestSchema = z.object({
+  /** The answer the person receives; required for "OTHER" requests. */
+  resolution: z.string().trim().max(4000).optional(),
+  /** ACCESS requests: attach the person's data for download (default true). */
+  attachExport: z.boolean().optional(),
+});
+export const rejectRequestSchema = z.object({ reason: z.string().trim().min(3).max(4000) });
+export const retentionRunSchema = z.object({ dryRun: z.boolean().optional() });
 
 export const directorySchema = z.object({ optOut: z.boolean() });
 export const selfEraseSchema = z.object({
@@ -115,6 +148,133 @@ router.post(
       ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { requestedBy: 'administrator' },
     });
     return res.json({ status: 'erased', userId: id });
+  })
+);
+
+// ---------------------------------------------------------------------------- data-subject requests
+
+const ctxOf = (req: any) => ({ ipAddress: req.ip as string | undefined, userAgent: req.headers['user-agent'] as string | undefined });
+const adminOnly = [authenticateJWT, requireRole('SUPER_ADMIN', 'TENANT_ADMIN')] as const;
+
+/** POST /api/v1/privacy/requests - file a request about your own data (access, erasure, correction, ...); it is due in DSAR_DUE_DAYS */
+router.post(
+  '/requests',
+  authenticateJWT,
+  route('Failed to file the request', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const input = parseBody(req, fileRequestSchema);
+    const me = await prisma.user.findFirst({ where: { id: req.user!.id, tenantId, erasedAt: null }, select: { id: true, email: true, firstName: true } });
+    if (!me) throw new HttpError(404, 'User not found');
+    const r = await fileRequest(tenantId, me, input, ctxOf(req));
+    return res.status(201).json({ data: requestView(r) });
+  })
+);
+
+/** GET /api/v1/privacy/requests/mine - the requests you filed, newest first */
+router.get(
+  '/requests/mine',
+  authenticateJWT,
+  route('Failed to load your requests', async (req, res) => {
+    const rows = await myRequests(tenantIdOf(req), req.user!.id);
+    return res.json({ data: rows.map((r) => requestView(r)) });
+  })
+);
+
+/** POST /api/v1/privacy/requests/:id/cancel - withdraw one of your requests while it is open */
+router.post(
+  '/requests/:id/cancel',
+  authenticateJWT,
+  route('Failed to cancel the request', async (req, res) => {
+    const r = await cancelRequest(tenantIdOf(req), String(req.params.id), req.user!.id, ctxOf(req));
+    return res.json({ data: requestView(r) });
+  })
+);
+
+/** GET /api/v1/privacy/requests/:id/export - download your data once an access request of yours was fulfilled with it attached */
+router.get(
+  '/requests/:id/export',
+  authenticateJWT,
+  route('Failed to export personal data', async (req, res) => {
+    const r = await prisma.dataRequest.findFirst({ where: { id: String(req.params.id), tenantId: tenantIdOf(req), requesterId: req.user!.id } });
+    if (!r) throw new HttpError(404, 'Request not found');
+    if (r.kind !== 'ACCESS' || r.status !== 'FULFILLED' || !r.exportAttached) throw new HttpError(409, 'No data is attached to this request');
+    return sendExport(req, res, req.user!.id, req.user!.id);
+  })
+);
+
+/** GET /api/v1/privacy/requests - the organisation's request queue, most urgent first (administrators) */
+router.get(
+  '/requests',
+  ...adminOnly,
+  route('Failed to load the requests', async (req, res) => {
+    const q = parseQuery(req, requestsQuerySchema);
+    const out = await listRequests(tenantIdOf(req), { ...q, overdue: q.overdue === 'true' });
+    return res.json({ data: out.rows, pagination: pageMeta(q.page, q.limit, out.total), summary: { open: out.open, overdue: out.overdue } });
+  })
+);
+
+/** PATCH /api/v1/privacy/requests/:id - assign a request (starting the work) or edit its internal notes (administrators) */
+router.patch(
+  '/requests/:id',
+  ...adminOnly,
+  route('Failed to update the request', async (req, res) => {
+    const input = parseBody(req, updateRequestSchema);
+    const r = await updateRequest(tenantIdOf(req), String(req.params.id), req.user!, input, ctxOf(req));
+    return res.json({ data: requestView(r, { admin: true }) });
+  })
+);
+
+/** POST /api/v1/privacy/requests/:id/fulfil - close a request as done, carrying out what its kind calls for (administrators) */
+router.post(
+  '/requests/:id/fulfil',
+  ...adminOnly,
+  route('Failed to fulfil the request', async (req, res) => {
+    const input = parseBody(req, fulfilRequestSchema);
+    const r = await fulfilRequest(tenantIdOf(req), String(req.params.id), req.user!, input, ctxOf(req));
+    return res.json({ data: requestView(r, { admin: true }) });
+  })
+);
+
+/** POST /api/v1/privacy/requests/:id/reject - decline a request with a reason the person is told (administrators) */
+router.post(
+  '/requests/:id/reject',
+  ...adminOnly,
+  route('Failed to reject the request', async (req, res) => {
+    const { reason } = parseBody(req, rejectRequestSchema);
+    const r = await rejectRequest(tenantIdOf(req), String(req.params.id), req.user!, reason, ctxOf(req));
+    return res.json({ data: requestView(r, { admin: true }) });
+  })
+);
+
+// ---------------------------------------------------------------------------- data retention
+
+/** GET /api/v1/privacy/retention - the organisation's retention policy and what the last run did (administrators) */
+router.get(
+  '/retention',
+  ...adminOnly,
+  route('Failed to load the retention policy', async (req, res) => res.json({ data: policyView(await loadPolicy(tenantIdOf(req))) }))
+);
+
+/** PUT /api/v1/privacy/retention - set the retention policy: how long each class of data is kept (administrators) */
+router.put(
+  '/retention',
+  ...adminOnly,
+  route('Failed to save the retention policy', async (req, res) => {
+    const input = parseBody(req, retentionPolicySchema);
+    return res.json({ data: policyView(await savePolicy(tenantIdOf(req), input, req.user!.id, ctxOf(req))) });
+  })
+);
+
+/** POST /api/v1/privacy/retention/run - run the policy now; with dryRun (or a policy that is not enabled) it only counts (administrators) */
+router.post(
+  '/retention/run',
+  ...adminOnly,
+  route('Failed to run the retention policy', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const { dryRun } = parseBody(req, retentionRunSchema);
+    if (!(await loadPolicy(tenantId))) throw new HttpError(409, 'Save a retention policy first');
+    const summary = await runRetention(tenantId, { dryRun, userId: req.user!.id, ctx: ctxOf(req) });
+    return res.json({ data: summary });
   })
 );
 

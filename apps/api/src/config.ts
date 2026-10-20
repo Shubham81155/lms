@@ -134,6 +134,10 @@ const envSchema = z.object({
   WEBHOOK_RETRY_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(30),
   /** How often queued notification e-mails are sent, in seconds. 0 turns the background sender off. */
   EMAIL_DISPATCH_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(60),
+  /** How often the digest job looks for people whose daily or weekly digest is due, in seconds. 0 turns digests off. */
+  DIGEST_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(900),
+  /** Most digests one run sends across all organisations; the rest wait for the next run. */
+  DIGEST_MAX_PER_RUN: z.coerce.number().int().min(1).default(500),
   /** LiveKit media server for live classes. All three are needed; without them live classes are off. */
   LIVEKIT_URL: z.string().url().optional(),
   LIVEKIT_API_KEY: z.string().min(3).optional(),
@@ -221,6 +225,14 @@ const envSchema = z.object({
   ORG_DELETED_SLUG_HOLD_DAYS: z.coerce.number().int().min(0).max(3650).default(90),
   /** How often the export and deletion jobs look for work, in seconds (0 turns them off). */
   OFFBOARDING_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(60),
+  /** Days an organisation has to answer a data-subject request (GDPR: one month). */
+  DSAR_DUE_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+  /** How often administrators are warned about data requests that are due soon or overdue, in seconds (0: never). */
+  DSAR_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(21_600),
+  /** How often organisations' data-retention policies are looked at, in seconds (each runs at most daily; 0: never). */
+  RETENTION_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(3600),
+  /** Most rows of one data class a retention run removes; the next run continues. */
+  RETENTION_ROW_CAP: z.coerce.number().int().min(1).max(100_000).default(5000),
 }).refine((c) => c.STORAGE_DRIVER !== 's3' || !!c.S3_BUCKET, { message: 'STORAGE_DRIVER=s3 needs S3_BUCKET' })
   .refine((c) => !c.S3_ACCESS_KEY_ID === !c.S3_SECRET_ACCESS_KEY, { message: 'Set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither' })
   .refine((c) => !c.COPYLEAKS_EMAIL === !c.COPYLEAKS_API_KEY, { message: 'Set both COPYLEAKS_EMAIL and COPYLEAKS_API_KEY, or neither' })
