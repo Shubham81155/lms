@@ -166,6 +166,11 @@ export const DPDP_DOCS: Record<string, OperationDoc> = {
     response: ok(z.object({ data: MinorStatus })),
     errors: [400, 409, 429, 503],
   },
+  'GET /api/v1/privacy/users/:id/minor': {
+    summary: "Administrators: whether a person is marked under 18 and whether a guardian has consented (guardian address masked).",
+    response: ok(z.object({ data: MinorStatus })),
+    errors: [400, 404],
+  },
   'PUT /api/v1/privacy/users/:id/minor': {
     summary: 'Administrators: mark a person as under 18, or clear it (this also forgets the guardian and their consent). Audited.',
     body: setMinorSchema,

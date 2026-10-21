@@ -298,6 +298,11 @@ function LoginForm() {
                 </Link>
               </p>
             )}
+            <p>
+              <Link href="/privacy" className="text-ink-muted hover:text-ink hover:underline underline-offset-2">
+                Privacy notice
+              </Link>
+            </p>
           </div>
         </div>
       </main>

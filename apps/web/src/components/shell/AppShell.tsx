@@ -4,6 +4,7 @@ import React, { useRef, useState } from "react";
 import clsx from "clsx";
 import { useAuth } from "@/context/AuthContext";
 import { PrivacySettings } from "@/components/PrivacySettings";
+import { ConsentGate } from "@/components/ConsentGate";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar, type TopBarSearch } from "@/components/shell/TopBar";
 import { SupportBanner, useSupportSession } from "@/components/shell/SupportBanner";
@@ -136,6 +137,9 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
           {children}
         </div>
       </div>
+
+      {/* Ordinary sessions only: not a support pass (the operator is not the data subject) and not the operator console. */}
+      {user && !support && !user.platformOperator && area !== "platform" && <ConsentGate />}
 
       {showPrivacy && <PrivacySettings onClose={() => setShowPrivacy(false)} />}
     </div>

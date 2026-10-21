@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Banner } from "@/components/admin/IdentityPanels";
 import { MfaSettings } from "@/components/MfaSettings";
 import { MyDataRequests } from "@/components/MyDataRequests";
+import { ConsentsAndMinor } from "@/components/PrivacyConsents";
 import { useT } from "@/lib/i18n";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
@@ -93,6 +94,8 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
               {exportAction.busy ? t("privacy.export.busy") : t("privacy.export.button")}
             </button>
           </section>
+
+          <ConsentsAndMinor />
 
           <MyDataRequests />
 

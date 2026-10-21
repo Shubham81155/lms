@@ -191,6 +191,13 @@ router.post(
   })
 );
 
+/** GET /api/v1/privacy/users/:id/minor - a person's under-18 and guardian status (administrators) */
+router.get(
+  '/users/:id/minor',
+  ...adminOnly,
+  route('Failed to load the status', async (req, res) => res.json({ data: await minorStatus(tenantIdOf(req), idSchema.parse(String(req.params.id))) }))
+);
+
 /** PUT /api/v1/privacy/users/:id/minor - mark or clear a person as under 18 (administrators) */
 router.put(
   '/users/:id/minor',

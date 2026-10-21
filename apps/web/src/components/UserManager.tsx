@@ -73,6 +73,83 @@ const invitationNotice = (email: string, r: { invitationSent: boolean; emailConf
   return { kind: "error", text: `${fresh ? `${email} was added, but the` : "The"} invitation email ${fresh ? "" : `to ${email} `}could not be sent. Use "Resend invitation" to try again.` };
 };
 
+interface MinorStatus {
+  isMinor: boolean;
+  guardianEmail: string | null;
+  guardianConsentAt: string | null;
+  pendingRequestExpiresAt: string | null;
+}
+
+/**
+ * Under-18 mark and guardian consent (DPDP Act s.9). The current state is loaded when the person is opened.
+ */
+const MinorControls: React.FC<{ person: Person; onNotice: (n: Notice) => void }> = ({ person, onNotice }) => {
+  const { busy, error, run, clearError } = useAction();
+  const [status, setStatus] = useState<MinorStatus | null>(null);
+  const [email, setEmail] = useState("");
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const name = `${person.firstName} ${person.lastName}`;
+
+  useEffect(() => {
+    let live = true;
+    api.get<{ data: MinorStatus }>(`/api/v1/privacy/users/${person.id}/minor`).then((r) => live && setStatus(r.data), () => {});
+    return () => { live = false; };
+  }, [person.id]);
+
+  const setMinor = (isMinor: boolean) =>
+    run(async () => {
+      const r = await api.put<{ data: MinorStatus }>(`/api/v1/privacy/users/${person.id}/minor`, { isMinor });
+      setStatus(r.data);
+      onNotice({ kind: "ok", text: isMinor ? `${name} is marked as under 18. Ask a parent or guardian for consent.` : `${name} is no longer marked as under 18.` });
+    });
+
+  const ask = (e: React.FormEvent) => {
+    e.preventDefault();
+    run(async () => {
+      const r = await api.post<{ data: MinorStatus }>(`/api/v1/privacy/users/${person.id}/guardian-consent`, { guardianEmail: email.trim() });
+      setStatus(r.data);
+      setEmail("");
+      onNotice({ kind: "ok", text: `A consent link was e-mailed to the guardian of ${name}.` });
+    });
+  };
+
+  return (
+    <div className="space-y-2 border-t border-line pt-3" role="group" aria-label={`Under 18 and guardian consent for ${name}`}>
+      <p className="text-xs font-bold text-ink">Under 18</p>
+      {error && <Banner kind="error">{error}</Banner>}
+      {status && (
+        <p className="text-[11px] text-ink-muted" role="status">
+          {status.isMinor
+            ? status.guardianConsentAt
+              ? `Marked under 18. A guardian gave consent on ${new Date(status.guardianConsentAt).toLocaleDateString()}.`
+              : `Marked under 18. Guardian consent is outstanding${status.guardianEmail ? ` (last asked: ${status.guardianEmail}${status.pendingRequestExpiresAt ? `, link valid until ${new Date(status.pendingRequestExpiresAt).toLocaleDateString()}` : ""})` : ""}.`
+            : "Not marked as under 18."}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button className={ghost} disabled={busy || status?.isMinor === true} onClick={() => { clearError(); setMinor(true); }}>
+          Mark as under 18
+        </button>
+        <button className={ghost} disabled={busy || status?.isMinor === false} onClick={() => { clearError(); setMinor(false); }}>
+          Clear under-18 mark
+        </button>
+      </div>
+      {status?.isMinor && !status.guardianConsentAt && (
+        <form onSubmit={ask} className="flex flex-wrap items-end gap-2">
+          <label className="space-y-1 text-xs font-semibold text-ink-muted">
+            Guardian&apos;s e-mail
+            <input className={`${input} block w-64`} type="email" maxLength={320} value={email} onChange={(e) => { clearError(); setEmail(e.target.value); }} />
+          </label>
+          <button className={primary} disabled={busy || !emailOk}>
+            {busy ? "Sending…" : "Ask guardian"}
+          </button>
+        </form>
+      )}
+      <p className="text-[11px] text-ink-subtle">Clearing the mark also forgets the guardian&apos;s address and consent.</p>
+    </div>
+  );
+};
+
 const PersonRow: React.FC<{ person: Person; self: boolean; actorIsSuper: boolean; onSaved: () => void; onNotice: (n: Notice) => void }> = ({ person, self, actorIsSuper, onSaved, onNotice }) => {
   const [open, setOpen] = useState(false);
   const [first, setFirst] = useState(person.firstName);
@@ -201,6 +278,8 @@ const PersonRow: React.FC<{ person: Person; self: boolean; actorIsSuper: boolean
               )}
             </>
           )}
+
+          {!lockedBySuper && !self && <MinorControls person={person} onNotice={onNotice} />}
 
           <div className="space-y-1">
             <p className="text-xs font-bold text-ink">Courses</p>

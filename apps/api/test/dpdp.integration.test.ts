@@ -344,6 +344,11 @@ describe("a minor's guardian consent", () => {
     expect((await kid.post('/api/v1/privacy/consents/marketing/grant').send({})).status).toBe(200);
     expect((await kid.post('/api/v1/privacy/me/guardian-consent').send({ guardianEmail: 'mum@home.test' })).status).toBe(409);
 
+    const seen = await a.get('/api/v1/privacy/users/kid/minor');
+    matchesDocs('GET /api/v1/privacy/users/:id/minor', seen.body);
+    expect(seen.body.data.isMinor).toBe(true);
+    expect((await kid.get('/api/v1/privacy/users/kid/minor')).status).toBe(403);
+
     // Only an administrator can clear the mark; clearing forgets the guardian.
     const cleared = await a.put('/api/v1/privacy/users/kid/minor').send({ isMinor: false });
     matchesDocs('PUT /api/v1/privacy/users/:id/minor', cleared.body);
