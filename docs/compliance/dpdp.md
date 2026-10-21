@@ -23,7 +23,7 @@ not code".
 | Reasonable security safeguards | 8(5) | Row-level security, encrypted secrets, audit trail, MFA, backups, monitoring (see `docs/deployment/operations.md`). | existing |
 | Personal-data breach: tell the Data Protection Board and each affected person | 8(6) | **Breach register** with a 72-hour clock from detection. Records categories of data, people affected, severity, containment, owner, when the Board and the people were told. The status moves DETECTED, CONTAINED, NOTIFIED, CLOSED; closing needs a Board notification or a written reason none was needed. A job e-mails the administrators once when fewer than 24 hours are left and once when the deadline passes (`BREACH_JOB_INTERVAL_SECONDS`). Every change is audited. | `/api/v1/privacy/breaches` |
 | Erase data when its purpose is served; retention | 8(7) | Retention policy per organisation (off by default). | `/api/v1/privacy/retention` |
-| Children: verifiable parental consent; no tracking or behavioural monitoring of children | 9 | A person can be marked **under 18** (by an administrator, or declared by the person; only an administrator can clear it). A minor cannot grant any consent until a guardian has confirmed: the guardian receives a single-use link (only its hash is stored, valid 7 days, three requests a day) on the organisation's own address and confirms on a page there. Camera, microphone and snapshot proctoring events from a minor without guardian consent are refused (403). | `PUT /privacy/me/minor`, `PUT /privacy/users/:id/minor`, `POST /privacy/me/guardian-consent`, `POST /privacy/users/:id/guardian-consent`, public `GET/POST /privacy/guardian-consent` |
+| Children: verifiable parental consent; no tracking or behavioural monitoring of children | 9 | A person can be marked **under 18** (by an administrator, or declared by the person; only an administrator can clear it). A minor cannot grant any consent until a guardian has confirmed: the guardian receives a single-use link (only its hash is stored, valid 7 days, three requests a day) on the organisation's own address and confirms on a page there. Proctoring events (camera, microphone, snapshots, tab switches, copy-paste), xAPI statements and at-risk analytics for a minor without guardian consent are refused or left out. | `PUT /privacy/me/minor`, `PUT /privacy/users/:id/minor`, `POST /privacy/me/guardian-consent`, `POST /privacy/users/:id/guardian-consent`, public `GET/POST /privacy/guardian-consent` |
 
 ## What erasure keeps, and why
 
@@ -36,18 +36,16 @@ the organisation when it is deleted. The audit trail keeps user id, IP and user 
 
 ## Current limits
 
-- **Guardian withdrawal.** A guardian can confirm consent through the link but there is no link to withdraw it; an
-  administrator clears the under-18 mark (which forgets the guardian and their consent) on request.
+- **Guardian withdrawal.** The confirmation e-mail carries a signed withdrawal link (`/guardian-consent/withdraw`). Withdrawing clears the
+  guardian consent and withdraws every purpose the minor had agreed to. An administrator can also clear the under-18 mark.
 - **Age.** There is no date of birth: "under 18" is a flag set by an administrator or the person. Registration does not
   ask for age yet. An integration with the organisation's student records can set the flag in bulk through the API.
-- **Tracking of minors.** Only camera, microphone and snapshot proctoring are blocked for minors without guardian
-  consent. These also collect behavioural data and are *not* blocked yet, because they run on every account and need a
-  product decision: tab-switch and copy-paste proctoring events, xAPI learning-activity statements, and the
-  at-risk analytics (`/api/v1/analytics/*`). The Rules exempt educational institutions for educational purposes and
-  safety; confirm the exemption applies before relying on it.
-- **No consent gate in the product.** Purposes and answers exist in the API; nothing yet stops a person using the
-  platform until they have answered the required purposes, and there is no registration step that asks. That is a
-  web change (a consent screen at first sign-in and a "Privacy" page that shows the purposes and the grievance officer).
+- **Tracking of minors.** Until a guardian has consented, a minor is left out of all behavioural tracking: every proctoring event
+  (camera, microphone, snapshots, tab switches, copy-paste, full-screen exits) is refused (403), no xAPI learning-activity
+  statements are stored, and the person is left out of the at-risk analytics. The Rules exempt educational institutions for
+  educational purposes and safety; if the organisation relies on that exemption, this is stricter than the law requires and
+  can be relaxed in `lib/guardian.ts` (`minorMonitoringBlocked`), `lib/xapi.ts` and `lib/risk.ts`.
+- **Consent gate.** The web app asks for the required purposes at first sign-in and has a public privacy notice. There is still no registration step that asks for age.
 - **Breach e-mails to people.** The register records when affected people were told; the platform does not send that
   notice itself.
 

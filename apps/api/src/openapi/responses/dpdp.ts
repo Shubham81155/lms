@@ -195,4 +195,16 @@ export const DPDP_DOCS: Record<string, OperationDoc> = {
     response: ok(z.object({ data: z.object({ confirmedAt: z.string() }) })),
     errors: [400, 429],
   },
+  'GET /api/v1/privacy/guardian-consent/withdraw': {
+    summary: "Public: what withdrawing consent means (organisation, the minor's first name, when consent was given). Changes nothing. The token comes from the confirmation e-mail sent to the guardian and works until consent changes; 400 when it is invalid or no longer current.",
+    query: guardianTokenSchema,
+    response: ok(z.object({ data: z.object({ organisation: z.string(), firstName: z.string(), consentGivenAt: z.string() }) })),
+    errors: [400, 429],
+  },
+  'POST /api/v1/privacy/guardian-consent/withdraw': {
+    summary: "Public: the guardian withdraws consent. The minor loses the guardian's consent, every purpose they agreed to is withdrawn in the consent history, camera and microphone proctoring stops being allowed, and the audit trail records it.",
+    body: guardianTokenSchema,
+    response: ok(z.object({ data: z.object({ withdrawnAt: z.string(), purposesWithdrawn: z.number() }) })),
+    errors: [400, 429],
+  },
 };

@@ -3299,6 +3299,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/guardian-consent/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public: what withdrawing consent means (organisation, the minor's first name, when consent was given). Changes nothing. The token comes from the confirmation e-mail sent to the guardian and works until consent changes; 400 when it is invalid or no longer current. */
+        get: operations["getPrivacyGuardianConsentWithdraw"];
+        put?: never;
+        /** Public: the guardian withdraws consent. The minor loses the guardian's consent, every purpose they agreed to is withdrawn in the consent history, camera and microphone proctoring stops being allowed, and the audit trail records it. */
+        post: operations["postPrivacyGuardianConsentWithdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/privacy/me/directory": {
         parameters: {
             query?: never;
@@ -20807,6 +20825,101 @@ export interface operations {
                     "application/json": {
                         data: {
                             confirmedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPrivacyGuardianConsentWithdraw: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            organisation: string;
+                            firstName: string;
+                            consentGivenAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyGuardianConsentWithdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            withdrawnAt: string;
+                            purposesWithdrawn: number;
                         };
                     };
                 };

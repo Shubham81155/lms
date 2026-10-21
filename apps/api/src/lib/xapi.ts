@@ -45,6 +45,9 @@ export async function recordStatement(input: RecordInput): Promise<string | null
     timestamp: timestamp.toISOString(),
   };
   try {
+    // Children's data (DPDP Act s.9(3)): no learning-activity tracking of a minor without a guardian's consent.
+    const person = await prisma.user.findFirst({ where: { id: input.user.id, tenantId: input.tenantId }, select: { isMinor: true, guardianConsentAt: true } });
+    if (person?.isMinor && !person.guardianConsentAt) return null;
     await prisma.xapiStatement.create({
       data: {
         id,

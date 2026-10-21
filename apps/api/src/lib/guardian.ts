@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { z } from 'zod';
 import { runWithTenant } from '@enterprise-lms/database';
 import { basePrisma, prisma } from './prisma';
@@ -6,6 +7,7 @@ import { logAuditEvent } from './audit';
 import { mailDelivers, sendMail } from './mailer';
 import { generateOneTimeToken, hashOneTimeToken } from './one-time-token';
 import { tenantUrl } from './tenant-url';
+import { config } from '../config';
 
 // Children's data (DPDP Act s.9): a person under 18 (isMinor, set by an administrator or declared by the person)
 // needs a parent's or guardian's verifiable consent before agreeing to anything (lib/consent.ts), and camera,
@@ -137,6 +139,78 @@ export async function confirmGuardianConsent(raw: string, ctx: GuardianContext, 
     if (done.count !== 1) throw new HttpError(400, NOT_VALID);
     await audit(tenantId, null, 'GUARDIAN_CONSENT_GIVEN', request.userId, { guardianEmail: request.guardianEmail }, ctx);
     return { confirmedAt: now.toISOString() };
+  }).then(async (done) => {
+    await mailWithdrawalLink(tenantId, request.userId, request.guardianEmail, now);
+    return done;
+  });
+}
+
+// Withdrawing must be as easy as giving (DPDP Act s.6(4)). The guardian gets a link in the confirmation e-mail. It is
+// not stored: it is signed with the server secret over the person and the moment consent was given, so it works
+// until consent changes (withdrawal clears that moment, and a fresh consent has a new one, so old links die).
+const withdrawSignature = (tenantId: string, userId: string, consentAtMs: number) =>
+  crypto.createHmac('sha256', config.JWT_SECRET).update(`guardian-withdraw:${tenantId}:${userId}:${consentAtMs}`).digest('base64url');
+
+export const guardianWithdrawalToken = (tenantId: string, userId: string, consentAt: Date) =>
+  [tenantId, userId, consentAt.getTime(), withdrawSignature(tenantId, userId, consentAt.getTime())].join('.');
+
+async function openWithdrawal(raw: string) {
+  const parts = raw.split('.');
+  if (parts.length !== 4) throw new HttpError(400, NOT_VALID);
+  const [tenantId, userId, ms, sig] = parts;
+  const consentAtMs = Number(ms);
+  const expected = Buffer.from(withdrawSignature(tenantId, userId, consentAtMs));
+  const given = Buffer.from(sig);
+  if (!Number.isFinite(consentAtMs) || given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) throw new HttpError(400, NOT_VALID);
+  const user = await runWithTenant(tenantId, () =>
+    prisma.user.findFirst({ where: { id: userId, tenantId, isMinor: true, erasedAt: null }, select: { firstName: true, guardianConsentAt: true } })
+  );
+  if (!user?.guardianConsentAt || user.guardianConsentAt.getTime() !== consentAtMs) throw new HttpError(400, NOT_VALID);
+  return { tenantId, userId, user };
+}
+
+async function mailWithdrawalLink(tenantId: string, userId: string, guardianEmail: string, consentAt: Date) {
+  try {
+    const t = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true, slug: true, customDomain: true } });
+    const u = await runWithTenant(tenantId, () => prisma.user.findFirst({ where: { id: userId, tenantId }, select: { firstName: true } }));
+    if (!t || !u) return;
+    const link = `${tenantUrl(t)}/guardian-consent/withdraw?token=${encodeURIComponent(guardianWithdrawalToken(tenantId, userId, consentAt))}`;
+    await sendMail({
+      to: guardianEmail,
+      subject: `${t.name}: your consent for ${u.firstName} is recorded`,
+      text: `Hello,\n\nThank you. We have recorded your consent for ${u.firstName}'s account at ${t.name}.\n\nYou can withdraw it at any time, as easily as you gave it, here:\n\n${link}\n\nKeep this e-mail. Withdrawing stops the use of ${u.firstName}'s data that depends on your consent.\n\n${t.name}`,
+    });
+  } catch {
+    // The consent itself is recorded; the guardian can still ask the organisation to withdraw it.
+  }
+}
+
+/** What withdrawing means; changes nothing (mail scanners open links). */
+export async function guardianWithdrawalInfo(raw: string) {
+  const { tenantId, user } = await openWithdrawal(raw);
+  const t = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true } });
+  return { organisation: t?.name ?? '', firstName: user.firstName, consentGivenAt: user.guardianConsentAt!.toISOString() };
+}
+
+/**
+ * The guardian withdraws consent: the minor loses the guardian's consent, every purpose they had agreed to is
+ * withdrawn in the consent history, and the audit trail records it. The under-18 mark and guardian address stay,
+ * so a new request can be made.
+ */
+export async function withdrawGuardianConsent(raw: string, ctx: GuardianContext, now = new Date()) {
+  const { tenantId, userId, user } = await openWithdrawal(raw);
+  return runWithTenant(tenantId, async () => {
+    const claimed = await prisma.user.updateMany({ where: { id: userId, tenantId, isMinor: true, guardianConsentAt: user.guardianConsentAt }, data: { guardianConsentAt: null } });
+    if (claimed.count !== 1) throw new HttpError(400, NOT_VALID);
+    const records = await prisma.consentRecord.findMany({ where: { tenantId, userId }, orderBy: { createdAt: 'desc' } });
+    const latest = new Map<string, (typeof records)[number]>();
+    for (const r of records) if (!latest.has(r.purposeKey)) latest.set(r.purposeKey, r);
+    const granted = [...latest.values()].filter((r) => r.granted);
+    for (const r of granted) {
+      await prisma.consentRecord.create({ data: { tenantId, userId, purposeId: r.purposeId, purposeKey: r.purposeKey, version: r.version, granted: false, textSnapshot: r.textSnapshot, source: 'GUARDIAN' } });
+    }
+    await audit(tenantId, null, 'GUARDIAN_CONSENT_WITHDRAWN', userId, { withdrawnPurposes: granted.map((r) => r.purposeKey) }, ctx);
+    return { withdrawnAt: now.toISOString(), purposesWithdrawn: granted.length };
   });
 }
 
@@ -149,4 +223,4 @@ export async function minorMonitoringBlocked(tenantId: string, userId: string): 
   return !!u?.isMinor && !u.guardianConsentAt;
 }
 
-export const MONITORING_BLOCKED_MESSAGE = 'Camera and microphone monitoring needs a parent or guardian to give consent first';
+export const MONITORING_BLOCKED_MESSAGE = 'Monitoring needs a parent or guardian to give consent first';

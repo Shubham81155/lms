@@ -110,6 +110,8 @@ describe('authentication coverage', () => {
     'GET /api/v1/privacy/grievance-officer',
     'GET /api/v1/privacy/guardian-consent',
     'POST /api/v1/privacy/guardian-consent',
+    'GET /api/v1/privacy/guardian-consent/withdraw',
+    'POST /api/v1/privacy/guardian-consent/withdraw',
     'POST /api/v1/integrations/livekit',
     'POST /api/v1/integrations/plagiarism/:tenantSlug',
     'POST /api/v1/integrations/copyleaks/:tenantSlug/:submissionId/:status',

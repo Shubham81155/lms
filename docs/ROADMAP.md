@@ -19,7 +19,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | Server-side session revocation (token version, live status/role check), `/ready` probe, global API rate limits | Done | shared across instances when `REDIS_URL` is set (tested against a real Redis; the production stack runs with one), per process otherwise |
 | ESLint, Docker/compose for local stack | Done | API runs via ts-node in development |
 | **CI** (`.github/workflows/ci.yml`: type checks, lint, tests on every push) | Done | `format:check` is not part of it: about 270 files do not pass Prettier yet |
-| **Advisory-lock helper for background jobs** (`lib/job-lock.ts`) | Done | used by the trial, custom-domain re-check and offboarding jobs; the older workers claim each row (webhooks, e-mail, plagiarism) except the file-scan sweep, which may repeat work on several instances |
+| **Advisory-lock helper for background jobs** (`lib/job-lock.ts`) | Done | used by the trial, custom-domain re-check and offboarding jobs; the older workers claim each row (webhooks, e-mail, plagiarism); the file-scan sweep now uses the lock too |
 | Infrastructure as code (Terraform), GitOps CI/CD | Open | |
 | mTLS service mesh, Vault/KMS secret rotation | Open | |
 
@@ -109,7 +109,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
 | OneRoster / SIS-ERP connectors (Banner, PowerSchool, Workday, SAP, Salesforce) | Open | |
 | Open Badges 3.0 issuance | Open | needs server-side signing keys |
 | GDPR access, erasure and FERPA directory opt-out | Done | self-serve JSON export, account erasure (anonymises the person, keeps grades; audit trail is append-only so it keeps ids/IPs) and directory opt-out under `/api/v1/privacy`; every user has a "Privacy & data" dialog in the header, administrators answer requests for others from the Security & Compliance tab. **Request queue** (`/api/v1/privacy/requests`: access, erasure, correction, restriction, objection, FERPA opt-out, other; 30-day deadline, assign, fulfil with the data attached or the account erased, decline with a reason, e-mails and audit entries, due-soon and overdue warnings to administrators) and **retention policy** (`/api/v1/privacy/retention`, off by default: notifications, used tokens, proctoring evidence, ended support passes, infected uploads; preview mode, daily job, per-run row cap, audited) |
-| **DPDP Act readiness** (`docs/compliance/dpdp.md`): consent purposes and an append-only consent history (`/api/v1/privacy/consents`, `/consent-purposes`, report), personal-data **breach register** with a 72-hour clock and reminder job (`/breaches`), public **grievance officer** notice, **minors**: under-18 mark, guardian consent by single-use e-mailed link, camera/microphone/snapshot proctoring refused until it is given; the export includes consents and erasure keeps the consent evidence | Done (API) | tested against a real PostgreSQL with row-level security. No screens yet, no consent gate at first sign-in, no age on registration; tab-switch proctoring, xAPI and at-risk analytics are not blocked for minors; the Board filing, DPO and cross-border review are process (see the doc) |
+| **DPDP Act readiness** (`docs/compliance/dpdp.md`): consent purposes and an append-only consent history (`/api/v1/privacy/consents`, `/consent-purposes`, report), personal-data **breach register** with a 72-hour clock and reminder job (`/breaches`), public **grievance officer** notice, **minors**: under-18 mark, guardian consent by single-use e-mailed link, camera/microphone/snapshot proctoring refused until it is given; the export includes consents and erasure keeps the consent evidence | Done (API) | tested against a real PostgreSQL with row-level security. Screens and a consent gate are in the web app; guardians can withdraw by e-mailed link; no age on registration; all proctoring events, xAPI statements and at-risk analytics skip a minor without guardian consent; the Board filing, DPO and cross-border review are process (see the doc) |
 | Penetration test, SOC 2 / FERPA audit | Open | process, not code |
 | Load test (100k exam takers), multi-region HA / DR | Open | targets in `load_testing_sla.md` |
 | Redis cache, read replicas, PgBouncer | Open | Redis is used for shared rate limits only |
@@ -124,7 +124,7 @@ Legend: **Done** = implemented and tested. **Partial** = backend done, web scree
    wildcard record, a test custom domain).
 2. Decide trial or paid start and the payment provider (Razorpay or Stripe), then build billing: seats, GST invoices, plan limits.
 3. Small hardening items: drop `includeSubDomains` from the API's HSTS header on customers' own domains; raise ClamAV's
-   `StreamMaxLength` above `UPLOAD_MAX_MB`; give the file-scan sweep a claim like the other workers.
+   `StreamMaxLength` above `UPLOAD_MAX_MB`; (file-scan sweep lock done).
 4. Run the S3 driver against a real bucket, SCORM against packages from Articulate, Captivate and iSpring, and
    virus scanning against a real ClamAV daemon (the Phase 3-4 screens were checked in a browser on 2026-10-18).
 5. Try the Copyleaks adapter with a real account (sandbox mode first); try camera proctoring with real webcams and lighting.

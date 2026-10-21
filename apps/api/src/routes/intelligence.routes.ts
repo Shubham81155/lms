@@ -178,8 +178,9 @@ router.post(
     if (!submission.quiz.requireProctoring) throw new HttpError(400, 'Proctoring is not enabled for this quiz');
     if (CAMERA_EVENTS.includes(body.eventType) && !submission.quiz.proctorCamera) throw new HttpError(400, 'This quiz does not use the camera');
     if (MICROPHONE_EVENTS.includes(body.eventType) && !submission.quiz.proctorMicrophone) throw new HttpError(400, 'This quiz does not use the microphone');
-    // Children's data (DPDP Act s.9): no camera, microphone or snapshot monitoring until a guardian has consented.
-    if ((CAMERA_EVENTS.includes(body.eventType) || MICROPHONE_EVENTS.includes(body.eventType) || body.snapshotUrl) && (await minorMonitoringBlocked(tenantId, req.user!.id))) throw new HttpError(403, MONITORING_BLOCKED_MESSAGE);
+    // Children's data (DPDP Act s.9(3)): no behavioural monitoring of any kind (camera, microphone, snapshots, tab
+    // switches, copy-paste, full-screen exits) until a guardian has consented.
+    if (await minorMonitoringBlocked(tenantId, req.user!.id)) throw new HttpError(403, MONITORING_BLOCKED_MESSAGE);
 
     const before = assessProctoring(await prisma.proctoringLog.findMany({ where: { submissionId: submission.id }, select: { severity: true } }));
     await prisma.proctoringLog.create({

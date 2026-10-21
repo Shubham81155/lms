@@ -10,7 +10,7 @@ import { rateLimitStore } from '../lib/rate-limit-store';
 import { resolveTenant } from '../lib/tenant';
 import { consentReport, listPurposes, myConsents, purposeView, savePurposes, savePurposesSchema, setConsent } from '../lib/consent';
 import { breachQuerySchema, breachView, createBreach, createBreachSchema, getBreach, listBreaches, updateBreach, updateBreachSchema } from '../lib/breaches';
-import { confirmGuardianConsent, guardianConsentInfo, guardianRequestSchema, guardianTokenSchema, minorStatus, requestGuardianConsent, setMinor, setMinorSchema } from '../lib/guardian';
+import { confirmGuardianConsent, guardianConsentInfo, guardianRequestSchema, guardianTokenSchema, guardianWithdrawalInfo, minorStatus, requestGuardianConsent, setMinor, setMinorSchema, withdrawGuardianConsent } from '../lib/guardian';
 
 // Mounted at /api/v1/privacy, after routes/privacy.routes.ts: the DPDP Act side of privacy. Consent purposes and each
 // person's answers (/consents), the personal-data breach register with its 72-hour clock (/breaches), the
@@ -237,6 +237,26 @@ router.post(
   route('Failed to record consent', async (req, res) => {
     const { token } = parseBody(req, guardianTokenSchema);
     return res.json({ data: await confirmGuardianConsent(token, ctxOf(req)) });
+  })
+);
+
+/** GET /api/v1/privacy/guardian-consent/withdraw?token= - public: what withdrawing consent means (changes nothing) */
+router.get(
+  '/guardian-consent/withdraw',
+  publicLimiter,
+  route('Failed to check the link', async (req, res) => {
+    const { token } = parseQuery(req, guardianTokenSchema);
+    return res.json({ data: await guardianWithdrawalInfo(token) });
+  })
+);
+
+/** POST /api/v1/privacy/guardian-consent/withdraw - public: the guardian withdraws consent */
+router.post(
+  '/guardian-consent/withdraw',
+  publicLimiter,
+  route('Failed to withdraw consent', async (req, res) => {
+    const { token } = parseBody(req, guardianTokenSchema);
+    return res.json({ data: await withdrawGuardianConsent(token, ctxOf(req)) });
   })
 );
 

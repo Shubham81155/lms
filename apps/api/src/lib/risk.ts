@@ -54,12 +54,12 @@ export function scoreRisk(i: RiskInput): { level: 'LOW' | 'MEDIUM' | 'HIGH'; sco
 }
 
 /**
- * Learners at MEDIUM or HIGH risk across `courseIds`, highest first. Runs inside the tenant context.
+ * Learners at MEDIUM or HIGH risk (minors without a guardian's consent are left out: DPDP Act s.9(3)) across `courseIds`, highest first. Runs inside the tenant context.
  */
 export async function computeAtRisk(tenantId: string, courseIds: string[]) {
   if (courseIds.length === 0) return [];
   const enrollments = await prisma.enrollment.findMany({
-    where: { tenantId, courseId: { in: courseIds }, status: { in: ['ENROLLED', 'IN_PROGRESS'] } },
+    where: { tenantId, courseId: { in: courseIds }, status: { in: ['ENROLLED', 'IN_PROGRESS'] }, user: { NOT: { isMinor: true, guardianConsentAt: null } } },
     select: {
       userId: true,
       courseId: true,

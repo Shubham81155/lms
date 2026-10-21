@@ -35238,6 +35238,164 @@
         }
       }
     },
+    "/api/v1/privacy/guardian-consent/withdraw": {
+      "get": {
+        "operationId": "getPrivacyGuardianConsentWithdraw",
+        "summary": "Public: what withdrawing consent means (organisation, the minor's first name, when consent was given). Changes nothing. The token comes from the confirmation e-mail sent to the guardian and works until consent changes; 400 when it is invalid or no longer current.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 20,
+              "maxLength": 400
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "organisation": {
+                          "type": "string"
+                        },
+                        "firstName": {
+                          "type": "string"
+                        },
+                        "consentGivenAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "organisation",
+                        "firstName",
+                        "consentGivenAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "postPrivacyGuardianConsentWithdraw",
+        "summary": "Public: the guardian withdraws consent. The minor loses the guardian's consent, every purpose they agreed to is withdrawn in the consent history, camera and microphone proctoring stops being allowed, and the audit trail records it.",
+        "tags": [
+          "privacy"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 400
+                  }
+                },
+                "required": [
+                  "token"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "withdrawnAt": {
+                          "type": "string"
+                        },
+                        "purposesWithdrawn": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "withdrawnAt",
+                        "purposesWithdrawn"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/privacy/me/directory": {
       "get": {
         "operationId": "getPrivacyMeDirectory",

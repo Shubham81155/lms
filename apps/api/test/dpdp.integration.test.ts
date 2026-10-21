@@ -344,6 +344,27 @@ describe("a minor's guardian consent", () => {
     expect((await kid.post('/api/v1/privacy/consents/marketing/grant').send({})).status).toBe(200);
     expect((await kid.post('/api/v1/privacy/me/guardian-consent').send({ guardianEmail: 'mum@home.test' })).status).toBe(409);
 
+    // The confirmation e-mail carries a withdrawal link: it changes nothing until used, rejects tampering, works once.
+    const thanks = outbox.filter((m) => m.to === 'mum@home.test').pop()!;
+    expect(thanks.text).toContain('/guardian-consent/withdraw?token=');
+    const wToken = decodeURIComponent(/withdraw\?token=([^\s]+)/.exec(thanks.text)![1]);
+    const wInfo = await request(app).get('/api/v1/privacy/guardian-consent/withdraw').query({ token: wToken });
+    expect(wInfo.status).toBe(200);
+    matchesDocs('GET /api/v1/privacy/guardian-consent/withdraw', wInfo.body);
+    expect((await kid.get('/api/v1/privacy/me/minor')).body.data.guardianConsentAt).not.toBeNull();
+    expect((await request(app).post('/api/v1/privacy/guardian-consent/withdraw').send({ token: `${wToken}x` })).status).toBe(400);
+    expect((await request(app).post('/api/v1/privacy/guardian-consent/withdraw').send({ token: wToken.replace(/^[^.]+/, 't-b') })).status).toBe(400);
+    const withdrawn = await request(app).post('/api/v1/privacy/guardian-consent/withdraw').send({ token: wToken });
+    expect(withdrawn.status).toBe(200);
+    matchesDocs('POST /api/v1/privacy/guardian-consent/withdraw', withdrawn.body);
+    expect(withdrawn.body.data.purposesWithdrawn).toBeGreaterThan(0);
+    expect((await request(app).post('/api/v1/privacy/guardian-consent/withdraw').send({ token: wToken })).status).toBe(400);
+    expect((await kid.get('/api/v1/privacy/me/minor')).body.data).toMatchObject({ isMinor: true, guardianConsentAt: null });
+    expect((await kid.post('/api/v1/privacy/consents/marketing/grant').send({})).status).toBe(403);
+    expect(await audits('GUARDIAN_CONSENT_WITHDRAWN')).toBe(1);
+    // Asking the guardian again is possible afterwards.
+    expect((await kid.post('/api/v1/privacy/me/guardian-consent').send({ guardianEmail: 'mum@home.test' })).status).toBe(200);
+
     const seen = await a.get('/api/v1/privacy/users/kid/minor');
     matchesDocs('GET /api/v1/privacy/users/:id/minor', seen.body);
     expect(seen.body.data.isMinor).toBe(true);
@@ -379,5 +400,36 @@ describe("a minor's guardian consent", () => {
     await admin.user.update({ where: { id: 's2' }, data: { guardianConsentAt: new Date() } });
     expect(await blocked('s2')).toBe(false);
     expect(await blocked('a-admin')).toBe(false);
+  });
+});
+
+describe('behavioural monitoring of minors', () => {
+  it('proctoring events, xAPI statements and at-risk analytics leave out a minor until a guardian consents', async () => {
+    await admin.course.create({ data: { id: 'mc1', tenantId: 't-a', code: 'MC1', title: 'Minor course', status: 'PUBLISHED' } });
+    await admin.enrollment.create({ data: { id: 'me1', tenantId: 't-a', courseId: 'mc1', userId: 's2', status: 'IN_PROGRESS', progressPercent: 0 } });
+    await admin.quiz.create({ data: { id: 'mq1', tenantId: 't-a', courseId: 'mc1', title: 'Quiz', requireProctoring: true } });
+    await admin.quizSubmission.create({ data: { id: 'ms1', quizId: 'mq1', userId: 's2', maxScore: 10, answersJson: {} } });
+    await admin.quizSubmission.create({ data: { id: 'ms2', attemptNumber: 2, quizId: 'mq1', userId: 's2', maxScore: 10, score: 0, passed: false, submittedAt: new Date(), answersJson: {} } });
+    const s2 = await as('s2', 'acme');
+    const event = () => s2.post('/api/v1/proctoring/events').send({ submissionId: 'ms1', eventType: 'TAB_SWITCH', severity: 'LOW' });
+    const statements = () => admin.xapiStatement.count({ where: { actorUserId: 's2' } });
+    const record = () =>
+      import('../src/lib/xapi.js').then(async (x) => {
+        const { runWithTenant } = await import('@enterprise-lms/database');
+        return runWithTenant('t-a', () => x.recordStatement({ tenantId: 't-a', user: { id: 's2', email: 's2@x.edu' }, verb: x.VERBS.completed, object: { id: 'urn:test' } }));
+      });
+
+    await admin.user.update({ where: { id: 's2' }, data: { isMinor: true, guardianConsentAt: null } });
+    expect((await event()).status).toBe(403);
+    expect(await record()).toBeNull();
+    expect(await statements()).toBe(0);
+    const risk = await import('../src/lib/risk.js');
+    const { runWithTenant } = await import('@enterprise-lms/database');
+    expect((await runWithTenant('t-a', () => risk.computeAtRisk('t-a', ['mc1']))).map((l) => l.id)).not.toContain('s2');
+
+    await admin.user.update({ where: { id: 's2' }, data: { guardianConsentAt: new Date(), lastLoginAt: new Date() } });
+    expect((await event()).status).toBe(201);
+    expect(await record()).not.toBeNull();
+    expect((await runWithTenant('t-a', () => risk.computeAtRisk('t-a', ['mc1']))).map((l) => l.id)).toContain('s2');
   });
 });
