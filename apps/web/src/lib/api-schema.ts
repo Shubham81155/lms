@@ -3177,6 +3177,23 @@ export interface paths {
         patch: operations["patchPrivacyBreachesId"];
         trace?: never;
     };
+    "/api/v1/privacy/breaches/{id}/notify-people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Administrators: e-mail the breach notice (what happened, data involved, when, likely consequences, what was done, what people can do, whom to contact) to everyone with an active account or to listed people, and to the guardians of minors. Marks the breach as people-notified (peopleNotifiedAt). 409 if already sent (resend: true overrides) or the breach is closed; 503 when the platform cannot send e-mail; dryRun only counts recipients. Audited. */
+        post: operations["postPrivacyBreachesIdNotifyPeople"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/privacy/consent-purposes": {
         parameters: {
             query?: never;
@@ -20292,6 +20309,103 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postPrivacyBreachesIdNotifyPeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    audience: "ALL_ACTIVE" | "USERS";
+                    userIds?: string[];
+                    consequences: string;
+                    safetyAdvice: string;
+                    /** Format: email */
+                    contactEmail: string;
+                    dryRun?: boolean;
+                    resend?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            recipients: number;
+                            sent: number;
+                            failed: number;
+                            peopleNotifiedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

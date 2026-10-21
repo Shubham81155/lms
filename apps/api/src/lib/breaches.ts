@@ -7,6 +7,7 @@ import { logAuditEvent } from './audit';
 import { logger } from './logger';
 import { startPeriodicJob, withJobLock } from './job-lock';
 import { mailAdmins } from './trial';
+import { mailDelivers, sendMail } from './mailer';
 import { idSchema } from './validate';
 
 // The personal-data breach register (DPDP Act s.8(6)): every breach is logged with what was involved, how many
@@ -181,6 +182,78 @@ export async function updateBreach(tenantId: string, id: string, admin: { id: st
     peopleNotifiedAt: iso(after.peopleNotifiedAt),
   }, ctx);
   return after;
+}
+
+// --------------------------------------------------------------------------- telling the people affected
+
+// DPDP Rules: each affected person gets a plain notice of what happened, the data involved, when, the likely
+// consequences, what the organisation did, what they can do to protect themselves, and whom to contact. The
+// administrator supplies the consequences, advice and contact; the rest comes from the register entry. A minor's
+// guardian is told as well. Sending marks the breach as people-notified; a second send needs resend: true.
+
+export const notifyPeopleSchema = z.object({
+  /** ALL_ACTIVE: everyone with an active or invited account; USERS: only the people listed. */
+  audience: z.enum(['ALL_ACTIVE', 'USERS']),
+  userIds: z.array(idSchema).max(5000).optional(),
+  consequences: text(3000),
+  safetyAdvice: text(3000),
+  contactEmail: z.string().trim().toLowerCase().email().max(320),
+  /** Count the recipients without sending anything. */
+  dryRun: z.boolean().optional(),
+  /** Send again although people were told before. */
+  resend: z.boolean().optional(),
+}).refine((b) => b.audience !== 'USERS' || (b.userIds && b.userIds.length > 0), { message: 'userIds is required when audience is USERS' });
+
+export async function notifyPeople(tenantId: string, id: string, admin: { id: string }, input: z.infer<typeof notifyPeopleSchema>, ctx: BreachContext, now = new Date()) {
+  const b = await getBreach(tenantId, id);
+  if (b.status === 'CLOSED') throw new HttpError(409, 'This breach is closed');
+  if (b.peopleNotifiedAt && !input.resend && !input.dryRun) throw new HttpError(409, 'The people affected were already told; set resend to send again');
+  const people = await prisma.user.findMany({
+    where: { tenantId, erasedAt: null, ...(input.audience === 'USERS' ? { id: { in: input.userIds } } : { status: { in: ['ACTIVE', 'INVITED'] } }) },
+    select: { email: true, firstName: true, isMinor: true, guardianEmail: true },
+    take: 100_000,
+  });
+  const recipients = new Map<string, string>();
+  for (const u of people) {
+    recipients.set(u.email.toLowerCase(), u.firstName);
+    if (u.isMinor && u.guardianEmail) recipients.set(u.guardianEmail.toLowerCase(), 'parent or guardian');
+  }
+  if (input.dryRun) return { recipients: recipients.size, sent: 0, failed: 0, peopleNotifiedAt: b.peopleNotifiedAt?.toISOString() ?? null };
+  if (recipients.size === 0) throw new HttpError(400, 'There is nobody to tell');
+  if (!mailDelivers()) throw new HttpError(503, 'This platform cannot send e-mail, so people cannot be told');
+
+  const tenant = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true, slug: true, customDomain: true } });
+  if (!tenant) throw new HttpError(404, 'Organisation not found');
+  const when = (b.occurredAt ?? b.detectedAt).toUTCString();
+  const body = (name: string) => [
+    `Hello ${name},`,
+    `We are writing to tell you about a personal data breach at ${tenant.name}.`,
+    `What happened: ${b.description}`,
+    `When: ${when}`,
+    b.categories.length ? `The data involved: ${b.categories.join(', ')}.` : '',
+    `What this may mean for you: ${input.consequences}`,
+    b.containment ? `What we have done: ${b.containment}` : '',
+    `What you can do: ${input.safetyAdvice}`,
+    `Questions: ${input.contactEmail}`,
+    tenant.name,
+  ].filter(Boolean).join('\n\n');
+
+  const previous = b.peopleNotifiedAt;
+  await prisma.dataBreach.updateMany({ where: { id, tenantId }, data: { peopleNotifiedAt: now } });
+  let sent = 0;
+  let failed = 0;
+  for (const [to, name] of recipients) {
+    try {
+      await sendMail({ to, subject: `${tenant.name}: notice of a personal data breach`, text: body(name) });
+      sent++;
+    } catch (err) {
+      failed++;
+      logger.warn({ err, tenantId, breachId: id }, 'could not send a breach notice');
+    }
+  }
+  if (sent === 0) await prisma.dataBreach.updateMany({ where: { id, tenantId }, data: { peopleNotifiedAt: previous } });
+  await audit(tenantId, admin.id, 'BREACH_PEOPLE_NOTIFIED', id, { audience: input.audience, recipients: recipients.size, sent, failed, resend: !!previous }, ctx);
+  return { recipients: recipients.size, sent, failed, peopleNotifiedAt: (sent === 0 ? previous : now)?.toISOString() ?? null };
 }
 
 // --------------------------------------------------------------------------- the clock

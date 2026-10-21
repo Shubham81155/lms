@@ -46,8 +46,10 @@ the organisation when it is deleted. The audit trail keeps user id, IP and user 
   educational purposes and safety; if the organisation relies on that exemption, this is stricter than the law requires and
   can be relaxed in `lib/guardian.ts` (`minorMonitoringBlocked`), `lib/xapi.ts` and `lib/risk.ts`.
 - **Consent gate.** The web app asks for the required purposes at first sign-in and has a public privacy notice. There is still no registration step that asks for age.
-- **Breach e-mails to people.** The register records when affected people were told; the platform does not send that
-  notice itself.
+- **Breach e-mails to people.** `POST /privacy/breaches/:id/notify-people` e-mails the notice (what happened, data involved, when,
+  what was done, plus the consequences, advice and contact the administrator writes) to everyone with an active account and to
+  minors' guardians, after a dry run that counts recipients. It marks the breach as people-notified, is sent once unless
+  `resend` is set, and is audited. Targeting only some people (`audience: USERS`) is available through the API.
 
 ## For the web pass (endpoints to build screens on)
 

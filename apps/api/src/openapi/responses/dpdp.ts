@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { OperationDoc } from '../docs';
-import { breachQuerySchema, BREACH_SEVERITIES, BREACH_STATUSES, createBreachSchema, updateBreachSchema } from '../../lib/breaches';
+import { breachQuerySchema, BREACH_SEVERITIES, BREACH_STATUSES, createBreachSchema, notifyPeopleSchema, updateBreachSchema } from '../../lib/breaches';
 import { savePurposesSchema } from '../../lib/consent';
 import { guardianRequestSchema, guardianTokenSchema, setMinorSchema } from '../../lib/guardian';
 import { grievanceOfficerSchema } from '../../routes/dpdp.routes';
@@ -138,6 +138,12 @@ export const DPDP_DOCS: Record<string, OperationDoc> = {
     body: updateBreachSchema,
     response: ok(z.object({ data: Breach })),
     errors: [400, 404, 409],
+  },
+  'POST /api/v1/privacy/breaches/:id/notify-people': {
+    summary: "Administrators: e-mail the breach notice (what happened, data involved, when, likely consequences, what was done, what people can do, whom to contact) to everyone with an active account or to listed people, and to the guardians of minors. Marks the breach as people-notified (peopleNotifiedAt). 409 if already sent (resend: true overrides) or the breach is closed; 503 when the platform cannot send e-mail; dryRun only counts recipients. Audited.",
+    body: notifyPeopleSchema,
+    response: ok(z.object({ data: z.object({ recipients: z.number(), sent: z.number(), failed: z.number(), peopleNotifiedAt: z.string().nullable() }) })),
+    errors: [400, 404, 409, 503],
   },
   'GET /api/v1/privacy/grievance-officer': {
     summary: "Public: the grievance officer and response time of the organisation the address (host) names, for its privacy notice. `officer` is null until one is set.",

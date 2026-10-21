@@ -76,6 +76,11 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
   const [board, setBoard] = useState(toLocalInput(b.boardNotifiedAt));
   const [people, setPeople] = useState(toLocalInput(b.peopleNotifiedAt));
   const [reason, setReason] = useState(b.noNotificationReason ?? "");
+  const [notice, setNotice] = useState(false);
+  const [consequences, setConsequences] = useState("");
+  const [advice, setAdvice] = useState("");
+  const [contact, setContact] = useState("");
+  const [sentNote, setSentNote] = useState("");
   const closed = b.status === "CLOSED";
   const next = NEXT[b.status];
 
@@ -90,6 +95,17 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
       if (Object.keys(body).length === 0) return;
       await api.patch(`/api/v1/privacy/breaches/${b.id}`, body);
       setOpen(false);
+      await onChanged();
+    });
+
+  const sendNotice = () =>
+    run(async () => {
+      setSentNote("");
+      const body = { audience: "ALL_ACTIVE", consequences: consequences.trim(), safetyAdvice: advice.trim(), contactEmail: contact.trim() };
+      const dry = await api.post<{ data: { recipients: number } }>(`/api/v1/privacy/breaches/${b.id}/notify-people`, { ...body, dryRun: true });
+      if (!window.confirm(`E-mail this notice to ${dry.data.recipients} address(es), including guardians of minors? It cannot be recalled.`)) return;
+      const res = await api.post<{ data: { sent: number; failed: number } }>(`/api/v1/privacy/breaches/${b.id}/notify-people`, { ...body, resend: !!b.peopleNotifiedAt });
+      setSentNote(`Sent to ${res.data.sent} address(es)${res.data.failed ? `; ${res.data.failed} could not be sent` : ""}.`);
       await onChanged();
     });
 
@@ -151,6 +167,34 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
                 <button type="button" className={ghostBtn} onClick={() => setPeople(nowLocal())}>Now</button>
               </div>
             </label>
+          </div>
+          <div className="space-y-2">
+            <button type="button" className={ghostBtn} aria-expanded={notice} onClick={() => setNotice(!notice)}>
+              {notice ? "Hide breach notice" : b.peopleNotifiedAt ? "Send the breach notice again" : "E-mail the breach notice to everyone"}
+            </button>
+            {notice && (
+              <div className="p-3 rounded-xl border border-line bg-canvas space-y-2">
+                <p className="text-[11px] text-ink-subtle">
+                  Everyone with an active account (and the guardians of minors) gets what happened, the data involved, when it happened and what you did, plus the three things below.
+                </p>
+                <label className="block space-y-1 text-[11px] text-ink-muted">
+                  What this may mean for them
+                  <textarea className={input} rows={2} maxLength={3000} value={consequences} onChange={(e) => setConsequences(e.target.value)} />
+                </label>
+                <label className="block space-y-1 text-[11px] text-ink-muted">
+                  What they can do to protect themselves
+                  <textarea className={input} rows={2} maxLength={3000} value={advice} onChange={(e) => setAdvice(e.target.value)} />
+                </label>
+                <label className="block space-y-1 text-[11px] text-ink-muted">
+                  Contact e-mail for questions
+                  <input className={input} type="email" value={contact} onChange={(e) => setContact(e.target.value)} />
+                </label>
+                <button type="button" className={primaryBtn} disabled={busy || !consequences.trim() || !advice.trim() || !contact.trim()} onClick={sendNotice}>
+                  {busy ? "Working…" : "Review and send"}
+                </button>
+                {sentNote && <Banner kind="ok">{sentNote}</Banner>}
+              </div>
+            )}
           </div>
           <label className="block space-y-1 text-[11px] text-ink-muted">
             Why no notification was needed (only if the Board was not told)

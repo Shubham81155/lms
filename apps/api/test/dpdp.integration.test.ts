@@ -268,6 +268,42 @@ describe('breach register', () => {
     expect(await audits('BREACH_REMINDER_SENT')).toBe(4);
     expect(await breaches.runBreachJobLocked(now)).not.toBeNull();
   });
+
+  it('tells the people affected (and a minor\'s guardian) once, with a dry run, and stays inside the organisation', async () => {
+    const a = await as('a-admin', 'acme');
+    const s1 = await as('s1', 'acme');
+    const b = await a.post('/api/v1/privacy/breaches').send({ title: 'Mailing list exposed', description: 'A mailing list was readable by outsiders.', categories: ['contact details'], severity: 'HIGH', containment: 'Access closed.' });
+    const id = b.body.data.id;
+    const url = `/api/v1/privacy/breaches/${id}/notify-people`;
+    const notice = { audience: 'ALL_ACTIVE', consequences: 'You may get unwanted e-mail.', safetyAdvice: 'Do not open unexpected links.', contactEmail: 'privacy@acme.test' };
+    await admin.user.update({ where: { id: 'kid' }, data: { isMinor: true, guardianEmail: 'parent3@home.test' } });
+    expect((await s1.post(url).send(notice)).status).toBe(403);
+    expect((await a.post(url).send({ ...notice, audience: 'USERS' })).status).toBe(400);
+    expect((await a.post(`/api/v1/privacy/breaches/nope/notify-people`).send(notice)).status).toBe(404);
+
+    outbox.length = 0;
+    const dry = await a.post(url).send({ ...notice, dryRun: true });
+    expect(dry.status).toBe(200);
+    matchesDocs('POST /api/v1/privacy/breaches/:id/notify-people', dry.body);
+    expect(dry.body.data).toMatchObject({ sent: 0, peopleNotifiedAt: null });
+    expect(outbox).toHaveLength(0);
+
+    const sent = await a.post(url).send(notice);
+    expect(sent.status).toBe(200);
+    expect(sent.body.data).toMatchObject({ failed: 0, recipients: dry.body.data.recipients, sent: dry.body.data.recipients });
+    expect(sent.body.data.peopleNotifiedAt).not.toBeNull();
+    const toS1 = outbox.find((m) => m.to === 's1@x.edu')!;
+    expect(toS1.text).toContain('A mailing list was readable by outsiders.');
+    expect(toS1.text).toContain('privacy@acme.test');
+    expect(outbox.some((m) => m.to === 'parent3@home.test')).toBe(true);
+    expect(outbox.some((m) => m.to.endsWith('@x.edu') && m.to.startsWith('b-'))).toBe(false); // the other organisation hears nothing
+    expect((await a.get(`/api/v1/privacy/breaches/${id}`)).body.data.peopleNotifiedAt).not.toBeNull();
+    expect(await audits('BREACH_PEOPLE_NOTIFIED')).toBe(1);
+
+    expect((await a.post(url).send(notice)).status).toBe(409);
+    expect((await a.post(url).send({ ...notice, resend: true })).status).toBe(200);
+    await admin.user.update({ where: { id: 'kid' }, data: { isMinor: false, guardianEmail: null } });
+  });
 });
 
 describe('grievance officer', () => {

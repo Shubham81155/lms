@@ -9,7 +9,7 @@ import { logAuditEvent } from '../lib/audit';
 import { rateLimitStore } from '../lib/rate-limit-store';
 import { resolveTenant } from '../lib/tenant';
 import { consentReport, listPurposes, myConsents, purposeView, savePurposes, savePurposesSchema, setConsent } from '../lib/consent';
-import { breachQuerySchema, breachView, createBreach, createBreachSchema, getBreach, listBreaches, updateBreach, updateBreachSchema } from '../lib/breaches';
+import { breachQuerySchema, breachView, createBreach, createBreachSchema, getBreach, listBreaches, notifyPeople, notifyPeopleSchema, updateBreach, updateBreachSchema } from '../lib/breaches';
 import { confirmGuardianConsent, guardianConsentInfo, guardianRequestSchema, guardianTokenSchema, guardianWithdrawalInfo, minorStatus, requestGuardianConsent, setMinor, setMinorSchema, withdrawGuardianConsent } from '../lib/guardian';
 
 // Mounted at /api/v1/privacy, after routes/privacy.routes.ts: the DPDP Act side of privacy. Consent purposes and each
@@ -120,6 +120,16 @@ router.patch(
   route('Failed to update the breach', async (req, res) => {
     const input = parseBody(req, updateBreachSchema);
     return res.json({ data: breachView(await updateBreach(tenantIdOf(req), String(req.params.id), req.user!, input, ctxOf(req))) });
+  })
+);
+
+/** POST /api/v1/privacy/breaches/:id/notify-people - e-mail the affected people (and minors' guardians) the breach notice (administrators) */
+router.post(
+  '/breaches/:id/notify-people',
+  ...adminOnly,
+  route('Failed to notify the people affected', async (req, res) => {
+    const input = parseBody(req, notifyPeopleSchema);
+    return res.json({ data: await notifyPeople(tenantIdOf(req), String(req.params.id), req.user!, input, ctxOf(req)) });
   })
 );
 
