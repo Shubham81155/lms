@@ -207,7 +207,7 @@ export const hi: Record<MessageKey, string> = {
   'student.assignments': 'असाइनमेंट',
   'student.leaveCourse': 'पाठ्यक्रम छोड़ें',
   'student.leaving': 'छोड़ा जा रहा है…',
-  'student.leaveAria': '{code} छोड़ें',
+  'student.leaveAria': 'पाठ्यक्रम छोड़ें {code}',
   'student.viewCertificate': 'प्रमाणपत्र देखें',
   'student.allCaughtUp': 'आपका सब काम पूरा है।',
   'student.todo.submitted': 'जमा किया गया',

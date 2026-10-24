@@ -52,6 +52,7 @@
   --accent: 251 191 36; /* amber highlight */
   --success: 52 211 153;
   --danger: 253 164 175;
+  --on-danger: 15 19 38; /* text on a filled danger button */
   --orchid: 192 132 252; /* purple accents (AI, proctoring) */
 }
 
@@ -76,8 +77,9 @@ html:not(.dark) {
   --brand-fg: 67 56 202;
   --on-brand: 255 255 255;
   --accent: 161 72 6;
-  --success: 4 120 87;
+  --success: 2 98 72; /* 4.5:1 on its own 10% tint over every surface */
   --danger: 190 18 60;
+  --on-danger: 255 255 255;
   --orchid: 109 40 217;
 }
 

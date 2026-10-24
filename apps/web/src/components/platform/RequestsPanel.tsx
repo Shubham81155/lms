@@ -26,7 +26,7 @@ const primary =
 const ghost =
   'inline-flex items-center gap-1 px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
 const danger =
-  'inline-flex items-center gap-1 px-3 py-1.5 bg-danger hover:opacity-90 disabled:opacity-50 text-white rounded-lg text-[11px] font-bold';
+  'inline-flex items-center gap-1 px-3 py-1.5 bg-danger hover:opacity-90 disabled:opacity-50 text-on-danger rounded-lg text-[11px] font-bold';
 
 const STATUS_TABS: { key: RequestStatus; label: string }[] = [
   { key: 'PENDING', label: 'Pending' },

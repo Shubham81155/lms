@@ -212,7 +212,7 @@ export const en = {
   'student.assignments': 'Assignments',
   'student.leaveCourse': 'Leave course',
   'student.leaving': 'Leaving…',
-  'student.leaveAria': 'Leave {code}',
+  'student.leaveAria': 'Leave course {code}',
   'student.viewCertificate': 'View certificate',
   'student.allCaughtUp': 'You are all caught up.',
   'student.todo.submitted': 'Submitted',

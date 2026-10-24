@@ -258,7 +258,7 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
                           </button>
                           <button
                             type="button"
-                            className="px-3 py-1.5 bg-danger hover:opacity-90 text-white rounded-lg text-[11px] font-bold disabled:opacity-50"
+                            className="px-3 py-1.5 bg-danger hover:opacity-90 text-on-danger rounded-lg text-[11px] font-bold disabled:opacity-50"
                             onClick={() => archive(c)}
                             disabled={busy}
                           >

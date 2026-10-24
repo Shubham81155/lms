@@ -278,7 +278,7 @@ export const OrganisationsPanel: React.FC<{
                           type="button"
                           className={`${ghost} mr-2`}
                           aria-expanded={domainFor === t.id}
-                          aria-label={`Custom domain of ${t.name}`}
+                          aria-label={`Domain of ${t.name}`}
                           onClick={() => setDomainFor((id) => (id === t.id ? null : t.id))}
                         >
                           <Globe className="h-3 w-3" /> Domain
@@ -287,7 +287,7 @@ export const OrganisationsPanel: React.FC<{
                           type="button"
                           className={`${ghost} mr-2`}
                           aria-expanded={dataFor === t.id}
-                          aria-label={`Export and deletion of ${t.name}`}
+                          aria-label={`Data of ${t.name}`}
                           onClick={() => setDataFor((id) => (id === t.id ? null : t.id))}
                         >
                           <Archive className="h-3 w-3" /> Data
@@ -337,7 +337,7 @@ export const OrganisationsPanel: React.FC<{
                                 type="button"
                                 className={
                                   confirming.to === 'SUSPENDED'
-                                    ? 'px-3 py-1.5 bg-danger hover:opacity-90 text-white rounded-lg text-[11px] font-bold disabled:opacity-50'
+                                    ? 'px-3 py-1.5 bg-danger hover:opacity-90 text-on-danger rounded-lg text-[11px] font-bold disabled:opacity-50'
                                     : primary
                                 }
                                 disabled={busy}

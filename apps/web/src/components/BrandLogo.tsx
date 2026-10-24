@@ -22,7 +22,11 @@ export function BrandLogo({ href = '/', compact = false, showTagline = true }: B
 
   if (branding?.logoUrl) {
     return (
-      <Link href={href} aria-label={`${name ?? 'Home'} home`} className="flex items-center gap-2.5 font-bold text-lg text-ink">
+      <Link
+        href={href}
+        aria-label={compact ? `${name ?? 'Home'} home` : undefined}
+        className="flex items-center gap-2.5 font-bold text-lg text-ink"
+      >
         <img src={branding.logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-xl object-contain bg-surface" />
         {!compact && (
           <div className="flex flex-col min-w-0">
@@ -35,7 +39,7 @@ export function BrandLogo({ href = '/', compact = false, showTagline = true }: B
   }
 
   return (
-    <Link href={href} aria-label="ApexLMS home" className="flex items-center gap-2.5 font-bold text-lg text-ink">
+    <Link href={href} aria-label={compact ? 'ApexLMS home' : undefined} className="flex items-center gap-2.5 font-bold text-lg text-ink">
       <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-brand to-brand-hover flex items-center justify-center text-on-brand shadow-lg shadow-brand/30">
         <GraduationCap className="h-5 w-5" />
       </div>

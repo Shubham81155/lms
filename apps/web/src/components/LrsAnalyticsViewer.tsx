@@ -47,7 +47,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
         {/* Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <div className="h-9 w-9 rounded-2xl bg-brand/10 border border-brand/30 flex items-center justify-center text-brand-fg">
               <Activity className="h-5 w-5" />
             </div>
             <div>
@@ -55,7 +55,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                 <h3 id="lrs-h" className="font-bold text-base text-ink">
                   Learning Record Store (LRS) Telemetry Stream
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand-fg border border-brand/30">
                   IEEE / ADL xAPI 2.0 Spec
                 </span>
               </div>
@@ -91,7 +91,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                 key={verb}
                 onClick={() => setSelectedVerb(verb)}
                 className={`px-3 py-1 rounded-xl font-semibold capitalize whitespace-nowrap transition-colors ${
-                  selectedVerb === verb ? 'bg-cyan-600 text-ink' : 'text-ink-muted hover:text-ink bg-surface border border-line'
+                  selectedVerb === verb ? 'bg-brand text-on-brand' : 'text-ink-muted hover:text-ink bg-surface border border-line'
                 }`}
               >
                 {verb}
@@ -124,7 +124,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                     onClick={() => setSelectedStatement(stmt)}
                     onKeyDown={activateOnKey(() => setSelectedStatement(stmt))}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                      isSelected ? 'bg-cyan-950/30 border-cyan-600/60 shadow-md' : 'bg-canvas border-line/80 hover:border-line'
+                      isSelected ? 'bg-brand/10 border-brand/60 shadow-md' : 'bg-canvas border-line/80 hover:border-line'
                     }`}
                   >
                     <div className="flex items-center justify-between text-[11px]">
@@ -133,7 +133,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                     </div>
 
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-surface text-cyan-400 border border-line">
+                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-surface text-brand-fg border border-line">
                         {verbDisplay}
                       </span>
                       <span className="text-xs text-ink font-medium truncate">
@@ -157,7 +157,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
           {activeStatement && (
             <div className="hidden md:flex flex-1 flex-col overflow-hidden bg-canvas/80">
               <div className="p-4 border-b border-line flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-mono text-cyan-400">
+                <div className="flex items-center gap-2 text-xs font-mono text-brand-fg">
                   <Terminal className="h-4 w-4" />
                   <span>Statement Inspector: {activeStatement.id}</span>
                 </div>
@@ -179,7 +179,13 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                 </button>
               </div>
 
-              <div className="flex-1 p-5 overflow-y-auto font-mono text-xs text-ink bg-canvas">
+              <div
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard-reachable (WCAG 2.1.1)
+                tabIndex={0}
+                role="region"
+                aria-label="Selected statement (JSON)"
+                className="flex-1 p-5 overflow-y-auto font-mono text-xs text-ink bg-canvas"
+              >
                 <pre className="whitespace-pre-wrap leading-relaxed">{JSON.stringify(activeStatement, null, 2)}</pre>
               </div>
             </div>

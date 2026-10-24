@@ -46,6 +46,10 @@ describe.each([
         expect(ratio(t[fg], t[bg])).toBeGreaterThanOrEqual(4.5);
       });
 
+  it('text on a filled danger button is at least 4.5:1', () => {
+    expect(ratio(t['on-danger'], t['danger'])).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('white text on a filled brand button is at least 4.5:1', () => {
     expect(ratio(t['on-brand'], t['brand'])).toBeGreaterThanOrEqual(4.5);
     expect(ratio(t['on-brand'], t['brand-hover'])).toBeGreaterThanOrEqual(4.5);
