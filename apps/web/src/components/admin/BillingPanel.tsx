@@ -5,10 +5,10 @@ import { CreditCard, Download } from 'lucide-react';
 import { api } from '@/lib/api';
 import { downloadFile, useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { useT, type Translator } from '@/lib/i18n';
 import { useSupportSession } from '@/components/shell/SupportBanner';
 import {
   formatBytes,
-  formatDay,
   formatInr,
   isRazorpayUrl,
   isValidGstin,
@@ -31,84 +31,88 @@ const primary =
 const ghost =
   'inline-flex items-center gap-1 px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
 
-// GST state codes (the first two digits of a GSTIN).
-const STATES: [string, string][] = [
-  ['01', 'Jammu & Kashmir'],
-  ['02', 'Himachal Pradesh'],
-  ['03', 'Punjab'],
-  ['04', 'Chandigarh'],
-  ['05', 'Uttarakhand'],
-  ['06', 'Haryana'],
-  ['07', 'Delhi'],
-  ['08', 'Rajasthan'],
-  ['09', 'Uttar Pradesh'],
-  ['10', 'Bihar'],
-  ['11', 'Sikkim'],
-  ['12', 'Arunachal Pradesh'],
-  ['13', 'Nagaland'],
-  ['14', 'Manipur'],
-  ['15', 'Mizoram'],
-  ['16', 'Tripura'],
-  ['17', 'Meghalaya'],
-  ['18', 'Assam'],
-  ['19', 'West Bengal'],
-  ['20', 'Jharkhand'],
-  ['21', 'Odisha'],
-  ['22', 'Chhattisgarh'],
-  ['23', 'Madhya Pradesh'],
-  ['24', 'Gujarat'],
-  ['26', 'Dadra & Nagar Haveli and Daman & Diu'],
-  ['27', 'Maharashtra'],
-  ['29', 'Karnataka'],
-  ['30', 'Goa'],
-  ['31', 'Lakshadweep'],
-  ['32', 'Kerala'],
-  ['33', 'Tamil Nadu'],
-  ['34', 'Puducherry'],
-  ['35', 'Andaman & Nicobar Islands'],
-  ['36', 'Telangana'],
-  ['37', 'Andhra Pradesh'],
-  ['38', 'Ladakh'],
+// GST state codes (the first two digits of a GSTIN); the names are in the message catalogue (billing.state.<code>).
+const STATE_CODES = [
+  '01',
+  '02',
+  '03',
+  '04',
+  '05',
+  '06',
+  '07',
+  '08',
+  '09',
+  '10',
+  '11',
+  '12',
+  '13',
+  '14',
+  '15',
+  '16',
+  '17',
+  '18',
+  '19',
+  '20',
+  '21',
+  '22',
+  '23',
+  '24',
+  '26',
+  '27',
+  '29',
+  '30',
+  '31',
+  '32',
+  '33',
+  '34',
+  '35',
+  '36',
+  '37',
+  '38',
 ];
 
-const day = (iso: string) => formatDay(iso);
-const limitText = (n: number | null) => (n === null ? 'unlimited' : n.toLocaleString('en-IN'));
+const day = (t: Translator, iso: string) => t.date(iso);
+const stateName = (t: Translator, code: string) => t.dyn(`billing.state.${code}`, code);
+const limitText = (t: Translator, n: number | null) => (n === null ? t('billing.unlimited') : t.number(n));
+const statusText = (t: Translator, status: string) => t.dyn(`billing.status.${status}`, status.toLowerCase().replace(/_/g, ' '));
 
-const Meter: React.FC<{ label: string; used: string; limit: string; percent: number | null }> = ({ label, used, limit, percent }) => (
-  <div className="space-y-1">
-    <div className="flex items-baseline justify-between text-[11px]">
-      <span className="font-semibold text-ink-muted">{label}</span>
-      <span className="text-ink">
-        {used} <span className="text-ink-subtle">of {limit}</span>
-      </span>
-    </div>
-    <div
-      role="progressbar"
-      aria-label={`${label} used`}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percent ?? 0}
-      aria-valuetext={percent === null ? `${used}, no limit` : `${percent}% used`}
-      className="h-1.5 overflow-hidden rounded-full bg-canvas"
-    >
+const Meter: React.FC<{ label: string; used: string; limit: string; percent: number | null }> = ({ label, used, limit, percent }) => {
+  const t = useT();
+  return (
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between text-[11px]">
+        <span className="font-semibold text-ink-muted">{label}</span>
+        <span className="text-ink">{t('billing.meter.usedOf', { used, limit })}</span>
+      </div>
       <div
-        className={`h-full rounded-full ${percent !== null && percent >= 90 ? 'bg-danger' : percent !== null && percent >= 75 ? 'bg-accent' : 'bg-brand'}`}
-        style={{ width: `${percent ?? 0}%` }}
-      />
+        role="progressbar"
+        aria-label={t('billing.meter.used', { label })}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent ?? 0}
+        aria-valuetext={percent === null ? t('billing.meter.noLimit', { used }) : t('billing.meter.percent', { percent })}
+        className="h-1.5 overflow-hidden rounded-full bg-canvas"
+      >
+        <div
+          className={`h-full rounded-full ${percent !== null && percent >= 90 ? 'bg-danger' : percent !== null && percent >= 75 ? 'bg-accent' : 'bg-brand'}`}
+          style={{ width: `${percent ?? 0}%` }}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /** Shown above every administration page: a failed payment, or a subscription that ends. Links to the Billing tab. */
 export const BillingBanner: React.FC<{ onOpenBilling: () => void }> = ({ onOpenBilling }) => {
   const { data } = useApiData<{ data: BillingOverview }>('/api/v1/billing');
+  const t = useT();
   const b = data?.data;
   if (!b) return null;
   const message =
     b.status === 'PAST_DUE'
-      ? 'The last payment failed. Update your payment to keep your plan.'
+      ? t('billing.bannerPastDue')
       : b.status === 'ACTIVE' && b.cancelAtPeriodEnd && b.currentPeriodEnd
-        ? `Your subscription ends on ${day(b.currentPeriodEnd)} and will not renew.`
+        ? t('billing.bannerEnds', { date: day(t, b.currentPeriodEnd) })
         : null;
   if (!message) return null;
   return (
@@ -119,7 +123,7 @@ export const BillingBanner: React.FC<{ onOpenBilling: () => void }> = ({ onOpenB
       <CreditCard className={`h-4 w-4 shrink-0 ${b.status === 'PAST_DUE' ? 'text-danger' : 'text-accent'}`} aria-hidden="true" />
       <p className="flex-1">{message}</p>
       <button type="button" className="text-xs font-semibold text-brand-fg underline" onClick={onOpenBilling}>
-        Go to Billing
+        {t('billing.goTo')}
       </button>
     </div>
   );
@@ -127,6 +131,7 @@ export const BillingBanner: React.FC<{ onOpenBilling: () => void }> = ({ onOpenB
 
 const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void; locked: boolean }> = ({ overview, onSaved, locked }) => {
   const p = overview.profile;
+  const t = useT();
   const { busy, error, run } = useAction();
   const [legalName, setLegalName] = useState(p?.legalName ?? '');
   const [gstin, setGstin] = useState(p?.gstin ?? '');
@@ -157,14 +162,14 @@ const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void; lo
     <form
       onSubmit={save}
       className="grid grid-cols-1 gap-3 rounded-2xl border border-line bg-canvas p-4 sm:grid-cols-2"
-      aria-label="Billing details"
+      aria-label={t('billing.form.label')}
     >
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Legal name (on invoices)
+        {t('billing.form.legalName')}
         <input className={field} value={legalName} onChange={(e) => setLegalName(e.target.value)} maxLength={200} required />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        GSTIN (optional)
+        {t('billing.form.gstin')}
         <input
           className={field}
           value={gstin}
@@ -176,16 +181,16 @@ const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void; lo
         />
         {gstinBad && (
           <span id="gstin-err" className="block font-normal text-danger">
-            Not a valid GSTIN (15 characters).
+            {t('billing.form.gstinInvalid')}
           </span>
         )}
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted sm:col-span-2">
-        Billing address
+        {t('billing.form.address')}
         <textarea className={field} rows={2} value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} required />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        State (decides CGST/SGST or IGST)
+        {t('billing.form.state')}
         <select
           className={field}
           value={stateCode}
@@ -194,26 +199,26 @@ const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void; lo
           aria-describedby={mismatch ? 'state-err' : undefined}
           aria-invalid={mismatch}
         >
-          <option value="">Choose a state…</option>
-          {STATES.map(([code, name]) => (
+          <option value="">{t('billing.form.chooseState')}</option>
+          {STATE_CODES.map((code) => (
             <option key={code} value={code}>
-              {name} ({code})
+              {stateName(t, code)} ({code})
             </option>
           ))}
         </select>
         {mismatch && (
           <span id="state-err" className="block font-normal text-danger">
-            The GSTIN begins with {gstin.trim().slice(0, 2)}, which is not this state.
+            {t('billing.form.stateMismatch', { code: gstin.trim().slice(0, 2) })}
           </span>
         )}
       </label>
       <div className="flex items-end gap-3">
         <button type="submit" className={primary} disabled={busy || !valid}>
-          Save billing details
+          {t('billing.form.save')}
         </button>
         {saved && (
           <span role="status" className="text-[11px] text-success">
-            Saved.
+            {t('billing.form.saved')}
           </span>
         )}
       </div>
@@ -232,6 +237,7 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
   onNeedProfile,
   locked,
 }) => {
+  const t = useT();
   const { busy, error, run } = useAction();
   // Held from the click until the browser has left for Razorpay's page, so a second click cannot start a second subscription.
   const [redirecting, setRedirecting] = useState(false);
@@ -259,7 +265,7 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
       const res = await api.post<{ data: { shortUrl: string } }>('/api/v1/billing/subscribe', { planId, interval, seats: n });
       // Razorpay's hosted payment page. The plan changes only when Razorpay's webhook reaches the server, never on the
       // customer's word that they paid.
-      if (!isRazorpayUrl(res.data.shortUrl)) throw new Error('The payment page could not be opened. Please try again or contact us.');
+      if (!isRazorpayUrl(res.data.shortUrl)) throw new Error(t('billing.subscribe.pageError'));
       setRedirecting(true);
       window.location.assign(res.data.shortUrl);
     });
@@ -268,10 +274,10 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-xs font-semibold text-ink-muted">{current ? 'Plans' : 'Choose a plan'}</h3>
+        <h3 className="text-xs font-semibold text-ink-muted">{current ? t('billing.plans.title') : t('billing.plans.choose')}</h3>
         <div
           role="radiogroup"
-          aria-label="Billing interval"
+          aria-label={t('billing.interval.label')}
           className="inline-flex overflow-hidden rounded-lg border border-line text-[11px] font-semibold"
         >
           {(['MONTH', 'YEAR'] as const).map((i) => (
@@ -283,13 +289,13 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
               onClick={() => setInterval(i)}
               className={`px-3 py-1.5 ${interval === i ? 'bg-brand text-on-brand' : 'bg-surface text-ink hover:bg-raised'}`}
             >
-              {i === 'MONTH' ? 'Monthly' : 'Yearly'}
+              {i === 'MONTH' ? t('billing.interval.month') : t('billing.interval.year')}
             </button>
           ))}
         </div>
       </div>
-      {plans.length === 0 && <p className="text-xs text-ink-muted">No plans are available yet. Contact us.</p>}
-      <div role="radiogroup" aria-label="Plan" className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      {plans.length === 0 && <p className="text-xs text-ink-muted">{t('billing.plans.none')}</p>}
+      <div role="radiogroup" aria-label={t('billing.plans.group')} className="grid grid-cols-1 gap-3 md:grid-cols-3">
         {plans.map((p) => {
           const selected = p.id === planId;
           const price = interval === 'YEAR' ? p.yearlyPaise : p.monthlyPaise;
@@ -307,33 +313,36 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
                 <span className="text-sm font-bold text-ink">{p.name}</span>
                 {overview.plan?.id === p.id && (
                   <span className="rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
-                    Current
+                    {t('billing.plans.current')}
                   </span>
                 )}
               </div>
               <div className="text-ink">
                 <span className="text-lg font-extrabold">{formatInr(price)}</span>{' '}
-                <span className="text-ink-subtle">per seat / {interval === 'YEAR' ? 'year' : 'month'}</span>
+                <span className="text-ink-subtle">
+                  {interval === 'YEAR' ? t('billing.price.perSeatYear') : t('billing.price.perSeatMonth')}
+                </span>
               </div>
               <ul className="space-y-0.5 text-[11px] text-ink-muted">
-                <li>{p.seatLimit === null ? 'Unlimited seats' : `Up to ${limitText(p.seatLimit)} seats`}</li>
-                <li>{p.courseLimit === null ? 'Unlimited courses' : `Up to ${limitText(p.courseLimit)} courses`}</li>
-                <li>{p.storageGb === null ? 'Unlimited storage' : `${limitText(p.storageGb)} GB storage`}</li>
+                <li>{p.seatLimit === null ? t('billing.limit.seatsUnlimited') : t.plural('billing.limit.seatsUpTo', p.seatLimit)}</li>
+                <li>
+                  {p.courseLimit === null ? t('billing.limit.coursesUnlimited') : t.plural('billing.limit.coursesUpTo', p.courseLimit)}
+                </li>
+                <li>
+                  {p.storageGb === null
+                    ? t('billing.limit.storageUnlimited')
+                    : t('billing.limit.storageGb', { amount: limitText(t, p.storageGb) })}
+                </li>
               </ul>
             </button>
           );
         })}
       </div>
-      {current && (
-        <p className="rounded-2xl border border-line bg-canvas p-4 text-xs text-ink-muted">
-          You are on a plan already. To move to another, cancel the subscription (it runs to the end of the period you paid for), then
-          choose a new plan once it has ended. To change sooner, contact us.
-        </p>
-      )}
+      {current && <p className="rounded-2xl border border-line bg-canvas p-4 text-xs text-ink-muted">{t('billing.plans.alreadyOn')}</p>}
       {plan && !current && (
         <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-line bg-canvas p-4">
           <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-            Seats
+            {t('billing.seats.label')}
             <input
               className={`${field} w-28`}
               type="number"
@@ -347,23 +356,27 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
           </label>
           <div className="text-xs text-ink">
             <div className="font-semibold">
-              {seatsOk ? `${formatInr(planTotalPaise(plan, interval, n))} per ${interval === 'YEAR' ? 'year' : 'month'}` : '—'}
+              {seatsOk
+                ? t(interval === 'YEAR' ? 'billing.price.totalYear' : 'billing.price.totalMonth', {
+                    amount: formatInr(planTotalPaise(plan, interval, n)),
+                  })
+                : '—'}
             </div>
             <div id="seats-hint" className="text-[11px] text-ink-subtle">
-              plus GST.{' '}
+              {t('billing.price.plusGst')}{' '}
               {n < minSeats
-                ? `${minSeats} seats are in use.`
+                ? t.plural('billing.seats.inUse', minSeats)
                 : plan.seatLimit !== null && n > plan.seatLimit
-                  ? `${plan.name} has up to ${limitText(plan.seatLimit)} seats.`
+                  ? t.plural('billing.seats.planMax', plan.seatLimit, { plan: plan.name })
                   : ''}
             </div>
           </div>
           <button type="button" className={primary} disabled={busy || redirecting || !seatsOk || !canBuy} onClick={subscribe}>
-            {redirecting ? 'Opening the payment page…' : 'Subscribe'}
+            {redirecting ? t('billing.subscribe.opening') : t('billing.subscribe')}
           </button>
           {!overview.profile && overview.configured && !current && (
             <button type="button" className="text-[11px] font-semibold text-brand-fg underline" onClick={onNeedProfile}>
-              Add your billing details first
+              {t('billing.subscribe.profileFirst')}
             </button>
           )}
         </div>
@@ -374,6 +387,7 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
 };
 
 export const BillingPanel: React.FC = () => {
+  const t = useT();
   const overview = useApiData<{ data: BillingOverview }>('/api/v1/billing');
   const plans = useApiData<{ data: Plan[] }>('/api/v1/billing/plans');
   const invoices = useApiData<{ data: Invoice[] }>('/api/v1/billing/invoices');
@@ -404,7 +418,7 @@ export const BillingPanel: React.FC = () => {
     try {
       await downloadFile(`/api/v1/billing/invoices/${encodeURIComponent(inv.id)}/pdf`, `${inv.number.replace(/[^A-Za-z0-9-]+/g, '-')}.pdf`);
     } catch {
-      setDownloadError(`Could not download invoice ${inv.number}. Try again.`);
+      setDownloadError(t('billing.invoices.downloadFailed', { number: inv.number }));
     } finally {
       setDownloading(null);
     }
@@ -418,65 +432,62 @@ export const BillingPanel: React.FC = () => {
       <div className="space-y-1">
         <h2 id="billing-h" className="flex items-center gap-2 font-bold text-base text-ink">
           <CreditCard className="h-4 w-4 text-accent" aria-hidden="true" />
-          Billing
+          {t('billing.title')}
         </h2>
-        <p className="text-xs text-ink-muted">Your plan, what you use of it, your invoices and the GST details they are issued with.</p>
+        <p className="text-xs text-ink-muted">{t('billing.intro')}</p>
       </div>
 
       {(overview.error || error) && <Banner kind="error">{overview.error || error}</Banner>}
-      {overview.isLoading && !b && <p className="text-xs text-ink-subtle">Loading…</p>}
+      {overview.isLoading && !b && <p className="text-xs text-ink-subtle">{t('common.loading')}</p>}
 
       {b && !b.configured && (
         <div role="status" className="rounded-2xl border border-line bg-canvas p-4 text-xs text-ink-muted">
-          <span className="font-semibold text-ink">Online payment is not set up on this platform yet.</span> You cannot buy or change a plan
-          here; contact the platform operator to arrange your plan.
+          <span className="font-semibold text-ink">{t('billing.notConfigured.lead')}</span> {t('billing.notConfigured.rest')}
         </div>
       )}
       {b?.status === 'PAST_DUE' && (
         <div role="alert" className="rounded-2xl border border-danger/40 bg-danger/5 p-4 text-xs text-ink">
-          <span className="font-semibold">The last payment failed.</span> Razorpay retries it for a few days; update your payment method
-          using the link in Razorpay's e-mail. If it keeps failing, the organisation becomes read-only. Contact us if you need help.
+          <span className="font-semibold">{t('billing.pastDue.lead')}</span> {t('billing.pastDue.rest')}
         </div>
       )}
 
       {b && usage && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-2 rounded-2xl border border-line bg-canvas p-4 text-xs">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Current plan</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">{t('billing.current.title')}</div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-lg font-extrabold text-ink">{b.plan?.name ?? 'No paid plan'}</span>
+              <span className="text-lg font-extrabold text-ink">{b.plan?.name ?? t('billing.current.noPlan')}</span>
               <span
                 className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${b.status === 'ACTIVE' ? 'border-success/30 bg-success/10 text-success' : b.status === 'PAST_DUE' ? 'border-danger/30 bg-danger/10 text-danger' : 'border-line text-ink-subtle'}`}
               >
-                {b.status === 'NONE' ? 'none' : b.status === 'PAST_DUE' ? 'payment failed' : b.status.toLowerCase()}
+                {statusText(t, b.status)}
               </span>
             </div>
             {live && b.plan && (
               <p className="text-ink-muted">
-                {b.seats} seats, billed {b.interval === 'YEAR' ? 'yearly' : 'monthly'}.{' '}
+                {t.plural(b.interval === 'YEAR' ? 'billing.summary.year' : 'billing.summary.month', b.seats ?? 0)}{' '}
                 {b.currentPeriodEnd &&
                   (b.cancelAtPeriodEnd
-                    ? `Ends on ${day(b.currentPeriodEnd)}; it will not renew.`
-                    : `Renews on ${day(b.currentPeriodEnd)}.`)}
+                    ? t('billing.summary.endsOn', { date: day(t, b.currentPeriodEnd) })
+                    : t('billing.summary.renewsOn', { date: day(t, b.currentPeriodEnd) }))}
               </p>
             )}
             {b.status === 'CANCELLED' && (
               <p className="text-ink-muted">
-                Your subscription has ended{b.currentPeriodEnd ? ` (${day(b.currentPeriodEnd)})` : ''}. Choose a plan to start again.
+                {b.currentPeriodEnd ? t('billing.endedOn', { date: day(t, b.currentPeriodEnd) }) : t('billing.ended')}
               </p>
             )}
             {b.pending && (
               <p role="status" className="text-ink-muted">
-                A payment{b.pendingSince ? ` started on ${day(b.pendingSince)}` : ''} is waiting for confirmation from Razorpay. If you have
-                paid, this page updates once it arrives; if you left without paying, you can choose a plan again below.
+                {b.pendingSince ? t('billing.pendingSince', { date: day(t, b.pendingSince) }) : t('billing.pending')}
               </p>
             )}
-            {b.status === 'NONE' && b.configured && !b.pending && <p className="text-ink-muted">Choose a plan below to subscribe.</p>}
+            {b.status === 'NONE' && b.configured && !b.pending && <p className="text-ink-muted">{t('billing.choosePlanBelow')}</p>}
             {live && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {b.cancelAtPeriodEnd ? (
                   <button type="button" className={ghost} disabled={busy || locked} onClick={() => post('/api/v1/billing/resume')}>
-                    Keep my subscription
+                    {t('billing.resume')}
                   </button>
                 ) : confirmCancel ? (
                   <>
@@ -486,15 +497,15 @@ export const BillingPanel: React.FC = () => {
                       disabled={busy || locked}
                       onClick={() => post('/api/v1/billing/cancel')}
                     >
-                      Cancel at period end
+                      {t('billing.cancel.confirm')}
                     </button>
                     <button type="button" className={ghost} disabled={busy} onClick={() => setConfirmCancel(false)}>
-                      Keep
+                      {t('billing.cancel.keep')}
                     </button>
                   </>
                 ) : (
                   <button type="button" className={ghost} disabled={busy || locked} onClick={() => setConfirmCancel(true)}>
-                    Cancel subscription
+                    {t('billing.cancel.start')}
                   </button>
                 )}
               </div>
@@ -502,23 +513,23 @@ export const BillingPanel: React.FC = () => {
           </div>
 
           <div className="space-y-3 rounded-2xl border border-line bg-canvas p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Usage</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">{t('billing.usage.title')}</div>
             <Meter
-              label="Seats"
-              used={usage.seats.toLocaleString('en-IN')}
-              limit={limitText(usage.seatLimit)}
+              label={t('billing.seats.label')}
+              used={t.number(usage.seats)}
+              limit={limitText(t, usage.seatLimit)}
               percent={usagePercent(usage.seats, usage.seatLimit)}
             />
             <Meter
-              label="Courses"
-              used={usage.courses.toLocaleString('en-IN')}
-              limit={limitText(usage.courseLimit)}
+              label={t('billing.usage.courses')}
+              used={t.number(usage.courses)}
+              limit={limitText(t, usage.courseLimit)}
               percent={usagePercent(usage.courses, usage.courseLimit)}
             />
             <Meter
-              label="Storage"
+              label={t('billing.usage.storage')}
               used={formatBytes(usage.storageBytes)}
-              limit={usage.storageLimitBytes === null ? 'unlimited' : formatBytes(usage.storageLimitBytes)}
+              limit={usage.storageLimitBytes === null ? t('billing.unlimited') : formatBytes(usage.storageLimitBytes)}
               percent={usagePercent(usage.storageBytes, usage.storageLimitBytes)}
             />
           </div>
@@ -539,7 +550,7 @@ export const BillingPanel: React.FC = () => {
       {b && (
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-xs font-semibold text-ink-muted">Billing details</h3>
+            <h3 className="text-xs font-semibold text-ink-muted">{t('billing.details.title')}</h3>
             {b.profile && (
               <button
                 type="button"
@@ -547,14 +558,15 @@ export const BillingPanel: React.FC = () => {
                 aria-expanded={profileOpen}
                 onClick={() => setProfileOpen((o) => !o)}
               >
-                {profileOpen ? 'Hide' : 'Edit'}
+                {profileOpen ? t('billing.details.hide') : t('billing.details.edit')}
               </button>
             )}
           </div>
           {b.profile && !profileOpen ? (
             <p className="text-xs text-ink-muted">
-              {b.profile.legalName}
-              {b.profile.gstin ? ` · GSTIN ${b.profile.gstin}` : ' · no GSTIN'}
+              {b.profile.gstin
+                ? t('billing.details.summary', { name: b.profile.legalName, gstin: b.profile.gstin })
+                : t('billing.details.summaryNoGstin', { name: b.profile.legalName })}
             </p>
           ) : (
             <ProfileForm overview={b} onSaved={overview.reload} locked={locked} />
@@ -563,32 +575,32 @@ export const BillingPanel: React.FC = () => {
       )}
 
       <div className="space-y-2">
-        <h3 className="text-xs font-semibold text-ink-muted">Invoices</h3>
+        <h3 className="text-xs font-semibold text-ink-muted">{t('billing.invoices.title')}</h3>
         {invoices.error && <Banner kind="error">{invoices.error}</Banner>}
         {downloadError && <Banner kind="error">{downloadError}</Banner>}
-        {invoices.data && invoices.data.data.length === 0 && <p className="text-xs text-ink-muted">No invoices yet.</p>}
+        {invoices.data && invoices.data.data.length === 0 && <p className="text-xs text-ink-muted">{t('billing.invoices.none')}</p>}
         {invoices.data && invoices.data.data.length > 0 && (
           <div className="overflow-x-auto rounded-2xl border border-line">
             <table className="w-full min-w-[520px] text-left text-xs">
               <thead className="bg-canvas text-[11px] uppercase tracking-wider text-ink-subtle">
                 <tr>
                   <th scope="col" className="px-3 py-2.5 font-semibold">
-                    Invoice
+                    {t('billing.invoices.col.invoice')}
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">
-                    Date
+                    {t('billing.invoices.col.date')}
                   </th>
                   <th scope="col" className="px-3 py-2.5 text-right font-semibold">
-                    GST
+                    {t('billing.invoices.col.gst')}
                   </th>
                   <th scope="col" className="px-3 py-2.5 text-right font-semibold">
-                    Total
+                    {t('billing.invoices.col.total')}
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-semibold">
-                    Status
+                    {t('billing.invoices.col.status')}
                   </th>
                   <th scope="col" className="px-3 py-2.5 text-right font-semibold">
-                    <span className="sr-only">Download</span>
+                    <span className="sr-only">{t('billing.invoices.col.download')}</span>
                   </th>
                 </tr>
               </thead>
@@ -596,17 +608,19 @@ export const BillingPanel: React.FC = () => {
                 {invoices.data.data.map((inv) => (
                   <tr key={inv.id}>
                     <td className="px-3 py-2.5 font-mono text-ink">{inv.number}</td>
-                    <td className="px-3 py-2.5 text-ink-muted">{formatDay(inv.issuedAt, 'medium')}</td>
+                    <td className="px-3 py-2.5 text-ink-muted">
+                      {t.date(inv.issuedAt, { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
                     <td className="px-3 py-2.5 text-right text-ink-muted">{formatInr(inv.taxPaise)}</td>
                     <td className="px-3 py-2.5 text-right font-semibold text-ink">{formatInr(inv.amountPaise)}</td>
-                    <td className="px-3 py-2.5 text-ink-muted">{inv.status.toLowerCase()}</td>
+                    <td className="px-3 py-2.5 text-ink-muted">{statusText(t, inv.status)}</td>
                     <td className="px-3 py-2.5 text-right">
                       <button
                         type="button"
                         className={ghost}
                         onClick={() => pdf(inv)}
                         disabled={downloading !== null}
-                        aria-label={`Download invoice ${inv.number} as PDF`}
+                        aria-label={t('billing.invoices.downloadAria', { number: inv.number })}
                       >
                         <Download className="h-3.5 w-3.5" aria-hidden="true" />
                         PDF

@@ -1,7 +1,12 @@
 // English messages: the source of truth for every language. Keys are dotted and flat; {name} is a placeholder;
 // `<key>.one` / `<key>.other` pairs are chosen by plural rules (t.plural). hi.ts must have exactly these keys, and
 // the same placeholders in each (test/i18n.test.ts). **text** is rendered bold by <RichText>.
+import { billingEn } from './billing.en';
+import { plansEn } from './plans.en';
+
 export const en = {
+  ...billingEn,
+  ...plansEn,
   'language.label': 'Language',
 
   'common.loading': 'Loading…',

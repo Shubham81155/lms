@@ -1,9 +1,13 @@
 import type { MessageKey } from '@/locales/en';
+import { billingHi } from './billing.hi';
+import { plansHi } from './plans.hi';
 
 // हिन्दी संदेश। Typed against English: a missing key is a compile error. The wording is natural Hindi as used in
 // Indian education software (common English terms such as "लॉग इन", "ई-मेल" and "पासवर्ड" are kept where people use
 // them). It has not been reviewed by a native speaker yet.
 export const hi: Record<MessageKey, string> = {
+  ...billingHi,
+  ...plansHi,
   'language.label': 'भाषा',
 
   'common.loading': 'लोड हो रहा है…',

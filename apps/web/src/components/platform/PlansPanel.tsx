@@ -17,7 +17,9 @@ import {
   type Plan,
   type PlanInput,
 } from '@/lib/billing';
-import { TIERS, tierLabel, type Org } from '@/lib/platform';
+import { TIERS, type Org } from '@/lib/platform';
+import { useT, type Translator } from '@/lib/i18n';
+import type { MessageKey } from '@/locales/en';
 
 // The platform operator's price list (what organisations can subscribe to) and the assignment of a plan to one
 // organisation, for deals made outside Razorpay. Prices are typed in rupees per seat and stored in paise.
@@ -29,7 +31,14 @@ const primary =
 const ghost =
   'inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
 
-const limit = (n: number | null, unit = '') => (n === null ? 'unlimited' : `${n.toLocaleString('en-IN')}${unit}`);
+const limit = (t: Translator, n: number | null, unit = '') => (n === null ? t('plans.unlimited') : `${t.number(n)}${unit}`);
+
+const TIER_KEY: Record<string, MessageKey> = {
+  STARTER: 'plans.tier.STARTER',
+  PROFESSIONAL: 'plans.tier.PROFESSIONAL',
+  ENTERPRISE: 'plans.tier.ENTERPRISE',
+};
+const tierText = (t: Translator, tier: string) => (TIER_KEY[tier] ? t(TIER_KEY[tier]) : tier);
 
 interface Draft {
   code: string;
@@ -87,6 +96,7 @@ const PlanForm: React.FC<{ plan: Plan | null; onSaved: (message: string) => void
   onSaved,
   onCancel,
 }) => {
+  const t = useT();
   const { busy, error, run } = useAction();
   const [d, setD] = useState<Draft>(plan ? draftOf(plan) : emptyDraft);
   const set = (k: keyof Draft) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -101,7 +111,7 @@ const PlanForm: React.FC<{ plan: Plan | null; onSaved: (message: string) => void
         const { code: _fixed, ...changes } = body;
         await api.patch(`/api/v1/operator/plans/${plan.id}`, changes);
       } else await api.post('/api/v1/operator/plans', body);
-      onSaved(plan ? `Saved ${body.name}.` : `Added ${body.name}.`);
+      onSaved(t(plan ? 'plans.saved' : 'plans.added', { name: body.name }));
     });
   };
 
@@ -109,57 +119,75 @@ const PlanForm: React.FC<{ plan: Plan | null; onSaved: (message: string) => void
     <form
       onSubmit={save}
       className="grid grid-cols-1 gap-3 rounded-2xl border border-line bg-canvas p-4 sm:grid-cols-2 lg:grid-cols-4"
-      aria-label={plan ? `Edit ${plan.name}` : 'New plan'}
+      aria-label={plan ? t('plans.editNamed', { name: plan.name }) : t('plans.newPlan')}
     >
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Name
+        {t('plans.form.name')}
         <input className={input} value={d.name} onChange={set('name')} maxLength={80} required />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Code (2-32 lower-case letters, digits, hyphens; fixed once created)
+        {t('plans.form.code')}
         <input className={input} value={d.code} onChange={set('code')} maxLength={32} placeholder="growth" required disabled={!!plan} />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Feature set
+        {t('plans.form.tier')}
         <select className={input} value={d.tier} onChange={set('tier')}>
-          {TIERS.map((t) => (
-            <option key={t} value={t}>
-              {tierLabel(t)}
+          {TIERS.map((tier) => (
+            <option key={tier} value={tier}>
+              {tierText(t, tier)}
             </option>
           ))}
         </select>
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Seat limit
-        <input className={input} inputMode="numeric" value={d.seatLimit} onChange={set('seatLimit')} placeholder="required" required />
+        {t('plans.form.seatLimit')}
+        <input
+          className={input}
+          inputMode="numeric"
+          value={d.seatLimit}
+          onChange={set('seatLimit')}
+          placeholder={t('plans.form.required')}
+          required
+        />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Course limit
-        <input className={input} inputMode="numeric" value={d.courseLimit} onChange={set('courseLimit')} placeholder="blank: unlimited" />
+        {t('plans.form.courseLimit')}
+        <input
+          className={input}
+          inputMode="numeric"
+          value={d.courseLimit}
+          onChange={set('courseLimit')}
+          placeholder={t('plans.form.blankUnlimited')}
+        />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Storage (GB)
-        <input className={input} inputMode="numeric" value={d.storageGb} onChange={set('storageGb')} placeholder="blank: unlimited" />
+        {t('plans.form.storage')}
+        <input
+          className={input}
+          inputMode="numeric"
+          value={d.storageGb}
+          onChange={set('storageGb')}
+          placeholder={t('plans.form.blankUnlimited')}
+        />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Monthly price per seat (₹)
+        {t('plans.form.monthly')}
         <input className={input} inputMode="decimal" value={d.monthly} onChange={set('monthly')} placeholder="199" required />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Yearly price per seat (₹)
+        {t('plans.form.yearly')}
         <input className={input} inputMode="decimal" value={d.yearly} onChange={set('yearly')} placeholder="1999" required />
       </label>
       <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4">
         <button type="submit" className={primary} disabled={busy || !body} aria-describedby={body ? undefined : 'plan-form-hint'}>
-          {plan ? 'Save plan' : 'Add plan'}
+          {plan ? t('plans.form.save') : t('plans.form.add')}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
-          Cancel
+          {t('plans.form.cancel')}
         </button>
         {!body && (
           <span id="plan-form-hint" className="text-[11px] text-ink-subtle">
-            Seats, courses and storage are whole numbers up to 1,00,00,000 (blank: unlimited, except seats). Prices are rupees with up to
-            two decimals, at least ₹1.
+            {t('plans.form.hint')}
           </span>
         )}
       </div>
@@ -174,6 +202,7 @@ const PlanForm: React.FC<{ plan: Plan | null; onSaved: (message: string) => void
 
 /** Gives one organisation a plan (or none) and seat count without going through payment. */
 const AssignPlan: React.FC<{ plans: Plan[]; onDone: (message: string) => void }> = ({ plans, onDone }) => {
+  const t = useT();
   const orgs = useApiData<{ data: Org[] }>('/api/v1/operator/tenants');
   const { busy, error, run } = useAction();
   const [orgId, setOrgId] = useState('');
@@ -191,7 +220,11 @@ const AssignPlan: React.FC<{ plans: Plan[]; onDone: (message: string) => void }>
         planId: planId || null,
         ...(seatsN !== undefined && planId ? { seats: seatsN } : {}),
       });
-      onDone(planId ? `${org.name} is now on ${plans.find((p) => p.id === planId)?.name}.` : `${org.name} has no plan now.`);
+      onDone(
+        planId
+          ? t('plans.assign.done', { org: org.name, plan: plans.find((p) => p.id === planId)?.name ?? '' })
+          : t('plans.assign.none', { org: org.name })
+      );
       orgs.reload();
     });
   };
@@ -200,12 +233,12 @@ const AssignPlan: React.FC<{ plans: Plan[]; onDone: (message: string) => void }>
     <form
       onSubmit={assign}
       className="grid grid-cols-1 gap-3 rounded-2xl border border-line bg-canvas p-4 sm:grid-cols-4"
-      aria-label="Assign a plan to an organisation"
+      aria-label={t('plans.assign.title')}
     >
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Organisation
+        {t('plans.assign.org')}
         <select className={input} value={orgId} onChange={(e) => setOrgId(e.target.value)} required>
-          <option value="">Choose…</option>
+          <option value="">{t('plans.assign.choose')}</option>
           {(orgs.data?.data ?? [])
             .filter((o) => o.status !== 'ARCHIVED')
             .map((o) => (
@@ -216,9 +249,9 @@ const AssignPlan: React.FC<{ plans: Plan[]; onDone: (message: string) => void }>
         </select>
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Plan
+        {t('plans.assign.plan')}
         <select className={input} value={planId} onChange={(e) => setPlanId(e.target.value)}>
-          <option value="">No plan</option>
+          <option value="">{t('plans.assign.noPlan')}</option>
           {plans.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -227,19 +260,19 @@ const AssignPlan: React.FC<{ plans: Plan[]; onDone: (message: string) => void }>
         </select>
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Seats (optional)
+        {t('plans.assign.seats')}
         <input
           className={input}
           inputMode="numeric"
           value={seats}
           onChange={(e) => setSeats(e.target.value)}
           disabled={!planId}
-          placeholder={org ? `${org.seatsUsed} in use` : ''}
+          placeholder={org ? t('plans.assign.inUse', { count: t.number(org.seatsUsed) }) : ''}
         />
       </label>
       <div className="flex items-end">
         <button type="submit" className={primary} disabled={busy || !org || !seatsOk}>
-          Assign
+          {t('plans.assign.submit')}
         </button>
       </div>
       {error && (
@@ -252,6 +285,7 @@ const AssignPlan: React.FC<{ plans: Plan[]; onDone: (message: string) => void }>
 };
 
 export const PlansPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) => {
+  const t = useT();
   const list = useApiData<{ data: Plan[] }>('/api/v1/operator/plans');
   const [editing, setEditing] = useState<Plan | 'new' | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -270,11 +304,9 @@ export const PlansPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) 
         <div className="space-y-1">
           <h2 id="plans-h" className="flex items-center gap-2 font-bold text-base text-ink">
             <CreditCard className="h-4 w-4 text-accent" aria-hidden="true" />
-            Plans &amp; pricing
+            {t('plans.title')}
           </h2>
-          <p className="text-xs text-ink-muted">
-            What organisations can subscribe to. Changing a price affects new subscriptions; existing ones keep the price they bought at.
-          </p>
+          <p className="text-xs text-ink-muted">{t('plans.intro')}</p>
         </div>
         {editing === null && (
           <button
@@ -285,7 +317,7 @@ export const PlansPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) 
               setEditing('new');
             }}
           >
-            Add a plan
+            {t('plans.add')}
           </button>
         )}
       </div>
@@ -301,36 +333,36 @@ export const PlansPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) 
         />
       )}
 
-      {list.isLoading && plans.length === 0 && <p className="text-xs text-ink-subtle">Loading plans…</p>}
-      {list.data && plans.length === 0 && <p className="text-xs text-ink-muted">No plans yet. Add one so organisations can subscribe.</p>}
+      {list.isLoading && plans.length === 0 && <p className="text-xs text-ink-subtle">{t('plans.loading')}</p>}
+      {list.data && plans.length === 0 && <p className="text-xs text-ink-muted">{t('plans.empty')}</p>}
       {plans.length > 0 && (
         <div className="overflow-x-auto rounded-2xl border border-line">
           <table className="w-full min-w-[760px] text-left text-xs">
             <thead className="bg-canvas text-[11px] uppercase tracking-wider text-ink-subtle">
               <tr>
                 <th scope="col" className="px-3 py-2.5 font-semibold">
-                  Plan
+                  {t('plans.col.plan')}
                 </th>
                 <th scope="col" className="px-3 py-2.5 font-semibold">
-                  Features
+                  {t('plans.col.features')}
                 </th>
                 <th scope="col" className="px-3 py-2.5 font-semibold">
-                  Seats
+                  {t('plans.col.seats')}
                 </th>
                 <th scope="col" className="px-3 py-2.5 font-semibold">
-                  Courses
+                  {t('plans.col.courses')}
                 </th>
                 <th scope="col" className="px-3 py-2.5 font-semibold">
-                  Storage
+                  {t('plans.col.storage')}
                 </th>
                 <th scope="col" className="px-3 py-2.5 text-right font-semibold">
-                  Per seat / month
+                  {t('plans.col.perMonth')}
                 </th>
                 <th scope="col" className="px-3 py-2.5 text-right font-semibold">
-                  Per seat / year
+                  {t('plans.col.perYear')}
                 </th>
                 <th scope="col" className="px-3 py-2.5 text-right font-semibold">
-                  <span className="sr-only">Edit</span>
+                  <span className="sr-only">{t('plans.edit')}</span>
                 </th>
               </tr>
             </thead>
@@ -341,10 +373,10 @@ export const PlansPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) 
                     <div className="font-semibold text-ink">{p.name}</div>
                     <div className="font-mono text-[11px] text-ink-subtle">{p.code}</div>
                   </td>
-                  <td className="px-3 py-2.5 text-ink-muted">{tierLabel(p.tier as never)}</td>
-                  <td className="px-3 py-2.5 text-ink-muted">{limit(p.seatLimit)}</td>
-                  <td className="px-3 py-2.5 text-ink-muted">{limit(p.courseLimit)}</td>
-                  <td className="px-3 py-2.5 text-ink-muted">{limit(p.storageGb, ' GB')}</td>
+                  <td className="px-3 py-2.5 text-ink-muted">{tierText(t, p.tier)}</td>
+                  <td className="px-3 py-2.5 text-ink-muted">{limit(t, p.seatLimit)}</td>
+                  <td className="px-3 py-2.5 text-ink-muted">{limit(t, p.courseLimit)}</td>
+                  <td className="px-3 py-2.5 text-ink-muted">{limit(t, p.storageGb, t('plans.gbUnit'))}</td>
                   <td className="px-3 py-2.5 text-right text-ink">{formatInr(p.monthlyPaise)}</td>
                   <td className="px-3 py-2.5 text-right text-ink">{formatInr(p.yearlyPaise)}</td>
                   <td className="px-3 py-2.5 text-right">
@@ -355,9 +387,9 @@ export const PlansPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) 
                         setDone(null);
                         setEditing(p);
                       }}
-                      aria-label={`Edit ${p.name}`}
+                      aria-label={t('plans.editNamed', { name: p.name })}
                     >
-                      Edit
+                      {t('plans.edit')}
                     </button>
                   </td>
                 </tr>
@@ -368,10 +400,8 @@ export const PlansPanel: React.FC<{ onChanged?: () => void }> = ({ onChanged }) 
       )}
 
       <div className="space-y-2">
-        <h3 className="text-xs font-semibold text-ink-muted">Assign a plan to an organisation</h3>
-        <p className="text-[11px] text-ink-subtle">
-          For an agreement made outside online payment. It sets the plan, its limits and the seat count straight away.
-        </p>
+        <h3 className="text-xs font-semibold text-ink-muted">{t('plans.assign.title')}</h3>
+        <p className="text-[11px] text-ink-subtle">{t('plans.assign.intro')}</p>
         <AssignPlan plans={plans} onDone={finished} />
       </div>
     </section>
