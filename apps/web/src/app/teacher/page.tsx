@@ -24,13 +24,24 @@ import { FacultyAnalyticsModal } from '@/components/FacultyAnalyticsModal';
 import { useAuth } from '@/context/AuthContext';
 import { useApiData } from '@/hooks/useApiData';
 import { useCohortAnalytics } from '@/hooks/useAnalytics';
-import { timeAgo } from '@/hooks/useNotifications';
-import { plural } from '@/lib/plural';
+import { useT, type Translator } from '@/lib/i18n';
+
+const PROCTOR_EVENT_FALLBACK = (type: string) => type.replace(/_/g, ' ').toLowerCase();
+
+/** Same thresholds as timeAgo() in useNotifications, with translated text. */
+function ago(t: Translator, iso: string): string {
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return t('teach.page.ago.now');
+  if (s < 3600) return t('teach.page.ago.min', { count: t.number(Math.floor(s / 60)) });
+  if (s < 86_400) return t('teach.page.ago.hour', { count: t.number(Math.floor(s / 3600)) });
+  return t('teach.page.ago.day', { count: t.number(Math.floor(s / 86_400)) });
+}
 
 /** Which dialog is open, and on which course. */
 type Open = { tool: CourseTool | 'builder' | 'questionbank' | 'analytics'; courseId: string | null } | null;
 
 export default function TeacherDashboard() {
+  const t = useT();
   const [open, setOpen] = useState<Open>(null);
   const [coursesVersion, setCoursesVersion] = useState(0);
   const { user } = useAuth();
@@ -81,10 +92,12 @@ export default function TeacherDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <p className="text-xs text-ink-muted">{user?.tenantName}</p>
-            <h1 className="text-3xl font-extrabold text-ink tracking-tight">Teaching</h1>
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">{t('teach.page.title')}</h1>
             <p className="text-sm text-ink-muted">
-              Welcome{user ? `, ${user.name}` : ''}
-              {analytics ? ` · ${plural(analytics.metrics.totalEnrolled, 'enrolment')}` : ''}
+              {user ? t('teach.page.welcomeName', { name: user.name }) : t('teach.page.welcome')}
+              {analytics
+                ? ` · ${t.plural('teach.page.enrolments', analytics.metrics.totalEnrolled, { count: t.number(analytics.metrics.totalEnrolled) })}`
+                : ''}
             </p>
           </div>
           {user?.role === 'INSTRUCTOR' && (
@@ -93,7 +106,7 @@ export default function TeacherDashboard() {
               className="self-start md:self-auto px-4 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-brand/20"
             >
               <Plus className="h-4 w-4" />
-              <span>Create course</span>
+              <span>{t('teach.page.create')}</span>
             </button>
           )}
         </div>
@@ -103,30 +116,30 @@ export default function TeacherDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
-              label: 'Learners',
-              value: analytics ? String(analytics.metrics.totalEnrolled) : '…',
-              sub: analytics ? `${analytics.metrics.activeThisWeek} active this week` : '',
+              label: t('teach.page.stat.learners'),
+              value: analytics ? t.number(analytics.metrics.totalEnrolled) : '…',
+              sub: analytics ? t('teach.page.stat.activeWeek', { count: t.number(analytics.metrics.activeThisWeek) }) : '',
               icon: Users,
               color: 'text-brand-fg',
             },
             {
-              label: 'Waiting for a grade',
-              value: pending.data ? String(pending.data.total) : '…',
-              sub: 'Assignment submissions',
+              label: t('teach.page.stat.waiting'),
+              value: pending.data ? t.number(pending.data.total) : '…',
+              sub: t('teach.page.stat.submissions'),
               icon: FileCheck,
               color: 'text-success',
             },
             {
-              label: 'At risk',
-              value: analytics ? String(analytics.atRiskLearners.length) : '…',
-              sub: 'See learner analytics',
+              label: t('teach.page.stat.atRisk'),
+              value: analytics ? t.number(analytics.atRiskLearners.length) : '…',
+              sub: t('teach.page.stat.seeAnalytics'),
               icon: ShieldAlert,
               color: 'text-danger',
             },
             {
-              label: 'Completion rate',
-              value: analytics ? `${analytics.metrics.completionRate}%` : '…',
-              sub: analytics ? `Average progress ${Math.round(analytics.metrics.averageProgress)}%` : '',
+              label: t('teach.page.stat.completion'),
+              value: analytics ? `${t.number(analytics.metrics.completionRate)}%` : '…',
+              sub: analytics ? t('teach.page.stat.avgProgress', { count: t.number(Math.round(analytics.metrics.averageProgress)) }) : '',
               icon: TrendingUp,
               color: 'text-orchid',
             },
@@ -150,15 +163,11 @@ export default function TeacherDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <StaffCourseList
-              title="My courses"
+              title={t('teach.page.myCourses')}
               canEdit={canEditCourses}
               tools={['content', 'settings', 'copy', 'announcements', 'learners', 'assessments', 'grading', 'gradebook', 'forum', 'live']}
               onOpen={(tool, id) => show(tool, id)}
-              emptyText={
-                user?.role === 'INSTRUCTOR'
-                  ? 'You do not teach any course yet. Create one, or ask an administrator to assign you.'
-                  : 'You are not assigned to any course yet.'
-              }
+              emptyText={user?.role === 'INSTRUCTOR' ? t('teach.page.emptyInstructor') : t('teach.page.emptyStaff')}
               refreshKey={coursesVersion}
             />
           </div>
@@ -167,11 +176,11 @@ export default function TeacherDashboard() {
             <section className="bg-surface border border-line rounded-2xl p-5 space-y-3" aria-labelledby="pending-h">
               <div className="flex items-center justify-between">
                 <h3 id="pending-h" className="font-bold text-sm text-ink">
-                  Waiting for a grade
+                  {t('teach.page.stat.waiting')}
                 </h3>
-                {pending.data && pending.data.total > 0 && <span className="text-xs text-ink-muted">{pending.data.total}</span>}
+                {pending.data && pending.data.total > 0 && <span className="text-xs text-ink-muted">{t.number(pending.data.total)}</span>}
               </div>
-              {pending.data?.data.length === 0 && <p className="text-xs text-ink-subtle">Nothing is waiting for a grade.</p>}
+              {pending.data?.data.length === 0 && <p className="text-xs text-ink-subtle">{t('teach.page.nothingWaiting')}</p>}
               {(pending.data?.data ?? []).map((s) => {
                 const flagged = (s.plagiarismScore ?? 0) >= 30;
                 return (
@@ -190,7 +199,7 @@ export default function TeacherDashboard() {
                       <span
                         className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${flagged ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}
                       >
-                        {Math.round(s.plagiarismScore)}% match
+                        {t('teach.page.match', { count: t.number(Math.round(s.plagiarismScore)) })}
                       </span>
                     )}
                     <ChevronRight className="h-4 w-4 shrink-0 text-ink-subtle" />
@@ -202,14 +211,16 @@ export default function TeacherDashboard() {
             <section className="bg-surface border border-line rounded-2xl p-5 space-y-3" aria-labelledby="proctoring-h">
               <div>
                 <h3 id="proctoring-h" className="font-bold text-sm text-ink">
-                  Recent proctoring events
+                  {t('teach.page.proctoring')}
                 </h3>
                 <p className="text-[11px] text-ink-muted">
-                  Reported by learners' browsers during proctored quizzes.{' '}
-                  {proctoring.data ? `${plural(proctoring.data.openAttempts, 'attempt')} in progress.` : ''}
+                  {t('teach.page.proctoringHint')}{' '}
+                  {proctoring.data
+                    ? t.plural('teach.page.attempts', proctoring.data.openAttempts, { count: t.number(proctoring.data.openAttempts) })
+                    : ''}
                 </p>
               </div>
-              {proctoring.data?.data.length === 0 && <p className="text-xs text-ink-subtle">No events reported.</p>}
+              {proctoring.data?.data.length === 0 && <p className="text-xs text-ink-subtle">{t('teach.page.noEvents')}</p>}
               {(proctoring.data?.data ?? []).map((log) => (
                 <div
                   key={log.id}
@@ -218,10 +229,10 @@ export default function TeacherDashboard() {
                   <div className="min-w-0">
                     <div className="font-semibold text-ink truncate">{log.student}</div>
                     <div className="text-[11px] text-ink-muted truncate">
-                      {log.eventType.replace(/_/g, ' ').toLowerCase()} · {log.quiz}
+                      {t.dyn(`teach.page.event.${log.eventType}`, PROCTOR_EVENT_FALLBACK(log.eventType))} · {log.quiz}
                     </div>
                   </div>
-                  <span className="shrink-0 text-[10px] text-ink-subtle">{timeAgo(log.timestamp)}</span>
+                  <span className="shrink-0 text-[10px] text-ink-subtle">{ago(t, log.timestamp)}</span>
                 </div>
               ))}
             </section>

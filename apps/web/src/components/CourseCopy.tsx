@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { RichText, useT } from '@/lib/i18n';
 
 interface Term {
   id: string;
@@ -41,6 +42,7 @@ const DAY = 86_400_000;
 
 /** Copy a course's material into a new draft course, for running it again (POST /courses/:id/copy). */
 export const CourseCopy: React.FC<{ courseId: string; onClose: () => void; onCopied?: () => void }> = ({ courseId, onClose, onCopied }) => {
+  const t = useT();
   useEscapeKey(onClose);
   const source = useApiData<{ data: Source }>(`/api/v1/courses/${courseId}`);
   const terms = useApiData<{ data: Term[] }>('/api/v1/terms');
@@ -99,13 +101,13 @@ export const CourseCopy: React.FC<{ courseId: string; onClose: () => void; onCop
           <div className="flex items-center gap-2.5">
             <Copy className="h-5 w-5 text-brand-fg" />
             <h3 id="course-copy-h" className="font-bold text-sm text-ink">
-              Copy {src ? src.code : 'course'}
+              {src ? t('builder.copy.title', { code: src.code }) : t('builder.copy.titleFallback')}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('builder.common.close')}
             className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"
           >
             <X className="h-5 w-5" />
@@ -117,13 +119,19 @@ export const CourseCopy: React.FC<{ courseId: string; onClose: () => void; onCop
           {error && <Banner kind="error">{error}</Banner>}
           {result ? (
             <div className="space-y-3 text-xs text-ink">
-              <Banner kind="ok">Created {result.course.code} as a draft. Check it, then publish it from Settings.</Banner>
+              <Banner kind="ok">{t('builder.copy.created', { code: result.course.code })}</Banner>
               <p className="text-ink-muted">
-                Copied {result.copied.modules} module(s) with {result.copied.lessons} lesson(s), {result.copied.quizzes} quiz(zes) with{' '}
-                {result.copied.questions} question(s), {result.copied.assignments} assignment(s), {result.copied.gradeCategories} grade
-                categor{result.copied.gradeCategories === 1 ? 'y' : 'ies'}, {result.copied.questionBankItems} question-bank item(s)
-                {result.copied.files ? ` and ${result.copied.files} uploaded file(s)` : ''}.{' '}
-                {result.shiftDays ? `Due dates moved by ${result.shiftDays} day(s).` : 'Due dates are unchanged.'}
+                {t('builder.copy.summary', {
+                  modules: t.number(result.copied.modules),
+                  lessons: t.number(result.copied.lessons),
+                  quizzes: t.number(result.copied.quizzes),
+                  questions: t.number(result.copied.questions),
+                  assignments: t.number(result.copied.assignments),
+                  categories: t.plural('builder.copy.categories', result.copied.gradeCategories),
+                  bank: t.number(result.copied.questionBankItems),
+                  files: result.copied.files ? t('builder.copy.filesPart', { n: t.number(result.copied.files) }) : '',
+                })}{' '}
+                {result.shiftDays ? t('builder.copy.shifted', { days: t.number(result.shiftDays) }) : t('builder.copy.unchanged')}
               </p>
               <div className="flex justify-end">
                 <button
@@ -131,42 +139,41 @@ export const CourseCopy: React.FC<{ courseId: string; onClose: () => void; onCop
                   onClick={onClose}
                   className="px-4 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold"
                 >
-                  Done
+                  {t('builder.copy.done')}
                 </button>
               </div>
             </div>
           ) : !src ? (
-            !source.error && <p className="text-xs text-ink-muted">Loading…</p>
+            !source.error && <p className="text-xs text-ink-muted">{t('builder.common.loading')}</p>
           ) : (
             <>
-              <p className="text-xs text-ink-muted">
-                Makes a new <strong className="text-ink">draft</strong> course with this course’s lessons, quizzes, assignments, rubrics,
-                grade setup and question bank. Learners, submissions and grades stay with the original.
+              <p className="text-xs text-ink-muted [&_strong]:text-ink">
+                <RichText text={t('builder.copy.intro')} />
               </p>
               <div className="grid grid-cols-3 gap-3">
                 <label className="col-span-2 space-y-1.5">
-                  <span className={label}>New title</span>
+                  <span className={label}>{t('builder.copy.newTitle')}</span>
                   <input className={field} value={titleValue} maxLength={255} onChange={(e) => setTitle(e.target.value)} />
                 </label>
                 <label className="space-y-1.5">
-                  <span className={label}>New code</span>
+                  <span className={label}>{t('builder.copy.newCode')}</span>
                   <input className={`${field} font-mono`} value={codeValue} maxLength={50} onChange={(e) => setCode(e.target.value)} />
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5">
-                  <span className={label}>Term</span>
+                  <span className={label}>{t('builder.copy.term')}</span>
                   <select className={field} value={chosenTerm ?? ''} onChange={(e) => setTermId(e.target.value || null)}>
-                    <option value="">No term</option>
-                    {list.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
+                    <option value="">{t('builder.copy.noTerm')}</option>
+                    {list.map((term) => (
+                      <option key={term.id} value={term.id}>
+                        {term.name}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="space-y-1.5">
-                  <span className={label}>Move due dates by (days)</span>
+                  <span className={label}>{t('builder.copy.shiftLabel')}</span>
                   <input
                     className={field}
                     type="number"
@@ -182,9 +189,9 @@ export const CourseCopy: React.FC<{ courseId: string; onClose: () => void; onCop
               <p className="text-[11px] text-ink-subtle">
                 {shiftNumber === null
                   ? autoShift
-                    ? `Left empty, quiz windows and due dates move ${autoShift} day(s): the gap between the two terms’ start dates.`
-                    : 'Left empty, quiz windows and due dates stay as they are.'
-                  : `Quiz windows and due dates move ${shiftNumber} day(s).`}
+                    ? t('builder.copy.hintAuto', { days: t.number(autoShift) })
+                    : t('builder.copy.hintNone')
+                  : t('builder.copy.hintManual', { days: t.number(shiftNumber) })}
               </p>
               <div className="flex justify-end gap-2">
                 <button
@@ -192,13 +199,13 @@ export const CourseCopy: React.FC<{ courseId: string; onClose: () => void; onCop
                   onClick={onClose}
                   className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold"
                 >
-                  Cancel
+                  {t('builder.common.cancel')}
                 </button>
                 <button
                   className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold"
                   disabled={busy || invalid}
                 >
-                  {busy ? 'Copying…' : 'Copy course'}
+                  {busy ? t('builder.copy.copying') : t('builder.copy.submit')}
                 </button>
               </div>
             </>

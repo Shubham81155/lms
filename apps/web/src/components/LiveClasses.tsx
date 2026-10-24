@@ -10,6 +10,7 @@ import { Banner } from '@/components/admin/IdentityPanels';
 import { LiveRoom, type JoinInfo } from '@/components/LiveRoom';
 import { fromLocalInput, LiveSessionView, scheduleProblem, startsIn, toLocalInput } from '@/lib/live';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useT, type Translator } from '@/lib/i18n';
 
 interface AttendanceRow {
   userId: string;
@@ -37,33 +38,51 @@ const STATUS: Record<string, string> = {
   ENDED: 'bg-raised text-ink border-line',
 };
 
+const PROBLEM_KEYS: Record<string, string> = {
+  'Give the class a title.': 'teach.live.problem.title',
+  'Choose a date and time.': 'teach.live.problem.when',
+  'That time is in the past.': 'teach.live.problem.past',
+  'Duration must be between 5 and 480 minutes.': 'teach.live.problem.duration',
+};
+
+/** Same thresholds as startsIn() in lib/live, with translated text. */
+function relativeStart(t: Translator, scheduledAt: string): string {
+  const ms = new Date(scheduledAt).getTime() - Date.now();
+  const min = Math.round(Math.abs(ms) / 60_000);
+  if (min < 1) return t('teach.live.rel.now');
+  const [unit, n] = min < 60 ? ['Min', min] : min < 48 * 60 ? ['Hours', Math.round(min / 60)] : ['Days', Math.round(min / 1440)];
+  const key = `teach.live.rel.${ms > 0 ? 'in' : 'ago'}${unit}`;
+  return t.dyn(key, startsIn(scheduledAt), { count: t.number(n as number) });
+}
+
 const AttendanceTable: React.FC<{ sessionId: string }> = ({ sessionId }) => {
+  const t = useT();
   const { data, isLoading, error } = useApiData<Attendance>(`/api/v1/live-sessions/${sessionId}/attendance`);
-  if (isLoading) return <p className="text-[11px] text-ink-subtle">Loading…</p>;
+  if (isLoading) return <p className="text-[11px] text-ink-subtle">{t('teach.live.loading')}</p>;
   if (error) return <Banner kind="error">{error}</Banner>;
   if (!data) return null;
   return (
     <div className="space-y-2">
       <p className="text-[11px] text-ink-muted">
-        {data.summary.present} of {data.summary.enrolled} enrolled learners attended (5+ minutes).
+        {t('teach.live.att.summary', { present: t.number(data.summary.present), enrolled: t.number(data.summary.enrolled) })}
       </p>
       <table className="w-full text-xs">
         <thead className="text-ink-subtle text-left">
           <tr>
-            <th className="py-1">Learner</th>
-            <th>Minutes</th>
-            <th>Joins</th>
-            <th>Status</th>
+            <th className="py-1">{t('teach.live.att.learner')}</th>
+            <th>{t('teach.live.att.minutes')}</th>
+            <th>{t('teach.live.att.joins')}</th>
+            <th>{t('teach.live.att.status')}</th>
           </tr>
         </thead>
         <tbody>
           {data.data.map((r) => (
             <tr key={r.userId} className="border-t border-line">
               <td className="py-1.5 text-ink">{r.name}</td>
-              <td className="text-ink-muted">{r.minutes}</td>
-              <td className="text-ink-muted">{r.joinCount}</td>
+              <td className="text-ink-muted">{t.number(r.minutes)}</td>
+              <td className="text-ink-muted">{t.number(r.joinCount)}</td>
               <td className={r.present ? 'text-success' : 'text-ink-subtle'}>
-                {r.inRoomNow ? 'In the room' : r.present ? 'Present' : 'Absent'}
+                {r.inRoomNow ? t('teach.live.att.inRoom') : r.present ? t('teach.live.att.present') : t('teach.live.att.absent')}
               </td>
             </tr>
           ))}
@@ -78,6 +97,7 @@ export const LiveClasses: React.FC<{
   /** Open on this course when the person may use it. */ initialCourseId?: string | null;
 }> = ({ onClose, initialCourseId }) => {
   useEscapeKey(onClose);
+  const t = useT();
   const { user } = useAuth();
   const { courses, isLoading: loadingCourses } = useStaffCourses();
   const [courseId, setCourseId] = useState('');
@@ -103,7 +123,8 @@ export const LiveClasses: React.FC<{
   const canManage = isAdmin || user?.role === 'INSTRUCTOR';
   const editedSession = editingId ? list.find((x) => x.id === editingId) : undefined;
   const startUnchanged = !!editedSession && when === toLocalInput(new Date(editedSession.scheduledAt));
-  const problem = scheduleProblem({ title, when, durationMins: duration }, Date.now(), startUnchanged);
+  const problemRaw = scheduleProblem({ title, when, durationMins: duration }, Date.now(), startUnchanged);
+  const problem = problemRaw ? t.dyn(PROBLEM_KEYS[problemRaw] ?? '', problemRaw) : null;
 
   const joinRoom = (s: LiveSessionView) =>
     run(async () => {
@@ -162,7 +183,7 @@ export const LiveClasses: React.FC<{
       className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Live classes"
+      aria-label={t('teach.live.title')}
     >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-4xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between gap-4">
@@ -171,52 +192,51 @@ export const LiveClasses: React.FC<{
               <Radio className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-ink">Live classes</h3>
-              <p className="text-xs text-ink-muted">Schedule, run and review live sessions.</p>
+              <h3 className="font-bold text-base text-ink">{t('teach.live.title')}</h3>
+              <p className="text-xs text-ink-muted">{t('teach.live.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <select className={input} aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            <select className={input} aria-label={t('teach.live.course')} value={courseId} onChange={(e) => setCourseId(e.target.value)}>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.code} · {c.title}
                 </option>
               ))}
             </select>
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
+            <button
+              onClick={onClose}
+              aria-label={t('teach.live.close')}
+              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {sessions.data && !sessions.data.configured && (
-            <Banner kind="error">
-              Live classes are not set up on this server yet. An administrator needs to connect a LiveKit media server (LIVEKIT_URL,
-              LIVEKIT_API_KEY, LIVEKIT_API_SECRET). You can still schedule classes.
-            </Banner>
-          )}
+          {sessions.data && !sessions.data.configured && <Banner kind="error">{t('teach.live.notConfigured')}</Banner>}
           {(error || sessions.error) && <Banner kind="error">{error || sessions.error}</Banner>}
-          {loadingCourses && <p className="text-xs text-ink-subtle">Loading…</p>}
+          {loadingCourses && <p className="text-xs text-ink-subtle">{t('teach.live.loading')}</p>}
           {!loadingCourses && courses.length === 0 && (
-            <p className="text-xs text-ink-subtle text-center p-10">You are not assigned to any course yet.</p>
+            <p className="text-xs text-ink-subtle text-center p-10">{t('teach.live.noCourses')}</p>
           )}
 
           {canManage && courseId && (
             <form onSubmit={schedule} onChange={clearError} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
-              <h4 className="text-sm font-bold text-ink">{editingId ? 'Change this class' : 'Schedule a class'}</h4>
+              <h4 className="text-sm font-bold text-ink">{editingId ? t('teach.live.formChange') : t('teach.live.formSchedule')}</h4>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <input
                   className={`${input} md:col-span-2`}
-                  aria-label="Title"
-                  placeholder="Title"
+                  aria-label={t('teach.live.fieldTitle')}
+                  placeholder={t('teach.live.fieldTitle')}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
                 <input
                   className={input}
                   type="datetime-local"
-                  aria-label="Start time"
+                  aria-label={t('teach.live.fieldStart')}
                   value={when}
                   onChange={(e) => setWhen(e.target.value)}
                 />
@@ -226,22 +246,22 @@ export const LiveClasses: React.FC<{
                   min={5}
                   max={480}
                   step={5}
-                  aria-label="Duration in minutes"
+                  aria-label={t('teach.live.fieldDuration')}
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
                 />
               </div>
               <label className="flex items-center gap-2 text-xs text-ink">
                 <input type="checkbox" checked={studentVideo} onChange={(e) => setStudentVideo(e.target.checked)} />
-                Let learners use their camera and microphone
+                {t('teach.live.studentVideo')}
               </label>
               <div className="flex items-center gap-3">
                 <button className={primary} disabled={busy || !!problem}>
-                  {editingId ? 'Save changes' : 'Schedule'}
+                  {editingId ? t('teach.live.save') : t('teach.live.schedule')}
                 </button>
                 {editingId && (
                   <button type="button" className={ghost} onClick={stopEditing}>
-                    Cancel
+                    {t('teach.live.cancel')}
                   </button>
                 )}
                 {problem && title.trim().length > 0 && <span className="text-[11px] text-accent">{problem}</span>}
@@ -251,7 +271,7 @@ export const LiveClasses: React.FC<{
 
           <ul className="space-y-3">
             {courseId && sessions.data && list.length === 0 && (
-              <li className="text-xs text-ink-subtle text-center p-8">No live classes yet.</li>
+              <li className="text-xs text-ink-subtle text-center p-8">{t('teach.live.empty')}</li>
             )}
             {list.map((s) => (
               <li key={s.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
@@ -260,13 +280,23 @@ export const LiveClasses: React.FC<{
                     <div className="flex items-center gap-2">
                       <strong className="text-sm text-ink">{s.title}</strong>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS[s.status] ?? STATUS.ENDED}`}>
-                        {s.status}
+                        {t.dyn(`teach.live.status.${s.status}`, s.status)}
                       </span>
                     </div>
                     <div className="text-[11px] text-ink-subtle">
-                      {new Date(s.scheduledAt).toLocaleString()} · {s.durationMins} min
-                      {s.status === 'SCHEDULED' ? ` · ${startsIn(s.scheduledAt)}` : ''}
-                      {s.attendeeCount !== undefined && s.status !== 'SCHEDULED' ? ` · ${s.attendeeCount} joined` : ''}
+                      {t.date(s.scheduledAt, {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        timeZone: undefined,
+                      })}{' '}
+                      · {t('teach.live.minutes', { count: t.number(s.durationMins) })}
+                      {s.status === 'SCHEDULED' ? ` · ${relativeStart(t, s.scheduledAt)}` : ''}
+                      {s.attendeeCount !== undefined && s.status !== 'SCHEDULED'
+                        ? ` · ${t('teach.live.joined', { count: t.number(s.attendeeCount) })}`
+                        : ''}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -277,34 +307,39 @@ export const LiveClasses: React.FC<{
                           disabled={busy || !sessions.data?.configured}
                           onClick={() => act(`/api/v1/live-sessions/${s.id}/start`, () => joinRoom(s))}
                         >
-                          Start and join
+                          {t('teach.live.startJoin')}
                         </button>
-                        <button className={ghost} disabled={busy} onClick={() => startEditing(s)} aria-label={`Edit ${s.title}`}>
-                          Edit
+                        <button
+                          className={ghost}
+                          disabled={busy}
+                          onClick={() => startEditing(s)}
+                          aria-label={t('teach.live.editAria', { title: s.title })}
+                        >
+                          {t('teach.live.edit')}
                         </button>
                         <button
                           className={ghost}
                           disabled={busy}
                           onClick={() =>
-                            window.confirm(`Cancel "${s.title}"? Learners will be told.`) && act(`/api/v1/live-sessions/${s.id}/cancel`)
+                            window.confirm(t('teach.live.confirmCancel', { title: s.title })) && act(`/api/v1/live-sessions/${s.id}/cancel`)
                           }
                         >
-                          Cancel
+                          {t('teach.live.cancel')}
                         </button>
                       </>
                     )}
                     {s.status === 'LIVE' && (
                       <>
                         <button className={primary} disabled={busy} onClick={() => joinRoom(s)}>
-                          Join
+                          {t('teach.live.join')}
                         </button>
                         {canManage && (
                           <button
                             className={ghost}
                             disabled={busy}
-                            onClick={() => window.confirm('End the class for everyone?') && act(`/api/v1/live-sessions/${s.id}/end`)}
+                            onClick={() => window.confirm(t('teach.live.confirmEnd')) && act(`/api/v1/live-sessions/${s.id}/end`)}
                           >
-                            End class
+                            {t('teach.live.endClass')}
                           </button>
                         )}
                       </>
@@ -312,7 +347,7 @@ export const LiveClasses: React.FC<{
                     {s.status !== 'SCHEDULED' && (
                       <button className={ghost} onClick={() => setOpenAttendance(openAttendance === s.id ? null : s.id)}>
                         <Users className="h-3 w-3 inline mr-1" />
-                        Attendance
+                        {t('teach.live.attendance')}
                       </button>
                     )}
                   </div>

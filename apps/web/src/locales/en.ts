@@ -7,6 +7,10 @@ import { learnEn } from './s-learn.en';
 import { workEn } from './s-work.en';
 import { communityEn } from './s-community.en';
 import { privacyEn } from './s-privacy.en';
+import { gradingEn } from './t-grading.en';
+import { builderEn } from './t-builder.en';
+import { assessEn } from './t-assess.en';
+import { teachEn } from './t-teach.en';
 
 export const en = {
   ...billingEn,
@@ -15,6 +19,10 @@ export const en = {
   ...workEn,
   ...communityEn,
   ...privacyEn,
+  ...gradingEn,
+  ...builderEn,
+  ...assessEn,
+  ...teachEn,
   'language.label': 'Language',
 
   'common.loading': 'Loading…',

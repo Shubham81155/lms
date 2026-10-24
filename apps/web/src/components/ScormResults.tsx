@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
-import { plural } from '@/lib/plural';
+import { useT } from '@/lib/i18n';
 
 interface Package {
   id: string;
@@ -27,34 +27,46 @@ interface Attempt {
 
 const input = 'bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand';
 
-const STATUS: Record<string, { label: string; style: string }> = {
-  passed: { label: 'Passed', style: 'bg-success/10 text-success border-success/30' },
-  completed: { label: 'Completed', style: 'bg-success/10 text-success border-success/30' },
-  failed: { label: 'Failed', style: 'bg-danger/10 text-danger border-danger/30' },
-  incomplete: { label: 'In progress', style: 'bg-accent/10 text-accent border-accent/30' },
-  'not attempted': { label: 'Not started', style: 'bg-raised text-ink-muted border-line' },
+const STATUS_STYLE: Record<string, string> = {
+  passed: 'bg-success/10 text-success border-success/30',
+  completed: 'bg-success/10 text-success border-success/30',
+  failed: 'bg-danger/10 text-danger border-danger/30',
+  incomplete: 'bg-accent/10 text-accent border-accent/30',
 };
-const statusOf = (s: string) => STATUS[s] ?? { label: s === 'unknown' ? 'Unknown' : s, style: 'bg-raised text-ink-muted border-line' };
+const DEFAULT_STYLE = 'bg-raised text-ink-muted border-line';
+
+const DAY: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: undefined };
+const DAY_TIME: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZone: undefined,
+};
 
 const Results: React.FC<{ packageId: string }> = ({ packageId }) => {
+  const t = useT();
   const { data, isLoading, error } = useApiData<{ data: Attempt[] }>(`/api/v1/scorm-packages/${packageId}/attempts`);
-  if (isLoading) return <div className="text-xs text-ink-subtle p-6">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle p-6">{t('grading.loading')}</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
   const rows = data?.data ?? [];
   if (rows.length === 0)
     return (
-      <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">No learners are enrolled yet.</div>
+      <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">
+        {t('grading.scorm.noLearners')}
+      </div>
     );
 
   const count = (...s: string[]) => rows.filter((r) => s.includes(r.status)).length;
   const scores = rows.map((r) => r.scorePercent).filter((n): n is number => n !== null);
   const average = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
   const tiles = [
-    { label: 'Finished', value: count('passed', 'completed') },
-    { label: 'Failed', value: count('failed') },
-    { label: 'In progress', value: count('incomplete', 'unknown') },
-    { label: 'Not started', value: count('not attempted') },
-    { label: 'Average score', value: average === null ? '–' : `${average}%` },
+    { label: t('grading.scorm.tile.finished'), value: count('passed', 'completed') },
+    { label: t('grading.scorm.tile.failed'), value: count('failed') },
+    { label: t('grading.scorm.tile.inProgress'), value: count('incomplete', 'unknown') },
+    { label: t('grading.scorm.tile.notStarted'), value: count('not attempted') },
+    { label: t('grading.scorm.tile.average'), value: average === null ? '–' : `${average}%` },
   ];
 
   return (
@@ -71,16 +83,16 @@ const Results: React.FC<{ packageId: string }> = ({ packageId }) => {
         <table className="w-full text-xs">
           <thead className="text-ink-subtle text-left">
             <tr className="border-b border-line">
-              <th className="p-3">Learner</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Score</th>
-              <th className="p-3">Finished</th>
-              <th className="p-3">Last activity</th>
+              <th className="p-3">{t('grading.scorm.col.learner')}</th>
+              <th className="p-3">{t('grading.scorm.col.status')}</th>
+              <th className="p-3">{t('grading.scorm.col.score')}</th>
+              <th className="p-3">{t('grading.scorm.col.finished')}</th>
+              <th className="p-3">{t('grading.scorm.col.last')}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => {
-              const s = statusOf(r.status);
+              const statusStyle = STATUS_STYLE[r.status] ?? DEFAULT_STYLE;
               return (
                 <tr key={r.userId} className="border-b border-line last:border-0">
                   <td className="p-3 text-ink">
@@ -88,13 +100,15 @@ const Results: React.FC<{ packageId: string }> = ({ packageId }) => {
                     <div className="text-[10px] text-ink-subtle">{r.email}</div>
                   </td>
                   <td className="p-3">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${s.style}`}>{s.label}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusStyle}`}>
+                      {t.dyn(`grading.scorm.status.${r.status}`, r.status)}
+                    </span>
                   </td>
                   <td className="p-3 text-ink">
                     {r.scorePercent === null ? <span className="text-ink-subtle">–</span> : `${r.scorePercent}%`}
                   </td>
-                  <td className="p-3 text-ink-muted">{r.completedAt ? new Date(r.completedAt).toLocaleDateString() : '–'}</td>
-                  <td className="p-3 text-ink-muted">{r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '–'}</td>
+                  <td className="p-3 text-ink-muted">{r.completedAt ? t.date(r.completedAt, DAY) : '–'}</td>
+                  <td className="p-3 text-ink-muted">{r.updatedAt ? t.date(r.updatedAt, DAY_TIME) : '–'}</td>
                 </tr>
               );
             })}
@@ -107,6 +121,7 @@ const Results: React.FC<{ packageId: string }> = ({ packageId }) => {
 
 /** Each learner's status and score in the course's SCORM packages, as the packages report them. */
 export const ScormResults: React.FC<{ courseId: string }> = ({ courseId }) => {
+  const t = useT();
   const { data, isLoading, error } = useApiData<{ data: Package[] }>(`/api/v1/courses/${courseId}/scorm-packages`);
   const packages = data?.data ?? [];
   const [packageId, setPackageId] = useState('');
@@ -114,13 +129,11 @@ export const ScormResults: React.FC<{ courseId: string }> = ({ courseId }) => {
     if (packages.length > 0 && !packages.some((p) => p.id === packageId)) setPackageId(packages[0].id);
   }, [packages, packageId]);
 
-  if (isLoading) return <div className="text-xs text-ink-subtle p-6">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle p-6">{t('grading.loading')}</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
   if (packages.length === 0) {
     return (
-      <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">
-        This course has no SCORM packages. Add one from the course&apos;s Content tool.
-      </div>
+      <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">{t('grading.scorm.none')}</div>
     );
   }
 
@@ -128,23 +141,24 @@ export const ScormResults: React.FC<{ courseId: string }> = ({ courseId }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] text-ink-subtle">
-          Status and score as each package reports them. {plural(packages.length, 'package')} in this course.
+          {t('grading.scorm.hint')} {t.plural('grading.scorm.packages', packages.length)}
         </p>
         {packages.length > 1 && (
-          <select className={input} aria-label="SCORM package" value={packageId} onChange={(e) => setPackageId(e.target.value)}>
+          <select
+            className={input}
+            aria-label={t('grading.scorm.packageSelect')}
+            value={packageId}
+            onChange={(e) => setPackageId(e.target.value)}
+          >
             {packages.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.title} (SCORM {p.version}){p.withdrawn ? ' · withdrawn' : ''}
+                {t(p.withdrawn ? 'grading.scorm.optionWithdrawn' : 'grading.scorm.option', { title: p.title, version: p.version })}
               </option>
             ))}
           </select>
         )}
       </div>
-      {packages.find((p) => p.id === packageId)?.withdrawn && (
-        <Banner kind="error">
-          A virus scan found malware in this package&apos;s zip, so learners can no longer open it. Upload a clean copy as a new lesson.
-        </Banner>
-      )}
+      {packages.find((p) => p.id === packageId)?.withdrawn && <Banner kind="error">{t('grading.scorm.withdrawnBanner')}</Banner>}
       {packageId && <Results key={packageId} packageId={packageId} />}
     </div>
   );

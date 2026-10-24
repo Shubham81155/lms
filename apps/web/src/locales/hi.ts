@@ -5,6 +5,10 @@ import { learnHi } from './s-learn.hi';
 import { workHi } from './s-work.hi';
 import { communityHi } from './s-community.hi';
 import { privacyHi } from './s-privacy.hi';
+import { gradingHi } from './t-grading.hi';
+import { builderHi } from './t-builder.hi';
+import { assessHi } from './t-assess.hi';
+import { teachHi } from './t-teach.hi';
 
 // हिन्दी संदेश। Typed against English: a missing key is a compile error. The wording is natural Hindi as used in
 // Indian education software (common English terms such as "लॉग इन", "ई-मेल" and "पासवर्ड" are kept where people use
@@ -16,6 +20,10 @@ export const hi: Record<MessageKey, string> = {
   ...workHi,
   ...communityHi,
   ...privacyHi,
+  ...gradingHi,
+  ...builderHi,
+  ...assessHi,
+  ...teachHi,
   'language.label': 'भाषा',
 
   'common.loading': 'लोड हो रहा है…',

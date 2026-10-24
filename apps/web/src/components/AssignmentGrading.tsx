@@ -10,6 +10,7 @@ import { Banner } from '@/components/admin/IdentityPanels';
 import { SubmissionHistory } from '@/components/SubmissionHistory';
 import { round2, rubricDraft, type Criterion } from '@/lib/forms';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useT } from '@/lib/i18n';
 
 export type { Criterion };
 
@@ -51,6 +52,17 @@ const input =
 const primary = 'px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all';
 const ghost =
   'px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
+
+// Dates keep the viewer's own time zone, as before.
+const DAY: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: undefined };
+const DAY_TIME: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZone: undefined,
+};
 /** One number input per criterion, with a live total. */
 export const RubricInputs: React.FC<{
   criteria: Criterion[];
@@ -58,6 +70,7 @@ export const RubricInputs: React.FC<{
   onChange: (v: Record<string, string>) => void;
   disabled?: boolean;
 }> = ({ criteria, values, onChange, disabled }) => {
+  const t = useT();
   const { total, problem } = rubricDraft(criteria, values);
   const max = round2(criteria.reduce((s, c) => s + c.maxPoints, 0));
   return (
@@ -75,7 +88,7 @@ export const RubricInputs: React.FC<{
               min={0}
               max={c.maxPoints}
               step="0.5"
-              aria-label={`${c.name} score`}
+              aria-label={t('grading.as.criterionScore', { name: c.name })}
               disabled={disabled}
               value={values[c.id] ?? ''}
               onChange={(e) => onChange({ ...values, [c.id]: e.target.value })}
@@ -85,9 +98,7 @@ export const RubricInputs: React.FC<{
         </div>
       ))}
       <div className="flex items-center justify-between text-xs">
-        <span className="font-bold text-ink">
-          Total {total} / {max}
-        </span>
+        <span className="font-bold text-ink">{t('grading.as.total', { total, max })}</span>
         {problem && <span className="text-accent">{problem}</span>}
       </div>
     </div>
@@ -103,11 +114,12 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
   onSaved,
 }) => {
   const rubric = assignment.rubricJson;
+  const t = useT();
   const { busy, error, run, clearError } = useAction();
   const [grade, setGrade] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState('');
-  const [note, setNote] = useState<string | null>(null);
+  const [note, setNote] = useState<'saved' | 'reopened' | null>(null);
 
   useEffect(() => {
     setGrade(sub.grade === null ? '' : String(sub.grade));
@@ -135,7 +147,7 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
         `/api/v1/assignments/${assignment.id}/submissions/${sub.id}/grade`,
         body
       );
-      setNote(r.courseGradeReopened ? "Saved. This learner's approved course grade was reopened and needs approving again." : 'Saved.');
+      setNote(r.courseGradeReopened ? 'reopened' : 'saved');
       onSaved();
     });
 
@@ -143,8 +155,8 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
     <div className="space-y-4">
       <div className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <strong className="text-ink">{sub.user ? `${sub.user.firstName} ${sub.user.lastName}` : 'Learner'}</strong>
-          <span className="text-ink-subtle">Submitted {new Date(sub.submittedAt).toLocaleString()}</span>
+          <strong className="text-ink">{sub.user ? `${sub.user.firstName} ${sub.user.lastName}` : t('grading.as.learner')}</strong>
+          <span className="text-ink-subtle">{t('grading.as.submittedOn', { date: t.date(sub.submittedAt, DAY_TIME) })}</span>
         </div>
         {sub.submissionText && <p className="text-xs text-ink whitespace-pre-wrap max-h-48 overflow-y-auto">{sub.submissionText}</p>}
         {sub.fileUrl && (
@@ -155,25 +167,23 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
         <SubmissionHistory key={sub.submittedAt} assignmentId={assignment.id} submissionId={sub.id} />
         {sub.plagiarismScore !== null && (
           <div className={`text-[11px] ${sub.plagiarismScore >= 30 ? 'text-danger' : 'text-success'}`}>
-            Similarity: {Math.round(sub.plagiarismScore)}%{' '}
+            {t('grading.as.similarity', { percent: t.number(Math.round(sub.plagiarismScore)) })}{' '}
             {sub.plagiarismReportUrl && (
               <a className="underline" href={sub.plagiarismReportUrl} target="_blank" rel="noopener noreferrer">
-                report
+                {t('grading.as.report')}
               </a>
             )}
           </div>
         )}
         {sub.plagiarismScore === null && sub.plagiarismStatus && sub.plagiarismStatus !== 'COMPLETE' && (
           <div className={`text-[11px] ${sub.plagiarismStatus === 'FAILED' ? 'text-accent' : 'text-ink-subtle'}`}>
-            {sub.plagiarismStatus === 'PENDING' && 'Similarity check queued'}
-            {sub.plagiarismStatus === 'SUBMITTED' && 'Similarity check in progress'}
-            {sub.plagiarismStatus === 'FAILED' && 'Similarity check failed'}
+            {t(`grading.as.sim.${sub.plagiarismStatus}`)}
           </div>
         )}
       </div>
 
       {error && <Banner kind="error">{error}</Banner>}
-      {note && <Banner kind="ok">{note}</Banner>}
+      {note && <Banner kind="ok">{note === 'reopened' ? t('grading.as.savedReopened') : t('grading.as.saved')}</Banner>}
 
       {rubric ? (
         <RubricInputs
@@ -187,7 +197,7 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
         />
       ) : (
         <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-          Grade (out of {assignment.maxPoints})
+          {t('grading.as.gradeOutOf', { max: assignment.maxPoints })}
           <input
             className={`${input} w-32 block`}
             type="number"
@@ -204,7 +214,7 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
         </label>
       )}
       <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-        Feedback for the learner
+        {t('grading.as.feedback')}
         <textarea
           className={`${input} w-full`}
           rows={3}
@@ -216,7 +226,7 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
       </label>
       {canGrade && (
         <button className={primary} disabled={busy || !ok} onClick={save}>
-          {busy ? 'Saving…' : sub.gradedAt ? 'Update grade' : 'Save grade'}
+          {busy ? t('grading.as.saving') : sub.gradedAt ? t('grading.as.updateGrade') : t('grading.as.saveGrade')}
         </button>
       )}
     </div>
@@ -224,6 +234,7 @@ const GradePanel: React.FC<{ assignment: Assignment; sub: Submission; canGrade: 
 };
 
 const Submissions: React.FC<{ assignment: Assignment; canGrade: boolean }> = ({ assignment, canGrade }) => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: Submission[] }>(`/api/v1/assignments/${assignment.id}/submissions`, {
     limit: 100,
   });
@@ -231,11 +242,11 @@ const Submissions: React.FC<{ assignment: Assignment; canGrade: boolean }> = ({ 
   const list = data?.data ?? [];
   const current = list.find((s) => s.id === active) ?? list.find((s) => !s.gradedAt) ?? list[0];
 
-  if (isLoading) return <div className="text-xs text-ink-subtle">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle">{t('grading.loading')}</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
   if (list.length === 0)
     return (
-      <div className="text-xs text-ink-subtle p-10 text-center bg-canvas border border-line rounded-2xl">Nobody has submitted yet.</div>
+      <div className="text-xs text-ink-subtle p-10 text-center bg-canvas border border-line rounded-2xl">{t('grading.as.nobody')}</div>
     );
 
   return (
@@ -252,10 +263,10 @@ const Submissions: React.FC<{ assignment: Assignment; canGrade: boolean }> = ({ 
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${s.gradedAt ? 'bg-success/10 text-success border-success/30' : 'bg-accent/10 text-accent border-accent/30'}`}
                 >
-                  {s.gradedAt ? `${s.grade} / ${assignment.maxPoints}` : 'To grade'}
+                  {s.gradedAt ? `${s.grade} / ${assignment.maxPoints}` : t('grading.as.toGrade')}
                 </span>
               </div>
-              <div className="text-[10px] text-ink-subtle mt-1">{new Date(s.submittedAt).toLocaleDateString()}</div>
+              <div className="text-[10px] text-ink-subtle mt-1">{t.date(s.submittedAt, DAY)}</div>
             </button>
           </li>
         ))}
@@ -270,6 +281,7 @@ const Submissions: React.FC<{ assignment: Assignment; canGrade: boolean }> = ({ 
 // ---------------------------------------------------------------------------
 
 const RubricEditor: React.FC<{ assignment: Assignment; canEdit: boolean; onSaved: () => void }> = ({ assignment, canEdit, onSaved }) => {
+  const t = useT();
   const graded = useApiData<{ data: Submission[] }>(`/api/v1/assignments/${assignment.id}/submissions`, { limit: 100 });
   const { busy, error, run, clearError } = useAction();
   const [rows, setRows] = useState<{ name: string; description: string; maxPoints: string }[]>([]);
@@ -299,27 +311,25 @@ const RubricEditor: React.FC<{ assignment: Assignment; canEdit: boolean; onSaved
         setSaved(false);
       }}
     >
-      {locked && <Banner kind="error">Some submissions are already graded, so the rubric can no longer be changed.</Banner>}
-      {!canEdit && <Banner kind="error">Only the instructor can change the rubric.</Banner>}
+      {locked && <Banner kind="error">{t('grading.as.locked')}</Banner>}
+      {!canEdit && <Banner kind="error">{t('grading.as.onlyInstructor')}</Banner>}
       {error && <Banner kind="error">{error}</Banner>}
-      {saved && <Banner kind="ok">Rubric saved.</Banner>}
-      <p className="text-xs text-ink-muted">
-        The assignment is worth the total of its criteria ({total} points). Without a rubric, graders enter a single score.
-      </p>
+      {saved && <Banner kind="ok">{t('grading.as.rubricSaved')}</Banner>}
+      <p className="text-xs text-ink-muted">{t('grading.as.rubricWorth', { total })}</p>
       {rows.map((r, i) => (
         <div key={i} className="grid grid-cols-12 gap-2 items-start">
           <input
             className={`${input} col-span-4`}
-            aria-label={`Criterion ${i + 1} name`}
-            placeholder="Criterion"
+            aria-label={t('grading.as.critName', { n: i + 1 })}
+            placeholder={t('grading.as.critPlaceholder')}
             disabled={!edit}
             value={r.name}
             onChange={(e) => setRows((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
           />
           <input
             className={`${input} col-span-5`}
-            aria-label={`Criterion ${i + 1} description`}
-            placeholder="What earns full marks (optional)"
+            aria-label={t('grading.as.critDescription', { n: i + 1 })}
+            placeholder={t('grading.as.critDescPlaceholder')}
             disabled={!edit}
             value={r.description}
             onChange={(e) => setRows((p) => p.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))}
@@ -329,7 +339,7 @@ const RubricEditor: React.FC<{ assignment: Assignment; canEdit: boolean; onSaved
             type="number"
             min={0.5}
             step="0.5"
-            aria-label={`Criterion ${i + 1} points`}
+            aria-label={t('grading.as.critPoints', { n: i + 1 })}
             disabled={!edit}
             value={r.maxPoints}
             onChange={(e) => setRows((p) => p.map((x, j) => (j === i ? { ...x, maxPoints: e.target.value } : x)))}
@@ -337,7 +347,7 @@ const RubricEditor: React.FC<{ assignment: Assignment; canEdit: boolean; onSaved
           <button
             className={`${ghost} col-span-1`}
             disabled={!edit}
-            aria-label={`Remove criterion ${i + 1}`}
+            aria-label={t('grading.as.critRemove', { n: i + 1 })}
             onClick={() => setRows((p) => p.filter((_, j) => j !== i))}
           >
             <Trash2 className="h-3 w-3" />
@@ -347,7 +357,7 @@ const RubricEditor: React.FC<{ assignment: Assignment; canEdit: boolean; onSaved
       <div className="flex flex-wrap gap-2">
         <button className={ghost} disabled={!edit} onClick={() => setRows((p) => [...p, { name: '', description: '', maxPoints: '' }])}>
           <Plus className="h-3 w-3 inline mr-1" />
-          Add criterion
+          {t('grading.as.addCriterion')}
         </button>
         <button
           className={primary}
@@ -362,11 +372,15 @@ const RubricEditor: React.FC<{ assignment: Assignment; canEdit: boolean; onSaved
             )
           }
         >
-          Save rubric
+          {t('grading.as.saveRubric')}
         </button>
         {assignment.rubricJson && (
-          <button className={ghost} disabled={!edit || busy} onClick={() => window.confirm('Remove the rubric?') && save(null)}>
-            Remove rubric
+          <button
+            className={ghost}
+            disabled={!edit || busy}
+            onClick={() => window.confirm(t('grading.as.removeRubricConfirm')) && save(null)}
+          >
+            {t('grading.as.removeRubric')}
           </button>
         )}
       </div>
@@ -377,14 +391,17 @@ const RubricEditor: React.FC<{ assignment: Assignment; canEdit: boolean; onSaved
 // ---------------------------------------------------------------------------
 
 const Appeals: React.FC<{ courseId: string; canResolve: boolean }> = ({ courseId, canResolve }) => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: Appeal[] }>(`/api/v1/courses/${courseId}/appeals`);
   const [openId, setOpenId] = useState<string | null>(null);
   const list = data?.data ?? [];
 
-  if (isLoading) return <div className="text-xs text-ink-subtle">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle">{t('grading.loading')}</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
   if (list.length === 0)
-    return <div className="text-xs text-ink-subtle p-10 text-center bg-canvas border border-line rounded-2xl">No grade appeals.</div>;
+    return (
+      <div className="text-xs text-ink-subtle p-10 text-center bg-canvas border border-line rounded-2xl">{t('grading.as.noAppeals')}</div>
+    );
 
   return (
     <ul className="space-y-3">
@@ -398,14 +415,14 @@ const Appeals: React.FC<{ courseId: string; canResolve: boolean }> = ({ courseId
             <span
               className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${a.status === 'OPEN' ? 'bg-accent/10 text-accent border-accent/30' : a.status === 'UPHELD' ? 'bg-success/10 text-success border-success/30' : 'bg-raised text-ink border-line'}`}
             >
-              {a.status}
+              {t.dyn(`grading.as.appeal.${a.status}`, a.status)}
             </span>
           </div>
           <p className="text-xs text-ink">"{a.reason}"</p>
           <div className="text-[11px] text-ink-subtle">
-            Current grade: {a.submission.grade} / {a.assignment.maxPoints}
+            {t('grading.as.currentGrade', { grade: a.submission.grade ?? '', max: a.assignment.maxPoints })}
           </div>
-          {a.response && <div className="text-[11px] text-ink-muted">Decision: {a.response}</div>}
+          {a.response && <div className="text-[11px] text-ink-muted">{t('grading.as.decisionText', { response: a.response })}</div>}
           {a.status === 'OPEN' &&
             canResolve &&
             (openId === a.id ? (
@@ -418,7 +435,7 @@ const Appeals: React.FC<{ courseId: string; canResolve: boolean }> = ({ courseId
               />
             ) : (
               <button className={ghost} onClick={() => setOpenId(a.id)}>
-                Review…
+                {t('grading.as.review')}
               </button>
             ))}
         </li>
@@ -428,6 +445,7 @@ const Appeals: React.FC<{ courseId: string; canResolve: boolean }> = ({ courseId
 };
 
 const Resolve: React.FC<{ appeal: Appeal; onDone: () => void }> = ({ appeal, onDone }) => {
+  const t = useT();
   const rubric = appeal.assignment.rubricJson;
   const { busy, error, run, clearError } = useAction();
   const [decision, setDecision] = useState<'UPHELD' | 'DENIED'>('DENIED');
@@ -463,11 +481,11 @@ const Resolve: React.FC<{ appeal: Appeal; onDone: () => void }> = ({ appeal, onD
     <div className="space-y-3 border-t border-line pt-3" onChange={clearError}>
       {error && <Banner kind="error">{error}</Banner>}
       <fieldset className="flex gap-4 text-xs text-ink">
-        <legend className="sr-only">Decision</legend>
+        <legend className="sr-only">{t('grading.as.decision')}</legend>
         {(['DENIED', 'UPHELD'] as const).map((d) => (
           <label key={d} className="flex items-center gap-1.5">
             <input type="radio" name={`d-${appeal.id}`} checked={decision === d} onChange={() => setDecision(d)} />
-            {d === 'DENIED' ? 'Keep the grade' : 'Change the grade'}
+            {d === 'DENIED' ? t('grading.as.keepGrade') : t('grading.as.changeGrade')}
           </label>
         ))}
       </fieldset>
@@ -476,7 +494,7 @@ const Resolve: React.FC<{ appeal: Appeal; onDone: () => void }> = ({ appeal, onD
           <RubricInputs criteria={rubric} values={values} onChange={setValues} />
         ) : (
           <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-            Corrected grade (out of {appeal.assignment.maxPoints})
+            {t('grading.as.correctedGrade', { max: appeal.assignment.maxPoints })}
             <input
               className={`${input} w-32 block`}
               type="number"
@@ -489,11 +507,11 @@ const Resolve: React.FC<{ appeal: Appeal; onDone: () => void }> = ({ appeal, onD
           </label>
         ))}
       <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-        Explanation shown to the learner
+        {t('grading.as.explanation')}
         <textarea className={`${input} w-full`} rows={2} maxLength={2000} value={response} onChange={(e) => setResponse(e.target.value)} />
       </label>
       <button className={primary} disabled={busy || !ready} onClick={submit}>
-        {busy ? 'Saving…' : 'Record decision'}
+        {busy ? t('grading.as.saving') : t('grading.as.recordDecision')}
       </button>
     </div>
   );
@@ -505,6 +523,7 @@ export const AssignmentGrading: React.FC<{
   onClose: () => void;
   /** Open on this course when the person may use it. */ initialCourseId?: string | null;
 }> = ({ onClose, initialCourseId }) => {
+  const t = useT();
   useEscapeKey(onClose);
   const { user } = useAuth();
   const { courses, isLoading } = useStaffCourses();
@@ -531,7 +550,7 @@ export const AssignmentGrading: React.FC<{
       className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Assignment grading"
+      aria-label={t('grading.as.title')}
     >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between gap-4">
@@ -540,50 +559,59 @@ export const AssignmentGrading: React.FC<{
               <ClipboardCheck className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-ink">Assignment grading</h3>
-              <p className="text-xs text-ink-muted">Grade submissions, build rubrics and review appeals.</p>
+              <h3 className="font-bold text-base text-ink">{t('grading.as.title')}</h3>
+              <p className="text-xs text-ink-muted">{t('grading.as.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <select className={input} aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            <select className={input} aria-label={t('grading.course')} value={courseId} onChange={(e) => setCourseId(e.target.value)}>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.code} · {c.title}
                 </option>
               ))}
             </select>
-            <select className={input} aria-label="Assignment" value={assignmentId} onChange={(e) => setAssignmentId(e.target.value)}>
+            <select
+              className={input}
+              aria-label={t('grading.as.assignment')}
+              value={assignmentId}
+              onChange={(e) => setAssignmentId(e.target.value)}
+            >
               {list.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.title}
                 </option>
               ))}
             </select>
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
+            <button
+              onClick={onClose}
+              aria-label={t('grading.close')}
+              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
         <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex gap-2">
-          {(['submissions', 'rubric', 'appeals'] as const).map((t) => (
+          {(['submissions', 'rubric', 'appeals'] as const).map((id) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize ${tab === t ? 'bg-brand text-on-brand' : 'text-ink-muted hover:bg-surface'}`}
+              key={id}
+              onClick={() => setTab(id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold ${tab === id ? 'bg-brand text-on-brand' : 'text-ink-muted hover:bg-surface'}`}
             >
-              {t}
+              {t(`grading.as.tab.${id}`)}
             </button>
           ))}
         </div>
         <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="text-xs text-ink-subtle">Loading…</div>
+            <div className="text-xs text-ink-subtle">{t('grading.loading')}</div>
           ) : !courseId ? (
-            <div className="text-xs text-ink-subtle p-10 text-center">You are not assigned to any course yet.</div>
+            <div className="text-xs text-ink-subtle p-10 text-center">{t('grading.noCourse')}</div>
           ) : tab === 'appeals' ? (
             <Appeals key={courseId} courseId={courseId} canResolve={isEditor} />
           ) : !assignment ? (
-            <div className="text-xs text-ink-subtle p-10 text-center">This course has no assignments yet.</div>
+            <div className="text-xs text-ink-subtle p-10 text-center">{t('grading.as.noAssignments')}</div>
           ) : tab === 'submissions' ? (
             <Submissions key={assignment.id} assignment={assignment} canGrade />
           ) : (

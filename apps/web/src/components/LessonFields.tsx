@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Trash2, Upload } from 'lucide-react';
 import { UPLOAD_ACCEPT, isUploadLink, uploadFile } from '@/lib/upload';
+import { useT, type Translator } from '@/lib/i18n';
 
 export type LessonType = 'RICHTEXT' | 'VIDEO' | 'INTERACTIVE_CODE' | 'PDF_DOCUMENT' | 'EXTERNAL_LTI_TOOL' | 'SCORM_PACKAGE';
 
@@ -17,7 +18,7 @@ export interface LessonDraft {
   url: string;
 }
 
-/** Types an instructor can pick. SCORM lessons come from an uploaded package, so they are shown but not chosen. */
+/** Types an instructor can pick (English labels are the fallback; shown through t.dyn). SCORM lessons come from an uploaded package, so they are shown but not chosen. */
 export const LESSON_TYPES: { value: LessonType; label: string }[] = [
   { value: 'RICHTEXT', label: 'Reading' },
   { value: 'VIDEO', label: 'Video' },
@@ -53,12 +54,8 @@ export const blankLesson = (patch: Partial<LessonDraft> = {}): LessonDraft => ({
 });
 
 /** Why a lesson cannot be saved yet, or null. */
-export const lessonProblem = (l: LessonDraft): string | null =>
-  !l.title.trim()
-    ? 'Every lesson needs a title.'
-    : l.url.trim() && !isHttpUrl(l.url.trim())
-      ? 'Addresses must start with http:// or https://, or be an uploaded file.'
-      : null;
+export const lessonProblem = (l: LessonDraft, t: Translator): string | null =>
+  !l.title.trim() ? t('builder.lesson.problem.title') : l.url.trim() && !isHttpUrl(l.url.trim()) ? t('builder.lesson.problem.url') : null;
 
 interface LessonFieldsProps {
   lesson: LessonDraft;
@@ -76,7 +73,9 @@ const UPLOADABLE: Partial<Record<LessonType, keyof typeof UPLOAD_ACCEPT>> = { VI
 
 /** The editable fields of one lesson, shared by the course builder and the content editor. */
 export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onChange, onDelete, disabled, hideDelete, courseId }) => {
+  const t = useT();
   const isScorm = lesson.type === 'SCORM_PACKAGE';
+  const urlLabel = URL_LABEL[lesson.type] ? t.dyn(`builder.urlLabel.${lesson.type}`, URL_LABEL[lesson.type]!) : null;
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
@@ -91,7 +90,7 @@ export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onCha
       setUploadedName(up.filename);
       onChange({ url: up.url });
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'The upload failed.');
+      setUploadError(e instanceof Error ? e.message : t('builder.lesson.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -103,23 +102,23 @@ export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onCha
           type="text"
           value={lesson.title}
           onChange={(e) => onChange({ title: e.target.value })}
-          placeholder="Lesson title"
+          placeholder={t('builder.lesson.titlePlaceholder')}
           maxLength={255}
-          aria-label={`Title of ${label}`}
+          aria-label={t('builder.lesson.aria.title', { label })}
           disabled={disabled}
           className="min-w-0 flex-1 bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
         />
         <select
           value={lesson.type}
           onChange={(e) => onChange({ type: e.target.value as LessonType })}
-          aria-label={`Type of ${label}`}
+          aria-label={t('builder.lesson.aria.type', { label })}
           disabled={disabled || isScorm}
           className="bg-canvas border border-line rounded-lg px-2 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
         >
-          {isScorm && <option value="SCORM_PACKAGE">SCORM module</option>}
-          {LESSON_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {isScorm && <option value="SCORM_PACKAGE">{t('builder.lessonType.SCORM_PACKAGE')}</option>}
+          {LESSON_TYPES.map((type) => (
+            <option key={type.value} value={type.value}>
+              {t.dyn(`builder.lessonType.${type.value}`, type.label)}
             </option>
           ))}
         </select>
@@ -129,17 +128,17 @@ export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onCha
           max={1440}
           value={lesson.minutes}
           onChange={(e) => onChange({ minutes: Math.min(1440, Math.max(1, Number(e.target.value) || 1)) })}
-          aria-label={`Minutes for ${label}`}
+          aria-label={t('builder.lesson.aria.minutes', { label })}
           disabled={disabled}
           className="w-16 bg-canvas border border-line rounded-lg px-2 py-1.5 text-xs text-ink focus:outline-none focus:border-brand"
         />
-        <span className="text-[10px] text-ink-subtle">min</span>
+        <span className="text-[10px] text-ink-subtle">{t('builder.common.min')}</span>
         {!hideDelete && (
           <button
             type="button"
             onClick={onDelete}
             disabled={disabled}
-            aria-label={`Delete ${label}`}
+            aria-label={t('builder.lesson.aria.delete', { label })}
             className="text-ink-subtle hover:text-danger transition-colors disabled:opacity-50"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -150,17 +149,13 @@ export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onCha
         rows={3}
         value={lesson.body}
         onChange={(e) => onChange({ body: e.target.value })}
-        placeholder={
-          lesson.type === 'INTERACTIVE_CODE'
-            ? 'Exercise instructions, shown above the code editor'
-            : 'Lesson text. Leave a blank line between paragraphs.'
-        }
+        placeholder={lesson.type === 'INTERACTIVE_CODE' ? t('builder.lesson.bodyPlaceholderCode') : t('builder.lesson.bodyPlaceholder')}
         maxLength={200000}
-        aria-label={`Content of ${label}`}
+        aria-label={t('builder.lesson.aria.content', { label })}
         disabled={disabled}
         className="w-full bg-canvas border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
       />
-      {URL_LABEL[lesson.type] && (
+      {urlLabel && (
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -170,9 +165,15 @@ export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onCha
               setUploadedName(null);
               onChange({ url: e.target.value });
             }}
-            placeholder={isUploadLink(lesson.url) ? `Uploaded file${uploadedName ? `: ${uploadedName}` : ''}` : URL_LABEL[lesson.type]}
+            placeholder={
+              isUploadLink(lesson.url)
+                ? uploadedName
+                  ? t('builder.lesson.uploadedFileNamed', { name: uploadedName })
+                  : t('builder.lesson.uploadedFile')
+                : urlLabel
+            }
             maxLength={2048}
-            aria-label={`${URL_LABEL[lesson.type]} for ${label}`}
+            aria-label={t('builder.lesson.aria.url', { what: urlLabel, label })}
             disabled={disabled}
             className="min-w-0 flex-1 bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
           />
@@ -181,20 +182,20 @@ export const LessonFields: React.FC<LessonFieldsProps> = ({ lesson, label, onCha
               className={`inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-[11px] font-semibold text-ink hover:bg-raised ${disabled || uploading ? 'pointer-events-none opacity-50' : ''}`}
             >
               <Upload className="h-3 w-3" />
-              {uploading ? 'Uploading…' : 'Upload'}
+              {uploading ? t('builder.lesson.uploading') : t('builder.lesson.upload')}
               <input
                 type="file"
                 className="sr-only"
                 accept={UPLOAD_ACCEPT[accept]}
                 disabled={disabled || uploading}
-                aria-label={`Upload a file for ${label}`}
+                aria-label={t('builder.lesson.aria.upload', { label })}
                 onChange={(e) => pick(e.target.files?.[0])}
               />
             </label>
           )}
           {isUploadLink(lesson.url) && (
             <a href={lesson.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[11px] text-brand-fg underline">
-              View
+              {t('builder.lesson.view')}
             </a>
           )}
         </div>

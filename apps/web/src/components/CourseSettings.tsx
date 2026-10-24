@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { useT } from '@/lib/i18n';
 
 interface CourseDetail {
   id: string;
@@ -41,6 +42,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
   onClose,
   onSaved,
 }) => {
+  const t = useT();
   useEscapeKey(onClose);
   const course = useApiData<{ data: CourseDetail }>(`/api/v1/courses/${courseId}`);
   const departments = useApiData<{ data: Department[] }>('/api/v1/courses/departments');
@@ -95,13 +97,13 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
           <div className="flex items-center gap-2.5">
             <Settings2 className="h-5 w-5 text-brand-fg" />
             <h3 id="course-settings-h" className="font-bold text-sm text-ink">
-              Course settings{draft ? `: ${draft.code}` : ''}
+              {draft ? t('builder.settings.titleWithCode', { code: draft.code }) : t('builder.settings.title')}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('builder.common.close')}
             className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"
           >
             <X className="h-5 w-5" />
@@ -111,17 +113,17 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {course.error && <Banner kind="error">{course.error}</Banner>}
           {error && <Banner kind="error">{error}</Banner>}
-          {saved && <Banner kind="ok">Saved.</Banner>}
-          {!draft && !course.error && <p className="text-xs text-ink-muted">Loading…</p>}
+          {saved && <Banner kind="ok">{t('builder.settings.saved')}</Banner>}
+          {!draft && !course.error && <p className="text-xs text-ink-muted">{t('builder.common.loading')}</p>}
           {draft && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <label className="sm:col-span-2 space-y-1.5">
-                  <span className={label}>Title</span>
+                  <span className={label}>{t('builder.settings.fieldTitle')}</span>
                   <input className={field} value={draft.title} maxLength={255} onChange={(e) => set({ title: e.target.value })} />
                 </label>
                 <label className="space-y-1.5">
-                  <span className={label}>Code</span>
+                  <span className={label}>{t('builder.settings.fieldCode')}</span>
                   <input
                     className={`${field} font-mono`}
                     value={draft.code}
@@ -131,7 +133,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                 </label>
               </div>
               <label className="block space-y-1.5">
-                <span className={label}>Description (shown in the catalogue)</span>
+                <span className={label}>{t('builder.settings.description')}</span>
                 <textarea
                   className={field}
                   rows={3}
@@ -141,36 +143,36 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                 />
               </label>
               <label className="block space-y-1.5">
-                <span className={label}>Syllabus</span>
+                <span className={label}>{t('builder.settings.syllabus')}</span>
                 <textarea
                   className={field}
                   rows={8}
                   maxLength={50000}
                   value={draft.syllabus ?? ''}
                   onChange={(e) => set({ syllabus: e.target.value })}
-                  placeholder="Learning outcomes, weekly schedule, assessment and grading policy, required reading, office hours…"
+                  placeholder={t('builder.settings.syllabusPlaceholder')}
                 />
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <label className="space-y-1.5">
-                  <span className={label}>Term</span>
+                  <span className={label}>{t('builder.settings.term')}</span>
                   <select className={field} value={draft.termId ?? ''} onChange={(e) => set({ termId: e.target.value || null })}>
-                    <option value="">No term</option>
-                    {(terms.data?.data ?? []).map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
+                    <option value="">{t('builder.settings.noTerm')}</option>
+                    {(terms.data?.data ?? []).map((term) => (
+                      <option key={term.id} value={term.id}>
+                        {term.name}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="space-y-1.5">
-                  <span className={label}>Department</span>
+                  <span className={label}>{t('builder.settings.department')}</span>
                   <select
                     className={field}
                     value={draft.departmentId ?? ''}
                     onChange={(e) => set({ departmentId: e.target.value || null })}
                   >
-                    <option value="">None</option>
+                    <option value="">{t('builder.settings.noDepartment')}</option>
                     {(departments.data?.data ?? []).map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.name} ({d.campus})
@@ -179,7 +181,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                   </select>
                 </label>
                 <label className="space-y-1.5">
-                  <span className={label}>Pass mark (%)</span>
+                  <span className={label}>{t('builder.settings.passMark')}</span>
                   <input
                     className={field}
                     type="number"
@@ -196,7 +198,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                     onChange={(e) => set({ allowSelfEnroll: e.target.checked })}
                     className="rounded border-line"
                   />
-                  Learners can enrol themselves
+                  {t('builder.settings.selfEnrol')}
                 </label>
               </div>
             </>
@@ -209,13 +211,13 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
             onClick={onClose}
             className="px-4 py-2 rounded-xl border border-line bg-surface hover:bg-raised text-xs font-semibold text-ink"
           >
-            Close
+            {t('builder.common.close')}
           </button>
           <button
             disabled={busy || invalid}
             className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand text-xs font-bold"
           >
-            {busy ? 'Saving…' : 'Save settings'}
+            {busy ? t('builder.settings.saving') : t('builder.settings.save')}
           </button>
         </div>
       </form>

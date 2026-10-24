@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { errorMessage, useApiData } from '@/hooks/useApiData';
 import { useStaffCourses } from '@/hooks/useStaffCourses';
+import { useT } from '@/lib/i18n';
 
 type Status = 'ENROLLED' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'DROPPED';
 
@@ -20,7 +21,8 @@ interface RosterRow {
   certificate?: { certificateNumber: string } | null;
 }
 
-type Notice = { kind: 'ok' | 'error'; text: string };
+/** A success is kept as a key (so it follows the language); an error carries the server's own text. */
+type Notice = { kind: 'ok'; key: string; vars: Record<string, string> } | { kind: 'error'; text: string };
 
 const STATUS_STYLE: Record<Status, string> = {
   ENROLLED: 'border-line bg-surface text-ink-muted',
@@ -44,6 +46,7 @@ export const CourseRoster: React.FC<{
   /** Open on this course when the person may use it. */ initialCourseId?: string | null;
 }> = ({ onClose, initialCourseId }) => {
   useEscapeKey(onClose);
+  const t = useT();
   const { user } = useAuth();
   const { courses, isLoading: coursesLoading } = useStaffCourses();
   // Administrators and the assigned instructor manage enrolment; assistants can only look.
@@ -63,8 +66,8 @@ export const CourseRoster: React.FC<{
 
   useEffect(() => {
     if (!notice) return;
-    const t = setTimeout(() => setNotice(null), 6000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(timer);
   }, [notice]);
 
   const roster = useApiData<{ data: RosterRow[]; pagination?: { total: number } }>(courseId ? '/api/v1/enrollments' : null, {
@@ -84,10 +87,10 @@ export const CourseRoster: React.FC<{
     setBusy(true);
     try {
       await api.post('/api/v1/enrollments', { courseId, email });
-      setNotice({ kind: 'ok', text: `${email} is now enrolled in ${course?.code}.` });
+      setNotice({ kind: 'ok', key: 'teach.roster.enrolled', vars: { email, code: course?.code ?? '' } });
       setEnrollEmail('');
     } catch (err) {
-      setNotice({ kind: 'error', text: errorMessage(err, 'Could not enroll that person.') });
+      setNotice({ kind: 'error', text: errorMessage(err, t('teach.roster.enrollFailed')) });
     } finally {
       setBusy(false);
       roster.reload();
@@ -95,17 +98,18 @@ export const CourseRoster: React.FC<{
   };
 
   const remove = async (row: RosterRow) => {
-    const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : 'This learner';
+    const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : t('teach.roster.thisLearner');
     setBusy(true);
     try {
       await api.delete(`/api/v1/enrollments/${row.id}`);
       setNotice({
         kind: 'ok',
-        text: `${name} was removed from ${course?.code}. Their progress is kept; enrolling them again picks up where they left off.`,
+        key: 'teach.roster.removed',
+        vars: { name, code: course?.code ?? '' },
       });
       setRemoving(null);
     } catch (err) {
-      setNotice({ kind: 'error', text: errorMessage(err, 'Could not remove that learner.') });
+      setNotice({ kind: 'error', text: errorMessage(err, t('teach.roster.removeFailed')) });
     } finally {
       setBusy(false);
       roster.reload();
@@ -113,7 +117,7 @@ export const CourseRoster: React.FC<{
   };
 
   const complete = async (row: RosterRow) => {
-    const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : 'This learner';
+    const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : t('teach.roster.thisLearner');
     setBusy(true);
     try {
       const res = await api.patch<{ data?: { status: Status } }>(`/api/v1/enrollments/${row.id}/progress`, {
@@ -123,13 +127,13 @@ export const CourseRoster: React.FC<{
       const status = res.data?.status ?? 'COMPLETED';
       setNotice(
         status === 'FAILED'
-          ? { kind: 'ok', text: `${name} is marked as not passed: the final grade is below the passing grade.` }
-          : { kind: 'ok', text: `${name} completed the course. Their certificate has been issued.` }
+          ? { kind: 'ok', key: 'teach.roster.notPassed', vars: { name } }
+          : { kind: 'ok', key: 'teach.roster.completed', vars: { name } }
       );
       setConfirming(null);
       setGrade('');
     } catch (e) {
-      setNotice({ kind: 'error', text: errorMessage(e, 'Could not record the completion.') });
+      setNotice({ kind: 'error', text: errorMessage(e, t('teach.roster.completeFailed')) });
     } finally {
       setBusy(false);
       roster.reload();
@@ -141,15 +145,13 @@ export const CourseRoster: React.FC<{
       className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/85 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
-      aria-label="Course learners"
+      aria-label={t('teach.roster.dialog')}
     >
       <div className="relative flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between gap-4 border-b border-line bg-canvas px-6 py-4">
           <div>
-            <h3 className="text-base font-bold text-ink">Learners</h3>
-            <p className="text-xs text-ink-muted">
-              Progress follows the lessons learners finish. Only you can record that a learner completed the course.
-            </p>
+            <h3 className="text-base font-bold text-ink">{t('teach.roster.title')}</h3>
+            <p className="text-xs text-ink-muted">{t('teach.roster.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
             <select
@@ -158,7 +160,7 @@ export const CourseRoster: React.FC<{
                 setCourseId(e.target.value);
                 setConfirming(null);
               }}
-              aria-label="Course"
+              aria-label={t('teach.roster.course')}
               disabled={busy}
               className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
             >
@@ -170,7 +172,7 @@ export const CourseRoster: React.FC<{
             </select>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('teach.roster.close')}
               className="rounded-xl p-1 text-ink-muted transition-colors hover:bg-raised hover:text-ink"
             >
               <X className="h-5 w-5" />
@@ -181,18 +183,18 @@ export const CourseRoster: React.FC<{
         <div className="flex-1 overflow-y-auto p-6">
           {coursesLoading || (courseId && roster.isLoading && !roster.data) ? (
             <p role="status" className="py-16 text-center text-xs text-ink-muted">
-              Loading…
+              {t('teach.roster.loading')}
             </p>
           ) : courses.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-line px-6 py-12 text-center text-xs text-ink-muted">
-              You are not assigned to any courses yet.
+              {t('teach.roster.noCourses')}
             </p>
           ) : roster.error ? (
             <div role="alert" className="mx-auto max-w-md rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center">
-              <p className="text-sm font-bold text-danger">Could not load the learners of {course?.code}</p>
+              <p className="text-sm font-bold text-danger">{t('teach.roster.loadError', { code: course?.code ?? '' })}</p>
               <p className="mt-1.5 text-xs text-ink-muted">{roster.error}</p>
               <button onClick={roster.reload} className={`${smallBtn} mt-4`}>
-                Try again
+                {t('teach.roster.retry')}
               </button>
             </div>
           ) : (
@@ -200,35 +202,35 @@ export const CourseRoster: React.FC<{
               {canManage && (
                 <form onSubmit={enroll} className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-canvas p-3">
                   <label className="text-xs font-semibold text-ink-muted" htmlFor="enroll-email">
-                    Enroll a learner
+                    {t('teach.roster.enrollLabel')}
                   </label>
                   <input
                     id="enroll-email"
                     type="email"
                     value={enrollEmail}
                     onChange={(e) => setEnrollEmail(e.target.value)}
-                    placeholder="their email address"
+                    placeholder={t('teach.roster.emailPlaceholder')}
                     maxLength={254}
                     disabled={busy}
                     className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
                   />
                   <button type="submit" disabled={busy || !enrollEmail.trim()} className={primaryBtn}>
-                    Enroll
+                    {t('teach.roster.enroll')}
                   </button>
                 </form>
               )}
               {rows.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-line px-6 py-10 text-center text-xs text-ink-muted">
-                  Nobody is enrolled in {course?.code} yet.
+                  {t('teach.roster.nobody', { code: course?.code ?? '' })}
                 </p>
               )}
               {rows.length > 0 && (
                 <p className="text-[11px] text-ink-subtle">
-                  {rows.length} of {total} learner{total === 1 ? '' : 's'} shown
+                  {t.plural('teach.roster.shown', total, { count: t.number(total), shown: t.number(rows.length) })}
                 </p>
               )}
               {rows.map((row) => {
-                const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : 'Learner';
+                const name = row.user ? `${row.user.firstName} ${row.user.lastName}` : t('teach.roster.learner');
                 const open = row.status === 'ENROLLED' || row.status === 'IN_PROGRESS';
                 const asking = confirming === row.id;
                 const passing = row.course?.passingGradePercent;
@@ -239,7 +241,7 @@ export const CourseRoster: React.FC<{
                         <div className="flex flex-wrap items-center gap-2">
                           <strong className="text-sm text-ink">{name}</strong>
                           <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${STATUS_STYLE[row.status]}`}>
-                            {row.status.replace('_', ' ')}
+                            {t.dyn(`teach.roster.status.${row.status}`, row.status.replace('_', ' '))}
                           </span>
                         </div>
                         {row.user && <p className="text-xs text-ink-muted">{row.user.email}</p>}
@@ -248,16 +250,20 @@ export const CourseRoster: React.FC<{
                       <div className="flex items-center gap-4">
                         <div className="w-36">
                           <div className="mb-1 flex justify-between text-[11px] text-ink-muted">
-                            <span>Progress</span>
-                            <span className="font-bold text-ink">{Math.round(row.progressPercent)}%</span>
+                            <span>{t('teach.roster.progress')}</span>
+                            <span className="font-bold text-ink">{t.number(Math.round(row.progressPercent))}%</span>
                           </div>
                           <div className="h-1.5 overflow-hidden rounded-full border border-line bg-surface">
                             <div className="h-full rounded-full bg-brand" style={{ width: `${row.progressPercent}%` }} />
                           </div>
                         </div>
-                        {row.finalGrade !== null && <span className="text-xs text-ink-muted">Grade {Math.round(row.finalGrade)}%</span>}
+                        {row.finalGrade !== null && (
+                          <span className="text-xs text-ink-muted">
+                            {t('teach.roster.grade', { grade: `${t.number(Math.round(row.finalGrade))}%` })}
+                          </span>
+                        )}
                         {row.certificate && (
-                          <span className="flex items-center gap-1 text-[11px] text-success" title="Certificate number">
+                          <span className="flex items-center gap-1 text-[11px] text-success" title={t('teach.roster.certificate')}>
                             <Award className="h-3.5 w-3.5" />
                             {row.certificate.certificateNumber}
                           </span>
@@ -269,20 +275,20 @@ export const CourseRoster: React.FC<{
                               setGrade('');
                             }}
                             disabled={busy}
-                            aria-label={`Mark ${name} as completed`}
+                            aria-label={t('teach.roster.markDoneAria', { name })}
                             className={smallBtn}
                           >
-                            Mark as completed
+                            {t('teach.roster.markDone')}
                           </button>
                         )}
                         {open && canManage && removing !== row.id && (
                           <button
                             onClick={() => setRemoving(row.id)}
                             disabled={busy}
-                            aria-label={`Remove ${name} from the course`}
+                            aria-label={t('teach.roster.removeAria', { name })}
                             className={smallBtn}
                           >
-                            Remove
+                            {t('teach.roster.remove')}
                           </button>
                         )}
                       </div>
@@ -290,53 +296,52 @@ export const CourseRoster: React.FC<{
 
                     {open && canManage && removing === row.id && (
                       <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5 text-xs">
-                        <span className="text-ink">
-                          Remove {name} from {course?.code}? They lose access to it. Their progress is kept, and enrolling them again picks
-                          up where they left off.
-                        </span>
+                        <span className="text-ink">{t('teach.roster.removeConfirm', { name, code: course?.code ?? '' })}</span>
                         <button
                           onClick={() => remove(row)}
                           disabled={busy}
-                          aria-label={`Confirm removing ${name}`}
+                          aria-label={t('teach.roster.removeConfirmAria', { name })}
                           className="rounded-lg bg-danger px-3 py-1.5 text-[11px] font-bold text-on-brand disabled:opacity-50"
                         >
-                          {busy ? 'Removing…' : 'Remove'}
+                          {busy ? t('teach.roster.removing') : t('teach.roster.remove')}
                         </button>
                         <button onClick={() => setRemoving(null)} disabled={busy} className={smallBtn}>
-                          Keep
+                          {t('teach.roster.keep')}
                         </button>
                       </div>
                     )}
 
                     {open && asking && (
                       <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-brand/40 bg-brand/10 px-3 py-2.5 text-xs">
-                        <span className="text-ink">Record {name} as having completed the course? This issues their certificate.</span>
+                        <span className="text-ink">{t('teach.roster.completeConfirm', { name })}</span>
                         <label className="flex items-center gap-1.5 text-ink-muted">
-                          Final grade (optional)
+                          {t('teach.roster.finalGrade')}
                           <input
                             type="number"
                             min={0}
                             max={100}
                             value={grade}
                             onChange={(e) => setGrade(e.target.value)}
-                            aria-label={`Final grade for ${name}`}
+                            aria-label={t('teach.roster.finalGradeAria', { name })}
                             className="w-16 rounded-lg border border-line bg-canvas px-2 py-1 text-xs text-ink focus:border-brand focus:outline-none"
                           />
                           %
                         </label>
                         {passing !== undefined && (
-                          <span className="text-[11px] text-ink-subtle">Below {passing}% is recorded as not passed.</span>
+                          <span className="text-[11px] text-ink-subtle">
+                            {t('teach.roster.below', { passing: `${t.number(passing)}%` })}
+                          </span>
                         )}
                         <button
                           onClick={() => complete(row)}
                           disabled={busy || gradeInvalid}
-                          aria-label={`Confirm completion for ${name}`}
+                          aria-label={t('teach.roster.confirmAria', { name })}
                           className={primaryBtn}
                         >
-                          {busy ? 'Saving…' : 'Confirm'}
+                          {busy ? t('teach.roster.saving') : t('teach.roster.confirm')}
                         </button>
                         <button onClick={() => setConfirming(null)} disabled={busy} className={smallBtn}>
-                          Cancel
+                          {t('teach.roster.cancel')}
                         </button>
                       </div>
                     )}
@@ -355,7 +360,7 @@ export const CourseRoster: React.FC<{
             }`}
           >
             {notice.kind === 'ok' ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-            <span className="font-semibold">{notice.text}</span>
+            <span className="font-semibold">{notice.kind === 'ok' ? t.dyn(notice.key, '', notice.vars) : notice.text}</span>
           </div>
         )}
       </div>

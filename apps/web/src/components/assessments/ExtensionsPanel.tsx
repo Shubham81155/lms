@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useT } from '@/lib/i18n';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
@@ -29,6 +30,7 @@ export const ExtensionsPanel: React.FC<{ courseId: string; itemType: 'ASSIGNMENT
   itemId,
   courseDue,
 }) => {
+  const t = useT();
   const list = useApiData<{ data: Extension[] }>('/api/v1/extensions', { itemType, itemId });
   const roster = useApiData<{ data: RosterRow[] }>('/api/v1/enrollments', { courseId, limit: 100 });
   const { busy, error, run } = useAction();
@@ -64,8 +66,7 @@ export const ExtensionsPanel: React.FC<{ courseId: string; itemType: 'ASSIGNMENT
   return (
     <div className={`${card} space-y-3`}>
       <p className="text-xs text-ink-muted">
-        {courseDue ? `Due for everyone on ${when(courseDue)}.` : 'No course-wide due date is set.'} An extension gives one learner a later
-        date; they are notified.
+        {courseDue ? t('assess.ext.due', { when: when(courseDue) }) : t('assess.ext.noDue')} {t('assess.ext.intro')}
       </p>
       {(error || list.error) && <Banner kind="error">{error || list.error}</Banner>}
       {(list.data?.data ?? []).length > 0 && (
@@ -75,12 +76,17 @@ export const ExtensionsPanel: React.FC<{ courseId: string; itemType: 'ASSIGNMENT
               <div>
                 <span className="font-semibold text-ink">{x.name}</span> <span className="text-ink-subtle">{x.email}</span>
                 <div className="text-[11px] text-ink-muted">
-                  Until {when(x.dueAt)}
+                  {t('assess.ext.until', { when: when(x.dueAt) })}
                   {x.reason ? ` · ${x.reason}` : ''}
                 </div>
               </div>
-              <button className={ghost} disabled={busy} onClick={() => remove(x.id)} aria-label={`Remove the extension for ${x.name}`}>
-                Remove
+              <button
+                className={ghost}
+                disabled={busy}
+                onClick={() => remove(x.id)}
+                aria-label={t('assess.ext.removeFor', { name: x.name })}
+              >
+                {t('assess.common.remove')}
               </button>
             </li>
           ))}
@@ -88,9 +94,9 @@ export const ExtensionsPanel: React.FC<{ courseId: string; itemType: 'ASSIGNMENT
       )}
       <form onSubmit={grant} className="flex flex-wrap items-end gap-2">
         <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-          <span className="block">Learner</span>
+          <span className="block">{t('assess.ext.learner')}</span>
           <select className={input} value={userId} onChange={(e) => setUserId(e.target.value)} required>
-            <option value="">Choose…</option>
+            <option value="">{t('assess.ext.choose')}</option>
             {learners.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.firstName} {u.lastName}
@@ -99,21 +105,21 @@ export const ExtensionsPanel: React.FC<{ courseId: string; itemType: 'ASSIGNMENT
           </select>
         </label>
         <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-          <span className="block">New deadline</span>
+          <span className="block">{t('assess.ext.newDeadline')}</span>
           <input className={input} type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required />
         </label>
         <label className="space-y-1 text-[11px] font-semibold text-ink-muted flex-1 min-w-[10rem]">
-          <span className="block">Reason (optional)</span>
+          <span className="block">{t('assess.ext.reason')}</span>
           <input
             className={`${input} w-full`}
             value={reason}
             maxLength={1000}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. medical certificate"
+            placeholder={t('assess.ext.reasonPh')}
           />
         </label>
         <button className={primary} disabled={busy || !userId || !dueAt}>
-          Grant extension
+          {t('assess.ext.grant')}
         </button>
       </form>
     </div>

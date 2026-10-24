@@ -7,13 +7,15 @@ import { useCohortAnalytics, type AtRiskLearner } from '@/hooks/useAnalytics';
 import { errorMessage } from '@/hooks/useApiData';
 import { activeShare, cohortReportCsv, cohortReportFilename, hasGpa } from '@/lib/cohortReport';
 import { downloadCsv } from '@/lib/download';
+import { useT } from '@/lib/i18n';
 
 interface FacultyAnalyticsModalProps {
   onClose: () => void;
 }
 
 type TabId = 'OVERVIEW' | 'AT_RISK' | 'ITEM_ANALYSIS';
-type Notice = { kind: 'ok' | 'error'; text: string };
+// Stored as a kind and its values, not as text, so the message follows the language at render time.
+type Notice = { kind: 'ok' | 'error'; msg: { type: 'nudge'; name: string } | { type: 'report' } | { type: 'text'; text: string } };
 
 const EmptyState: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="rounded-2xl border border-dashed border-line bg-canvas/50 px-6 py-12 text-center">
@@ -36,6 +38,7 @@ const MetricCard: React.FC<{ label: string; value: string; caption?: string; ton
 );
 
 export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ onClose }) => {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<TabId>('OVERVIEW');
   const [notice, setNotice] = useState<Notice | null>(null);
   const [nudges, setNudges] = useState<Record<string, 'sending' | 'sent'>>({});
@@ -69,46 +72,49 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
     try {
       await api.post('/api/v1/analytics/at-risk/nudge', { courseId: student.courseId, userId: student.id });
       setNudges((n) => ({ ...n, [key]: 'sent' }));
-      setNotice({ kind: 'ok', text: `Nudge sent to ${student.name}.` });
+      setNotice({ kind: 'ok', msg: { type: 'nudge', name: student.name } });
     } catch (e) {
       setNudges((n) => {
         const { [key]: _gone, ...rest } = n;
         return rest;
       });
-      setNotice({ kind: 'error', text: errorMessage(e, 'Could not send the nudge.') });
+      setNotice({ kind: 'error', msg: { type: 'text', text: errorMessage(e, t('grading.fa.nudgeFailed')) } });
     }
   };
 
   const exportReport = () => {
     if (!analytics) return;
     downloadCsv(cohortReportFilename(), cohortReportCsv(analytics));
-    setNotice({ kind: 'ok', text: 'Report downloaded.' });
+    setNotice({ kind: 'ok', msg: { type: 'report' } });
   };
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'OVERVIEW', label: "Bloom's Cognitive Distribution" },
-    { id: 'AT_RISK', label: `Early-Warning Radar${analytics ? ` (${atRisk.length})` : ''}` },
-    { id: 'ITEM_ANALYSIS', label: 'Assessment Item Difficulty Analysis' },
+    { id: 'OVERVIEW', label: t('grading.fa.tab.overview') },
+    {
+      id: 'AT_RISK',
+      label: analytics ? t('grading.fa.tab.atRiskCount', { count: t.number(atRisk.length) }) : t('grading.fa.tab.atRisk'),
+    },
+    { id: 'ITEM_ANALYSIS', label: t('grading.fa.tab.items') },
   ];
 
   let body: React.ReactNode;
   if (isLoading) {
     body = (
       <p role="status" className="py-16 text-center text-xs text-ink-muted">
-        Loading cohort analytics…
+        {t('grading.fa.loading')}
       </p>
     );
   } else if (error || !analytics) {
     body = (
       <div role="alert" className="mx-auto max-w-md rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center">
-        <p className="text-sm font-bold text-danger">Could not load the analytics</p>
-        <p className="mt-1.5 text-xs text-ink-muted">{error ?? 'No data was returned.'}</p>
+        <p className="text-sm font-bold text-danger">{t('grading.fa.loadFailed')}</p>
+        <p className="mt-1.5 text-xs text-ink-muted">{error ?? t('grading.fa.noData')}</p>
         <button
           onClick={refetch}
           className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-raised"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          Try again
+          {t('grading.fa.tryAgain')}
         </button>
       </div>
     );
@@ -116,20 +122,18 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
     body = (
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
-          <h4 className="text-sm font-bold text-ink">Cohort Mastery Across Bloom&apos;s Cognitive Taxonomy</h4>
-          <p className="mt-1 text-xs text-ink-muted">Average score on graded quiz questions tagged with a Bloom's level.</p>
+          <h4 className="text-sm font-bold text-ink">{t('grading.fa.overviewHeading')}</h4>
+          <p className="mt-1 text-xs text-ink-muted">{t('grading.fa.overviewHint')}</p>
         </div>
         {bloom.length === 0 ? (
-          <EmptyState title="No Bloom's taxonomy data yet">
-            Mastery per level appears once quiz questions have a Bloom level (set it in the Question Bank) and learners have answered them.
-          </EmptyState>
+          <EmptyState title={t('grading.fa.noBloomTitle')}>{t('grading.fa.noBloomBody')}</EmptyState>
         ) : (
           <div className="space-y-3.5">
             {bloom.map((b) => (
               <div key={b.level} className="space-y-2 rounded-2xl border border-line bg-canvas p-4">
                 <div className="flex items-center justify-between text-xs font-semibold">
                   <span className="text-ink">{b.level}</span>
-                  <span className="font-bold text-orchid">{b.score}% Cohort Mastery</span>
+                  <span className="font-bold text-orchid">{t('grading.fa.cohortMastery', { score: t.number(b.score) })}</span>
                 </div>
                 <div className="h-2.5 w-full overflow-hidden rounded-full border border-line bg-surface">
                   <div
@@ -147,16 +151,12 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
     body = (
       <div className="space-y-4">
         <div>
-          <h4 className="text-sm font-bold text-ink">Predictive At-Risk Student Intervention Queue</h4>
-          <p className="mt-1 text-xs text-ink-muted">
-            Learners automatically flagged by heuristic rules: low engagement, streak drops, or failed milestones.
-          </p>
+          <h4 className="text-sm font-bold text-ink">{t('grading.fa.riskHeading')}</h4>
+          <p className="mt-1 text-xs text-ink-muted">{t('grading.fa.riskHint')}</p>
         </div>
         {atRisk.length === 0 ? (
-          <EmptyState title="No learners are flagged right now">
-            {hasLearners
-              ? 'Nobody in your courses currently matches the early-warning rules. This list updates as engagement and scores change.'
-              : 'There are no learners enrolled in your courses yet.'}
+          <EmptyState title={t('grading.fa.noRiskTitle')}>
+            {hasLearners ? t('grading.fa.noRiskBody') : t('grading.fa.noLearnersBody')}
           </EmptyState>
         ) : (
           <div className="space-y-3">
@@ -172,7 +172,7 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
                       <strong className="text-sm text-ink">{student.name}</strong>
                       <span className="text-xs text-ink-muted">({student.email})</span>
                       <span className="rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-[10px] font-bold text-danger">
-                        {student.riskFactor} RISK
+                        {t.dyn(`grading.fa.risk.${student.riskFactor}`, `${student.riskFactor} RISK`)}
                       </span>
                       <span className="text-xs text-ink-subtle">• {student.course}</span>
                     </div>
@@ -184,17 +184,25 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
                         </div>
                       ))}
                     </div>
-                    <div className="text-[11px] font-medium text-orchid">Recommended Action: {student.suggestedAction}</div>
+                    <div className="text-[11px] font-medium text-orchid">
+                      {t('grading.fa.recommendedAction', { action: student.suggestedAction })}
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <button
                       onClick={() => sendNudge(student)}
                       disabled={!student.courseId || state !== undefined}
-                      title={student.courseId ? 'Sends the learner a notification' : 'This entry has no course'}
+                      title={student.courseId ? t('grading.fa.nudgeTitle') : t('grading.fa.nudgeNoCourse')}
                       className="flex items-center gap-1.5 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-on-brand shadow-md shadow-purple-500/20 transition-all hover:bg-purple-500 disabled:opacity-60"
                     >
                       {state === 'sent' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                      <span>{state === 'sent' ? 'Nudge sent' : state === 'sending' ? 'Sending…' : 'Send Nudge'}</span>
+                      <span>
+                        {state === 'sent'
+                          ? t('grading.fa.nudgeDone')
+                          : state === 'sending'
+                            ? t('grading.fa.nudgeSending')
+                            : t('grading.fa.nudgeSend')}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -208,13 +216,11 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
     body = (
       <div className="space-y-4">
         <div>
-          <h4 className="text-sm font-bold text-ink">Curriculum & Assessment Item Diagnostics</h4>
-          <p className="mt-1 text-xs text-ink-muted">Questions where student scores deviate significantly from the class baseline.</p>
+          <h4 className="text-sm font-bold text-ink">{t('grading.fa.itemsHeading')}</h4>
+          <p className="mt-1 text-xs text-ink-muted">{t('grading.fa.itemsHint')}</p>
         </div>
         {items.length === 0 ? (
-          <EmptyState title="No question results to analyse yet">
-            Item diagnostics appear once learners have submitted quizzes that contain questions.
-          </EmptyState>
+          <EmptyState title={t('grading.fa.noItemsTitle')}>{t('grading.fa.noItemsBody')}</EmptyState>
         ) : (
           <div className="space-y-3">
             {items.map((item) => (
@@ -226,7 +232,9 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
                   <div className="flex flex-wrap items-center gap-2">
                     <strong className="text-sm text-ink">{item.concept}</strong>
                     <span className="rounded border border-line bg-surface px-2 py-0.5 text-[10px] font-bold text-ink-muted">
-                      {item.taxonomyLevel ? `Bloom: ${item.taxonomyLevel}` : (item.questionType ?? 'Question')}
+                      {item.taxonomyLevel
+                        ? t('grading.fa.bloomLevel', { level: item.taxonomyLevel })
+                        : (item.questionType ?? t('grading.fa.questionFallback'))}
                     </span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -237,11 +245,11 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
                             : 'border border-success/30 bg-success/10 text-success'
                       }`}
                     >
-                      {item.averageScorePercent}% Accuracy
+                      {t('grading.fa.accuracy', { percent: t.number(item.averageScorePercent) })}
                     </span>
                   </div>
                   <p className="mt-1.5 text-xs text-ink-muted">
-                    Faculty Pedagogical Recommendation: <strong className="text-ink">{item.recommendation}</strong>
+                    {t('grading.fa.pedagogical')} <strong className="text-ink">{item.recommendation}</strong>
                   </p>
                 </div>
               </div>
@@ -267,11 +275,9 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
             </div>
             <div>
               <h3 id="cohort-h" className="text-base font-bold text-ink">
-                Faculty Cohort Intelligence & Early-Warning Radar
+                {t('grading.fa.title')}
               </h3>
-              <p className="text-xs text-ink-muted">
-                Learner retention, Bloom&apos;s cognitive taxonomy distribution, and item difficulty diagnostics for your courses.
-              </p>
+              <p className="text-xs text-ink-muted">{t('grading.fa.subtitle')}</p>
             </div>
           </div>
 
@@ -282,11 +288,11 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
               className="flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-raised disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5 text-orchid" />
-              <span>Export CSV Report</span>
+              <span>{t('grading.fa.exportReport')}</span>
             </button>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('grading.close')}
               className="rounded-xl p-1 text-ink-muted transition-colors hover:bg-raised hover:text-ink"
             >
               <X className="h-5 w-5" />
@@ -302,37 +308,49 @@ export const FacultyAnalyticsModal: React.FC<FacultyAnalyticsModalProps> = ({ on
             }`}
           >
             {notice.kind === 'ok' ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-            <span className="font-semibold">{notice.text}</span>
+            <span className="font-semibold">
+              {notice.msg.type === 'nudge'
+                ? t('grading.fa.nudgeSent', { name: notice.msg.name })
+                : notice.msg.type === 'report'
+                  ? t('grading.fa.reportDownloaded')
+                  : notice.msg.text}
+            </span>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-4 border-b border-line bg-canvas/40 p-6 md:grid-cols-4">
           <MetricCard
-            label="Total Learners"
+            label={t('grading.fa.metric.total')}
             value={metrics ? String(metrics.totalEnrolled) : '—'}
-            caption={metrics ? (share === null ? 'Nobody enrolled yet' : `${share}% active this week`) : undefined}
+            caption={
+              metrics
+                ? share === null
+                  ? t('grading.fa.metric.totalNone')
+                  : t('grading.fa.metric.totalActive', { percent: t.number(share) })
+                : undefined
+            }
           />
           <MetricCard
-            label="Average Completion"
+            label={t('grading.fa.metric.completion')}
             value={hasLearners ? `${metrics.averageProgress}%` : '—'}
-            caption={hasLearners ? `${metrics.completionRate}% have finished` : undefined}
+            caption={hasLearners ? t('grading.fa.metric.completionFinished', { percent: t.number(metrics.completionRate) }) : undefined}
           />
           <MetricCard
-            label="At-Risk Learners"
+            label={t('grading.fa.metric.atRisk')}
             value={analytics ? String(atRisk.length) : '—'}
             tone={atRisk.length > 0 ? 'danger' : 'default'}
-            caption={analytics ? (atRisk.length > 0 ? 'Early interventions pending' : 'Nobody flagged right now') : undefined}
+            caption={analytics ? (atRisk.length > 0 ? t('grading.fa.metric.atRiskPending') : t('grading.fa.metric.atRiskNone')) : undefined}
           />
           <MetricCard
-            label="Cohort Average GPA"
+            label={t('grading.fa.metric.gpa')}
             value={metrics && hasGpa(metrics) ? metrics.averageGpa.toFixed(2) : '—'}
-            caption={metrics ? (hasGpa(metrics) ? '4.0 scale, approved grades' : 'No approved grades yet') : undefined}
+            caption={metrics ? (hasGpa(metrics) ? t('grading.fa.metric.gpaScale') : t('grading.fa.metric.gpaNone')) : undefined}
           />
         </div>
 
         <div
           role="tablist"
-          aria-label="Analytics views"
+          aria-label={t('grading.fa.tablist')}
           className="flex items-center gap-2 border-b border-line bg-canvas/60 px-6 py-2.5 text-xs font-bold"
         >
           {tabs.map((tab) => (

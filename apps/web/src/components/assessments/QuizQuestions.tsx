@@ -2,12 +2,13 @@
 
 import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { draftProblem, type ChoiceOption } from '@/lib/forms';
 import { QuestionFields, blankQuestion, questionBody, type QuestionDraft } from './QuestionFields';
-import { card, ghost, label, primary } from './ui';
+import { card, ghost, primary, tLabel, tProblem } from './ui';
 
 interface ApiQuestion {
   id: string;
@@ -37,8 +38,9 @@ interface FormProps {
 }
 
 const QuestionForm: React.FC<FormProps> = ({ initial, saveLabel, busy, onSave, onCancel }) => {
+  const t = useT();
   const [d, setD] = useState(initial);
-  const problem = draftProblem(d);
+  const problem = tProblem(t, draftProblem(d));
   return (
     <form
       className="space-y-4 rounded-2xl border border-brand/40 bg-surface p-4"
@@ -50,10 +52,10 @@ const QuestionForm: React.FC<FormProps> = ({ initial, saveLabel, busy, onSave, o
       <QuestionFields d={d} set={(p) => setD((x) => ({ ...x, ...p }))} />
       <div className="flex items-center gap-3">
         <button className={primary} disabled={busy || !!problem}>
-          {busy ? 'Saving…' : saveLabel}
+          {busy ? t('assess.common.saving') : saveLabel}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
-          Cancel
+          {t('assess.common.cancel')}
         </button>
         {problem && <span className="text-[11px] text-accent">{problem}</span>}
       </div>
@@ -63,6 +65,7 @@ const QuestionForm: React.FC<FormProps> = ({ initial, saveLabel, busy, onSave, o
 
 /** The questions of one quiz: add, edit and delete. Staff see the answer keys here. */
 export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChanged: () => void }> = ({ quizId, canEdit, onChanged }) => {
+  const t = useT();
   const quiz = useApiData<{ data: { questions: ApiQuestion[] } }>(`/api/v1/quizzes/${quizId}`);
   const { busy, error, run, clearError } = useAction();
   const [editing, setEditing] = useState<ApiQuestion | 'new' | null>(null);
@@ -89,11 +92,11 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
   return (
     <div className="space-y-3">
       {(error || quiz.error) && <Banner kind="error">{error || quiz.error}</Banner>}
-      {quiz.isLoading && !quiz.data && <p className="text-xs text-ink-subtle">Loading questions…</p>}
+      {quiz.isLoading && !quiz.data && <p className="text-xs text-ink-subtle">{t('assess.quizq.loading')}</p>}
 
       {!quiz.isLoading && questions.length === 0 && editing !== 'new' && (
         <p className={`${card} text-center text-xs text-ink-muted`}>
-          No questions yet. {canEdit ? 'Add one below, or copy several from the question bank.' : ''}
+          {t('assess.quizq.empty')} {canEdit ? t('assess.quizq.emptyAdd') : ''}
         </p>
       )}
 
@@ -101,7 +104,13 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
         {questions.map((q, i) =>
           editing !== 'new' && editing?.id === q.id ? (
             <li key={q.id}>
-              <QuestionForm initial={toDraft(q)} saveLabel="Save question" busy={busy} onSave={save} onCancel={() => setEditing(null)} />
+              <QuestionForm
+                initial={toDraft(q)}
+                saveLabel={t('assess.quizq.save')}
+                busy={busy}
+                onSave={save}
+                onCancel={() => setEditing(null)}
+              />
             </li>
           ) : (
             <li key={q.id} className={`${card} flex items-start gap-3`}>
@@ -109,22 +118,26 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
               <div className="min-w-0 flex-1">
                 <div className="whitespace-pre-wrap text-xs text-ink">{q.questionText}</div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
-                  <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-ink">{label(q.questionType)}</span>
-                  <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-ink">{q.points} pt</span>
+                  <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-ink">{tLabel(t, q.questionType)}</span>
+                  <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-ink">
+                    {t.plural('assess.common.pt', q.points)}
+                  </span>
                   {q.bloomLevel && (
-                    <span className="rounded-full border border-orchid/30 bg-orchid/15 px-2 py-0.5 text-orchid">{label(q.bloomLevel)}</span>
+                    <span className="rounded-full border border-orchid/30 bg-orchid/15 px-2 py-0.5 text-orchid">
+                      {tLabel(t, q.bloomLevel)}
+                    </span>
                   )}
                 </div>
               </div>
               {canEdit &&
                 (deleting === q.id ? (
                   <div className="flex items-center gap-2 text-[11px]">
-                    <span className="text-danger">Delete this question?</span>
+                    <span className="text-danger">{t('assess.quizq.confirm')}</span>
                     <button className={ghost} disabled={busy} onClick={() => remove(q.id)}>
-                      Delete
+                      {t('assess.common.delete')}
                     </button>
                     <button className={ghost} onClick={() => setDeleting(null)}>
-                      Keep
+                      {t('assess.common.keep')}
                     </button>
                   </div>
                 ) : (
@@ -135,11 +148,11 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
                         clearError();
                         setEditing(q);
                       }}
-                      aria-label={`Edit question ${i + 1}`}
+                      aria-label={t('assess.quizq.editN', { n: i + 1 })}
                     >
-                      Edit
+                      {t('assess.common.edit')}
                     </button>
-                    <button className={ghost} onClick={() => setDeleting(q.id)} aria-label={`Delete question ${i + 1}`}>
+                    <button className={ghost} onClick={() => setDeleting(q.id)} aria-label={t('assess.quizq.deleteN', { n: i + 1 })}>
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
@@ -151,7 +164,13 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
 
       {canEdit &&
         (editing === 'new' ? (
-          <QuestionForm initial={blankQuestion()} saveLabel="Add question" busy={busy} onSave={save} onCancel={() => setEditing(null)} />
+          <QuestionForm
+            initial={blankQuestion()}
+            saveLabel={t('assess.quizq.add')}
+            busy={busy}
+            onSave={save}
+            onCancel={() => setEditing(null)}
+          />
         ) : (
           <button
             className={ghost}
@@ -160,7 +179,7 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
               setEditing('new');
             }}
           >
-            + Add question
+            {t('assess.quizq.addBtn')}
           </button>
         ))}
     </div>

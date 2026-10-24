@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useStaffCourses, type StaffCourse } from '@/hooks/useStaffCourses';
-import { plural } from '@/lib/plural';
+import { useT } from '@/lib/i18n';
 
 /** The per-course tools a dashboard can open. */
 export type CourseTool =
@@ -56,12 +56,13 @@ interface StaffCourseListProps {
 
 /** The courses a staff member works with, each with its own tools, so every tool opens on the right course. */
 export const StaffCourseList: React.FC<StaffCourseListProps> = ({ title, canEdit, tools, onOpen, emptyText, refreshKey }) => {
+  const t = useT();
   const { courses, isLoading, error, reload } = useStaffCourses();
   React.useEffect(() => {
     if (refreshKey) reload();
   }, [refreshKey, reload]);
 
-  const shown = TOOLS.filter((t) => tools.includes(t.key) && (canEdit || !t.editorsOnly));
+  const shown = TOOLS.filter((tool) => tools.includes(tool.key) && (canEdit || !tool.editorsOnly));
 
   return (
     <section className="space-y-4" aria-labelledby="staff-courses-h">
@@ -70,14 +71,14 @@ export const StaffCourseList: React.FC<StaffCourseListProps> = ({ title, canEdit
           <BookOpen className="h-5 w-5 text-brand-fg" />
           {title}
         </h2>
-        {!isLoading && <span className="text-xs text-ink-muted">{plural(courses.length, 'course')}</span>}
+        {!isLoading && <span className="text-xs text-ink-muted">{t.plural('builder.staff.courses', courses.length)}</span>}
       </div>
       {error && (
         <p role="alert" className="text-xs text-danger">
           {error}
         </p>
       )}
-      {isLoading && <p className="text-xs text-ink-subtle">Loading courses…</p>}
+      {isLoading && <p className="text-xs text-ink-subtle">{t('builder.staff.loading')}</p>}
       {!isLoading && !error && courses.length === 0 && (
         <p className="rounded-2xl border border-dashed border-line p-8 text-center text-xs text-ink-muted">{emptyText}</p>
       )}
@@ -91,27 +92,30 @@ export const StaffCourseList: React.FC<StaffCourseListProps> = ({ title, canEdit
                     {c.code}
                   </span>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLE[c.status]}`}>
-                    {c.status.toLowerCase()}
+                    {t.dyn(`builder.statusWord.${c.status}`, c.status.toLowerCase())}
                   </span>
                 </div>
                 <h3 className="mt-1.5 font-bold text-sm text-ink truncate">{c.title}</h3>
                 <p className="text-[11px] text-ink-muted">
-                  {plural(c.enrollmentCount, 'learner')} · {plural(c.moduleCount, 'module')}
+                  {t.plural('builder.staff.learners', c.enrollmentCount)} · {t.plural('builder.staff.modules', c.moduleCount)}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {shown.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => onOpen(key, c.id)}
-                  className="px-2.5 py-1.5 rounded-lg border border-line bg-canvas hover:bg-raised hover:border-brand/40 text-[11px] font-semibold text-ink flex items-center gap-1.5 transition-colors"
-                  aria-label={`${label}: ${c.code}`}
-                >
-                  <Icon className="h-3.5 w-3.5 text-ink-muted" />
-                  {label}
-                </button>
-              ))}
+              {shown.map(({ key, label: englishLabel, icon: Icon }) => {
+                const label = t.dyn(`builder.tool.${key}`, englishLabel);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => onOpen(key, c.id)}
+                    className="px-2.5 py-1.5 rounded-lg border border-line bg-canvas hover:bg-raised hover:border-brand/40 text-[11px] font-semibold text-ink flex items-center gap-1.5 transition-colors"
+                    aria-label={t('builder.staff.toolAria', { label, code: c.code })}
+                  >
+                    <Icon className="h-3.5 w-3.5 text-ink-muted" />
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </article>
         ))}

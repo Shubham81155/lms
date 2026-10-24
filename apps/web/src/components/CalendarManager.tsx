@@ -9,6 +9,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useStaffCourses } from '@/hooks/useStaffCourses';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { eventProblem, toLocalInput } from '@/lib/assessmentForms';
+import { useT, type Translator } from '@/lib/i18n';
 import { card, danger, ghost, input, label, primary } from '@/components/assessments/ui';
 
 const CATEGORIES = ['EXAM', 'LAB', 'LECTURE', 'OFFICE_HOURS', 'DEADLINE'] as const;
@@ -35,6 +36,15 @@ interface Draft {
   courseId: string; // "" = whole organisation
 }
 
+const PROBLEM_KEYS: Record<string, string> = {
+  'Give the event a title.': 'teach.cal.problem.title',
+  'Choose when it starts and ends.': 'teach.cal.problem.when',
+  'It cannot end before it starts.': 'teach.cal.problem.order',
+};
+const catLabel = (t: Translator, c: string) => t.dyn(`teach.cal.cat.${c}`, label(c));
+const localDateTime = (t: Translator, iso: string) =>
+  t.date(iso, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: undefined });
+
 const ORG = '__org__';
 const browserZone = () => {
   try {
@@ -56,8 +66,10 @@ const Form: React.FC<{
   onSave: (d: Draft) => void;
   onCancel: () => void;
 }> = ({ initial, editing, courses, allowOrg, busy, onSave, onCancel }) => {
+  const t = useT();
   const [d, setD] = useState(initial);
-  const problem = eventProblem(d);
+  const problemRaw = eventProblem(d);
+  const problem = problemRaw ? t.dyn(PROBLEM_KEYS[problemRaw] ?? '', problemRaw) : null;
   const set = (p: Partial<Draft>) => setD((x) => ({ ...x, ...p }));
   return (
     <form
@@ -68,24 +80,24 @@ const Form: React.FC<{
       }}
     >
       <label className="block space-y-1 text-xs font-semibold text-ink-muted">
-        Title
+        {t('teach.cal.fieldTitle')}
         <input className={`${input} w-full`} maxLength={200} value={d.title} onChange={(e) => set({ title: e.target.value })} />
       </label>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <label className="space-y-1 text-xs font-semibold text-ink-muted">
-          Type
+          {t('teach.cal.fieldType')}
           <select className={`${input} w-full`} value={d.category} onChange={(e) => set({ category: e.target.value as Category })}>
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {label(c)}
+                {catLabel(t, c)}
               </option>
             ))}
           </select>
         </label>
         <label className="space-y-1 text-xs font-semibold text-ink-muted">
-          For
+          {t('teach.cal.fieldFor')}
           <select className={`${input} w-full`} value={d.courseId} disabled={editing} onChange={(e) => set({ courseId: e.target.value })}>
-            {allowOrg && <option value={ORG}>Everyone in the organisation</option>}
+            {allowOrg && <option value={ORG}>{t('teach.cal.forOrg')}</option>}
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.code} · {c.title}
@@ -94,16 +106,16 @@ const Form: React.FC<{
           </select>
         </label>
         <label className="space-y-1 text-xs font-semibold text-ink-muted">
-          Starts
+          {t('teach.cal.fieldStarts')}
           <input className={`${input} w-full`} type="datetime-local" value={d.start} onChange={(e) => set({ start: e.target.value })} />
         </label>
         <label className="space-y-1 text-xs font-semibold text-ink-muted">
-          Ends
+          {t('teach.cal.fieldEnds')}
           <input className={`${input} w-full`} type="datetime-local" value={d.end} onChange={(e) => set({ end: e.target.value })} />
         </label>
       </div>
       <label className="block space-y-1 text-xs font-semibold text-ink-muted">
-        Details (optional)
+        {t('teach.cal.fieldDetails')}
         <textarea
           className={`${input} w-full`}
           rows={3}
@@ -112,13 +124,13 @@ const Form: React.FC<{
           onChange={(e) => set({ description: e.target.value })}
         />
       </label>
-      <p className="text-[11px] text-ink-subtle">Times are in your time zone ({browserZone()}).</p>
+      <p className="text-[11px] text-ink-subtle">{t('teach.cal.timezone', { zone: browserZone() })}</p>
       <div className="flex items-center gap-3">
         <button className={primary} disabled={busy || !!problem}>
-          {busy ? 'Saving…' : editing ? 'Save event' : 'Add event'}
+          {busy ? t('teach.cal.saving') : editing ? t('teach.cal.saveEvent') : t('teach.cal.addEvent')}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
-          Cancel
+          {t('teach.cal.cancel')}
         </button>
         {problem && <span className="text-[11px] text-accent">{problem}</span>}
       </div>
@@ -129,6 +141,7 @@ const Form: React.FC<{
 /** Exams, deadlines, labs and office hours on the academic calendar learners see. */
 export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEscapeKey(onClose);
+  const t = useT();
   const { user } = useAuth();
   const isAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN';
   const { courses } = useStaffCourses({ editableOnly: true });
@@ -194,27 +207,24 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
       className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/85 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
-      aria-label="Academic calendar events"
+      aria-label={t('teach.cal.dialog')}
     >
       <div className="flex h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between gap-4 border-b border-line bg-canvas px-6 py-4">
           <div>
-            <h3 className="text-base font-bold text-ink">Calendar events</h3>
-            <p className="text-xs text-ink-muted">
-              Exams, deadlines, labs and office hours. Learners see them on their academic calendar. Live classes appear here too but are
-              managed from Live Classes.
-            </p>
+            <h3 className="text-base font-bold text-ink">{t('teach.cal.title')}</h3>
+            <p className="text-xs text-ink-muted">{t('teach.cal.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3">
             <select
               data-readonly-ok
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              aria-label="Show events for"
+              aria-label={t('teach.cal.filterAria')}
               className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
             >
-              <option value="">Everything I can see</option>
-              <option value={ORG}>Organisation-wide only</option>
+              <option value="">{t('teach.cal.filterAll')}</option>
+              <option value={ORG}>{t('teach.cal.filterOrg')}</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.code} · {c.title}
@@ -223,7 +233,7 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
             </select>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('teach.cal.close')}
               className="rounded-xl p-1 text-ink-muted transition-colors hover:bg-raised hover:text-ink"
             >
               <X className="h-5 w-5" />
@@ -233,9 +243,9 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
 
         <div className="flex-1 space-y-3 overflow-y-auto p-6">
           {(error || events.error) && <Banner kind="error">{error || events.error}</Banner>}
-          {events.isLoading && !events.data && <p className="text-xs text-ink-subtle">Loading events…</p>}
+          {events.isLoading && !events.data && <p className="text-xs text-ink-subtle">{t('teach.cal.loading')}</p>}
           {!events.isLoading && rows.length === 0 && mode !== 'new' && (
-            <p className={`${card} text-center text-xs text-ink-muted`}>No events in this view yet.</p>
+            <p className={`${card} text-center text-xs text-ink-muted`}>{t('teach.cal.empty')}</p>
           )}
 
           <ul className="space-y-3">
@@ -268,25 +278,33 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
                         <div className="flex flex-wrap items-center gap-2">
                           <h4 className="text-sm font-bold text-ink">{e.title}</h4>
                           <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-bold text-ink-muted">
-                            {label(e.category)}
+                            {catLabel(t, e.category)}
                           </span>
                           <span className="rounded-full border border-brand/30 bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-fg">
-                            {e.courseId ? (course?.code ?? 'course') : 'everyone'}
+                            {e.courseId ? (course?.code ?? t('teach.cal.scopeCourse')) : t('teach.cal.scopeEveryone')}
                           </span>
                         </div>
                         <p className="text-[11px] text-ink-muted">
-                          {new Date(e.startsAt).toLocaleString()} to {new Date(e.endsAt).toLocaleString()}
+                          {t('teach.cal.range', { start: localDateTime(t, e.startsAt), end: localDateTime(t, e.endsAt) })}
                         </p>
                         {e.description && <p className="mt-1 whitespace-pre-wrap text-xs text-ink">{e.description}</p>}
-                        {isLiveClass(e) && <p className="mt-1 text-[11px] text-ink-subtle">Managed from Live Classes.</p>}
+                        {isLiveClass(e) && <p className="mt-1 text-[11px] text-ink-subtle">{t('teach.cal.managedLive')}</p>}
                       </div>
                       {canChange(e) && (
                         <div className="flex gap-2">
-                          <button className={ghost} onClick={() => start({ edit: e.id })} aria-label={`Edit ${e.title}`}>
-                            Edit
+                          <button
+                            className={ghost}
+                            onClick={() => start({ edit: e.id })}
+                            aria-label={t('teach.cal.editAria', { title: e.title })}
+                          >
+                            {t('teach.cal.edit')}
                           </button>
-                          <button className={ghost} onClick={() => start({ del: e.id })} aria-label={`Delete ${e.title}`}>
-                            Delete
+                          <button
+                            className={ghost}
+                            onClick={() => start({ del: e.id })}
+                            aria-label={t('teach.cal.deleteAria', { title: e.title })}
+                          >
+                            {t('teach.cal.delete')}
                           </button>
                         </div>
                       )}
@@ -294,12 +312,12 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
                   )}
                   {deleting && (
                     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5 text-xs">
-                      <span className="text-ink">Delete “{e.title}”? Learners will no longer see it.</span>
+                      <span className="text-ink">{t('teach.cal.confirmDelete', { title: e.title })}</span>
                       <button className={danger} disabled={busy} onClick={() => remove(e.id)}>
-                        Delete event
+                        {t('teach.cal.deleteEvent')}
                       </button>
                       <button className={ghost} onClick={() => setMode(null)}>
-                        Keep
+                        {t('teach.cal.keep')}
                       </button>
                     </div>
                   )}
@@ -309,7 +327,7 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
           </ul>
 
           {courses.length === 0 && !isAdmin ? (
-            <p className="text-[11px] text-ink-subtle">Only instructors and administrators can add events.</p>
+            <p className="text-[11px] text-ink-subtle">{t('teach.cal.onlyStaff')}</p>
           ) : mode === 'new' ? (
             <Form
               initial={blank}
@@ -322,7 +340,7 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
             />
           ) : (
             <button className={primary} onClick={() => start('new')}>
-              + New event
+              {t('teach.cal.new')}
             </button>
           )}
         </div>

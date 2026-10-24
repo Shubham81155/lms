@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, X, Library } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { useStaffCourses } from '@/hooks/useStaffCourses';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { draftProblem, type ChoiceOption } from '@/lib/forms';
+import { tLabel, tProblem } from '@/components/assessments/ui';
 import {
   BLOOM_LEVELS,
   QUESTION_TYPES,
@@ -45,7 +47,6 @@ const input =
 const primary = 'px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all';
 const ghost =
   'px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
-const label = (s: string) => s.replace(/_/g, ' ').toLowerCase();
 
 const blank = (type = 'MULTIPLE_CHOICE'): QuestionDraft & { tags: string; courseId: string } => ({
   ...blankQuestion(type),
@@ -54,6 +55,7 @@ const blank = (type = 'MULTIPLE_CHOICE'): QuestionDraft & { tags: string; course
 });
 
 const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: () => void }> = ({ item, onDone, onCancel }) => {
+  const t = useT();
   const { courses } = useStaffCourses();
   const { busy, error, run, clearError } = useAction();
   const [d, setD] = useState(() =>
@@ -70,7 +72,7 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
         }
       : blank()
   );
-  const problem = draftProblem(d);
+  const problem = tProblem(t, draftProblem(d));
   const set = (patch: Partial<typeof d>) => {
     clearError();
     setD((p) => ({ ...p, ...patch }));
@@ -92,13 +94,13 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
 
   return (
     <form onSubmit={save} className="space-y-4 bg-canvas border border-line rounded-2xl p-5">
-      <h4 className="text-sm font-bold text-ink">{item ? 'Edit question' : 'New question'}</h4>
+      <h4 className="text-sm font-bold text-ink">{item ? t('assess.bank.editTitle') : t('assess.bank.new')}</h4>
       {error && <Banner kind="error">{error}</Banner>}
       <QuestionFields d={d} set={set} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Tags (comma separated)
+          {t('assess.bank.tags')}
           <input
             className={`${input} w-full`}
             placeholder="raft, consensus"
@@ -107,9 +109,9 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
           />
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Share with course staff
+          {t('assess.bank.share')}
           <select className={`${input} w-full`} value={d.courseId} onChange={(e) => set({ courseId: e.target.value })}>
-            <option value="">Only me</option>
+            <option value="">{t('assess.bank.onlyMe')}</option>
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.code} · {c.title}
@@ -121,10 +123,10 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
 
       <div className="flex items-center gap-3">
         <button className={primary} disabled={busy || !!problem}>
-          {busy ? 'Saving…' : 'Save question'}
+          {busy ? t('assess.common.saving') : t('assess.bank.saveQ')}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
-          Cancel
+          {t('assess.common.cancel')}
         </button>
         {problem && <span className="text-[11px] text-accent">{problem}</span>}
       </div>
@@ -134,6 +136,7 @@ const Editor: React.FC<{ item: BankItem | null; onDone: () => void; onCancel: ()
 
 export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEscapeKey(onClose);
+  const t = useT();
   const { user } = useAuth();
   const { courses } = useStaffCourses();
   const [q, setQ] = useState('');
@@ -151,11 +154,11 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
   // Search as the user pauses typing rather than on every key press.
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setQuery(q.trim());
       setPage(1);
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [q]);
 
   const {
@@ -191,12 +194,12 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const addToQuiz = () =>
     run(async () => {
       const r = await api.post<{ data: unknown[] }>(`/api/v1/quizzes/${quizId}/questions/from-bank`, { itemIds: [...selected] });
-      setMsg(`Added ${r.data.length} question(s) to the quiz.`);
+      setMsg(t.plural('assess.bank.added', r.data.length));
       setSelected(new Set());
     });
 
   const remove = (i: BankItem) => {
-    if (!window.confirm('Delete this question from the bank? Copies already in quizzes are not affected.')) return;
+    if (!window.confirm(t('assess.bank.confirmDelete'))) return;
     run(async () => {
       await api.delete(`/api/v1/question-bank/${i.id}`);
       setSelected((p) => {
@@ -213,7 +216,7 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Question bank"
+      aria-label={t('assess.bank.dialog')}
     >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
@@ -222,16 +225,20 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               <Library className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-ink">Question bank</h3>
-              <p className="text-xs text-ink-muted">Reusable questions with tags and Bloom levels. Copy them into any quiz you teach.</p>
+              <h3 className="font-bold text-base text-ink">{t('assess.bank.dialog')}</h3>
+              <p className="text-xs text-ink-muted">{t('assess.bank.sub')}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button className={primary} onClick={() => setEditing('new')}>
               <Plus className="h-3.5 w-3.5 inline mr-1" />
-              New question
+              {t('assess.bank.new')}
             </button>
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
+            <button
+              onClick={onClose}
+              aria-label={t('assess.common.close')}
+              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -255,15 +262,15 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               <div role="search" className="flex flex-wrap items-center gap-2">
                 <input
                   className={`${input} w-56`}
-                  aria-label="Search questions"
-                  placeholder="Search text…"
+                  aria-label={t('assess.bank.search')}
+                  placeholder={t('assess.bank.searchPh')}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                 />
                 <input
                   className={`${input} w-32`}
-                  aria-label="Filter by tag"
-                  placeholder="Tag"
+                  aria-label={t('assess.bank.filterTag')}
+                  placeholder={t('assess.bank.tagPh')}
                   value={tag}
                   onChange={(e) => {
                     setTag(e.target.value);
@@ -272,43 +279,43 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                 />
                 <select
                   className={input}
-                  aria-label="Filter by type"
+                  aria-label={t('assess.bank.filterType')}
                   value={type}
                   onChange={(e) => {
                     setType(e.target.value);
                     setPage(1);
                   }}
                 >
-                  <option value="">All types</option>
-                  {TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {label(t)}
+                  <option value="">{t('assess.bank.allTypes')}</option>
+                  {TYPES.map((k) => (
+                    <option key={k} value={k}>
+                      {tLabel(t, k)}
                     </option>
                   ))}
                 </select>
                 <select
                   className={input}
-                  aria-label="Filter by Bloom level"
+                  aria-label={t('assess.bank.filterBloom')}
                   value={bloom}
                   onChange={(e) => {
                     setBloom(e.target.value);
                     setPage(1);
                   }}
                 >
-                  <option value="">All levels</option>
+                  <option value="">{t('assess.bank.allLevels')}</option>
                   {BLOOM.map((b) => (
                     <option key={b} value={b}>
-                      {label(b)}
+                      {tLabel(t, b)}
                     </option>
                   ))}
                 </select>
               </div>
 
               <ul className="space-y-2">
-                {isLoading && <li className="text-xs text-ink-subtle">Loading…</li>}
+                {isLoading && <li className="text-xs text-ink-subtle">{t('assess.common.loading')}</li>}
                 {!isLoading && items.length === 0 && (
                   <li className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">
-                    No questions match. Create your first one.
+                    {t('assess.bank.empty')}
                   </li>
                 )}
                 {items.map((i) => (
@@ -316,26 +323,30 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                     <input
                       type="checkbox"
                       className="mt-1"
-                      aria-label={`Select question: ${i.questionText.slice(0, 40)}`}
+                      aria-label={t('assess.bank.select', { text: i.questionText.slice(0, 40) })}
                       checked={selected.has(i.id)}
                       onChange={() => toggle(i.id)}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-ink whitespace-pre-wrap">{i.questionText}</div>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
-                        <span className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink">{label(i.questionType)}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink">{i.points} pt</span>
+                        <span className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink">{tLabel(t, i.questionType)}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink">
+                          {t.plural('assess.common.pt', i.points)}
+                        </span>
                         {i.bloomLevel && (
                           <span className="px-2 py-0.5 rounded-full bg-orchid/15 border border-orchid/30 text-orchid">
-                            {label(i.bloomLevel)}
+                            {tLabel(t, i.bloomLevel)}
                           </span>
                         )}
                         {i.courseId && (
-                          <span className="px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand-fg">shared</span>
+                          <span className="px-2 py-0.5 rounded-full bg-brand/15 border border-brand/30 text-brand-fg">
+                            {t('assess.bank.shared')}
+                          </span>
                         )}
-                        {i.tags.map((t) => (
-                          <span key={t} className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink-muted">
-                            #{t}
+                        {i.tags.map((tg) => (
+                          <span key={tg} className="px-2 py-0.5 rounded-full bg-surface border border-line text-ink-muted">
+                            #{tg}
                           </span>
                         ))}
                       </div>
@@ -343,9 +354,9 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
                     {canModify(i) && (
                       <div className="flex gap-2">
                         <button className={ghost} onClick={() => setEditing(i)}>
-                          Edit
+                          {t('assess.common.edit')}
                         </button>
-                        <button className={ghost} aria-label="Delete question" disabled={busy} onClick={() => remove(i)}>
+                        <button className={ghost} aria-label={t('assess.bank.deleteQ')} disabled={busy} onClick={() => remove(i)}>
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
@@ -357,14 +368,17 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               {data && data.pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between text-xs text-ink-muted">
                   <span>
-                    Page {data.pagination.page} of {data.pagination.totalPages} · {data.pagination.total} questions
+                    {t.plural('assess.bank.pageInfo', data.pagination.total, {
+                      page: data.pagination.page,
+                      pages: data.pagination.totalPages,
+                    })}
                   </span>
                   <div className="flex gap-2">
                     <button className={ghost} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                      Previous
+                      {t('assess.bank.prev')}
                     </button>
                     <button className={ghost} disabled={page >= data.pagination.totalPages} onClick={() => setPage((p) => p + 1)}>
-                      Next
+                      {t('assess.bank.next')}
                     </button>
                   </div>
                 </div>
@@ -375,17 +389,23 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
         {!editing && (
           <div className="bg-canvas border-t border-line px-6 py-3 flex flex-wrap items-center gap-3">
-            <span className="text-xs text-ink-muted">{selected.size} selected</span>
-            <select className={input} aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
-              <option value="">Choose a course…</option>
+            <span className="text-xs text-ink-muted">{t.plural('assess.bank.selected', selected.size)}</span>
+            <select className={input} aria-label={t('assess.common.course')} value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+              <option value="">{t('assess.bank.chooseCourse')}</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.code} · {c.title}
                 </option>
               ))}
             </select>
-            <select className={input} aria-label="Quiz" value={quizId} onChange={(e) => setQuizId(e.target.value)} disabled={!courseId}>
-              <option value="">Choose a quiz…</option>
+            <select
+              className={input}
+              aria-label={t('assess.bank.quiz')}
+              value={quizId}
+              onChange={(e) => setQuizId(e.target.value)}
+              disabled={!courseId}
+            >
+              <option value="">{t('assess.bank.chooseQuiz')}</option>
               {(quizzes.data?.data ?? []).map((z) => (
                 <option key={z.id} value={z.id}>
                   {z.title}
@@ -393,7 +413,7 @@ export const QuestionBank: React.FC<{ onClose: () => void }> = ({ onClose }) => 
               ))}
             </select>
             <button className={primary} disabled={busy || !quizId || selected.size === 0} onClick={addToQuiz}>
-              Add to quiz
+              {t('assess.bank.addToQuiz')}
             </button>
           </div>
         )}

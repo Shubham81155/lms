@@ -10,6 +10,7 @@ import { useStaffCourses } from '@/hooks/useStaffCourses';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { ScormResults } from '@/components/ScormResults';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useT } from '@/lib/i18n';
 
 interface Category {
   id: string;
@@ -58,18 +59,21 @@ const STATUS_STYLE: Record<Row['status'], string> = {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+const CURVE_OPTIONS: CurveMethod[] = ['NONE', 'ADD_POINTS', 'SCALE_TO_MAX'];
+
 // ---------------------------------------------------------------------------
 // Setup: categories, items, curve
 // ---------------------------------------------------------------------------
 
 const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, canEdit }) => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: Config }>(`/api/v1/courses/${courseId}/gradebook/config`);
   const { busy, error: actionError, run, clearError } = useAction();
   const [cats, setCats] = useState<{ name: string; weight: string }[]>([]);
   const [assign, setAssign] = useState<Record<string, string>>({});
   const [method, setMethod] = useState<CurveMethod>('NONE');
   const [curveValue, setCurveValue] = useState('0');
-  const [saved, setSaved] = useState<string | null>(null);
+  const [saved, setSaved] = useState<'categories' | 'items' | 'curve' | null>(null);
 
   const cfg = data?.data;
   useEffect(() => {
@@ -82,7 +86,7 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
 
   const total = round2(cats.reduce((s, c) => s + (Number(c.weight) || 0), 0));
   const totalOk = Math.abs(total - 100) < 0.005;
-  const done = (what: string) => setSaved(what);
+  const done = (what: 'categories' | 'items' | 'curve') => setSaved(what);
 
   const saveCategories = () =>
     run(async () => {
@@ -94,7 +98,7 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
         { courseId }
       );
       await reload();
-      done('Categories saved.');
+      done('categories');
     });
 
   const saveItems = () =>
@@ -112,7 +116,7 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
         { courseId }
       );
       await reload();
-      done('Assignments saved.');
+      done('items');
     });
 
   const saveCurve = () =>
@@ -123,10 +127,10 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
         { courseId }
       );
       await reload();
-      done('Curve saved.');
+      done('curve');
     });
 
-  if (isLoading) return <div className="text-xs text-ink-subtle p-6">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle p-6">{t('grading.loading')}</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
   if (!cfg) return null;
 
@@ -139,31 +143,31 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
       }}
     >
       {actionError && <Banner kind="error">{actionError}</Banner>}
-      {saved && <Banner kind="ok">{saved} Recalculate grades to apply the change.</Banner>}
-      {!canEdit && <Banner kind="error">Teaching assistants can view the setup but not change it.</Banner>}
+      {saved && <Banner kind="ok">{t('grading.gb.savedBanner', { saved: t(`grading.gb.saved.${saved}`) })}</Banner>}
+      {!canEdit && <Banner kind="error">{t('grading.gb.taReadOnly')}</Banner>}
 
       <section className="space-y-3" aria-labelledby="cat-h">
         <div className="flex items-center justify-between">
           <h4 id="cat-h" className="text-xs font-bold uppercase tracking-wider text-ink">
-            Grade categories
+            {t('grading.gb.categories')}
           </h4>
           <span className={`text-xs font-mono ${totalOk ? 'text-success' : 'text-danger'}`}>
-            Total {total}% {totalOk ? '✓' : '(must be 100)'}
+            {t('grading.gb.total', { total: t.number(total) })} {totalOk ? '✓' : t('grading.gb.mustBe100')}
           </span>
         </div>
         {cats.map((c, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
               className={`${input} flex-1`}
-              aria-label={`Category ${i + 1} name`}
+              aria-label={t('grading.gb.catName', { n: i + 1 })}
               value={c.name}
               disabled={!canEdit}
-              placeholder="e.g. Exams"
+              placeholder={t('grading.gb.catPlaceholder')}
               onChange={(e) => setCats((p) => p.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
             />
             <input
               className={`${input} w-24`}
-              aria-label={`Category ${i + 1} weight`}
+              aria-label={t('grading.gb.catWeight', { n: i + 1 })}
               type="number"
               min={0.01}
               max={100}
@@ -176,7 +180,7 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
             <button
               className={ghost}
               disabled={!canEdit}
-              aria-label={`Remove category ${i + 1}`}
+              aria-label={t('grading.gb.catRemove', { n: i + 1 })}
               onClick={() => setCats((p) => p.filter((_, j) => j !== i))}
             >
               <Trash2 className="h-3 w-3" />
@@ -186,36 +190,36 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
         <div className="flex gap-2">
           <button className={ghost} disabled={!canEdit} onClick={() => setCats((p) => [...p, { name: '', weight: '' }])}>
             <Plus className="h-3 w-3 inline mr-1" />
-            Add category
+            {t('grading.gb.addCategory')}
           </button>
           <button className={primary} disabled={!canEdit || busy || !totalOk || cats.some((c) => !c.name.trim())} onClick={saveCategories}>
-            Save categories
+            {t('grading.gb.saveCategories')}
           </button>
         </div>
       </section>
 
       <section className="space-y-3" aria-labelledby="items-h">
         <h4 id="items-h" className="text-xs font-bold uppercase tracking-wider text-ink">
-          Which work counts
+          {t('grading.gb.whichWork')}
         </h4>
-        {cfg.items.length === 0 && <p className="text-xs text-ink-subtle">This course has no quizzes or assignments yet.</p>}
+        {cfg.items.length === 0 && <p className="text-xs text-ink-subtle">{t('grading.gb.noItems')}</p>}
         {cfg.items.map((i) => (
           <div
             key={`${i.type}:${i.id}`}
             className="flex items-center justify-between gap-3 bg-canvas border border-line rounded-xl px-3 py-2"
           >
             <div className="text-xs text-ink">
-              <span className="text-[10px] font-bold text-ink-subtle mr-2">{i.type}</span>
+              <span className="text-[10px] font-bold text-ink-subtle mr-2">{t.dyn(`grading.type.${i.type}`, i.type)}</span>
               {i.title}
             </div>
             <select
               className={input}
-              aria-label={`Category for ${i.title}`}
+              aria-label={t('grading.gb.categoryFor', { title: i.title })}
               disabled={!canEdit}
               value={assign[`${i.type}:${i.id}`] ?? ''}
               onChange={(e) => setAssign((p) => ({ ...p, [`${i.type}:${i.id}`]: e.target.value }))}
             >
-              <option value="">Not graded</option>
+              <option value="">{t('grading.gb.notGraded')}</option>
               {cfg.categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -226,32 +230,36 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
         ))}
         {cfg.items.length > 0 && (
           <button className={primary} disabled={!canEdit || busy || cfg.categories.length === 0} onClick={saveItems}>
-            Save assignments
+            {t('grading.gb.saveItems')}
           </button>
         )}
-        {cfg.categories.length === 0 && cfg.items.length > 0 && <p className="text-[11px] text-ink-subtle">Save categories first.</p>}
+        {cfg.categories.length === 0 && cfg.items.length > 0 && (
+          <p className="text-[11px] text-ink-subtle">{t('grading.gb.saveCategoriesFirst')}</p>
+        )}
       </section>
 
       <section className="space-y-3" aria-labelledby="curve-h">
         <h4 id="curve-h" className="text-xs font-bold uppercase tracking-wider text-ink">
-          Curve
+          {t('grading.gb.curve')}
         </h4>
         <div className="flex items-center gap-2">
           <select
             className={input}
-            aria-label="Curve method"
+            aria-label={t('grading.gb.curveMethod')}
             disabled={!canEdit}
             value={method}
             onChange={(e) => setMethod(e.target.value as CurveMethod)}
           >
-            <option value="NONE">No curve</option>
-            <option value="ADD_POINTS">Add points to everyone</option>
-            <option value="SCALE_TO_MAX">Scale so the best score is 100</option>
+            {CURVE_OPTIONS.map((m) => (
+              <option key={m} value={m}>
+                {t(`grading.gb.curve.${m}`)}
+              </option>
+            ))}
           </select>
           {method === 'ADD_POINTS' && (
             <input
               className={`${input} w-24`}
-              aria-label="Points to add"
+              aria-label={t('grading.gb.pointsToAdd')}
               type="number"
               min={0.5}
               max={50}
@@ -266,7 +274,7 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
             disabled={!canEdit || busy || (method === 'ADD_POINTS' && !(Number(curveValue) > 0))}
             onClick={saveCurve}
           >
-            Save curve
+            {t('grading.gb.saveCurve')}
           </button>
         </div>
       </section>
@@ -279,6 +287,7 @@ const Setup: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, can
 // ---------------------------------------------------------------------------
 
 const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }> = ({ courseId, canEdit, isAdmin }) => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<Book>(`/api/v1/courses/${courseId}/gradebook`);
   const { busy, error: actionError, run } = useAction();
   const [note, setNote] = useState('');
@@ -295,11 +304,11 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
 
   const s = data?.summary;
   const submit = () => {
-    if (s && s.incomplete > 0 && !window.confirm(`${s.incomplete} grade(s) still have work waiting for a grader. Submit anyway?`)) return;
-    act('submit', { allowIncomplete: !!s && s.incomplete > 0 }, (r) => `${r.submitted} grade(s) submitted for approval.`);
+    if (s && s.incomplete > 0 && !window.confirm(t.plural('grading.gb.confirmSubmit', s.incomplete))) return;
+    act('submit', { allowIncomplete: !!s && s.incomplete > 0 }, (r) => t.plural('grading.gb.submittedDone', r.submitted));
   };
 
-  if (isLoading) return <div className="text-xs text-ink-subtle p-6">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle p-6">{t('grading.loading')}</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
 
   return (
@@ -313,20 +322,22 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
             className={primary}
             disabled={busy}
             onClick={() =>
-              act(
-                'calculate',
-                undefined,
-                (r) =>
-                  `Calculated ${r.calculated} grade(s)${r.skippedApproved ? `; ${r.skippedApproved} approved grade(s) left unchanged` : ''}.`
+              act('calculate', undefined, (r) =>
+                r.skippedApproved
+                  ? t('grading.gb.calcSkipped', {
+                      calc: t.plural('grading.gb.calc', r.calculated),
+                      skipped: t.plural('grading.gb.skipped', r.skippedApproved),
+                    })
+                  : t('grading.gb.calcDone', { calc: t.plural('grading.gb.calc', r.calculated) })
               )
             }
           >
-            Calculate grades
+            {t('grading.gb.calculate')}
           </button>
         )}
         {canEdit && (
           <button className={ghost} disabled={busy || !s?.draft} onClick={submit}>
-            Submit for approval
+            {t('grading.gb.submitForApproval')}
           </button>
         )}
         {isAdmin && (
@@ -334,20 +345,22 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
             className={ghost}
             disabled={busy || !s?.submitted}
             onClick={() =>
-              act(
-                'approve',
-                undefined,
-                (r) =>
-                  `${r.approved} grade(s) approved and released to learners${r.completed ? `; ${r.completed} learner(s) who had finished every lesson and passed completed the course` : ''}.`
+              act('approve', undefined, (r) =>
+                r.completed
+                  ? t('grading.gb.approveCompleted', {
+                      approved: t.plural('grading.gb.approved', r.approved),
+                      completed: t.plural('grading.gb.completed', r.completed),
+                    })
+                  : t('grading.gb.approveDone', { approved: t.plural('grading.gb.approved', r.approved) })
               )
             }
           >
-            Approve
+            {t('grading.gb.approve')}
           </button>
         )}
         {isAdmin && (
           <button className={ghost} disabled={busy || !s?.submitted} onClick={() => setRejecting((v) => !v)}>
-            Send back…
+            {t('grading.gb.sendBackOpen')}
           </button>
         )}
         {isAdmin && (
@@ -355,11 +368,10 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
             className={ghost}
             disabled={busy || !s?.approved}
             onClick={() =>
-              window.confirm('Reopen approved grades for correction? Learners will stop seeing them until re-approved.') &&
-              act('reopen', undefined, (r) => `${r.reopened} grade(s) reopened.`)
+              window.confirm(t('grading.gb.reopenConfirm')) && act('reopen', undefined, (r) => t.plural('grading.gb.reopened', r.reopened))
             }
           >
-            Reopen
+            {t('grading.gb.reopen')}
           </button>
         )}
       </div>
@@ -368,8 +380,8 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
         <div className="flex items-center gap-2">
           <input
             className={`${input} flex-1`}
-            aria-label="Reason for sending back"
-            placeholder="Reason (shown to the instructor)"
+            aria-label={t('grading.gb.reasonLabel')}
+            placeholder={t('grading.gb.reasonPlaceholder')}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -377,28 +389,26 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
             className={primary}
             disabled={busy || note.trim().length < 3}
             onClick={() =>
-              act('reject', { note: note.trim() }, (r) => `${r.returned} grade(s) sent back.`).then(() => {
+              act('reject', { note: note.trim() }, (r) => t.plural('grading.gb.returned', r.returned)).then(() => {
                 setRejecting(false);
                 setNote('');
               })
             }
           >
-            Send back
+            {t('grading.gb.sendBack')}
           </button>
         </div>
       )}
-      {isAdmin && s?.submitted ? (
-        <p className="text-[11px] text-ink-subtle">You cannot approve grades you submitted yourself; another administrator must.</p>
-      ) : null}
+      {isAdmin && s?.submitted ? <p className="text-[11px] text-ink-subtle">{t('grading.gb.noSelfApprove')}</p> : null}
 
       {s && (
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
           {[
-            ['Learners', s.total],
-            ['Draft', s.draft],
-            ['Submitted', s.submitted],
-            ['Approved', s.approved],
-            ['Average', s.average === null ? '–' : `${s.average}%`],
+            [t('grading.gb.tile.learners'), s.total],
+            [t('grading.gb.tile.draft'), s.draft],
+            [t('grading.gb.tile.submitted'), s.submitted],
+            [t('grading.gb.tile.approved'), s.approved],
+            [t('grading.gb.tile.average'), s.average === null ? '–' : `${s.average}%`],
           ].map(([l, v]) => (
             <div key={String(l)} className="bg-canvas border border-line rounded-xl p-3">
               <div className="text-[10px] text-ink-subtle">{l}</div>
@@ -409,19 +419,17 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
       )}
 
       {data && data.data.length === 0 ? (
-        <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">
-          No grades yet. Set up categories, then calculate.
-        </div>
+        <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">{t('grading.gb.noGrades')}</div>
       ) : (
         <div className="overflow-x-auto bg-canvas border border-line rounded-2xl">
           <table className="w-full text-xs">
             <thead className="text-ink-subtle text-left">
               <tr>
-                <th className="p-3">Learner</th>
-                <th className="p-3">Raw</th>
-                <th className="p-3">Final</th>
-                <th className="p-3">Letter</th>
-                <th className="p-3">Status</th>
+                <th className="p-3">{t('grading.gb.col.learner')}</th>
+                <th className="p-3">{t('grading.gb.col.raw')}</th>
+                <th className="p-3">{t('grading.gb.col.final')}</th>
+                <th className="p-3">{t('grading.gb.col.letter')}</th>
+                <th className="p-3">{t('grading.gb.col.status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -435,13 +443,17 @@ const Grades: React.FC<{ courseId: string; canEdit: boolean; isAdmin: boolean }>
                   <td className="p-3 font-bold text-ink">{r.curvedPercent}%</td>
                   <td className="p-3 text-ink">{r.letter}</td>
                   <td className="p-3">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLE[r.status]}`}>{r.status}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLE[r.status]}`}>
+                      {t.dyn(`grading.status.${r.status}`, r.status)}
+                    </span>
                     {r.incomplete && (
-                      <span title="Work is still waiting for a grader" className="ml-2 text-accent inline-flex items-center">
+                      <span title={t('grading.gb.workWaiting')} className="ml-2 text-accent inline-flex items-center">
                         <AlertTriangle className="h-3 w-3" />
                       </span>
                     )}
-                    {r.decisionNote && <div className="text-[10px] text-ink-subtle mt-1">Sent back: {r.decisionNote}</div>}
+                    {r.decisionNote && (
+                      <div className="text-[10px] text-ink-subtle mt-1">{t('grading.gb.sentBackNote', { note: r.decisionNote })}</div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -473,29 +485,32 @@ interface GridData {
   }[];
 }
 
-const ScoreCell: React.FC<{ score?: Score }> = ({ score }) =>
-  !score ? (
+const ScoreCell: React.FC<{ score?: Score }> = ({ score }) => {
+  const t = useT();
+  return !score ? (
     <span className="text-ink-subtle">–</span>
   ) : score.pending ? (
-    <span className="text-accent font-semibold" title="Waiting for a grader">
-      Pending
+    <span className="text-accent font-semibold" title={t('grading.gb.waitingGrader')}>
+      {t('grading.gb.pending')}
     </span>
   ) : score.missing ? (
-    <span className="text-danger" title="Not submitted (counts as 0)">
-      Missing
+    <span className="text-danger" title={t('grading.gb.notSubmittedTitle')}>
+      {t('grading.gb.missing')}
     </span>
   ) : (
     <span className="text-ink">{score.percent}%</span>
   );
+};
 
 const Grid: React.FC<{ courseId: string; courseCode: string }> = ({ courseId, courseCode }) => {
+  const t = useT();
   const { data, isLoading, error } = useApiData<{ data: GridData }>(`/api/v1/courses/${courseId}/gradebook/grid`);
   const { busy, error: actionError, run } = useAction();
 
   const exportCsv = () =>
     run(() => downloadFile(`/api/v1/courses/${courseId}/gradebook/export.csv`, `grades-${courseCode.replace(/[^\w.-]+/g, '_')}.csv`));
 
-  if (isLoading) return <div className="text-xs text-ink-subtle p-6">Loading…</div>;
+  if (isLoading) return <div className="text-xs text-ink-subtle p-6">{t('grading.loading')}</div>;
   if (error) return <Banner kind="error">{error}</Banner>;
   const grid = data?.data;
   if (!grid) return null;
@@ -504,29 +519,25 @@ const Grid: React.FC<{ courseId: string; courseCode: string }> = ({ courseId, co
     <div className="space-y-4">
       {actionError && <Banner kind="error">{actionError}</Banner>}
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[11px] text-ink-subtle">
-          Best finished attempt for quizzes. Missing work counts as 0 in the course grade; pending work is left out until graded.
-        </p>
+        <p className="text-[11px] text-ink-subtle">{t('grading.gb.gridHint')}</p>
         <button className={ghost} disabled={busy || grid.learners.length === 0} onClick={exportCsv}>
           <Download className="h-3 w-3 inline mr-1" />
-          Export CSV
+          {t('grading.gb.exportCsv')}
         </button>
       </div>
 
       {grid.learners.length === 0 ? (
-        <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">
-          No learners are enrolled yet.
-        </div>
+        <div className="text-xs text-ink-subtle p-8 text-center bg-canvas border border-line rounded-2xl">{t('grading.gb.noLearners')}</div>
       ) : (
         <div className="overflow-auto max-h-[60vh] bg-canvas border border-line rounded-2xl">
           <table className="text-xs border-separate border-spacing-0">
             <thead className="text-ink-subtle text-left">
               <tr>
-                <th className="p-3 sticky left-0 top-0 z-20 bg-canvas border-b border-line min-w-48">Learner</th>
+                <th className="p-3 sticky left-0 top-0 z-20 bg-canvas border-b border-line min-w-48">{t('grading.gb.col.learner')}</th>
                 {grid.items.map((i) => (
                   <th key={i.id} className="p-3 sticky top-0 z-10 bg-canvas border-b border-line min-w-28 align-bottom font-semibold">
                     <div className="text-[9px] font-bold uppercase tracking-wider text-ink-subtle">
-                      {i.type === 'QUIZ' ? 'Quiz' : 'Assignment'}
+                      {i.type === 'QUIZ' ? t('grading.gb.quiz') : t('grading.gb.assignment')}
                       {i.category ? ` · ${i.category}` : ''}
                     </div>
                     <div className="text-ink line-clamp-2" title={i.title}>
@@ -534,7 +545,9 @@ const Grid: React.FC<{ courseId: string; courseCode: string }> = ({ courseId, co
                     </div>
                   </th>
                 ))}
-                <th className="p-3 sticky top-0 z-10 bg-canvas border-b border-line min-w-24 align-bottom">Course grade</th>
+                <th className="p-3 sticky top-0 z-10 bg-canvas border-b border-line min-w-24 align-bottom">
+                  {t('grading.gb.courseGrade')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -551,11 +564,11 @@ const Grid: React.FC<{ courseId: string; courseCode: string }> = ({ courseId, co
                   ))}
                   <td className="p-3 border-b border-line">
                     {l.courseGrade ? (
-                      <span className="font-bold text-ink" title={l.courseGrade.status}>
+                      <span className="font-bold text-ink" title={t.dyn(`grading.status.${l.courseGrade.status}`, l.courseGrade.status)}>
                         {l.courseGrade.curvedPercent}% · {l.courseGrade.letter}
                       </span>
                     ) : (
-                      <span className="text-ink-subtle" title="Not calculated yet">
+                      <span className="text-ink-subtle" title={t('grading.gb.notCalculated')}>
                         –
                       </span>
                     )}
@@ -576,6 +589,7 @@ export const CourseGradebook: React.FC<{
   onClose: () => void;
   /** Open on this course when the person may use it. */ initialCourseId?: string | null;
 }> = ({ onClose, initialCourseId }) => {
+  const t = useT();
   useEscapeKey(onClose);
   const { user } = useAuth();
   const { courses, isLoading } = useStaffCourses();
@@ -596,7 +610,7 @@ export const CourseGradebook: React.FC<{
       className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Gradebook"
+      aria-label={t('grading.gb.title')}
     >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between gap-4">
@@ -605,41 +619,45 @@ export const CourseGradebook: React.FC<{
               <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-ink">Gradebook</h3>
-              <p className="text-xs text-ink-muted">Weighted categories, curve and two-person approval.</p>
+              <h3 className="font-bold text-base text-ink">{t('grading.gb.title')}</h3>
+              <p className="text-xs text-ink-muted">{t('grading.gb.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <select className={input} aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            <select className={input} aria-label={t('grading.course')} value={courseId} onChange={(e) => setCourseId(e.target.value)}>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.code} · {c.title}
                 </option>
               ))}
             </select>
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
+            <button
+              onClick={onClose}
+              aria-label={t('grading.close')}
+              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
         <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex gap-2">
-          {(['grades', 'grid', 'scorm', 'setup'] as const).map((t) => (
+          {(['grades', 'grid', 'scorm', 'setup'] as const).map((id) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold ${tab === t ? 'bg-brand text-on-brand' : 'text-ink-muted hover:bg-surface'}`}
+              key={id}
+              onClick={() => setTab(id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold ${tab === id ? 'bg-brand text-on-brand' : 'text-ink-muted hover:bg-surface'}`}
             >
-              {t === 'grades' ? 'Grades & approval' : t === 'grid' ? 'Grade grid' : t === 'scorm' ? 'SCORM results' : 'Setup'}
+              {t(`grading.gb.tab.${id}`)}
             </button>
           ))}
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="text-xs text-ink-subtle">Loading courses…</div>
+            <div className="text-xs text-ink-subtle">{t('grading.gb.loadingCourses')}</div>
           ) : !course ? (
-            <div className="text-xs text-ink-subtle p-10 text-center">You are not assigned to any course yet.</div>
+            <div className="text-xs text-ink-subtle p-10 text-center">{t('grading.noCourse')}</div>
           ) : tab === 'grades' ? (
             <Grades key={course.id} courseId={course.id} canEdit={canEdit} isAdmin={isAdmin} />
           ) : tab === 'grid' ? (

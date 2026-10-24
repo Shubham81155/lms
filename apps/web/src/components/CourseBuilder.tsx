@@ -5,6 +5,7 @@ import { X, Plus, Trash2, Sparkles, Save, CheckCircle, Layers, ArrowRight, Slide
 import { api } from '@/lib/api';
 import { errorMessage } from '@/hooks/useApiData';
 import { AI_OFF_TEXT, useAiStatus } from '@/hooks/useAi';
+import { useT } from '@/lib/i18n';
 import { LessonFields, blankLesson, isHttpUrl, type LessonDraft } from './LessonFields';
 
 export type BuilderLesson = LessonDraft;
@@ -32,6 +33,7 @@ interface CourseBuilderProps {
 }
 
 export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave }) => {
+  const t = useT();
   const [courseTitle, setCourseTitle] = useState('');
   const [courseCode, setCourseCode] = useState('');
   const [description, setDescription] = useState('');
@@ -48,13 +50,14 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
   const [aiModules, setAiModules] = useState(4);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [aiNotice, setAiNotice] = useState<string | null>(null);
+  /** How many modules the last "Add to course" added (the message is built at render, in the current language). */
+  const [aiAdded, setAiAdded] = useState<number | null>(null);
   const [outline, setOutline] = useState<Outline | null>(null);
 
   const draftOutline = async () => {
     setAiBusy(true);
     setAiError(null);
-    setAiNotice(null);
+    setAiAdded(null);
     try {
       const res = await api.post<{ data: Outline }>('/api/v1/ai/course-outline', {
         topic: aiTopic.trim(),
@@ -63,7 +66,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
       });
       setOutline(res.data);
     } catch (e) {
-      setAiError(errorMessage(e, 'Could not draft an outline.'));
+      setAiError(errorMessage(e, t('builder.new.ai.failed')));
     } finally {
       setAiBusy(false);
     }
@@ -80,7 +83,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
     setModules((prev) => [...prev, ...added]);
     if (!courseTitle.trim()) setCourseTitle(outline.title);
     if (!description.trim()) setDescription(outline.description);
-    setAiNotice(`Added ${added.length} module${added.length === 1 ? '' : 's'}. Review and edit them before you save.`);
+    setAiAdded(added.length);
     setOutline(null);
   };
 
@@ -117,9 +120,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
   }, [onClose, isSaving]);
 
   const curriculumProblem = modules.some((m) => !m.title.trim() || m.lessons.some((l) => !l.title.trim()))
-    ? 'Every module and lesson needs a title.'
+    ? t('builder.new.problem.title')
     : modules.some((m) => m.lessons.some((l) => l.url.trim() && !isHttpUrl(l.url.trim())))
-      ? 'Addresses must start with http:// or https://.'
+      ? t('builder.new.problem.url')
       : null;
   const canSave = courseTitle.trim().length >= 3 && courseCode.trim().length >= 2 && !curriculumProblem && !isSaving;
 
@@ -138,7 +141,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
       });
       onClose();
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Could not save the course.');
+      setSaveError(e instanceof Error ? e.message : t('builder.new.saveFailed'));
       setIsSaving(false);
     }
   };
@@ -159,9 +162,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
             </div>
             <div>
               <h3 id="course-builder-h" className="font-bold text-sm text-ink">
-                New course
+                {t('builder.new.title')}
               </h3>
-              <p className="text-[11px] text-ink-muted">Set up the course, its modules and lessons</p>
+              <p className="text-[11px] text-ink-muted">{t('builder.new.subtitle')}</p>
             </div>
           </div>
 
@@ -172,12 +175,12 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
               className="px-5 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-brand/20 transition-all disabled:opacity-50"
             >
               <Save className="h-4 w-4" />
-              <span>{isSaving ? 'Saving…' : 'Create Course'}</span>
+              <span>{isSaving ? t('builder.new.saving') : t('builder.new.create')}</span>
             </button>
             <button
               onClick={onClose}
               disabled={isSaving}
-              aria-label="Close"
+              aria-label={t('builder.common.close')}
               className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />
@@ -199,13 +202,13 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2 space-y-1.5">
                 <label htmlFor="course-title" className="text-xs font-semibold text-ink-muted">
-                  Course Title
+                  {t('builder.new.courseTitle')}
                 </label>
                 <input
                   id="course-title"
                   type="text"
                   value={courseTitle}
-                  placeholder="e.g. Introduction to Computer Science"
+                  placeholder={t('builder.new.courseTitlePlaceholder')}
                   maxLength={255}
                   onChange={(e) => setCourseTitle(e.target.value)}
                   className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-brand"
@@ -214,13 +217,13 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
 
               <div className="space-y-1.5">
                 <label htmlFor="course-code" className="text-xs font-semibold text-ink-muted">
-                  Course Code
+                  {t('builder.new.courseCode')}
                 </label>
                 <input
                   id="course-code"
                   type="text"
                   value={courseCode}
-                  placeholder="e.g. CS-101"
+                  placeholder={t('builder.new.courseCodePlaceholder')}
                   maxLength={50}
                   onChange={(e) => setCourseCode(e.target.value)}
                   className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-brand font-mono"
@@ -230,7 +233,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
 
             <div className="space-y-1.5">
               <label htmlFor="course-description" className="text-xs font-semibold text-ink-muted">
-                Description <span className="font-normal text-ink-subtle">(shown in the course catalogue)</span>
+                {t('builder.new.description')} <span className="font-normal text-ink-subtle">{t('builder.new.descriptionHint')}</span>
               </label>
               <textarea
                 id="course-description"
@@ -238,7 +241,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 maxLength={20000}
-                placeholder="What learners will study and what they will be able to do afterwards."
+                placeholder={t('builder.new.descriptionPlaceholder')}
                 className="w-full bg-canvas border border-line rounded-xl px-3.5 py-2 text-xs text-ink focus:outline-none focus:border-brand"
               />
             </div>
@@ -247,7 +250,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
             <div className="bg-canvas border border-line rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
               <div>
                 <label htmlFor="course-status" className="text-ink-muted font-semibold block mb-1">
-                  Publication Status
+                  {t('builder.new.publicationStatus')}
                 </label>
                 <select
                   id="course-status"
@@ -255,15 +258,15 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                   onChange={(e) => setCourseStatus(e.target.value as any)}
                   className="w-full bg-surface border border-line rounded-xl px-3 py-1.5 text-xs text-ink focus:outline-none focus:border-brand font-medium"
                 >
-                  <option value="DRAFT">DRAFT (Unpublished)</option>
-                  <option value="PUBLISHED">PUBLISHED (Active)</option>
-                  <option value="ARCHIVED">ARCHIVED (Read-Only)</option>
+                  <option value="DRAFT">{t('builder.statusOption.DRAFT')}</option>
+                  <option value="PUBLISHED">{t('builder.statusOption.PUBLISHED')}</option>
+                  <option value="ARCHIVED">{t('builder.statusOption.ARCHIVED')}</option>
                 </select>
               </div>
 
               <div>
                 <div className="flex justify-between text-ink-muted font-semibold mb-1">
-                  <span id="passing-score-label">Passing Score</span>
+                  <span id="passing-score-label">{t('builder.new.passingScore')}</span>
                   <span className="text-brand-fg">{passingGradePercent}%</span>
                 </div>
                 <input
@@ -286,7 +289,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                     onChange={(e) => setAllowSelfEnroll(e.target.checked)}
                     className="rounded bg-surface border-line text-brand-fg"
                   />
-                  <span className="text-ink">Allow Self-Enrollment</span>
+                  <span className="text-ink">{t('builder.new.allowSelfEnroll')}</span>
                 </label>
               </div>
             </div>
@@ -294,16 +297,18 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
             {/* Modules List */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-line pb-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-ink-muted">Curriculum Modules ({modules.length})</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                  {t('builder.new.modulesHeading', { count: t.number(modules.length) })}
+                </h4>
                 <button onClick={addModule} className="text-xs font-semibold text-brand-fg hover:text-brand-fg flex items-center gap-1">
                   <Plus className="h-3.5 w-3.5" />
-                  <span>Add Module</span>
+                  <span>{t('builder.new.addModule')}</span>
                 </button>
               </div>
 
               {modules.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-xs text-ink-muted">
-                  No modules yet. Add one{ai.enabled ? ', or draft an outline with AI' : ''}.
+                  {ai.enabled ? t('builder.new.noModulesAi') : t('builder.new.noModules')}
                 </p>
               )}
 
@@ -316,39 +321,42 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
               {modules.map((mod, modIdx) => (
                 <div key={mod.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <span className="shrink-0 text-xs font-bold text-ink-muted">Module {modIdx + 1}</span>
+                    <span className="shrink-0 text-xs font-bold text-ink-muted">{t('builder.new.moduleN', { n: modIdx + 1 })}</span>
                     <input
                       type="text"
                       value={mod.title}
                       onChange={(e) => renameModule(mod.id, e.target.value)}
-                      placeholder="Module title"
+                      placeholder={t('builder.new.moduleTitlePlaceholder')}
                       maxLength={255}
-                      aria-label={`Title of module ${modIdx + 1}`}
+                      aria-label={t('builder.new.aria.moduleTitle', { n: modIdx + 1 })}
                       className="min-w-0 flex-1 bg-surface border border-line rounded-xl px-3 py-1.5 text-xs font-bold text-ink focus:outline-none focus:border-brand"
                     />
                     <button
                       onClick={() => addLesson(mod.id)}
                       className="shrink-0 text-[11px] text-brand-fg hover:text-brand-fg font-semibold"
                     >
-                      + Add Lesson
+                      {t('builder.new.addLesson')}
                     </button>
                     <button
                       onClick={() => deleteModule(mod.id)}
-                      aria-label={`Delete module ${modIdx + 1}`}
+                      aria-label={t('builder.new.aria.deleteModule', { n: modIdx + 1 })}
                       className="shrink-0 text-ink-subtle hover:text-danger transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
 
-                  {mod.lessons.length === 0 && <p className="text-[11px] text-ink-subtle">No lessons in this module yet.</p>}
+                  {mod.lessons.length === 0 && <p className="text-[11px] text-ink-subtle">{t('builder.new.noLessons')}</p>}
 
                   <div className="space-y-2">
                     {mod.lessons.map((les, lesIdx) => (
                       <LessonFields
                         key={les.id}
                         lesson={les}
-                        label={`lesson ${lesIdx + 1} in module ${modIdx + 1}`}
+                        label={t('builder.label.lesson', {
+                          lesson: lesIdx + 1,
+                          module: t('builder.label.module', { n: modIdx + 1 }),
+                        })}
                         onChange={(patch) => updateLesson(mod.id, les.id, patch)}
                         onDelete={() => deleteLesson(mod.id, les.id)}
                       />
@@ -363,24 +371,21 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
           <div className="border-t md:border-t-0 md:border-l border-line pt-6 md:pt-0 md:pl-6 space-y-4">
             <div className="flex items-center gap-2 text-xs font-bold text-brand-fg uppercase tracking-wider">
               <Sparkles className="h-4 w-4" />
-              <span>Draft with AI</span>
+              <span>{t('builder.new.ai.heading')}</span>
             </div>
 
             {!ai.enabled ? (
               <p className="text-xs text-ink-muted">
-                {ai.isLoading ? 'Checking…' : ai.reason ? AI_OFF_TEXT[ai.reason] : 'AI assistance is not available.'}
+                {ai.isLoading ? t('builder.new.ai.checking') : ai.reason ? AI_OFF_TEXT[ai.reason] : t('builder.new.ai.unavailable')}
               </p>
             ) : (
               <>
-                <p className="text-xs text-ink-muted">
-                  Describe the course and get a draft outline: modules, lessons and learning objectives. Nothing is saved until you add it
-                  and save the course.
-                </p>
+                <p className="text-xs text-ink-muted">{t('builder.new.ai.intro')}</p>
                 <div className="space-y-2">
                   <input
                     type="text"
-                    placeholder="Topic, e.g. Introduction to cell biology"
-                    aria-label="Course topic"
+                    placeholder={t('builder.new.ai.topicPlaceholder')}
+                    aria-label={t('builder.new.ai.topicLabel')}
                     value={aiTopic}
                     maxLength={300}
                     onChange={(e) => setAiTopic(e.target.value)}
@@ -388,15 +393,15 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                   />
                   <input
                     type="text"
-                    placeholder="Audience (optional), e.g. first-year undergraduates"
-                    aria-label="Audience"
+                    placeholder={t('builder.new.ai.audiencePlaceholder')}
+                    aria-label={t('builder.new.ai.audienceLabel')}
                     value={aiAudience}
                     maxLength={200}
                     onChange={(e) => setAiAudience(e.target.value)}
                     className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
                   />
                   <label className="flex items-center justify-between text-xs text-ink-muted">
-                    <span>Modules</span>
+                    <span>{t('builder.new.ai.modules')}</span>
                     <select
                       value={aiModules}
                       onChange={(e) => setAiModules(Number(e.target.value))}
@@ -414,7 +419,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                     onClick={draftOutline}
                     className="w-full py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-semibold shadow-md shadow-brand/20 transition-all"
                   >
-                    {aiBusy ? 'Drafting… this can take up to a minute' : 'Draft an outline'}
+                    {aiBusy ? t('builder.new.ai.drafting') : t('builder.new.ai.draft')}
                   </button>
                 </div>
               </>
@@ -425,9 +430,9 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                 {aiError}
               </p>
             )}
-            {aiNotice && (
+            {aiAdded !== null && (
               <p role="status" className="text-[11px] font-semibold text-success">
-                {aiNotice}
+                {t.plural('builder.new.ai.added', aiAdded)}
               </p>
             )}
 
@@ -442,7 +447,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                     onClick={addOutline}
                     className="shrink-0 px-2.5 py-1 bg-brand hover:bg-brand-hover text-on-brand rounded-lg text-[10px] font-bold shadow-md"
                   >
-                    Add to course
+                    {t('builder.new.ai.addToCourse')}
                   </button>
                 </div>
                 <ol className="space-y-2 list-decimal list-inside">
@@ -452,14 +457,14 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                       <ul className="mt-1 ml-4 space-y-0.5 list-disc text-[11px] font-normal text-ink-muted">
                         {m.lessons.map((l, j) => (
                           <li key={j}>
-                            {l.title} <span className="text-ink-subtle">· {l.minutes} min</span>
+                            {l.title} <span className="text-ink-subtle">· {t('builder.new.ai.lessonMinutes', { minutes: l.minutes })}</span>
                           </li>
                         ))}
                       </ul>
                     </li>
                   ))}
                 </ol>
-                <p className="text-[10px] text-ink-subtle">AI drafts can contain mistakes. Check every lesson before publishing.</p>
+                <p className="text-[10px] text-ink-subtle">{t('builder.new.ai.warning')}</p>
               </div>
             )}
           </div>

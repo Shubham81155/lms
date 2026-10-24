@@ -330,7 +330,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({ courseCode, co
                         onModerate={(patch) => forum.moderateThread(activeThread.id, patch)}
                       />
                     )}
-                    {!readOnly && <ReportControl targetType="THREAD" targetId={activeThread.id} subject="this thread" />}
+                    {!readOnly && <ReportControl targetType="THREAD" targetId={activeThread.id} subject={t('teach.mod.subjectThread')} />}
                   </div>
                 </div>
 
@@ -420,7 +420,11 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({ courseCode, co
 
                         <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap">{reply.content}</p>
                         {!readOnly && !reply.hidden && (
-                          <ReportControl targetType="POST" targetId={reply.id} subject={`the reply by ${reply.author}`} />
+                          <ReportControl
+                            targetType="POST"
+                            targetId={reply.id}
+                            subject={t('teach.mod.subjectReply', { author: reply.author })}
+                          />
                         )}
                       </div>
                     ))}

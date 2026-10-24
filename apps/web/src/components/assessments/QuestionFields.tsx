@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { useT } from '@/lib/i18n';
 import { CHOICE_TYPES, KEYED_TYPES } from '@/lib/forms';
 import { optionsFor, type QuestionDraft } from '@/lib/questionDraft';
-import { ghost, input, label } from './ui';
+import { ghost, input, tLabel } from './ui';
 
 export const QUESTION_TYPES = [
   'MULTIPLE_CHOICE',
@@ -26,26 +27,27 @@ interface Props<T extends QuestionDraft> {
 
 /** Type, points, Bloom level, question text, options and answer key. */
 export function QuestionFields<T extends QuestionDraft>({ d, set }: Props<T>) {
+  const t = useT();
   const patch = (p: Partial<QuestionDraft>) => set(p as Partial<T>);
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Type
+          {t('assess.fields.type')}
           <select
             className={`${input} w-full`}
             value={d.type}
             onChange={(e) => patch({ type: e.target.value, options: optionsFor(e.target.value) })}
           >
-            {QUESTION_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {label(t)}
+            {QUESTION_TYPES.map((k) => (
+              <option key={k} value={k}>
+                {tLabel(t, k)}
               </option>
             ))}
           </select>
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Points
+          {t('assess.common.points')}
           <input
             className={`${input} w-full`}
             type="number"
@@ -57,19 +59,19 @@ export function QuestionFields<T extends QuestionDraft>({ d, set }: Props<T>) {
           />
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Bloom level
+          {t('assess.fields.bloom')}
           <select className={`${input} w-full`} value={d.bloom} onChange={(e) => patch({ bloom: e.target.value })}>
-            <option value="">Not tagged</option>
+            <option value="">{t('assess.fields.notTagged')}</option>
             {BLOOM_LEVELS.map((b) => (
               <option key={b} value={b}>
-                {label(b)}
+                {tLabel(t, b)}
               </option>
             ))}
           </select>
         </label>
       </div>
       <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-        Question
+        {t('assess.fields.question')}
         <textarea
           className={`${input} w-full`}
           rows={3}
@@ -82,14 +84,14 @@ export function QuestionFields<T extends QuestionDraft>({ d, set }: Props<T>) {
       {CHOICE_TYPES.includes(d.type) && (
         <fieldset className="space-y-2">
           <legend className="text-xs text-ink-muted font-semibold mb-1">
-            Options ({d.type === 'MULTI_SELECT' ? 'tick every correct one' : 'choose the correct one'})
+            {d.type === 'MULTI_SELECT' ? t('assess.fields.optionsMulti') : t('assess.fields.optionsSingle')}
           </legend>
           {d.options.map((o, i) => (
             <div key={i} className="flex items-center gap-2">
               <input
                 type={d.type === 'MULTI_SELECT' ? 'checkbox' : 'radio'}
                 name="correct"
-                aria-label={`Option ${i + 1} is correct`}
+                aria-label={t('assess.fields.optionCorrect', { n: i + 1 })}
                 checked={o.isCorrect}
                 onChange={(e) =>
                   patch({
@@ -101,7 +103,7 @@ export function QuestionFields<T extends QuestionDraft>({ d, set }: Props<T>) {
               />
               <input
                 className={`${input} flex-1`}
-                aria-label={`Option ${i + 1} text`}
+                aria-label={t('assess.fields.optionText', { n: i + 1 })}
                 maxLength={2000}
                 value={o.text}
                 disabled={d.type === 'TRUE_FALSE'}
@@ -111,7 +113,7 @@ export function QuestionFields<T extends QuestionDraft>({ d, set }: Props<T>) {
                 <button
                   type="button"
                   className={ghost}
-                  aria-label={`Remove option ${i + 1}`}
+                  aria-label={t('assess.fields.removeOption', { n: i + 1 })}
                   onClick={() => patch({ options: d.options.filter((_, j) => j !== i) })}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -122,20 +124,18 @@ export function QuestionFields<T extends QuestionDraft>({ d, set }: Props<T>) {
           {d.type !== 'TRUE_FALSE' && d.options.length < 10 && (
             <button type="button" className={ghost} onClick={() => patch({ options: [...d.options, { text: '', isCorrect: false }] })}>
               <Plus className="h-3 w-3 inline mr-1" />
-              Add option
+              {t('assess.fields.addOption')}
             </button>
           )}
         </fieldset>
       )}
       {KEYED_TYPES.includes(d.type) && (
         <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-          Correct answer {d.type === 'SHORT_ANSWER' && '(separate accepted alternatives with ||)'}
+          {d.type === 'SHORT_ANSWER' ? t('assess.fields.answerShort') : t('assess.fields.answer')}
           <input className={`${input} w-full`} maxLength={5000} value={d.answer} onChange={(e) => patch({ answer: e.target.value })} />
         </label>
       )}
-      {(d.type === 'ESSAY' || d.type === 'CODE_SANDBOX') && (
-        <p className="text-[11px] text-ink-subtle">This type is graded by a person, so there is no answer key.</p>
-      )}
+      {(d.type === 'ESSAY' || d.type === 'CODE_SANDBOX') && <p className="text-[11px] text-ink-subtle">{t('assess.fields.manual')}</p>}
     </>
   );
 }
