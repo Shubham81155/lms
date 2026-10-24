@@ -166,12 +166,15 @@ export async function assertStorageAllowed(tenantId: string, addBytes: number): 
 /** Locks the tenant row (the same lock seats use) so the check and the insert that follow it cannot race another. */
 const lockTenant = (tx: Tx, tenantId: string) => tx.$queryRaw`SELECT 1 FROM "Tenant" WHERE id = ${tenantId} FOR UPDATE`;
 
-/** Locks the tenant and throws 402 if the course limit is reached; call it first inside the transaction that inserts the course. */
+/**
+ * Locks the tenant and throws 402 if the course limit is reached; call it first inside the transaction that inserts the course.
+ * The plan is read through `tx`: a second pooled connection taken while holding the transaction one can deadlock a small pool.
+ */
 export async function checkCourseSlot(tx: Tx, tenantId: string): Promise<void> {
   await lockTenant(tx, tenantId);
   const sub = await tx.subscription.findUnique({ where: { tenantId } });
   if (!sub || (sub.status !== 'ACTIVE' && sub.status !== 'PAST_DUE')) return;
-  const plan = await basePrisma.plan.findUnique({ where: { id: sub.planId } });
+  const plan = await tx.plan.findUnique({ where: { id: sub.planId } });
   if (plan?.courseLimit == null) return;
   const courses = await tx.course.count({ where: { tenantId, status: { not: 'ARCHIVED' } } });
   if (courses >= plan.courseLimit) throw courseFull(plan.courseLimit);
@@ -191,7 +194,7 @@ export function withStorage<T>(tenantId: string, addBytes: number, fn: (tx: Tx) 
     await lockTenant(tx, tenantId);
     const sub = await tx.subscription.findUnique({ where: { tenantId } });
     if (sub && (sub.status === 'ACTIVE' || sub.status === 'PAST_DUE')) {
-      const plan = await basePrisma.plan.findUnique({ where: { id: sub.planId } });
+      const plan = await tx.plan.findUnique({ where: { id: sub.planId } });
       if (plan?.storageGb != null) {
         const sum = await tx.storedFile.aggregate({ where: { tenantId }, _sum: { sizeBytes: true } });
         if ((sum._sum.sizeBytes ?? 0) + addBytes > plan.storageGb * 1024 ** 3) throw storageFull();
