@@ -6,7 +6,16 @@ import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { Banner } from '@/components/admin/IdentityPanels';
-import { timeAgo } from '@/hooks/useNotifications';
+import { useT, type Translator } from '@/lib/i18n';
+
+/** "just now", "5 min ago"... in the chosen language (same steps as the notification bell). */
+export function relativeTime(t: Translator, iso: string, now: number = Date.now()): string {
+  const s = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
+  if (s < 60) return t('work.ago.now');
+  if (s < 3600) return t('work.ago.min', { count: t.number(Math.floor(s / 60)) });
+  if (s < 86_400) return t('work.ago.hour', { count: t.number(Math.floor(s / 3600)) });
+  return t('work.ago.day', { count: t.number(Math.floor(s / 86_400)) });
+}
 
 interface Announcement {
   id: string;
@@ -31,6 +40,7 @@ export const CourseAnnouncements: React.FC<{ courseId: string; courseLabel?: str
   onClose,
 }) => {
   useEscapeKey(onClose);
+  const t = useT();
   const list = useApiData<{ data: Announcement[] }>(`/api/v1/courses/${courseId}/announcements`, { limit: 50 });
   const { busy, error, run } = useAction();
   const [title, setTitle] = useState('');
@@ -52,7 +62,7 @@ export const CourseAnnouncements: React.FC<{ courseId: string; courseLabel?: str
       setTitle('');
       setBody('');
       setPinned(false);
-      setNotice(notify ? `Posted. ${r.notified} learner${r.notified === 1 ? ' was' : 's were'} notified.` : 'Posted.');
+      setNotice(notify ? t.plural('work.ann.postedNotified', r.notified) : t('work.ann.posted'));
       await list.reload();
     });
   };
@@ -65,7 +75,7 @@ export const CourseAnnouncements: React.FC<{ courseId: string; courseLabel?: str
 
   const remove = (a: Announcement) =>
     run(async () => {
-      if (!window.confirm(`Delete "${a.title}"?`)) return;
+      if (!window.confirm(t('work.ann.confirmDelete', { title: a.title }))) return;
       await api.delete(`/api/v1/announcements/${a.id}`);
       await list.reload();
     });
@@ -84,10 +94,10 @@ export const CourseAnnouncements: React.FC<{ courseId: string; courseLabel?: str
           <div className="flex items-center gap-2.5">
             <Megaphone className="h-5 w-5 text-brand-fg" />
             <h3 id="ann-h" className="font-bold text-sm text-ink">
-              Announcements{courseLabel ? `: ${courseLabel}` : ''}
+              {courseLabel ? t('work.ann.titleWithCourse', { course: courseLabel }) : t('work.ann.title')}
             </h3>
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
+          <button onClick={onClose} aria-label={t('common.close')} className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -100,8 +110,8 @@ export const CourseAnnouncements: React.FC<{ courseId: string; courseLabel?: str
             <form onSubmit={post} className="space-y-2 rounded-2xl border border-line bg-canvas p-4">
               <input
                 className={field}
-                placeholder="Title"
-                aria-label="Title"
+                placeholder={t('work.ann.titleField')}
+                aria-label={t('work.ann.titleField')}
                 maxLength={200}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -109,32 +119,31 @@ export const CourseAnnouncements: React.FC<{ courseId: string; courseLabel?: str
               <textarea
                 className={field}
                 rows={4}
-                placeholder="Message to the class"
-                aria-label="Message"
+                placeholder={t('work.ann.messagePlaceholder')}
+                aria-label={t('work.ann.messageField')}
                 maxLength={20000}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
               />
               <div className="flex flex-wrap items-center gap-4 text-xs text-ink">
                 <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Notify learners (in the app and
-                  by e-mail)
+                  <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> {t('work.ann.notify')}
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> Pin to the top
+                  <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} /> {t('work.ann.pinTop')}
                 </label>
                 <button
                   disabled={busy || !title.trim() || !body.trim()}
                   className="ml-auto px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand text-xs font-bold"
                 >
-                  {busy ? 'Posting…' : 'Post announcement'}
+                  {busy ? t('work.ann.posting') : t('work.ann.post')}
                 </button>
               </div>
             </form>
           )}
 
-          {list.isLoading && <p className="text-xs text-ink-subtle">Loading…</p>}
-          {!list.isLoading && items.length === 0 && <p className="text-center text-xs text-ink-muted py-8">No announcements yet.</p>}
+          {list.isLoading && <p className="text-xs text-ink-subtle">{t('common.loading')}</p>}
+          {!list.isLoading && items.length === 0 && <p className="text-center text-xs text-ink-muted py-8">{t('work.ann.empty')}</p>}
           <ul className="space-y-3">
             {items.map((a) => (
               <li
@@ -143,21 +152,21 @@ export const CourseAnnouncements: React.FC<{ courseId: string; courseLabel?: str
               >
                 <div className="flex items-start justify-between gap-3">
                   <h4 className="text-sm font-bold text-ink flex items-center gap-1.5">
-                    {a.pinned && <Pin className="h-3.5 w-3.5 text-brand-fg" aria-label="Pinned" />}
+                    {a.pinned && <Pin className="h-3.5 w-3.5 text-brand-fg" aria-label={t('work.ann.pinned')} />}
                     {a.title}
                   </h4>
-                  <span className="shrink-0 text-[10px] text-ink-subtle">{timeAgo(a.createdAt)}</span>
+                  <span className="shrink-0 text-[10px] text-ink-subtle">{relativeTime(t, a.createdAt)}</span>
                 </div>
                 <p className="text-xs text-ink whitespace-pre-line leading-relaxed">{a.body}</p>
                 <div className="flex items-center justify-between text-[11px] text-ink-muted">
-                  <span>{a.author?.name ?? 'Course staff'}</span>
+                  <span>{a.author?.name ?? t('work.ann.staff')}</span>
                   {canPost && (
                     <span className="flex gap-3">
                       <button onClick={() => togglePin(a)} disabled={busy} className="font-semibold hover:text-ink">
-                        {a.pinned ? 'Unpin' : 'Pin'}
+                        {a.pinned ? t('work.ann.unpin') : t('work.ann.pin')}
                       </button>
                       <button onClick={() => remove(a)} disabled={busy} className="font-semibold hover:text-danger">
-                        Delete
+                        {t('work.ann.delete')}
                       </button>
                     </span>
                   )}

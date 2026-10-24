@@ -10,6 +10,7 @@ import { SubmissionHistory } from '@/components/SubmissionHistory';
 import { MAX_UPLOAD_MB, UPLOAD_ACCEPT, formatBytes, isUploadLink, uploadFile } from '@/lib/upload';
 import { appealDaysLeft, type Criterion } from '@/lib/forms';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useT } from '@/lib/i18n';
 
 interface Assignment {
   id: string;
@@ -42,6 +43,16 @@ interface Appeal {
   submission: { id: string };
 }
 
+/** Date and time in the viewer's own time zone (as before), in the chosen language. */
+const WHEN: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZone: undefined,
+};
+
 const input =
   'bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
 const primary = 'px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all';
@@ -54,6 +65,7 @@ const AppealBox: React.FC<{ assignmentId: string; sub: Submission; appeal: Appea
   appeal,
   onDone,
 }) => {
+  const t = useT();
   const { busy, error, run } = useAction();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -62,19 +74,18 @@ const AppealBox: React.FC<{ assignmentId: string; sub: Submission; appeal: Appea
     return (
       <div className="text-[11px] text-ink bg-surface border border-line rounded-xl p-3">
         <strong className="text-ink">
-          Appeal:{' '}
           {appeal.status === 'OPEN'
-            ? 'waiting for a decision'
+            ? t('work.assign.appeal.open')
             : appeal.status === 'UPHELD'
-              ? 'upheld, your grade was changed'
-              : 'not upheld'}
+              ? t('work.assign.appeal.upheld')
+              : t('work.assign.appeal.denied')}
         </strong>
         {appeal.response && <div className="mt-1 text-ink-muted">{appeal.response}</div>}
       </div>
     );
   }
   const days = sub.gradedAt ? appealDaysLeft(sub.gradedAt) : 0;
-  if (days === 0) return <div className="text-[11px] text-ink-subtle">The appeal period for this grade has ended.</div>;
+  if (days === 0) return <div className="text-[11px] text-ink-subtle">{t('work.assign.appealEnded')}</div>;
 
   return open ? (
     <div className="space-y-2">
@@ -83,8 +94,8 @@ const AppealBox: React.FC<{ assignmentId: string; sub: Submission; appeal: Appea
         className={`${input} w-full`}
         rows={3}
         maxLength={2000}
-        aria-label="Why should this grade be reviewed?"
-        placeholder="Explain what you think was marked incorrectly (at least 10 characters)"
+        aria-label={t('work.assign.appealReasonLabel')}
+        placeholder={t('work.assign.appealReasonPlaceholder')}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
       />
@@ -100,21 +111,22 @@ const AppealBox: React.FC<{ assignmentId: string; sub: Submission; appeal: Appea
             })
           }
         >
-          Send appeal
+          {t('work.assign.appealSend')}
         </button>
         <button className={ghost} onClick={() => setOpen(false)}>
-          Cancel
+          {t('work.assign.cancel')}
         </button>
       </div>
     </div>
   ) : (
     <button className={ghost} onClick={() => setOpen(true)}>
-      Appeal this grade ({days} day{days === 1 ? '' : 's'} left)
+      {t.plural('work.assign.appealButton', days)}
     </button>
   );
 };
 
 const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => void }> = ({ a, appeals, reloadAppeals }) => {
+  const t = useT();
   const { data, reload } = useApiData<{ data: Submission[] }>(`/api/v1/assignments/${a.id}/submissions`);
   const sub = data?.data?.[0];
   const { busy, error, run, clearError } = useAction();
@@ -135,7 +147,7 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
       setFile(up.url);
       setUploadedName(`${up.filename} (${formatBytes(up.sizeBytes)})`);
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'The upload failed.');
+      setUploadError(e instanceof Error ? e.message : t('work.assign.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -169,29 +181,30 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
         <div>
           <h4 className="text-sm font-bold text-ink">{a.title}</h4>
           <div className="text-[11px] text-ink-subtle">
-            {a.maxPoints} points{due ? ` · due ${new Date(due).toLocaleString()}` : ''}
-            {a.extended ? ' (extended for you)' : ''}
+            {t.plural('work.assign.points', a.maxPoints)}
+            {due ? t('work.assign.due', { date: t.date(due, WHEN) }) : ''}
+            {a.extended ? t('work.assign.extended') : ''}
             {late
               ? closed
-                ? ' · closed'
+                ? t('work.assign.closed')
                 : a.acceptLateUntil
-                  ? ` · past due, late work accepted until ${new Date(a.acceptLateUntil).toLocaleString()}`
-                  : ' · past due, late work accepted'
+                  ? t('work.assign.lateUntil', { date: t.date(a.acceptLateUntil, WHEN) })
+                  : t('work.assign.lateOk')
               : ''}
-            {sub?.isLate ? <span className="ml-1 font-semibold text-danger">· submitted late</span> : null}
+            {sub?.isLate ? <span className="ml-1 font-semibold text-danger">{t('work.assign.submittedLate')}</span> : null}
           </div>
         </div>
         <span
           className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${graded ? 'bg-success/10 text-success border-success/30' : sub ? 'bg-brand/15 text-brand-fg border-brand/30' : 'bg-raised text-ink border-line'}`}
         >
-          {graded ? `${sub!.grade} / ${a.maxPoints}` : sub ? 'Submitted' : 'Not submitted'}
+          {graded ? `${sub!.grade} / ${a.maxPoints}` : sub ? t('work.assign.submitted') : t('work.assign.notSubmitted')}
         </span>
       </div>
       <p className="text-xs text-ink-muted whitespace-pre-wrap">{a.instructions}</p>
 
       {a.rubricJson && (
         <div className="text-[11px] text-ink-muted space-y-1">
-          <div className="font-bold uppercase tracking-wider text-ink-subtle">Rubric</div>
+          <div className="font-bold uppercase tracking-wider text-ink-subtle">{t('work.assign.rubric')}</div>
           {a.rubricJson.map((c) => (
             <div key={c.id} className="flex justify-between gap-3">
               <span>
@@ -209,7 +222,7 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
 
       {graded && sub!.feedback && (
         <div className="text-xs text-ink bg-surface border border-line rounded-xl p-3">
-          <strong className="text-ink">Feedback:</strong> {sub!.feedback}
+          <strong className="text-ink">{t('work.assign.feedback')}</strong> {sub!.feedback}
         </div>
       )}
       {graded && (
@@ -222,8 +235,8 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
           <textarea
             className={`${input} w-full`}
             rows={4}
-            aria-label={`Your answer for ${a.title}`}
-            placeholder="Type your answer…"
+            aria-label={t('work.assign.answerLabel', { title: a.title })}
+            placeholder={t('work.assign.answerPlaceholder')}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -232,8 +245,12 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
               className={`${input} min-w-0 flex-1`}
               type="text"
               inputMode="url"
-              aria-label="Link to your file (optional)"
-              placeholder={isUploadLink(file) ? `Attached: ${uploadedName ?? 'your uploaded file'}` : '…or a link to your file (https://…)'}
+              aria-label={t('work.assign.linkLabel')}
+              placeholder={
+                isUploadLink(file)
+                  ? t('work.assign.attached', { name: uploadedName ?? t('work.assign.attachedDefault') })
+                  : t('work.assign.linkPlaceholder')
+              }
               value={isUploadLink(file) ? '' : file}
               onChange={(e) => {
                 setUploadedName(null);
@@ -244,13 +261,13 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
               className={`${ghost} inline-flex shrink-0 cursor-pointer items-center gap-1 ${uploading ? 'pointer-events-none opacity-50' : ''}`}
             >
               <Upload className="h-3 w-3" />
-              {uploading ? 'Uploading…' : 'Upload a file'}
+              {uploading ? t('work.assign.uploading') : t('work.assign.upload')}
               <input
                 type="file"
                 className="sr-only"
                 accept={UPLOAD_ACCEPT.document}
                 disabled={uploading}
-                aria-label={`Upload a file for ${a.title}`}
+                aria-label={t('work.assign.uploadAria', { title: a.title })}
                 onChange={(e) => pickFile(e.target.files?.[0])}
               />
             </label>
@@ -263,20 +280,20 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
                   setUploadedName(null);
                 }}
               >
-                Remove
+                {t('work.assign.remove')}
               </button>
             )}
           </div>
           {uploadError && <Banner kind="error">{uploadError}</Banner>}
-          <p className="text-[10px] text-ink-subtle">Up to {MAX_UPLOAD_MB} MB: PDF, Office documents, images, text or a zip.</p>
+          <p className="text-[10px] text-ink-subtle">{t('work.assign.uploadHint', { mb: MAX_UPLOAD_MB })}</p>
           <button className={primary} disabled={busy || uploading || (!text.trim() && !file.trim())}>
-            {busy ? 'Submitting…' : sub ? 'Resubmit' : 'Submit'}
+            {busy ? t('work.assign.submitting') : sub ? t('work.assign.resubmit') : t('work.assign.submit')}
           </button>
         </form>
       )}
       {!graded && sub && !editing && (
         <button className={ghost} onClick={() => setEditing(true)}>
-          Edit my submission
+          {t('work.assign.edit')}
         </button>
       )}
       {sub && <SubmissionHistory key={sub.submittedAt} assignmentId={a.id} submissionId={sub.id} />}
@@ -286,6 +303,7 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
 
 export const MyAssignments: React.FC<{ onClose: () => void; courseId?: string }> = ({ onClose, courseId: initialCourseId }) => {
   useEscapeKey(onClose);
+  const t = useT();
   const { enrollments, isLoading } = useMyEnrollments();
   const active = enrollments.filter((e) => e.status !== 'DROPPED');
   const [courseId, setCourseId] = useState(initialCourseId ?? '');
@@ -301,7 +319,7 @@ export const MyAssignments: React.FC<{ onClose: () => void; courseId?: string }>
       className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="My assignments"
+      aria-label={t('work.assign.title')}
     >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-3xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between gap-4">
@@ -310,32 +328,36 @@ export const MyAssignments: React.FC<{ onClose: () => void; courseId?: string }>
               <FileText className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-ink">My assignments</h3>
-              <p className="text-xs text-ink-muted">Submit work, see grades and feedback, and appeal a grade.</p>
+              <h3 className="font-bold text-base text-ink">{t('work.assign.title')}</h3>
+              <p className="text-xs text-ink-muted">{t('work.assign.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <select className={input} aria-label="Course" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            <select className={input} aria-label={t('work.assign.course')} value={courseId} onChange={(e) => setCourseId(e.target.value)}>
               {active.map((e) => (
                 <option key={e.courseId} value={e.courseId}>
                   {e.course?.code} · {e.course?.title}
                 </option>
               ))}
             </select>
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
+            <button
+              onClick={onClose}
+              aria-label={t('common.close')}
+              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="text-xs text-ink-subtle">Loading…</div>
+            <div className="text-xs text-ink-subtle">{t('common.loading')}</div>
           ) : !courseId ? (
-            <div className="text-xs text-ink-subtle p-10 text-center">Enrol in a course to see its assignments.</div>
+            <div className="text-xs text-ink-subtle p-10 text-center">{t('work.assign.enrolFirst')}</div>
           ) : list.error ? (
             <Banner kind="error">{list.error}</Banner>
           ) : (list.data?.data ?? []).length === 0 ? (
-            <div className="text-xs text-ink-subtle p-10 text-center">This course has no assignments yet.</div>
+            <div className="text-xs text-ink-subtle p-10 text-center">{t('work.assign.none')}</div>
           ) : (
             <ul className="space-y-4">
               {(list.data?.data ?? []).map((a) => (

@@ -7,6 +7,7 @@ import { ScormFrame } from './ScormFrame';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { errorMessage, useApiData } from '@/hooks/useApiData';
+import { useLocale } from '@/lib/i18n';
 
 interface LessonPlayerProps {
   courseId: string;
@@ -70,18 +71,14 @@ const TYPE_LABEL: Record<Lesson['contentType'], string> = {
   EXTERNAL_LTI_TOOL: 'External tool',
 };
 
-const NoContent: React.FC = () => (
-  <p className="rounded-2xl border border-dashed border-line px-6 py-10 text-center text-xs text-ink-muted">
-    Your instructor has not added content to this lesson yet.
-  </p>
-);
-
-const dueLabel = (iso: string | null) =>
-  iso
-    ? new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(
-        new Date(iso)
-      )
-    : 'No due date';
+const NoContent: React.FC = () => {
+  const { t } = useLocale();
+  return (
+    <p className="rounded-2xl border border-dashed border-line px-6 py-10 text-center text-xs text-ink-muted">
+      {t('learn.lesson.noContent')}
+    </p>
+  );
+};
 
 /** The course's front page: where the learner is, what to do next, and what the course is about. */
 const CourseHome: React.FC<{
@@ -95,6 +92,18 @@ const CourseHome: React.FC<{
   onOpenLesson: (id: string) => void;
   onOpenWork?: (item: UpcomingWork) => void;
 }> = ({ detail, detailError, completed, total, next, first, upcoming, onOpenLesson, onOpenWork }) => {
+  const { t, locale } = useLocale();
+  // The browser's own time zone, as before; only the language of the weekday and month names follows the interface.
+  const dueLabel = (iso: string | null) =>
+    iso
+      ? new Intl.DateTimeFormat(locale === 'hi' ? 'hi-IN-u-nu-latn' : undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }).format(new Date(iso))
+      : t('learn.lesson.noDueDate');
   const target = next ?? first;
   const instructors = detail?.instructors ?? [];
   return (
@@ -102,10 +111,10 @@ const CourseHome: React.FC<{
       <div className="space-y-3 rounded-2xl border border-line bg-canvas p-6">
         <p className="text-xs text-ink-muted">
           {total === 0
-            ? 'No lessons yet.'
+            ? t('learn.lesson.home.noLessons')
             : completed === total
-              ? `You have finished all ${total} lessons.`
-              : `${completed} of ${total} lessons finished.`}
+              ? t.plural('learn.lesson.home.allDone', total)
+              : t.plural('learn.lesson.home.progress', total, { completed })}
         </p>
         {target && (
           <button
@@ -113,7 +122,11 @@ const CourseHome: React.FC<{
             className="flex w-full items-center justify-between gap-3 rounded-xl bg-brand px-5 py-3 text-left text-sm font-bold text-on-brand shadow-lg shadow-brand/20 transition-all hover:bg-brand-hover"
           >
             <span className="min-w-0 truncate">
-              {!next ? 'Review from the start' : completed === 0 ? `Start: ${next.title}` : `Continue: ${next.title}`}
+              {!next
+                ? t('learn.lesson.home.reviewFromStart')
+                : completed === 0
+                  ? t('learn.lesson.home.start', { title: next.title })
+                  : t('learn.lesson.home.continue', { title: next.title })}
             </span>
             <ArrowRight className="h-4 w-4 shrink-0" />
           </button>
@@ -123,7 +136,7 @@ const CourseHome: React.FC<{
       {upcoming.length > 0 && (
         <section aria-labelledby="home-upcoming" className="space-y-2">
           <h4 id="home-upcoming" className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-            Coming up
+            {t('learn.lesson.home.comingUp')}
           </h4>
           {upcoming.map((w) => (
             <button
@@ -142,7 +155,7 @@ const CourseHome: React.FC<{
               </span>
               <span className={`flex shrink-0 items-center gap-1 ${w.overdue ? 'font-bold text-danger' : 'text-ink-subtle'}`}>
                 <Clock className="h-3 w-3" />
-                {w.overdue ? 'Overdue · ' : ''}
+                {w.overdue ? `${t('learn.lesson.overdue')} · ` : ''}
                 {dueLabel(w.dueAt)}
               </span>
             </button>
@@ -158,14 +171,14 @@ const CourseHome: React.FC<{
       {detail?.description && (
         <section aria-labelledby="home-about" className="space-y-2">
           <h4 id="home-about" className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-            About this course
+            {t('learn.lesson.home.about')}
           </h4>
           <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{detail.description}</p>
         </section>
       )}
       {instructors.length > 0 && (
         <p className="text-xs text-ink-muted">
-          Taught by{' '}
+          {t('learn.lesson.home.taughtBy')}{' '}
           <span className="text-ink">
             {[...instructors]
               .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))
@@ -176,14 +189,14 @@ const CourseHome: React.FC<{
       )}
       <section aria-labelledby="home-syllabus" className="space-y-2">
         <h4 id="home-syllabus" className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-          Syllabus
+          {t('learn.lesson.home.syllabus')}
         </h4>
         {detail?.syllabus?.trim() ? (
           <div className="whitespace-pre-line rounded-2xl border border-line bg-canvas p-6 text-sm leading-relaxed text-ink">
             {detail.syllabus}
           </div>
         ) : (
-          <p className="text-xs text-ink-subtle">{detail ? 'Your instructor has not added a syllabus yet.' : 'Loading…'}</p>
+          <p className="text-xs text-ink-subtle">{detail ? t('learn.lesson.home.noSyllabus') : t('common.loading')}</p>
         )}
       </section>
     </div>
@@ -203,6 +216,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
   onOpenWork,
 }) => {
   const { user } = useAuth();
+  const { t } = useLocale();
   const [view, setView] = useState<'home' | 'lesson'>(startOn);
   const courseReq = useApiData<{ data: CourseDetail }>(`/api/v1/courses/${courseId}`);
   const modulesReq = useApiData<{ data: CourseModule[] }>(`/api/v1/courses/${courseId}/modules`);
@@ -259,7 +273,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
       setCompletion(res.data.completion);
       onProgressUpdated?.(res.data.progressPercent);
     } catch (e) {
-      setSaveError(errorMessage(e, 'Could not record this lesson.'));
+      setSaveError(errorMessage(e, t('learn.lesson.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -331,7 +345,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-on-brand shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-500"
             >
               <Code className="h-4 w-4" />
-              <span>Open the code sandbox</span>
+              <span>{t('learn.lesson.openSandbox')}</span>
             </button>
           )}
           {!textBlock && !onOpenCodeLab && <NoContent />}
@@ -354,7 +368,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
             ) : (
               <ExternalLink className="h-4 w-4 text-brand-fg" />
             )}
-            <span>{lesson.contentType === 'PDF_DOCUMENT' ? 'Open the document' : 'Open in a new tab'}</span>
+            <span>{lesson.contentType === 'PDF_DOCUMENT' ? t('learn.lesson.openDocument') : t('learn.lesson.openNewTab')}</span>
           </a>
         )}
         {!textBlock && !link && <NoContent />}
@@ -367,7 +381,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90 p-3 backdrop-blur-md md:p-6"
       role="dialog"
       aria-modal="true"
-      aria-label="Lesson player"
+      aria-label={t('learn.lesson.dialog')}
     >
       <div className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-line bg-canvas px-6 py-3.5">
@@ -378,7 +392,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
             <div>
               <h3 className="line-clamp-1 text-sm font-bold text-ink">{courseTitle}</h3>
               <p className="text-[11px] text-ink-muted">
-                {isLoading || loadError ? '' : `${done.size} of ${lessons.length} lessons completed (${percent}%)`}
+                {isLoading || loadError ? '' : t.plural('learn.lesson.completedSummary', lessons.length, { done: done.size, percent })}
               </p>
             </div>
           </div>
@@ -395,7 +409,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
             </div>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
               className="flex h-8 w-8 items-center justify-center rounded-xl border border-line bg-surface text-ink-muted transition-colors hover:bg-raised hover:text-ink"
             >
               <X className="h-4 w-4" />
@@ -405,11 +419,11 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
         {isLoading ? (
           <p role="status" className="py-24 text-center text-xs text-ink-muted">
-            Loading the course…
+            {t('learn.lesson.loadingCourse')}
           </p>
         ) : loadError ? (
           <div role="alert" className="mx-auto mt-16 max-w-md rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center">
-            <p className="text-sm font-bold text-danger">Could not load this course</p>
+            <p className="text-sm font-bold text-danger">{t('learn.lesson.loadFailed')}</p>
             <p className="mt-1.5 text-xs text-ink-muted">{loadError}</p>
             <button
               onClick={() => {
@@ -418,13 +432,13 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
               }}
               className="mt-4 rounded-xl border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-raised"
             >
-              Try again
+              {t('learn.lesson.tryAgain')}
             </button>
           </div>
         ) : lessons.length === 0 ? (
           <div className="mx-auto mt-16 max-w-md rounded-2xl border border-dashed border-line px-6 py-12 text-center">
-            <p className="text-sm font-bold text-ink">No lessons yet</p>
-            <p className="mt-1.5 text-xs text-ink-muted">This course has no lessons so far. Check back once your instructor adds some.</p>
+            <p className="text-sm font-bold text-ink">{t('learn.lesson.emptyTitle')}</p>
+            <p className="mt-1.5 text-xs text-ink-muted">{t('learn.lesson.emptyBody')}</p>
           </div>
         ) : (
           <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
@@ -448,9 +462,11 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                       <div>
                         <div className="mb-1.5 flex items-center gap-2">
                           <span className="rounded border border-brand/30 bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-fg">
-                            {TYPE_LABEL[current.contentType]}
+                            {t.dyn(`learn.lesson.type.${current.contentType}`, TYPE_LABEL[current.contentType])}
                           </span>
-                          <span className="text-xs text-ink-muted">About {current.estimatedMinutes} min</span>
+                          <span className="text-xs text-ink-muted">
+                            {t('learn.lesson.aboutMinutes', { minutes: current.estimatedMinutes })}
+                          </span>
                         </div>
                         <h2 className="text-xl font-extrabold text-ink">{current.title}</h2>
                       </div>
@@ -460,7 +476,7 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                           className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold ${isDone ? 'border border-success/30 bg-success/10 text-success' : 'text-ink-muted'}`}
                         >
                           {isDone && <CheckCircle2 className="h-4 w-4" />}
-                          <span>{isDone ? 'Completed' : 'Completes when you finish the activity'}</span>
+                          <span>{isDone ? t('learn.lesson.completed') : t('learn.lesson.completesWhen')}</span>
                         </span>
                       ) : (
                         <button
@@ -473,7 +489,9 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                           }`}
                         >
                           <CheckCircle2 className="h-4 w-4" />
-                          <span>{isDone ? 'Completed' : saving ? 'Saving…' : 'Mark as complete'}</span>
+                          <span>
+                            {isDone ? t('learn.lesson.completed') : saving ? t('learn.lesson.saving') : t('learn.lesson.markComplete')}
+                          </span>
                         </button>
                       )}
                     </div>
@@ -484,12 +502,12 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                         className="rounded-xl border border-success/30 bg-success/10 px-4 py-2.5 text-xs font-semibold text-success"
                       >
                         {completion === 'COMPLETED'
-                          ? 'Course complete. Your certificate is ready.'
+                          ? t('learn.lesson.done.COMPLETED')
                           : completion === 'AWAITING_GRADE'
-                            ? 'You have finished every lesson. The course is marked complete once your final grade is approved.'
+                            ? t('learn.lesson.done.AWAITING_GRADE')
                             : completion === 'BELOW_PASS_MARK' || completion === 'FAILED'
-                              ? 'You have finished every lesson, but your final grade is below the pass mark. Talk to your instructor.'
-                              : 'You have finished every lesson.'}
+                              ? t('learn.lesson.done.BELOW_PASS_MARK')
+                              : t('learn.lesson.done.default')}
                       </p>
                     )}
 
@@ -515,14 +533,14 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                     className="flex items-center gap-2 rounded-xl border border-line bg-canvas px-4 py-2 text-xs font-bold text-ink transition-colors hover:bg-raised disabled:opacity-40"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    <span>Previous lesson</span>
+                    <span>{t('learn.lesson.previous')}</span>
                   </button>
                   <button
                     onClick={() => go(1)}
                     disabled={index < 0 || index >= lessons.length - 1}
                     className="flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-xs font-bold text-on-brand shadow-lg shadow-brand/20 transition-all hover:bg-brand-hover disabled:opacity-40"
                   >
-                    <span>Next lesson</span>
+                    <span>{t('learn.lesson.next')}</span>
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -540,19 +558,19 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                 }`}
               >
                 <Home className="h-4 w-4 shrink-0" />
-                <span>Course home</span>
+                <span>{t('learn.lesson.courseHome')}</span>
               </button>
 
               <div>
-                <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-ink-muted">Lessons</h3>
-                <p className="text-[11px] text-ink-subtle">Select any lesson to open it</p>
+                <h3 className="mb-1 text-xs font-bold uppercase tracking-wider text-ink-muted">{t('learn.lesson.lessons')}</h3>
+                <p className="text-[11px] text-ink-subtle">{t('learn.lesson.selectAny')}</p>
               </div>
 
               <div className="space-y-4">
                 {modules.map((module) => (
                   <div key={module.id} className="space-y-2">
                     <h4 className="text-xs font-bold text-ink">{module.title}</h4>
-                    {module.lessons.length === 0 && <p className="text-[11px] text-ink-subtle">No lessons in this module yet.</p>}
+                    {module.lessons.length === 0 && <p className="text-[11px] text-ink-subtle">{t('learn.lesson.noLessonsInModule')}</p>}
                     <div className="space-y-1">
                       {module.lessons.map((lesson) => (
                         <button
@@ -573,7 +591,11 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
                             )}
                             <span className="truncate">{lesson.title}</span>
                           </div>
-                          <span className="shrink-0 text-[10px] text-ink-subtle">{lesson.estimatedMinutes} min</span>
+                          <span
+                            className={`shrink-0 text-[10px] ${view === 'lesson' && lesson.id === activeLessonId ? 'text-brand-fg' : 'text-ink-subtle'}`}
+                          >
+                            {t('learn.lesson.minutes', { minutes: lesson.estimatedMinutes })}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -583,13 +605,13 @@ export const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
               {onOpenExam && (
                 <div className="space-y-2 border-t border-line pt-4">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle">Assessments</h4>
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle">{t('learn.lesson.assessments')}</h4>
                   <button
                     onClick={onOpenExam}
                     className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface py-2 text-xs font-bold text-ink transition-all hover:bg-brand hover:text-on-brand"
                   >
                     <Award className="h-3.5 w-3.5 text-accent" />
-                    <span>Take the exam</span>
+                    <span>{t('learn.lesson.takeExam')}</span>
                   </button>
                 </div>
               )}

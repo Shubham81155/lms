@@ -5,7 +5,8 @@ import { Download, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction, useApiData, downloadFile } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
-import { KIND_LABEL, REQUEST_KINDS, STATUS_LABEL, day, dueText, isOpen, type MyRequest, type RequestKind } from '@/lib/dataRequests';
+import { useT } from '@/lib/i18n';
+import { KIND_LABEL, REQUEST_KINDS, STATUS_LABEL, isOpen, type MyRequest, type RequestKind } from '@/lib/dataRequests';
 
 const card = 'bg-canvas border border-line rounded-2xl p-5 space-y-3';
 const input =
@@ -24,6 +25,7 @@ const STATUS_CLS: Record<string, string> = {
  * it is open, and download the data once an access request was answered with it. Backed by /api/v1/privacy/requests.
  */
 export const MyDataRequests: React.FC = () => {
+  const t = useT();
   const mine = useApiData<{ data: MyRequest[] }>('/api/v1/privacy/requests/mine');
   const file = useAction();
   const act = useAction();
@@ -32,6 +34,14 @@ export const MyDataRequests: React.FC = () => {
   const [filed, setFiled] = useState(false);
 
   const rows = mine.data?.data ?? [];
+  const day = (iso: string) => t.date(iso, { day: 'numeric', month: 'short', year: 'numeric' });
+  const kindLabel = (k: RequestKind) => t.dyn(`privacy.requests.kind.${k}`, KIND_LABEL[k]);
+  const dueText = (daysLeft: number | null) => {
+    if (daysLeft === null) return '';
+    if (daysLeft < 0) return t.plural('privacy.requests.overdue', -daysLeft);
+    if (daysLeft === 0) return t('privacy.requests.dueToday');
+    return t.plural('privacy.requests.dueIn', daysLeft);
+  };
   const openKinds = new Set(rows.filter(isOpen).map((r) => r.kind));
 
   const submit = (e: React.FormEvent) => {
@@ -58,69 +68,72 @@ export const MyDataRequests: React.FC = () => {
       <div className="flex items-center gap-2">
         <FileText className="h-4 w-4 text-brand-fg" />
         <h4 id="requests-h" className="text-sm font-bold text-ink">
-          Your data requests
+          {t('privacy.requests.title')}
         </h4>
       </div>
-      <p className="text-xs text-ink-muted leading-relaxed">
-        Ask the organisation about your data: a copy, a correction, erasure, or to limit how it is used. An administrator answers each
-        request, and you are e-mailed when it changes.
-      </p>
+      <p className="text-xs text-ink-muted leading-relaxed">{t('privacy.requests.intro')}</p>
 
-      <form onSubmit={submit} className="space-y-2" aria-label="File a data request">
+      <form onSubmit={submit} className="space-y-2" aria-label={t('privacy.requests.formLabel')}>
         <label className="block space-y-1">
-          <span className="text-[11px] text-ink-muted">What do you want?</span>
+          <span className="text-[11px] text-ink-muted">{t('privacy.requests.whatLabel')}</span>
           <select className={input} value={kind} onChange={(e) => setKind(e.target.value as RequestKind)}>
             {REQUEST_KINDS.map((k) => (
               <option key={k} value={k} disabled={openKinds.has(k)}>
-                {KIND_LABEL[k]}
-                {openKinds.has(k) ? ' (already open)' : ''}
+                {kindLabel(k)}
+                {openKinds.has(k) ? t('privacy.requests.alreadyOpen') : ''}
               </option>
             ))}
           </select>
         </label>
         <label className="block space-y-1">
-          <span className="text-[11px] text-ink-muted">Details (optional)</span>
+          <span className="text-[11px] text-ink-muted">{t('privacy.requests.detailsLabel')}</span>
           <textarea
             className={input}
             rows={2}
             maxLength={2000}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="Anything that helps us answer, e.g. which data you mean"
+            placeholder={t('privacy.requests.detailsPlaceholder')}
           />
         </label>
         {file.error && <Banner kind="error">{file.error}</Banner>}
-        {filed && !file.error && <Banner kind="ok">Your request was filed. You will hear back by e-mail.</Banner>}
+        {filed && !file.error && <Banner kind="ok">{t('privacy.requests.filed')}</Banner>}
         <button
           type="submit"
           disabled={file.busy || openKinds.has(kind)}
           className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all"
         >
-          {file.busy ? 'Filing…' : 'File request'}
+          {file.busy ? t('privacy.requests.filing') : t('privacy.requests.file')}
         </button>
       </form>
 
       {(mine.error || act.error) && <Banner kind="error">{mine.error || act.error}</Banner>}
-      {mine.isLoading && <p className="text-xs text-ink-subtle">Loading…</p>}
-      {mine.data && rows.length === 0 && <p className="text-xs text-ink-subtle">You have not filed any requests.</p>}
+      {mine.isLoading && <p className="text-xs text-ink-subtle">{t('privacy.requests.loading')}</p>}
+      {mine.data && rows.length === 0 && <p className="text-xs text-ink-subtle">{t('privacy.requests.empty')}</p>}
 
       {rows.length > 0 && (
-        <ul className="divide-y divide-line border border-line rounded-2xl overflow-hidden" aria-label="Your requests">
+        <ul className="divide-y divide-line border border-line rounded-2xl overflow-hidden" aria-label={t('privacy.requests.listLabel')}>
           {rows.map((r) => (
             <li key={r.id} className="p-3 bg-surface space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-ink">{KIND_LABEL[r.kind]}</div>
+                  <div className="text-xs font-semibold text-ink">{kindLabel(r.kind)}</div>
                   <div className="text-[11px] text-ink-subtle">
-                    Filed {day(r.receivedAt)}
-                    {isOpen(r) ? ` · answer due ${day(r.dueAt)}` : r.closedAt ? ` · closed ${day(r.closedAt)}` : ''}
+                    {t('privacy.requests.filedOn', { date: day(r.receivedAt) })}
+                    {isOpen(r)
+                      ? t('privacy.requests.due', { date: day(r.dueAt) })
+                      : r.closedAt
+                        ? t('privacy.requests.closed', { date: day(r.closedAt) })
+                        : ''}
                   </div>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_CLS[r.status]}`}>
-                  {STATUS_LABEL[r.status]}
+                  {t.dyn(`privacy.requests.status.${r.status}`, STATUS_LABEL[r.status])}
                 </span>
               </div>
-              {isOpen(r) && r.overdue && <p className="text-[11px] text-danger">{dueText(r.daysLeft)}: we are late with this answer.</p>}
+              {isOpen(r) && r.overdue && (
+                <p className="text-[11px] text-danger">{t('privacy.requests.late', { due: dueText(r.daysLeft) })}</p>
+              )}
               {r.resolution && <p className="text-xs text-ink-muted whitespace-pre-line">{r.resolution}</p>}
               <div className="flex gap-2">
                 {r.exportAttached && r.status === 'FULFILLED' && (
@@ -129,7 +142,7 @@ export const MyDataRequests: React.FC = () => {
                     disabled={act.busy}
                     className="px-3 py-1.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5"
                   >
-                    <Download className="h-3.5 w-3.5" /> Download my data
+                    <Download className="h-3.5 w-3.5" /> {t('privacy.requests.download')}
                   </button>
                 )}
                 {isOpen(r) && (
@@ -138,7 +151,7 @@ export const MyDataRequests: React.FC = () => {
                     disabled={act.busy}
                     className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold disabled:opacity-50"
                   >
-                    Cancel request
+                    {t('privacy.requests.cancel')}
                   </button>
                 )}
               </div>

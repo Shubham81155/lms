@@ -4,6 +4,7 @@ import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { AuthCard, buttonClass, inputClass } from '@/components/AuthCard';
+import { useT } from '@/lib/i18n';
 
 interface Verified {
   valid: boolean;
@@ -15,15 +16,18 @@ interface Verified {
   institution: string;
 }
 
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+// The viewer's own time zone (as before), in the chosen language.
+const DAY: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric', timeZone: undefined };
 
 function Verify() {
+  const t = useT();
+  const day = (iso: string) => t.date(iso, DAY);
   const params = useSearchParams();
   const [number, setNumber] = useState(params.get('number') ?? '');
   const [tenant, setTenant] = useState(params.get('tenant') ?? '');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Verified | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<'tooMany' | 'notFound' | 'failed' | null>(null);
 
   const check = useCallback(async (n: string, t: string) => {
     if (!n.trim()) return;
@@ -36,10 +40,9 @@ function Verify() {
       });
       setResult(r);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 429) setError('Too many checks in a short time. Please wait a minute and try again.');
-      else if (e instanceof ApiError && e.status === 404)
-        setError('No certificate matches that number and organisation. Check both and try again.');
-      else setError('The certificate could not be checked right now. Please try again.');
+      if (e instanceof ApiError && e.status === 429) setError('tooMany');
+      else if (e instanceof ApiError && e.status === 404) setError('notFound');
+      else setError('failed');
     } finally {
       setBusy(false);
     }
@@ -52,7 +55,7 @@ function Verify() {
   }, [params, check]);
 
   return (
-    <AuthCard title="Verify a certificate" subtitle="Check that a certificate was issued by the institution and has not expired.">
+    <AuthCard title={t('work.verify.title')} subtitle={t('work.verify.subtitle')}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -62,26 +65,26 @@ function Verify() {
       >
         <input
           className={inputClass}
-          aria-label="Certificate number"
-          placeholder="Certificate number, e.g. CERT-2026-1A2B3C4D5E"
+          aria-label={t('work.cert.number')}
+          placeholder={t('work.verify.numberPlaceholder')}
           value={number}
           onChange={(e) => setNumber(e.target.value)}
         />
         <input
           className={inputClass}
-          aria-label="Organisation"
-          placeholder="Organisation (from the certificate link)"
+          aria-label={t('work.verify.orgLabel')}
+          placeholder={t('work.verify.orgPlaceholder')}
           value={tenant}
           onChange={(e) => setTenant(e.target.value)}
         />
         <button type="submit" disabled={busy || !number.trim()} className={buttonClass}>
-          {busy ? 'Checking…' : 'Verify'}
+          {busy ? t('work.verify.checking') : t('work.verify.verify')}
         </button>
       </form>
 
       {error && (
         <p role="alert" className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-xs font-semibold text-danger">
-          {error}
+          {t(error === 'tooMany' ? 'work.verify.tooMany' : error === 'notFound' ? 'work.verify.notFound' : 'work.verify.failed')}
         </p>
       )}
 
@@ -91,26 +94,26 @@ function Verify() {
           className={`space-y-2 rounded-2xl border p-4 text-xs ${result.valid ? 'border-success/40 bg-success/10' : 'border-accent/40 bg-accent/10'}`}
         >
           <p className={`text-sm font-bold ${result.valid ? 'text-success' : 'text-accent'}`}>
-            {result.valid ? 'This certificate is valid.' : 'This certificate has expired.'}
+            {result.valid ? t('work.verify.valid') : t('work.verify.expiredMsg')}
           </p>
           <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-ink">
-            <dt className="text-ink-muted">Issued to</dt>
+            <dt className="text-ink-muted">{t('work.verify.issuedTo')}</dt>
             <dd className="font-semibold">{result.issuedTo}</dd>
-            <dt className="text-ink-muted">Course</dt>
+            <dt className="text-ink-muted">{t('work.verify.course')}</dt>
             <dd>
               {result.course.title} ({result.course.code})
             </dd>
-            <dt className="text-ink-muted">Institution</dt>
+            <dt className="text-ink-muted">{t('work.verify.institution')}</dt>
             <dd>{result.institution}</dd>
-            <dt className="text-ink-muted">Issued</dt>
+            <dt className="text-ink-muted">{t('work.cert.issued')}</dt>
             <dd>{day(result.issuedAt)}</dd>
             {result.expiresAt && (
               <>
-                <dt className="text-ink-muted">{result.valid ? 'Expires' : 'Expired'}</dt>
+                <dt className="text-ink-muted">{result.valid ? t('work.verify.expires') : t('work.verify.expiredLabel')}</dt>
                 <dd>{day(result.expiresAt)}</dd>
               </>
             )}
-            <dt className="text-ink-muted">Number</dt>
+            <dt className="text-ink-muted">{t('work.verify.numberShort')}</dt>
             <dd className="font-mono">{result.certificateNumber}</dd>
           </dl>
         </div>

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Mic, MicOff, MonitorUp, PhoneOff, Send, Video, VideoOff } from 'lucide-react';
 import { ConnectionState, Participant, RemoteTrack, Room, RoomEvent, Track } from 'livekit-client';
+import { useT } from '@/lib/i18n';
 import { ChatMessage, decodeChat, encodeChat, MAX_CHAT_LENGTH } from '@/lib/live';
 
 export interface JoinInfo {
@@ -23,6 +24,7 @@ const btn = 'p-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5
 
 /** Plays one participant's video. The track is attached to and detached from the element. */
 const VideoTile: React.FC<{ tile: Tile }> = ({ tile }) => {
+  const t = useT();
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -44,7 +46,7 @@ const VideoTile: React.FC<{ tile: Tile }> = ({ tile }) => {
       )}
       <span className="absolute bottom-2 left-2 text-[11px] font-semibold bg-canvas/80 text-ink px-2 py-0.5 rounded-md">
         {tile.name}
-        {tile.isLocal ? ' (you)' : ''}
+        {tile.isLocal ? ` ${t('community.live.youSuffix')}` : ''}
       </span>
     </div>
   );
@@ -56,10 +58,12 @@ const VideoTile: React.FC<{ tile: Tile }> = ({ tile }) => {
  * token decides, so hiding a button here is a convenience, not the control).
  */
 export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => void }> = ({ title, join, onLeave }) => {
+  const t = useT();
   const roomRef = useRef<Room | null>(null);
   const audioHost = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<'connecting' | 'connected' | 'failed'>('connecting');
-  const [error, setError] = useState<string | null>(null);
+  // The message is picked at render so it follows the language.
+  const [error, setError] = useState<'connect' | 'device' | 'send' | null>(null);
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -128,7 +132,7 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
       .catch(() => {
         if (cancelled) return;
         setState('failed');
-        setError('Could not connect to the live class server. Check your connection and try again.');
+        setError('connect');
       });
 
     return () => {
@@ -160,7 +164,7 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
       }
       refresh();
     } catch {
-      setError('Could not start that. Check that your browser has permission to use the device.');
+      setError('device');
     }
   };
 
@@ -170,23 +174,32 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
     if (!data || !room) return;
     try {
       await room.localParticipant.publishData(data, { reliable: true });
-      setChat((c) => [...c.slice(-199), { from: 'You', text: draft.trim().slice(0, MAX_CHAT_LENGTH), at: Date.now() }]);
+      setChat((c) => [...c.slice(-199), { from: '', text: draft.trim().slice(0, MAX_CHAT_LENGTH), at: Date.now() }]);
       setDraft('');
     } catch {
-      setError('Your message could not be sent.');
+      setError('send');
     }
   };
 
-  const active = tiles.filter((t) => t.video);
+  const active = tiles.filter((tile) => tile.video);
   const shown = active.length > 0 ? active : tiles.slice(0, 1);
 
   return (
-    <div className="fixed inset-0 z-[60] bg-canvas flex flex-col" role="dialog" aria-modal="true" aria-label={`Live class: ${title}`}>
+    <div
+      className="fixed inset-0 z-[60] bg-canvas flex flex-col"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('community.live.room', { title })}
+    >
       <div className="border-b border-line px-5 py-3 flex items-center justify-between gap-4">
         <div>
           <h3 className="text-sm font-bold text-ink">{title}</h3>
           <p className="text-[11px] text-ink-subtle">
-            {state === 'connecting' ? 'Connecting…' : state === 'failed' ? 'Not connected' : `${tiles.length} in the room`}
+            {state === 'connecting'
+              ? t('community.live.connecting')
+              : state === 'failed'
+                ? t('community.live.notConnected')
+                : t('community.live.inRoomCount', { count: t.number(tiles.length) })}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -197,7 +210,7 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
                 onClick={() => toggle('mic')}
                 disabled={state !== 'connected'}
                 aria-pressed={mic}
-                aria-label={mic ? 'Mute microphone' : 'Unmute microphone'}
+                aria-label={mic ? t('community.live.mute') : t('community.live.unmute')}
               >
                 {mic ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
               </button>
@@ -206,7 +219,7 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
                 onClick={() => toggle('cam')}
                 disabled={state !== 'connected'}
                 aria-pressed={cam}
-                aria-label={cam ? 'Turn camera off' : 'Turn camera on'}
+                aria-label={cam ? t('community.live.camOff') : t('community.live.camOn')}
               >
                 {cam ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
               </button>
@@ -216,7 +229,7 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
                   onClick={() => toggle('screen')}
                   disabled={state !== 'connected'}
                   aria-pressed={screen}
-                  aria-label={screen ? 'Stop sharing screen' : 'Share screen'}
+                  aria-label={screen ? t('community.live.stopShare') : t('community.live.share')}
                 >
                   <MonitorUp className="h-4 w-4" />
                 </button>
@@ -225,49 +238,56 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
           )}
           <button className={`${btn} bg-rose-600 hover:bg-rose-500 border-danger text-on-brand`} onClick={onLeave}>
             <PhoneOff className="h-4 w-4" />
-            <span>Leave</span>
+            <span>{t('community.live.leave')}</span>
           </button>
         </div>
       </div>
 
       {error && (
         <div role="alert" className="bg-danger/10 border-b border-danger/30 px-5 py-2 text-xs text-danger">
-          {error}
+          {t(
+            error === 'connect'
+              ? 'community.live.connectFailed'
+              : error === 'device'
+                ? 'community.live.deviceError'
+                : 'community.live.sendError'
+          )}
         </div>
       )}
 
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 p-4 overflow-y-auto">
           {state === 'failed' ? (
-            <div className="h-full flex items-center justify-center text-sm text-ink-muted">The room could not be opened.</div>
+            <div className="h-full flex items-center justify-center text-sm text-ink-muted">{t('community.live.roomFailed')}</div>
           ) : (
             <div className={`grid gap-3 ${shown.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-4xl mx-auto'}`}>
-              {shown.map((t) => (
-                <VideoTile key={t.id} tile={t} />
+              {shown.map((tile) => (
+                <VideoTile key={tile.id} tile={tile} />
               ))}
               {state === 'connected' && active.length === 0 && (
-                <p className="text-center text-xs text-ink-subtle md:col-span-2">Waiting for the instructor to share video.</p>
+                <p className="text-center text-xs text-ink-subtle md:col-span-2">{t('community.live.waiting')}</p>
               )}
             </div>
           )}
           <div ref={audioHost} className="hidden" aria-hidden />
         </div>
 
-        <aside className="w-72 border-l border-line flex flex-col" aria-label="Chat and participants">
+        <aside className="w-72 border-l border-line flex flex-col" aria-label={t('community.live.side')}>
           <div className="p-3 border-b border-line text-[11px] text-ink-muted space-y-1 max-h-40 overflow-y-auto">
-            <div className="font-bold uppercase tracking-wider text-ink-subtle">In the room</div>
-            {tiles.map((t) => (
-              <div key={t.id} className="text-ink">
-                {t.name}
-                {t.isLocal ? ' (you)' : ''}
+            <div className="font-bold uppercase tracking-wider text-ink-subtle">{t('community.live.inRoom')}</div>
+            {tiles.map((tile) => (
+              <div key={tile.id} className="text-ink">
+                {tile.name}
+                {tile.isLocal ? ` ${t('community.live.youSuffix')}` : ''}
               </div>
             ))}
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2" aria-live="polite">
-            {chat.length === 0 && <p className="text-[11px] text-ink-subtle">No messages yet.</p>}
+            {chat.length === 0 && <p className="text-[11px] text-ink-subtle">{t('community.live.noMessages')}</p>}
             {chat.map((m, i) => (
               <div key={i} className="text-xs">
-                <span className="font-bold text-ink">{m.from}</span> <span className="text-ink break-words">{m.text}</span>
+                <span className="font-bold text-ink">{m.from || t('community.live.you')}</span>{' '}
+                <span className="text-ink break-words">{m.text}</span>
               </div>
             ))}
           </div>
@@ -280,8 +300,8 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
           >
             <input
               className="flex-1 bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
-              aria-label="Chat message"
-              placeholder="Message everyone"
+              aria-label={t('community.live.chatLabel')}
+              placeholder={t('community.live.chatPlaceholder')}
               maxLength={MAX_CHAT_LENGTH}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -290,7 +310,7 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
             <button
               className="px-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl"
               disabled={state !== 'connected' || !draft.trim()}
-              aria-label="Send message"
+              aria-label={t('community.live.sendMessage')}
             >
               <Send className="h-4 w-4" />
             </button>

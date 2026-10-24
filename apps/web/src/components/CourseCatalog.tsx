@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { errorMessage, useApiData } from '@/hooks/useApiData';
 import { useMyEnrollments } from '@/hooks/useEnrollments';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
-import { plural } from '@/lib/plural';
+import { useT } from '@/lib/i18n';
 
 interface CourseCatalogProps {
   onClose: () => void;
@@ -31,11 +31,14 @@ interface CatalogCourse {
   instructors: { isPrimary: boolean; user: { firstName: string; lastName: string } }[];
 }
 
-const studyTime = (minutes: number) => (minutes < 60 ? `${minutes} min` : `${Math.round((minutes / 60) * 10) / 10} h`);
-
 /** Published courses from the server, searched server-side; enrolment errors are shown as they are. */
 export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolled, initialQuery = '' }) => {
   useEscapeKey(onClose);
+  const t = useT();
+  const studyTime = (minutes: number) =>
+    minutes < 60
+      ? t('work.catalog.minutes', { n: t.number(minutes) })
+      : t('work.catalog.hours', { n: t.number(Math.round((minutes / 60) * 10) / 10) });
   const [query, setQuery] = useState(initialQuery);
   const [search, setSearch] = useState(initialQuery.trim());
   const [department, setDepartment] = useState<string>('ALL');
@@ -45,8 +48,8 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
 
   // Search on the server once typing pauses.
   useEffect(() => {
-    const t = setTimeout(() => setSearch(query.trim()), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setSearch(query.trim()), 300);
+    return () => clearTimeout(timer);
   }, [query]);
 
   const { data, isLoading, error } = useApiData<{ data: CatalogCourse[]; pagination: { total: number } }>('/api/v1/courses', {
@@ -73,10 +76,10 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
     try {
       await api.post('/api/v1/enrollments', { courseId: course.id });
       await refetchEnrollments();
-      setResult({ ok: true, text: `You are enrolled in ${course.title}. It is now on your dashboard.` });
+      setResult({ ok: true, text: t('work.catalog.enrolledOk', { title: course.title }) });
       onEnrolled?.(course.id);
     } catch (e) {
-      setResult({ ok: false, text: errorMessage(e, 'Could not enrol you in this course.') });
+      setResult({ ok: false, text: errorMessage(e, t('work.catalog.enrolError')) });
     } finally {
       setEnrolling(false);
     }
@@ -99,16 +102,18 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
             </div>
             <div>
               <h3 id="catalog-h" className="font-bold text-base text-ink">
-                Course catalogue
+                {t('work.catalog.title')}
               </h3>
               <p className="text-xs text-ink-muted">
-                {isLoading ? 'Loading…' : `${plural(total, 'published course')}${search ? ` matching “${search}”` : ''}`}
+                {isLoading
+                  ? t('common.loading')
+                  : `${t.plural('work.catalog.count', total)}${search ? t('work.catalog.matching', { query: search }) : ''}`}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="h-8 w-8 rounded-xl bg-surface hover:bg-raised border border-line flex items-center justify-center text-ink-muted hover:text-ink"
           >
             <X className="h-4 w-4" />
@@ -129,15 +134,19 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
             <Search className="h-4 w-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="search"
-              placeholder="Search by code, title or description"
-              aria-label="Search courses"
+              placeholder={t('work.catalog.searchPlaceholder')}
+              aria-label={t('work.catalog.searchLabel')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-canvas border border-line rounded-xl pl-10 pr-4 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
             />
           </div>
           {departments.length > 0 && (
-            <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto" role="group" aria-label="Filter by department">
+            <div
+              className="flex items-center gap-2 w-full md:w-auto overflow-x-auto"
+              role="group"
+              aria-label={t('work.catalog.filterLabel')}
+            >
               {['ALL', ...departments].map((d) => (
                 <button
                   key={d}
@@ -145,7 +154,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                   aria-pressed={department === d}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap ${department === d ? 'bg-brand text-on-brand' : 'bg-canvas text-ink-muted hover:text-ink border border-line'}`}
                 >
-                  {d === 'ALL' ? 'All departments' : d}
+                  {d === 'ALL' ? t('work.catalog.allDepartments') : d}
                 </button>
               ))}
             </div>
@@ -161,7 +170,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
             )}
             {!error && shown.length === 0 && (
               <p className="p-8 text-center text-ink-muted text-xs">
-                {isLoading ? 'Loading courses…' : search ? 'No courses match your search.' : 'No courses are published yet.'}
+                {isLoading ? t('work.catalog.loadingCourses') : search ? t('work.catalog.noMatch') : t('work.catalog.noneYet')}
               </p>
             )}
             {shown.map((course) => {
@@ -181,13 +190,13 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                     {mine ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-success/10 text-success border border-success/30 flex items-center gap-1">
                         <CheckCircle2 className="h-3 w-3" />
-                        Enrolled
+                        {t('work.catalog.enrolled')}
                       </span>
                     ) : (
                       !course.allowSelfEnroll && (
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-surface border border-line text-ink-muted flex items-center gap-1">
                           <Lock className="h-3 w-3" />
-                          By invitation
+                          {t('work.catalog.invitation')}
                         </span>
                       )
                     )}
@@ -197,7 +206,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                   <div className="flex items-center justify-between text-[11px] text-ink-subtle mt-3 pt-2 border-t border-line">
                     <span>{course.department?.name ?? ''}</span>
                     <span>
-                      {plural(course.moduleCount, 'module')}
+                      {t.plural('work.catalog.module', course.moduleCount)}
                       {course.estimatedMinutes > 0 ? ` · ${studyTime(course.estimatedMinutes)}` : ''}
                     </span>
                   </div>
@@ -224,19 +233,26 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                     </p>
                   )}
                   <p className="text-xs text-ink mt-3 leading-relaxed whitespace-pre-line">
-                    {selected.description || 'The instructor has not written a description yet.'}
+                    {selected.description || t('work.catalog.noDescription')}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { icon: Clock, label: 'Study time', value: selected.estimatedMinutes > 0 ? studyTime(selected.estimatedMinutes) : '–' },
+                    {
+                      icon: Clock,
+                      label: t('work.catalog.studyTime'),
+                      value: selected.estimatedMinutes > 0 ? studyTime(selected.estimatedMinutes) : '–',
+                    },
                     {
                       icon: Layers,
-                      label: 'Content',
-                      value: `${plural(selected.moduleCount, 'module')}, ${plural(selected.lessonCount, 'lesson')}`,
+                      label: t('work.catalog.contentLabel'),
+                      value: t('work.catalog.content', {
+                        modules: t.plural('work.catalog.module', selected.moduleCount),
+                        lessons: t.plural('work.catalog.lesson', selected.lessonCount),
+                      }),
                     },
-                    { icon: Award, label: 'Pass mark', value: `${selected.passingGradePercent}%` },
+                    { icon: Award, label: t('work.catalog.passMark'), value: `${selected.passingGradePercent}%` },
                   ].map(({ icon: Icon, label, value }) => (
                     <div key={label} className="bg-canvas border border-line p-3 rounded-2xl text-center">
                       <Icon className="h-4 w-4 text-brand-fg mx-auto mb-1" />
@@ -248,7 +264,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
 
                 {selected.syllabus && (
                   <div className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
-                    <h4 className="text-xs font-bold text-ink uppercase tracking-wider">Syllabus</h4>
+                    <h4 className="text-xs font-bold text-ink uppercase tracking-wider">{t('work.catalog.syllabus')}</h4>
                     <p className="text-xs text-ink whitespace-pre-line leading-relaxed">{selected.syllabus}</p>
                   </div>
                 )}
@@ -257,15 +273,15 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
               <div className="pt-4 border-t border-line flex items-center justify-between gap-4">
                 <p className="text-xs text-ink-muted">
                   {enrolment(selected.id)
-                    ? 'You are enrolled. Open it from your dashboard.'
+                    ? t('work.catalog.hintEnrolled')
                     : selected.allowSelfEnroll
-                      ? 'Open for enrolment. A certificate is issued when you complete it.'
-                      : 'Enrolment is by invitation. Ask the instructor to add you.'}
+                      ? t('work.catalog.hintOpen')
+                      : t('work.catalog.hintInvite')}
                 </p>
                 {enrolment(selected.id) ? (
                   <span className="px-5 py-2.5 bg-raised text-success border border-success/30 rounded-xl text-xs font-bold flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    Enrolled
+                    {t('work.catalog.enrolled')}
                   </span>
                 ) : (
                   selected.allowSelfEnroll && (
@@ -274,7 +290,7 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onClose, onEnrolle
                       disabled={enrolling}
                       className="px-5 py-2.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold shadow-lg shadow-brand/20"
                     >
-                      {enrolling ? 'Enrolling…' : 'Enrol'}
+                      {enrolling ? t('work.catalog.enrolling') : t('work.catalog.enrol')}
                     </button>
                   )
                 )}

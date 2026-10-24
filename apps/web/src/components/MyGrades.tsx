@@ -3,6 +3,7 @@
 import React from 'react';
 import { Award, ClipboardCheck, FileCheck, Brain } from 'lucide-react';
 import { useApiData } from '@/hooks/useApiData';
+import { useT } from '@/lib/i18n';
 
 interface CourseGrades {
   course: { id: string; code: string; title: string; passingGradePercent: number };
@@ -34,12 +35,16 @@ interface CourseGrades {
 }
 
 const BLOOM_ORDER = ['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE'];
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+// The viewer's own time zone (as before), in the chosen language.
+const DAY: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric', timeZone: undefined };
 
 /** A learner's own results across their courses (GET /enrollments/grades) and their Bloom's-taxonomy profile. */
 export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void }> = ({ onOpenAssignments }) => {
+  const t = useT();
+  const day = (iso: string) => t.date(iso, DAY);
   const grades = useApiData<{ data: CourseGrades[] }>('/api/v1/enrollments/grades');
   const mastery = useApiData<{ data: { level: string; score: number }[] }>('/api/v1/analytics/mastery');
+  const bloom = (level: string) => t.dyn(`work.bloom.${level}`, level.toLowerCase());
   const courses = grades.data?.data ?? [];
   const levels = [...(mastery.data?.data ?? [])].sort((a, b) => BLOOM_ORDER.indexOf(a.level) - BLOOM_ORDER.indexOf(b.level));
 
@@ -47,11 +52,9 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
     <section className="space-y-6" aria-labelledby="grades-h">
       <div>
         <h2 id="grades-h" className="text-2xl font-extrabold text-ink tracking-tight">
-          Grades
+          {t('work.grades.title')}
         </h2>
-        <p className="text-sm text-ink-muted">
-          Your results in every course. A course grade appears once your instructor has finalised it.
-        </p>
+        <p className="text-sm text-ink-muted">{t('work.grades.intro')}</p>
       </div>
 
       {grades.error && (
@@ -59,10 +62,10 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
           {grades.error}
         </p>
       )}
-      {grades.isLoading && <p className="text-xs text-ink-subtle">Loading your grades…</p>}
+      {grades.isLoading && <p className="text-xs text-ink-subtle">{t('work.grades.loading')}</p>}
       {!grades.isLoading && courses.length === 0 && !grades.error && (
         <p className="rounded-2xl border border-dashed border-line p-8 text-center text-xs text-ink-muted">
-          You are not enrolled in any course yet.
+          {t('work.grades.notEnrolled')}
         </p>
       )}
 
@@ -75,8 +78,11 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
               </span>
               <h3 className="mt-1.5 font-bold text-base text-ink">{c.course.title}</h3>
               <p className="text-[11px] text-ink-muted">
-                {c.status.replace(/_/g, ' ').toLowerCase()} · {Math.round(c.progressPercent)}% of lessons done · pass mark{' '}
-                {c.course.passingGradePercent}%
+                {t('work.grades.courseLine', {
+                  status: t.dyn(`work.status.${c.status.toLowerCase()}`, c.status.replace(/_/g, ' ').toLowerCase()),
+                  progress: Math.round(c.progressPercent),
+                  mark: c.course.passingGradePercent,
+                })}
               </p>
             </div>
             <div className="text-right">
@@ -88,11 +94,11 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
                   </div>
                   <div className="text-[11px] text-ink-muted">
                     {c.courseGrade.percent !== null ? `${Math.round(c.courseGrade.percent * 10) / 10}%` : ''}
-                    {c.courseGrade.approvedAt ? ` · final since ${day(c.courseGrade.approvedAt)}` : ''}
+                    {c.courseGrade.approvedAt ? t('work.grades.finalSince', { date: day(c.courseGrade.approvedAt) }) : ''}
                   </div>
                 </>
               ) : (
-                <div className="text-xs text-ink-subtle">Course grade not final yet</div>
+                <div className="text-xs text-ink-subtle">{t('work.grades.notFinal')}</div>
               )}
             </div>
           </div>
@@ -100,7 +106,7 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
           {c.assignments.length > 0 && (
             <div className="space-y-1.5">
               <h4 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-subtle">
-                <FileCheck className="h-3.5 w-3.5" /> Assignments
+                <FileCheck className="h-3.5 w-3.5" /> {t('work.grades.assignments')}
               </h4>
               <ul className="divide-y divide-line rounded-xl border border-line">
                 {c.assignments.map((a) => (
@@ -113,9 +119,17 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
                         {a.title}
                       </button>
                       <div className="text-[11px] text-ink-muted">
-                        {a.submittedAt ? `Submitted ${day(a.submittedAt)}` : a.dueDate ? `Due ${day(a.dueDate)}` : 'Not submitted'}
-                        {a.late && <span className="ml-1.5 text-danger font-semibold">late</span>}
-                        {a.appealStatus && <span className="ml-1.5">· appeal {a.appealStatus.toLowerCase()}</span>}
+                        {a.submittedAt
+                          ? t('work.grades.submittedOn', { date: day(a.submittedAt) })
+                          : a.dueDate
+                            ? t('work.grades.dueOn', { date: day(a.dueDate) })
+                            : t('work.grades.notSubmitted')}
+                        {a.late && <span className="ml-1.5 text-danger font-semibold">{t('work.grades.late')}</span>}
+                        {a.appealStatus && (
+                          <span className="ml-1.5">
+                            {t.dyn(`work.grades.appeal.${a.appealStatus.toLowerCase()}`, `· appeal ${a.appealStatus.toLowerCase()}`)}
+                          </span>
+                        )}
                       </div>
                       {a.feedback && <p className="mt-1 text-[11px] text-ink whitespace-pre-line">“{a.feedback}”</p>}
                     </div>
@@ -123,7 +137,7 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
                       {a.grade !== null ? (
                         `${a.grade} / ${a.maxPoints}`
                       ) : (
-                        <span className="font-normal text-ink-subtle">{a.submittedAt ? 'Awaiting grade' : '–'}</span>
+                        <span className="font-normal text-ink-subtle">{a.submittedAt ? t('work.grades.awaitingGrade') : '–'}</span>
                       )}
                     </div>
                   </li>
@@ -135,7 +149,7 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
           {c.quizzes.length > 0 && (
             <div className="space-y-1.5">
               <h4 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-subtle">
-                <ClipboardCheck className="h-3.5 w-3.5" /> Quizzes
+                <ClipboardCheck className="h-3.5 w-3.5" /> {t('work.grades.quizzes')}
               </h4>
               <ul className="divide-y divide-line rounded-xl border border-line">
                 {c.quizzes.map((q) => (
@@ -143,15 +157,15 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
                     <div>
                       <div className="font-semibold text-ink">{q.title}</div>
                       <div className="text-[11px] text-ink-muted">
-                        {q.attemptsUsed} of {q.maxAttempts} attempt{q.maxAttempts === 1 ? '' : 's'} used · pass at {q.passingPercent}%
-                        {q.awaitingManualGrading && ' · some answers awaiting marking'}
+                        {t.plural('work.grades.attempts', q.maxAttempts, { used: q.attemptsUsed, pass: q.passingPercent })}
+                        {q.awaitingManualGrading && t('work.grades.awaitingMarking')}
                       </div>
                     </div>
                     <div className={`shrink-0 font-bold ${q.passed ? 'text-success' : 'text-ink'}`}>
                       {q.bestPercent !== null ? (
-                        `${q.bestPercent}%${q.passed ? ' · passed' : ''}`
+                        `${q.bestPercent}%${q.passed ? t('work.grades.passed') : ''}`
                       ) : (
-                        <span className="font-normal text-ink-subtle">Not taken</span>
+                        <span className="font-normal text-ink-subtle">{t('work.grades.notTaken')}</span>
                       )}
                     </div>
                   </li>
@@ -165,14 +179,14 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
       {levels.length > 0 && (
         <article className="bg-surface border border-line rounded-2xl p-5 space-y-3" aria-labelledby="mastery-h">
           <h3 id="mastery-h" className="flex items-center gap-2 font-bold text-sm text-ink">
-            <Brain className="h-4 w-4 text-orchid" /> Thinking skills
+            <Brain className="h-4 w-4 text-orchid" /> {t('work.grades.thinking')}
           </h3>
-          <p className="text-[11px] text-ink-muted">Your average on quiz questions tagged with a level of Bloom's taxonomy.</p>
+          <p className="text-[11px] text-ink-muted">{t('work.grades.thinkingHint')}</p>
           <ul className="space-y-2">
             {levels.map((l) => (
               <li key={l.level} className="text-xs">
                 <div className="flex justify-between text-ink">
-                  <span className="capitalize">{l.level.toLowerCase()}</span>
+                  <span className="capitalize">{bloom(l.level)}</span>
                   <span className="font-semibold">{Math.round(l.score)}%</span>
                 </div>
                 <div
@@ -181,7 +195,7 @@ export const MyGrades: React.FC<{ onOpenAssignments: (courseId: string) => void 
                   aria-valuenow={Math.round(l.score)}
                   aria-valuemin={0}
                   aria-valuemax={100}
-                  aria-label={l.level}
+                  aria-label={bloom(l.level)}
                 >
                   <div className="h-1.5 bg-brand" style={{ width: `${Math.min(100, l.score)}%` }} />
                 </div>

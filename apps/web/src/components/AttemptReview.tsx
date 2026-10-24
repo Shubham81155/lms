@@ -3,6 +3,7 @@
 import React from 'react';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { useApiData } from '@/hooks/useApiData';
+import { useT, type Translator } from '@/lib/i18n';
 
 interface ReviewQuestion {
   id: string;
@@ -26,20 +27,21 @@ interface Review {
 }
 
 /** Text of an answer: option ids become their option text; lists are joined. */
-function answerText(q: ReviewQuestion, answer: unknown): string {
+function answerText(q: ReviewQuestion, answer: unknown, t: Translator): string {
   const list = Array.isArray(answer)
     ? answer.map(String)
     : answer === null || answer === undefined || answer === ''
       ? []
       : [String(answer)];
-  if (list.length === 0) return 'No answer';
+  if (list.length === 0) return t('learn.review.noAnswer');
   return list.map((a) => q.options.find((o) => o.id === a || o.text === a)?.text ?? a).join(', ');
 }
 
 /** One finished attempt, question by question, as the quiz's review policy allows (GET …/review). */
 export const AttemptReview: React.FC<{ quizId: string; submissionId: string }> = ({ quizId, submissionId }) => {
+  const t = useT();
   const { data, isLoading, error } = useApiData<{ data: Review }>(`/api/v1/quizzes/${quizId}/submissions/${submissionId}/review`);
-  if (isLoading) return <p className="text-xs text-ink-subtle">Loading your answers…</p>;
+  if (isLoading) return <p className="text-xs text-ink-subtle">{t('learn.review.loading')}</p>;
   if (error)
     return (
       <p role="alert" className="text-xs text-danger">
@@ -48,13 +50,12 @@ export const AttemptReview: React.FC<{ quizId: string; submissionId: string }> =
     );
   const review = data?.data;
   if (!review) return null;
-  if (review.reviewPolicy === 'SCORE_ONLY')
-    return <p className="text-xs text-ink-muted">Your instructor shows the score only for this quiz.</p>;
+  if (review.reviewPolicy === 'SCORE_ONLY') return <p className="text-xs text-ink-muted">{t('learn.review.scoreOnly')}</p>;
 
   return (
     <div className="space-y-3 text-left">
       {!review.answersRevealed && review.reviewPolicy === 'ANSWERS' && (
-        <p className="text-[11px] text-ink-muted">Correct answers are shown once you have used all your attempts or the quiz has closed.</p>
+        <p className="text-[11px] text-ink-muted">{t('learn.review.answersLater')}</p>
       )}
       <ol className="space-y-3">
         {review.questions.map((q, i) => (
@@ -66,7 +67,7 @@ export const AttemptReview: React.FC<{ quizId: string; submissionId: string }> =
               <span className="shrink-0 flex items-center gap-1 font-semibold">
                 {q.needsManualGrading ? (
                   <>
-                    <Clock className="h-3.5 w-3.5 text-accent" /> <span className="text-accent">To be marked</span>
+                    <Clock className="h-3.5 w-3.5 text-accent" /> <span className="text-accent">{t('learn.review.toBeMarked')}</span>
                   </>
                 ) : q.isCorrect ? (
                   <>
@@ -86,12 +87,12 @@ export const AttemptReview: React.FC<{ quizId: string; submissionId: string }> =
               </span>
             </div>
             <p className="text-ink-muted">
-              Your answer: <span className="text-ink whitespace-pre-wrap">{answerText(q, q.yourAnswer)}</span>
+              {t('learn.review.yourAnswer')} <span className="text-ink whitespace-pre-wrap">{answerText(q, q.yourAnswer, t)}</span>
             </p>
             {review.answersRevealed && !q.isCorrect && (q.correctOptionIds?.length || q.correctAnswer) && (
               <p className="text-ink-muted">
-                Correct answer:{' '}
-                <span className="text-success">{q.correctOptionIds?.length ? answerText(q, q.correctOptionIds) : q.correctAnswer}</span>
+                {t('learn.review.correctAnswer')}{' '}
+                <span className="text-success">{q.correctOptionIds?.length ? answerText(q, q.correctOptionIds, t) : q.correctAnswer}</span>
               </p>
             )}
             {review.answersRevealed && q.explanation && <p className="text-ink-muted italic">{q.explanation}</p>}

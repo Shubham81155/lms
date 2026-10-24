@@ -12,8 +12,7 @@ import { AcademicCalendar } from '@/components/AcademicCalendar';
 import { DiscussionForum } from '@/components/DiscussionForum';
 import { MyAssignments } from '@/components/MyAssignments';
 import { MyGrades } from '@/components/MyGrades';
-import { CourseAnnouncements } from '@/components/CourseAnnouncements';
-import { timeAgo } from '@/hooks/useNotifications';
+import { CourseAnnouncements, relativeTime } from '@/components/CourseAnnouncements';
 import { useAuth } from '@/context/AuthContext';
 import { AiTutorModal } from '@/components/AiTutorModal';
 import { useAiStatus } from '@/hooks/useAi';
@@ -121,7 +120,7 @@ export default function StudentDashboard() {
     setLeaveBusy(true);
     try {
       await api.delete(`/api/v1/enrollments/${enrollmentId}`);
-      setNotification(`You left ${title}. Your progress is kept if you rejoin.`);
+      setNotification(t('work.student.left', { title }));
       setLeaving(null);
       await refetchEnrollments();
     } catch (e) {
@@ -139,7 +138,7 @@ export default function StudentDashboard() {
       enrollmentId: e.id,
       open: e.status === 'ENROLLED' || e.status === 'IN_PROGRESS',
       code: e.course?.code ?? '',
-      title: e.course?.title ?? 'Course',
+      title: e.course?.title ?? t('work.student.courseFallback'),
       progress: Math.round(e.progressPercent || 0),
       status: String(e.status).replace(/_/g, ' ').toLowerCase(),
       finalGrade: e.finalGrade ?? null,
@@ -274,7 +273,7 @@ export default function StudentDashboard() {
                           {course.code}
                         </span>
                         <span className="text-[10px] text-ink-muted bg-canvas px-2 py-0.5 rounded-md border border-line capitalize">
-                          {course.status}
+                          {t.dyn(`work.status.${course.status.replace(/ /g, '_')}`, course.status)}
                         </span>
                       </div>
 
@@ -498,7 +497,7 @@ export default function StudentDashboard() {
                     >
                       <div className="flex items-center justify-between gap-2 text-[10px] text-ink-subtle">
                         <span className="font-bold">{a.course.code}</span>
-                        <span>{timeAgo(a.createdAt)}</span>
+                        <span>{relativeTime(t, a.createdAt)}</span>
                       </div>
                       <div className="text-xs font-bold text-ink">{a.title}</div>
                       <p className="text-[11px] text-ink-muted line-clamp-2">{a.body}</p>

@@ -5,6 +5,7 @@ import { X, Sparkles, Send, CheckCircle2, XCircle, Loader2, ListChecks } from 'l
 import { api } from '@/lib/api';
 import { errorMessage } from '@/hooks/useApiData';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { RichText, useT } from '@/lib/i18n';
 
 interface TutorCourse {
   id: string;
@@ -34,13 +35,15 @@ interface AiTutorModalProps {
   onClose: () => void;
 }
 
-const SUGGESTIONS = ['Explain the main idea of the last lesson', 'Quiz me on this course', 'What should I review before the exam?'];
+// Only the second suggestion asks for a practice question.
+const SUGGESTIONS = ['community.tutor.suggestExplain', 'community.tutor.suggestQuiz', 'community.tutor.suggestReview'] as const;
 
 /**
  * Study tutor. Each question goes to POST /ai/tutor with the conversation so far; the answer is grounded in
  * the chosen course's lessons. Nothing is stored on the server, so closing the dialog ends the conversation.
  */
 export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCourseId, onClose }) => {
+  const t = useT();
   useEscapeKey(onClose);
   const [courseId, setCourseId] = useState(initialCourseId ?? courses[0]?.id ?? '');
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -67,7 +70,7 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
     async (text: string, practice = wantPractice) => {
       const message = text.trim();
       if (!message || busy) return;
-      const history = turns.slice(-20).map((t) => ({ role: t.role, text: t.text.slice(0, 4000) }));
+      const history = turns.slice(-20).map((turn) => ({ role: turn.role, text: turn.text.slice(0, 4000) }));
       setTurns((prev) => [...prev, { id: nextId.current++, role: 'user', text: message }]);
       setInput('');
       setBusy(true);
@@ -84,12 +87,12 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
           { id: nextId.current++, role: 'tutor', text: res.data.reply, practice: res.data.practice, grounded: res.data.groundedInCourse },
         ]);
       } catch (e) {
-        setError(errorMessage(e, 'The tutor could not answer. Try again.'));
+        setError(errorMessage(e, t('community.tutor.error')));
       } finally {
         setBusy(false);
       }
     },
-    [busy, courseId, turns, wantPractice]
+    [busy, courseId, turns, wantPractice, t]
   );
 
   const course = courses.find((c) => c.id === courseId);
@@ -109,15 +112,15 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
             </div>
             <div>
               <h3 id="tutor-h" className="font-bold text-sm text-ink">
-                Study tutor
+                {t('community.tutor.title')}
               </h3>
-              <p className="text-[11px] text-ink-muted">Explains topics from your course. It will not do graded work for you.</p>
+              <p className="text-[11px] text-ink-muted">{t('community.tutor.subtitle')}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {courses.length > 0 && (
               <label className="text-[11px] text-ink-muted flex items-center gap-1.5">
-                <span>Course</span>
+                <span>{t('community.tutor.course')}</span>
                 <select
                   value={courseId}
                   onChange={(e) => switchCourse(e.target.value)}
@@ -128,13 +131,13 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
                       {c.code} · {c.title}
                     </option>
                   ))}
-                  <option value="">General (no course)</option>
+                  <option value="">{t('community.tutor.general')}</option>
                 </select>
               </label>
             )}
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
               className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />
@@ -146,38 +149,47 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
           {turns.length === 0 && (
             <div className="text-center text-xs text-ink-muted py-10 space-y-4">
               <p>
-                Ask about anything in {course ? <strong className="text-ink">{course.title}</strong> : 'your studies'}. Answers can be
-                wrong; check them against your lessons.
+                <RichText
+                  text={
+                    course
+                      ? t('community.tutor.introCourse', { course: course.title.replace(/\*\*/g, '') })
+                      : t('community.tutor.introGeneral')
+                  }
+                />
               </p>
               <div className="flex flex-wrap justify-center gap-2">
-                {SUGGESTIONS.map((s) => (
+                {SUGGESTIONS.map((key, i) => (
                   <button
-                    key={s}
-                    onClick={() => send(s, s.startsWith('Quiz'))}
+                    key={key}
+                    onClick={() => send(t(key), i === 1)}
                     className="px-3 py-1.5 rounded-xl border border-line bg-canvas hover:border-brand/50 text-ink text-[11px] font-semibold"
                   >
-                    {s}
+                    {t(key)}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {turns.map((t) =>
-            t.role === 'user' ? (
-              <div key={t.id} className="flex justify-end">
+          {turns.map((turn) =>
+            turn.role === 'user' ? (
+              <div key={turn.id} className="flex justify-end">
                 <div className="max-w-[80%] rounded-2xl rounded-br-md bg-brand text-on-brand px-3.5 py-2 text-xs whitespace-pre-wrap">
-                  {t.text}
+                  {turn.text}
                 </div>
               </div>
             ) : (
-              <div key={t.id} className="space-y-2 max-w-[90%]">
+              <div key={turn.id} className="space-y-2 max-w-[90%]">
                 <div className="rounded-2xl rounded-bl-md bg-canvas border border-line px-3.5 py-2.5 text-xs text-ink whitespace-pre-wrap leading-relaxed">
-                  {t.text}
+                  {turn.text}
                 </div>
-                {t.grounded === false && courseId && <p className="text-[10px] text-ink-subtle">Not based on course material.</p>}
-                {t.practice && (
-                  <PracticeCard practice={t.practice} chosen={answers[t.id]} onChoose={(i) => setAnswers((a) => ({ ...a, [t.id]: i }))} />
+                {turn.grounded === false && courseId && <p className="text-[10px] text-ink-subtle">{t('community.tutor.notGrounded')}</p>}
+                {turn.practice && (
+                  <PracticeCard
+                    practice={turn.practice}
+                    chosen={answers[turn.id]}
+                    onChoose={(i) => setAnswers((a) => ({ ...a, [turn.id]: i }))}
+                  />
                 )}
               </div>
             )
@@ -186,7 +198,7 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
           {busy && (
             <div className="flex items-center gap-2 text-xs text-ink-muted">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              <span>Thinking…</span>
+              <span>{t('community.tutor.thinking')}</span>
             </div>
           )}
           {error && (
@@ -216,14 +228,14 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
               }}
               rows={2}
               maxLength={2000}
-              placeholder="Ask a question… (Enter to send, Shift+Enter for a new line)"
-              aria-label="Your question"
+              placeholder={t('community.tutor.placeholder')}
+              aria-label={t('community.tutor.question')}
               className="flex-1 resize-none bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand"
             />
             <button
               type="submit"
               disabled={busy || !input.trim()}
-              aria-label="Send"
+              aria-label={t('community.tutor.send')}
               className="h-9 w-9 shrink-0 rounded-xl bg-brand hover:bg-brand-hover text-on-brand flex items-center justify-center disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
@@ -237,7 +249,7 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
               className="rounded border-line"
             />
             <ListChecks className="h-3.5 w-3.5" />
-            <span>Add a practice question to the answer</span>
+            <span>{t('community.tutor.wantPractice')}</span>
           </label>
         </form>
       </div>
@@ -250,11 +262,12 @@ const PracticeCard: React.FC<{ practice: Practice; chosen: number | undefined; o
   chosen,
   onChoose,
 }) => {
+  const t = useT();
   const answered = chosen !== undefined;
   return (
     <div className="rounded-2xl border border-brand/30 bg-brand/5 p-3.5 space-y-2.5 text-xs">
       <p className="font-semibold text-ink">{practice.question}</p>
-      <div className="space-y-1.5" role="radiogroup" aria-label="Answer options">
+      <div className="space-y-1.5" role="radiogroup" aria-label={t('community.tutor.options')}>
         {practice.options.map((opt, i) => {
           const isRight = i === practice.correctIndex;
           const tone = !answered
@@ -283,7 +296,7 @@ const PracticeCard: React.FC<{ practice: Practice; chosen: number | undefined; o
       {answered && (
         <p className="text-ink-muted">
           <strong className={chosen === practice.correctIndex ? 'text-success' : 'text-danger'}>
-            {chosen === practice.correctIndex ? 'Correct. ' : 'Not quite. '}
+            {chosen === practice.correctIndex ? t('community.tutor.correct') : t('community.tutor.notQuite')}
           </strong>
           {practice.explanation}
         </p>

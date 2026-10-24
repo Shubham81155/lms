@@ -6,6 +6,7 @@ import { AlertTriangle, Camera, CheckCircle2, Clock, Mic, ShieldAlert, X } from 
 import { api } from '@/lib/api';
 import { errorMessage, useAction } from '@/hooks/useApiData';
 import { useMediaProctor } from '@/hooks/useMediaProctor';
+import { RichText, useT } from '@/lib/i18n';
 import { Banner } from '@/components/admin/IdentityPanels';
 import {
   AnswerValue,
@@ -50,6 +51,9 @@ interface Result {
   pendingManualGrading: boolean;
 }
 
+/** A notice kept as a kind rather than text, so it follows the language when it is drawn. */
+type Notice = { kind: 'auto' } | { kind: 'event'; event: IntegrityKind };
+
 const btn = 'px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all';
 const ghost =
   'px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
@@ -67,6 +71,9 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
   onClose,
   onFinished,
 }) => {
+  const t = useT();
+  const tRef = useRef(t); // the load effect should not re-run when only the language changes
+  tRef.current = t;
   const [quiz, setQuiz] = useState<QuizView | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
@@ -74,7 +81,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
   const [index, setIndex] = useState(0);
   const [left, setLeft] = useState<number | null>(null);
   const [result, setResult] = useState<Result | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [events, setEvents] = useState(0);
   const [showReview, setShowReview] = useState(false);
   const { busy, error, run, clearError } = useAction();
@@ -92,7 +99,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
     api
       .get<{ data: QuizView }>(`/api/v1/quizzes/${quizId}`)
       .then((r) => alive && setQuiz(r.data))
-      .catch((e) => alive && setLoadError(errorMessage(e, 'Could not load this quiz.')));
+      .catch((e) => alive && setLoadError(errorMessage(e, tRef.current('learn.quiz.loadFailed'))));
     return () => {
       alive = false;
     };
@@ -109,7 +116,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
           });
           attemptRef.current = null;
           setResult(r.data);
-          if (auto) setNotice('Time ran out, so your answers were submitted automatically.');
+          if (auto) setNotice({ kind: 'auto' });
           onFinished?.(r.data);
           if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
         } catch (e) {
@@ -145,7 +152,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
     if (now - (lastEvent.current[kind] ?? 0) < 1500) return; // one physical action can fire several events
     lastEvent.current[kind] = now;
     setEvents((n) => n + 1);
-    setNotice(KIND_LABEL[kind] + '. This is recorded for your instructor.');
+    setNotice({ kind: 'event', event: kind });
     api
       .post('/api/v1/proctoring/events', { submissionId: a.submissionId, eventType: kind, severity: SEVERITY[kind] })
       .catch(() => undefined);
@@ -198,12 +205,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
     });
 
   const close = () => {
-    if (
-      attempt &&
-      !result &&
-      !window.confirm('Leave this exam? Your attempt stays open and the clock keeps running. You can come back and continue.')
-    )
-      return;
+    if (attempt && !result && !window.confirm(t('learn.quiz.leaveConfirm'))) return;
     if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
     onClose();
   };
@@ -220,12 +222,12 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
       className="fixed inset-0 z-50 bg-canvas/90 backdrop-blur-md flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Quiz"
+      aria-label={t('learn.quiz.dialog')}
     >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between gap-4">
           <div>
-            <h3 className="font-bold text-base text-ink">{quiz?.title ?? 'Quiz'}</h3>
+            <h3 className="font-bold text-base text-ink">{quiz?.title ?? t('learn.quiz.defaultTitle')}</h3>
             {quiz?.course && (
               <p className="text-xs text-ink-muted">
                 {quiz.course.code} · {quiz.course.title}
@@ -242,7 +244,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                 {formatClock(left)}
               </span>
             )}
-            <button onClick={close} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
+            <button onClick={close} aria-label={t('common.close')} className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -251,54 +253,40 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {loadError && <Banner kind="error">{loadError}</Banner>}
           {error && <Banner kind="error">{error}</Banner>}
-          {!quiz && !loadError && <div className="text-xs text-ink-subtle">Loading…</div>}
+          {!quiz && !loadError && <div className="text-xs text-ink-subtle">{t('common.loading')}</div>}
 
           {/* Intro */}
           {quiz && !attempt && !result && (
             <div className="space-y-4">
               <ul className="text-xs text-ink space-y-1.5 list-disc pl-5">
-                <li>
-                  {quiz.questions.length} question{quiz.questions.length === 1 ? '' : 's'}, {quiz.passingPercent}% to pass.
-                </li>
-                <li>
-                  {quiz.timeLimitMins
-                    ? `${quiz.timeLimitMins} minutes. The clock starts when you press Start and does not stop if you leave.`
-                    : 'No time limit.'}
-                </li>
-                <li>
-                  {quiz.attemptsRemaining} attempt{quiz.attemptsRemaining === 1 ? '' : 's'} remaining out of {quiz.maxAttempts}.
-                </li>
+                <li>{t.plural('learn.quiz.questionsPass', quiz.questions.length, { percent: quiz.passingPercent })}</li>
+                <li>{quiz.timeLimitMins ? t('learn.quiz.timeLimit', { minutes: quiz.timeLimitMins }) : t('learn.quiz.noTimeLimit')}</li>
+                <li>{t.plural('learn.quiz.attempts', quiz.attemptsRemaining, { max: quiz.maxAttempts })}</li>
               </ul>
               {quiz.requireProctoring && (
                 <div className="p-4 rounded-2xl border border-danger/30 bg-danger/10 text-xs text-danger space-y-1">
                   <div className="flex items-center gap-2 font-bold">
-                    <ShieldAlert className="h-4 w-4" /> This exam is monitored
+                    <ShieldAlert className="h-4 w-4" /> {t('learn.quiz.monitored')}
                   </div>
-                  <p>
-                    Switching tabs, leaving full-screen mode and copy/paste are recorded and shown to your instructor, who decides whether
-                    anything needs review. The exam opens full screen.
-                  </p>
+                  <p>{t('learn.quiz.monitoredBody')}</p>
                   {media.needed && (
                     <p>
-                      This exam also uses your{' '}
                       {quiz.proctorCamera && quiz.proctorMicrophone
-                        ? 'camera and microphone'
+                        ? t('learn.quiz.mediaUses.both')
                         : quiz.proctorCamera
-                          ? 'camera'
-                          : 'microphone'}
-                      .{quiz.proctorCamera ? ' It notes when your face is out of view or more than one person is visible.' : ''}
-                      {quiz.proctorMicrophone ? ' It notes sustained talking or other sound.' : ''}{' '}
-                      <strong>This is checked on your own device: no picture, video or sound is recorded or sent</strong>, only a note of
-                      what was noticed and when. Your browser will ask for permission when you press Start.
+                          ? t('learn.quiz.mediaUses.camera')
+                          : t('learn.quiz.mediaUses.microphone')}
+                      {quiz.proctorCamera ? ` ${t('learn.quiz.mediaFace')}` : ''}
+                      {quiz.proctorMicrophone ? ` ${t('learn.quiz.mediaSound')}` : ''} <RichText text={t('learn.quiz.mediaPrivacy')} />
                     </p>
                   )}
                 </div>
               )}
               {quiz.attemptsRemaining === 0 ? (
-                <Banner kind="error">You have used all your attempts.</Banner>
+                <Banner kind="error">{t('learn.quiz.allAttemptsUsed')}</Banner>
               ) : (
                 <button className={btn} disabled={busy || quiz.questions.length === 0} onClick={start}>
-                  {busy ? 'Starting…' : 'Start'}
+                  {busy ? t('learn.quiz.starting') : t('learn.quiz.start')}
                 </button>
               )}
             </div>
@@ -313,12 +301,14 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                   className="p-3 rounded-xl border border-accent/30 bg-accent/10 text-xs text-accent flex items-start gap-2"
                 >
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  {notice}
+                  {notice.kind === 'auto'
+                    ? t('learn.quiz.autoSubmitted')
+                    : t('learn.quiz.eventNotice', { event: t.dyn(`learn.quiz.kind.${notice.event}`, KIND_LABEL[notice.event]) })}
                 </div>
               )}
               {quiz.requireProctoring && !document.fullscreenElement && (
                 <button className={ghost} onClick={() => document.documentElement.requestFullscreen?.().catch(() => undefined)}>
-                  Return to full screen
+                  {t('learn.quiz.returnFullscreen')}
                 </button>
               )}
               {media.needed && (
@@ -329,7 +319,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                       ref={media.videoRef}
                       muted
                       playsInline
-                      aria-label="Your camera"
+                      aria-label={t('learn.quiz.yourCamera')}
                       className="h-16 w-24 rounded-xl object-cover bg-black -scale-x-100"
                     />
                   )}
@@ -337,33 +327,29 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                     <div className="flex items-center gap-3 font-semibold text-ink">
                       {quiz.proctorCamera && (
                         <span className="flex items-center gap-1">
-                          <Camera className="h-3.5 w-3.5" /> Camera on
+                          <Camera className="h-3.5 w-3.5" /> {t('learn.quiz.cameraOn')}
                         </span>
                       )}
                       {quiz.proctorMicrophone && (
                         <span className="flex items-center gap-1">
-                          <Mic className="h-3.5 w-3.5" /> Microphone on
+                          <Mic className="h-3.5 w-3.5" /> {t('learn.quiz.microphoneOn')}
                         </span>
                       )}
                     </div>
-                    <div>Checked on this device only. Nothing is recorded or sent.</div>
+                    <div>{t('learn.quiz.deviceOnly')}</div>
                     {media.detectorProblem && <div className="text-accent">{media.detectorProblem}</div>}
                   </div>
                 </div>
               )}
               <div className="flex items-center justify-between text-[11px] text-ink-subtle">
-                <span>
-                  Question {index + 1} of {quiz.questions.length}
-                </span>
-                <span>
-                  {q.points} point{q.points === 1 ? '' : 's'}
-                </span>
+                <span>{t('learn.quiz.questionOf', { n: index + 1, total: quiz.questions.length })}</span>
+                <span>{t.plural('learn.quiz.points', q.points)}</span>
               </div>
               <p className="text-sm text-ink whitespace-pre-wrap">{q.questionText}</p>
 
               {['MULTIPLE_CHOICE', 'TRUE_FALSE'].includes(q.questionType) && (
                 <fieldset className="space-y-2">
-                  <legend className="sr-only">Choose one</legend>
+                  <legend className="sr-only">{t('learn.quiz.chooseOne')}</legend>
                   {choicesFor(q).map((c) => (
                     <label
                       key={c.id}
@@ -377,7 +363,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
               )}
               {q.questionType === 'MULTI_SELECT' && (
                 <fieldset className="space-y-2">
-                  <legend className="text-[11px] text-ink-subtle mb-1">Select all that apply</legend>
+                  <legend className="text-[11px] text-ink-subtle mb-1">{t('learn.quiz.selectAll')}</legend>
                   {choicesFor(q).map((c) => {
                     const picked = (Array.isArray(values[q.id]) ? (values[q.id] as string[]) : []).includes(c.id);
                     return (
@@ -402,17 +388,17 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
               {['SHORT_ANSWER', 'FORMULA_CALCULATED'].includes(q.questionType) && (
                 <input
                   className={field}
-                  aria-label="Your answer"
+                  aria-label={t('learn.quiz.yourAnswer')}
                   value={(values[q.id] as string) ?? ''}
                   onChange={(e) => set(q.id, e.target.value)}
-                  placeholder={q.questionType === 'FORMULA_CALCULATED' ? 'Enter a number' : 'Your answer'}
+                  placeholder={q.questionType === 'FORMULA_CALCULATED' ? t('learn.quiz.enterNumber') : t('learn.quiz.yourAnswer')}
                 />
               )}
               {['ESSAY', 'CODE_SANDBOX'].includes(q.questionType) && (
                 <textarea
                   className={`${field} ${q.questionType === 'CODE_SANDBOX' ? 'font-mono' : ''}`}
                   rows={q.questionType === 'CODE_SANDBOX' ? 10 : 7}
-                  aria-label="Your answer"
+                  aria-label={t('learn.quiz.yourAnswer')}
                   value={(values[q.id] as string) ?? ''}
                   onChange={(e) => set(q.id, e.target.value)}
                 />
@@ -421,18 +407,18 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <div className="flex gap-2">
                   <button className={ghost} disabled={index === 0} onClick={() => setIndex((i) => i - 1)}>
-                    Previous
+                    {t('learn.quiz.previous')}
                   </button>
                   <button className={ghost} disabled={index === quiz.questions.length - 1} onClick={() => setIndex((i) => i + 1)}>
-                    Next
+                    {t('learn.quiz.next')}
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1" aria-label="Question navigator">
+                <div className="flex flex-wrap gap-1" aria-label={t('learn.quiz.navigator')}>
                   {quiz.questions.map((x, i) => (
                     <button
                       key={x.id}
                       onClick={() => setIndex(i)}
-                      aria-label={`Question ${i + 1}${isAnswered(values[x.id]) ? ', answered' : ''}`}
+                      aria-label={t(isAnswered(values[x.id]) ? 'learn.quiz.navQuestionAnswered' : 'learn.quiz.navQuestion', { n: i + 1 })}
                       className={`h-6 w-6 rounded-md text-[10px] font-bold border ${i === index ? 'border-brand text-ink' : isAnswered(values[x.id]) ? 'bg-success/10 text-success border-success/30' : 'bg-canvas text-ink-subtle border-line'}`}
                     >
                       {i + 1}
@@ -443,18 +429,18 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
 
               <div className="border-t border-line pt-4 flex items-center justify-between gap-3">
                 <span className="text-[11px] text-ink-subtle">
-                  {missing.length === 0 ? 'All questions answered.' : `${missing.length} unanswered.`}
-                  {quiz.requireProctoring && events > 0 ? ` ${events} activity event${events === 1 ? '' : 's'} recorded.` : ''}
+                  {missing.length === 0 ? t('learn.quiz.allAnswered') : t('learn.quiz.unanswered', { count: missing.length })}
+                  {quiz.requireProctoring && events > 0 ? ` ${t.plural('learn.quiz.events', events)}` : ''}
                 </span>
                 <button
                   className={btn}
                   disabled={busy}
                   onClick={() => {
-                    if (missing.length > 0 && !window.confirm(`${missing.length} question(s) are unanswered. Submit anyway?`)) return;
+                    if (missing.length > 0 && !window.confirm(t('learn.quiz.submitConfirm', { count: missing.length }))) return;
                     submit();
                   }}
                 >
-                  {busy ? 'Submitting…' : 'Submit answers'}
+                  {busy ? t('learn.quiz.submitting') : t('learn.quiz.submit')}
                 </button>
               </div>
             </div>
@@ -463,25 +449,17 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
           {/* Result */}
           {result && (
             <div className="space-y-4 text-center py-6">
-              {notice && <Banner kind="ok">{notice}</Banner>}
+              {notice?.kind === 'auto' && <Banner kind="ok">{t('learn.quiz.autoSubmitted')}</Banner>}
               <CheckCircle2
                 className={`h-12 w-12 mx-auto ${result.pendingManualGrading ? 'text-accent' : result.passed ? 'text-success' : 'text-danger'}`}
               />
               <div className="text-3xl font-extrabold text-ink">{result.percentage}%</div>
-              <p className="text-xs text-ink-muted">
-                {result.score} / {result.maxScore} points
-              </p>
+              <p className="text-xs text-ink-muted">{t('learn.quiz.pointsScore', { score: result.score, max: result.maxScore })}</p>
               <p className="text-sm text-ink">
-                {result.pendingManualGrading
-                  ? 'Submitted. Some answers need a person to grade them, so the final result will follow.'
-                  : result.passed
-                    ? 'You passed.'
-                    : 'You did not reach the passing mark.'}
+                {result.pendingManualGrading ? t('learn.quiz.pending') : result.passed ? t('learn.quiz.passed') : t('learn.quiz.failed')}
               </p>
               {result.attemptsRemaining > 0 && !result.passed && (
-                <p className="text-[11px] text-ink-subtle">
-                  {result.attemptsRemaining} attempt{result.attemptsRemaining === 1 ? '' : 's'} remaining.
-                </p>
+                <p className="text-[11px] text-ink-subtle">{t.plural('learn.quiz.attemptsLeft', result.attemptsRemaining)}</p>
               )}
               <div className="flex justify-center gap-2">
                 <button
@@ -489,10 +467,10 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                   onClick={() => setShowReview((v) => !v)}
                   aria-expanded={showReview}
                 >
-                  {showReview ? 'Hide my answers' : 'Review my answers'}
+                  {showReview ? t('learn.quiz.hideAnswers') : t('learn.quiz.reviewAnswers')}
                 </button>
                 <button className={btn} onClick={onClose}>
-                  Done
+                  {t('learn.quiz.done')}
                 </button>
               </div>
               {showReview && quiz && <AttemptReview quizId={quiz.id} submissionId={result.submissionId} />}

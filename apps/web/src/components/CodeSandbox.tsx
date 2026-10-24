@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Code, X, Play, RotateCcw, Terminal, AlertCircle } from 'lucide-react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useT } from '@/lib/i18n';
 
 interface CodeSandboxProps {
   /** Shown in the header. */
@@ -28,21 +29,25 @@ self.onmessage = (e) => {
   }
 };`;
 
-const starterFor = (instructions?: string) => {
+/** What went wrong, kept as a kind so the message follows the language at render time; `raw` is the browser's own text. */
+type RunError = { kind: 'timeout' } | { kind: 'failed' } | { kind: 'raw'; text: string };
+
+const starterFor = (instructions: string | undefined, hint: string) => {
   const header = (instructions ?? '')
     .split('\n')
     .filter((l) => l.trim())
     .map((l) => `// ${l}`)
     .join('\n');
-  return `${header ? `${header}\n\n` : ''}// Write your code below, then press Run.\n`;
+  return `${header ? `${header}\n\n` : ''}${hint}\n`;
 };
 
 export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, onClose }) => {
   useEscapeKey(onClose);
-  const starter = starterFor(instructions);
+  const t = useT();
+  const starter = starterFor(instructions, t('learn.sandbox.starter'));
   const [code, setCode] = useState(starter);
   const [output, setOutput] = useState<string[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<RunError | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const worker = useRef<Worker | null>(null);
 
@@ -58,7 +63,7 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
     const w = new Worker(url);
     worker.current = w;
 
-    const finish = (lines: string[], err: string | null) => {
+    const finish = (lines: string[], err: RunError | null) => {
       clearTimeout(timer);
       w.terminate();
       URL.revokeObjectURL(url);
@@ -66,10 +71,11 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
       setError(err);
       setIsRunning(false);
     };
-    const timer = setTimeout(() => finish([], `Stopped: the code ran for more than ${TIME_LIMIT_MS / 1000} seconds.`), TIME_LIMIT_MS);
+    const timer = setTimeout(() => finish([], { kind: 'timeout' }), TIME_LIMIT_MS);
 
-    w.onmessage = (e: MessageEvent<{ lines: string[]; error?: string }>) => finish(e.data.lines, e.data.error ?? null);
-    w.onerror = (e) => finish([], e.message || 'The code could not be run.');
+    w.onmessage = (e: MessageEvent<{ lines: string[]; error?: string }>) =>
+      finish(e.data.lines, e.data.error ? { kind: 'raw', text: e.data.error } : null);
+    w.onerror = (e) => finish([], e.message ? { kind: 'raw', text: e.message } : { kind: 'failed' });
     w.postMessage(code);
   };
 
@@ -78,7 +84,7 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
       className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Code sandbox"
+      aria-label={t('learn.sandbox.dialog')}
     >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
@@ -88,12 +94,12 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
             </div>
             <div>
               <h3 className="font-bold text-sm text-ink">{title}</h3>
-              <p className="text-[11px] text-ink-muted">Practice sandbox · JavaScript · runs in your browser, nothing is graded or saved</p>
+              <p className="text-[11px] text-ink-muted">{t('learn.sandbox.subtitle')}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink transition-colors"
           >
             <X className="h-5 w-5" />
@@ -108,8 +114,8 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
                 <button
                   onClick={() => setCode(starter)}
                   className="p-1 hover:text-ink text-ink-muted transition-colors"
-                  title="Reset code"
-                  aria-label="Reset code"
+                  title={t('learn.sandbox.reset')}
+                  aria-label={t('learn.sandbox.reset')}
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
@@ -119,7 +125,7 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
                   className="px-3 py-1 bg-brand hover:bg-brand-hover disabled:opacity-60 text-on-brand rounded-lg text-xs font-bold flex items-center gap-1 shadow-md transition-all"
                 >
                   <Play className="h-3 w-3 fill-current" />
-                  <span>{isRunning ? 'Running…' : 'Run'}</span>
+                  <span>{isRunning ? t('learn.sandbox.running') : t('learn.sandbox.run')}</span>
                 </button>
               </div>
             </div>
@@ -127,7 +133,7 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
               value={code}
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
-              aria-label="Code editor"
+              aria-label={t('learn.sandbox.editor')}
               className="flex-1 w-full bg-canvas p-4 font-mono text-xs text-success focus:outline-none resize-none selection:bg-brand/40"
             />
           </div>
@@ -135,22 +141,28 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
           <div className="flex flex-col bg-surface/40 overflow-hidden">
             <div className="px-4 py-2.5 bg-surface/80 border-b border-line/80 text-xs font-bold text-ink flex items-center gap-2">
               <Terminal className="h-3.5 w-3.5 text-brand-fg" />
-              <span>Output</span>
+              <span>{t('learn.sandbox.output')}</span>
             </div>
             <div className="flex-1 p-4 overflow-y-auto space-y-3 font-mono text-xs">
               <div className="bg-canvas rounded-2xl p-4 border border-line text-ink space-y-1 min-h-36" aria-live="polite">
                 {output === null && !error ? (
-                  <p className="text-ink-subtle italic font-sans">Press Run to execute your code. console.log output appears here.</p>
+                  <p className="text-ink-subtle italic font-sans">{t('learn.sandbox.idle')}</p>
                 ) : output && output.length > 0 ? (
                   output.map((line, i) => <p key={i}>{line}</p>)
                 ) : (
-                  !error && <p className="text-ink-subtle italic font-sans">The code ran and printed nothing.</p>
+                  !error && <p className="text-ink-subtle italic font-sans">{t('learn.sandbox.noOutput')}</p>
                 )}
               </div>
               {error && (
                 <div role="alert" className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-danger flex items-start gap-2.5">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span className="font-sans font-semibold">{error}</span>
+                  <span className="font-sans font-semibold">
+                    {error.kind === 'timeout'
+                      ? t.plural('learn.sandbox.timeout', TIME_LIMIT_MS / 1000)
+                      : error.kind === 'failed'
+                        ? t('learn.sandbox.failed')
+                        : error.text}
+                  </span>
                 </div>
               )}
             </div>

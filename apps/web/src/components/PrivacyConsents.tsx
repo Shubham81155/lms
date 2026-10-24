@@ -5,6 +5,7 @@ import { Mail, ScrollText } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { useT, type Translator } from '@/lib/i18n';
 
 // The signed-in person's DPDP consents and under-18 status, backed by /api/v1/privacy/consents and /me/minor. Shared
 // by the first-sign-in gate (ConsentGate) and the privacy settings panel.
@@ -36,7 +37,7 @@ const primary = 'px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 tex
 const secondary =
   'px-4 py-2 bg-surface hover:bg-raised border border-line disabled:opacity-50 text-ink rounded-xl text-xs font-bold transition-all';
 
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const day = (t: Translator, iso: string) => t.date(iso, { day: 'numeric', month: 'short', year: 'numeric' });
 
 export function useMyConsents() {
   return useApiData<{ data: MyConsent[] }>('/api/v1/privacy/consents');
@@ -51,6 +52,7 @@ export const GuardianForm: React.FC<{ minor: MinorStatus | null; onChanged: () =
   onChanged,
   idPrefix,
 }) => {
+  const t = useT();
   const send = useAction();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -66,25 +68,19 @@ export const GuardianForm: React.FC<{ minor: MinorStatus | null; onChanged: () =
   };
 
   if (minor?.guardianConsentAt) {
-    return <Banner kind="ok">Your parent or guardian gave consent on {day(minor.guardianConsentAt)}.</Banner>;
+    return <Banner kind="ok">{t('privacy.guardian.consented', { date: day(t, minor.guardianConsentAt) })}</Banner>;
   }
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <p className="text-xs text-ink-muted leading-relaxed">
-        Because you are under 18, a parent or guardian has to agree before you can give consent. Enter their e-mail address and we will send
-        them a link, which works for 7 days.
-      </p>
+      <p className="text-xs text-ink-muted leading-relaxed">{t('privacy.guardian.intro')}</p>
       {minor?.guardianEmail && minor.pendingRequestExpiresAt && (
-        <Banner kind="ok">
-          A link was sent to {minor.guardianEmail}. It works until {day(minor.pendingRequestExpiresAt)}. You can send a new one below; the
-          earlier link then stops working.
-        </Banner>
+        <Banner kind="ok">{t('privacy.guardian.sent', { email: minor.guardianEmail, date: day(t, minor.pendingRequestExpiresAt) })}</Banner>
       )}
       {send.error && <Banner kind="error">{send.error}</Banner>}
-      {sent && !send.error && <Banner kind="ok">The e-mail is on its way.</Banner>}
+      {sent && !send.error && <Banner kind="ok">{t('privacy.guardian.onItsWay')}</Banner>}
       <label className="block space-y-1" htmlFor={`${idPrefix}-guardian`}>
-        <span className="text-[11px] text-ink-muted">Parent or guardian e-mail</span>
+        <span className="text-[11px] text-ink-muted">{t('privacy.guardian.emailLabel')}</span>
         <input
           id={`${idPrefix}-guardian`}
           className={input}
@@ -98,7 +94,7 @@ export const GuardianForm: React.FC<{ minor: MinorStatus | null; onChanged: () =
       </label>
       <button type="submit" disabled={send.busy || !email.trim()} className={primary}>
         <Mail className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5" aria-hidden="true" />
-        {send.busy ? 'Sending...' : minor?.guardianEmail ? 'Send a new link' : 'Ask my guardian'}
+        {send.busy ? t('privacy.guardian.sending') : minor?.guardianEmail ? t('privacy.guardian.sendNew') : t('privacy.guardian.ask')}
       </button>
     </form>
   );
@@ -113,6 +109,7 @@ export const ConsentList: React.FC<{
   /** A minor without guardian consent cannot grant. */
   blocked?: boolean;
 }> = ({ consents, onChanged, grantOnly, blocked }) => {
+  const t = useT();
   const act = useAction();
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ title: string; text: string } | null>(null);
@@ -152,15 +149,16 @@ export const ConsentList: React.FC<{
                   <p className="text-xs font-bold text-ink">
                     {c.title}{' '}
                     <span className="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-line text-ink-muted">
-                      {c.required ? 'Required' : 'Optional'}
+                      {c.required ? t('privacy.consent.required') : t('privacy.consent.optional')}
                     </span>
                   </p>
                   <p className="text-[11px] text-ink-muted leading-relaxed">{c.description}</p>
                   <p className="text-[11px] text-ink-subtle">
-                    {granted && `Given${c.answeredAt ? ` on ${day(c.answeredAt)}` : ''}.`}
-                    {c.status === 'WITHDRAWN' && `Withdrawn${c.answeredAt ? ` on ${day(c.answeredAt)}` : ''}.`}
-                    {c.status === 'NONE' && 'Not answered yet.'}
-                    {c.status === 'GRANTED' && c.outdated && 'You agreed to an older wording. Please answer again.'}
+                    {granted && (c.answeredAt ? t('privacy.consent.givenOn', { date: day(t, c.answeredAt) }) : t('privacy.consent.given'))}
+                    {c.status === 'WITHDRAWN' &&
+                      (c.answeredAt ? t('privacy.consent.withdrawnOn', { date: day(t, c.answeredAt) }) : t('privacy.consent.withdrawn'))}
+                    {c.status === 'NONE' && t('privacy.consent.none')}
+                    {c.status === 'GRANTED' && c.outdated && t('privacy.consent.outdated')}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
@@ -170,9 +168,9 @@ export const ConsentList: React.FC<{
                       className={primary}
                       disabled={act.busy || blocked}
                       onClick={() => answer(c, true)}
-                      aria-label={`Give consent: ${c.title}`}
+                      aria-label={t('privacy.consent.giveAria', { title: c.title })}
                     >
-                      {busy && act.busy ? 'Saving...' : 'Give consent'}
+                      {busy && act.busy ? t('privacy.consent.saving') : t('privacy.consent.give')}
                     </button>
                   )}
                   {c.status === 'GRANTED' && !grantOnly && (
@@ -181,9 +179,9 @@ export const ConsentList: React.FC<{
                       className={secondary}
                       disabled={act.busy}
                       onClick={() => answer(c, false)}
-                      aria-label={`Withdraw consent: ${c.title}`}
+                      aria-label={t('privacy.consent.withdrawAria', { title: c.title })}
                     >
-                      {busy && act.busy ? 'Saving...' : 'Withdraw'}
+                      {busy && act.busy ? t('privacy.consent.saving') : t('privacy.consent.withdraw')}
                     </button>
                   )}
                 </div>
@@ -198,6 +196,7 @@ export const ConsentList: React.FC<{
 
 /** Sections for PrivacySettings: consents, the "I am under 18" switch and the guardian e-mail form. */
 export const ConsentsAndMinor: React.FC = () => {
+  const t = useT();
   const consents = useMyConsents();
   const minor = useMinorStatus();
   const setMinor = useAction();
@@ -216,28 +215,24 @@ export const ConsentsAndMinor: React.FC = () => {
         <div className="flex items-center gap-2">
           <ScrollText className="h-4 w-4 text-brand-fg" aria-hidden="true" />
           <h4 id="consents-h" className="text-sm font-bold text-ink">
-            Your consents
+            {t('privacy.consents.title')}
           </h4>
         </div>
-        <p className="text-xs text-ink-muted leading-relaxed">
-          What your organisation asks your permission for. You can withdraw any consent at any time; it takes effect at once.
-        </p>
+        <p className="text-xs text-ink-muted leading-relaxed">{t('privacy.consents.intro')}</p>
         {consents.error && <Banner kind="error">{consents.error}</Banner>}
-        {consents.isLoading && !consents.data && <p className="text-xs text-ink-muted">Loading...</p>}
-        {consents.data && rows.length === 0 && (
-          <p className="text-xs text-ink-muted">Your organisation does not ask for any consent right now.</p>
-        )}
+        {consents.isLoading && !consents.data && <p className="text-xs text-ink-muted">{t('privacy.consents.loading')}</p>}
+        {consents.data && rows.length === 0 && <p className="text-xs text-ink-muted">{t('privacy.consents.empty')}</p>}
         {rows.length > 0 && <ConsentList consents={rows} onChanged={consents.reload} blocked={!!m?.isMinor && !m.guardianConsentAt} />}
       </section>
 
       <section className="bg-canvas border border-line rounded-2xl p-5 space-y-3" aria-labelledby="minor-h">
         <h4 id="minor-h" className="text-sm font-bold text-ink">
-          Under 18
+          {t('privacy.minor.title')}
         </h4>
         {minor.error && <Banner kind="error">{minor.error}</Banner>}
         {setMinor.error && <Banner kind="error">{setMinor.error}</Banner>}
         <label className="flex items-center justify-between p-3 rounded-xl bg-surface border border-line cursor-pointer">
-          <span className="text-xs text-ink">I am under 18</span>
+          <span className="text-xs text-ink">{t('privacy.minor.switch')}</span>
           <input
             type="checkbox"
             role="switch"
@@ -247,11 +242,7 @@ export const ConsentsAndMinor: React.FC = () => {
             className="h-4 w-4 accent-success"
           />
         </label>
-        <p className="text-[11px] text-ink-subtle">
-          {m?.isMinor
-            ? 'Only an administrator can change this once it is set.'
-            : 'If you are under 18, a parent or guardian must agree to how your data is used.'}
-        </p>
+        <p className="text-[11px] text-ink-subtle">{m?.isMinor ? t('privacy.minor.locked') : t('privacy.minor.hint')}</p>
         {m?.isMinor && <GuardianForm minor={m} onChanged={minor.reload} idPrefix="settings" />}
       </section>
     </>

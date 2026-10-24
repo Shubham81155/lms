@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { countdown, useCalendarEvents, type ServerEvent } from '@/hooks/useEngagement';
+import { useCalendarEvents, type ServerEvent } from '@/hooks/useEngagement';
 import {
   X,
   Calendar as CalendarIcon,
@@ -17,7 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
-import { plural } from '@/lib/plural';
+import { useT, type Translator } from '@/lib/i18n';
 import { activateOnKey } from '@/lib/a11y';
 
 export interface CalendarEvent {
@@ -29,7 +29,7 @@ export interface CalendarEvent {
   type: 'EXAM' | 'ASSIGNMENT' | 'LECTURE' | 'OFFICE_HOURS';
   countdown: string;
   startsAt: string;
-  /** Badge text: the event type, or "Quiz due" / "Due" for due dates. */
+  /** Badge text: the event type, or "Quiz due" / "Due" for due dates (in the viewer's language). */
   label: string;
   extended: boolean;
   completed: boolean;
@@ -47,13 +47,22 @@ const TYPE_BY_CATEGORY: Record<ServerEvent['category'], CalendarEvent['type']> =
  * Formats a stored event in its own time zone, so an exam shows the time the organiser meant. Due dates
  * have no organiser zone and show in the viewer's.
  */
-function toView(e: ServerEvent): CalendarEvent {
+function countdownText(t: Translator, startsAt: string, now: number = Date.now()): string {
+  const ms = new Date(startsAt).getTime() - now;
+  if (ms <= 0) return t('community.calendar.past');
+  const h = Math.floor(ms / 3_600_000);
+  if (h < 1) return t('community.calendar.inMin', { count: t.number(Math.max(1, Math.floor(ms / 60_000))) });
+  if (h < 48) return t('community.calendar.inHours', { count: t.number(h) });
+  return t('community.calendar.inDays', { count: t.number(Math.floor(h / 24)) });
+}
+
+function toView(e: ServerEvent, t: Translator): CalendarEvent {
   const tz = e.source === 'EVENT' ? e.timezone || 'UTC' : Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const fmt = (opts: Intl.DateTimeFormatOptions, d: string) => {
     try {
-      return new Intl.DateTimeFormat(undefined, { timeZone: tz, ...opts }).format(new Date(d));
+      return t.date(d, { timeZone: tz, ...opts });
     } catch {
-      return new Intl.DateTimeFormat(undefined, { timeZone: 'UTC', ...opts }).format(new Date(d));
+      return t.date(d, { timeZone: 'UTC', ...opts });
     }
   };
   const day = fmt({ weekday: 'short', month: 'short', day: 'numeric' }, e.startsAt);
@@ -65,12 +74,17 @@ function toView(e: ServerEvent): CalendarEvent {
     title: e.title,
     description: e.description,
     dateStr: e.startsAt.slice(0, 10),
-    time: due ? `Due ${day}, ${end}` : `${day}, ${start} - ${end}`,
+    time: due ? t('community.calendar.dueAt', { day, end }) : t('community.calendar.range', { day, start, end }),
     type: TYPE_BY_CATEGORY[e.category] ?? 'ASSIGNMENT',
-    label: e.source === 'QUIZ' ? 'Quiz due' : e.source === 'ASSIGNMENT' ? 'Due' : e.category.replace('_', ' '),
+    label:
+      e.source === 'QUIZ'
+        ? t('community.calendar.quizDue')
+        : e.source === 'ASSIGNMENT'
+          ? t('community.calendar.due')
+          : t.dyn(`community.calendar.cat.${e.category}`, e.category.replace('_', ' ')),
     extended: e.extended,
     completed: e.completed,
-    countdown: countdown(e.startsAt),
+    countdown: countdownText(t, e.startsAt),
     startsAt: e.startsAt,
   };
 }
@@ -81,20 +95,21 @@ interface AcademicCalendarProps {
 }
 
 export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onSelectEvent }) => {
+  const t = useT();
   useEscapeKey(onClose);
   const [selectedView, setSelectedView] = useState<'MONTH' | 'AGENDA'>('AGENDA');
-  const [calendarSyncNotification, setCalendarSyncNotification] = useState<string | null>(null);
+  const [calendarSyncNotification, setCalendarSyncNotification] = useState<{ ok: boolean; message?: string } | null>(null);
 
   const { events: raw, next, isLoading, error, downloadIcs } = useCalendarEvents();
-  const events = raw.map(toView);
-  const nextView = next ? toView(next) : null;
+  const events = raw.map((e) => toView(e, t));
+  const nextView = next ? toView(next, t) : null;
 
   const handleExportIcal = async () => {
     try {
       await downloadIcs();
-      setCalendarSyncNotification('Calendar exported (lms-calendar.ics). Import it into Google, Outlook or Apple Calendar.');
+      setCalendarSyncNotification({ ok: true });
     } catch (e: any) {
-      setCalendarSyncNotification(e?.message ?? 'Could not export the calendar');
+      setCalendarSyncNotification({ ok: false, message: e?.message });
     }
     setTimeout(() => setCalendarSyncNotification(null), 4000);
   };
@@ -104,7 +119,7 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
       className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Academic calendar"
+      aria-label={t('community.calendar.label')}
     >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
@@ -115,9 +130,9 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-ink">Unified Academic Calendar</h3>
+                <h3 className="font-bold text-base text-ink">{t('community.calendar.title')}</h3>
               </div>
-              <p className="text-xs text-ink-muted">Synchronized deadlines, live lecture schedules, and examination windows.</p>
+              <p className="text-xs text-ink-muted">{t('community.calendar.subtitle')}</p>
             </div>
           </div>
 
@@ -127,11 +142,11 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
               className="px-3.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
               <Download className="h-3.5 w-3.5 text-brand-fg" />
-              <span>Export iCal (.ics)</span>
+              <span>{t('community.calendar.export')}</span>
             </button>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
               className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />
@@ -143,7 +158,11 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
         {calendarSyncNotification && (
           <div className="bg-success/10 border-b border-success/30 px-6 py-2.5 text-xs text-success flex items-center gap-2 animate-fadeIn">
             <CheckCircle2 className="h-4 w-4 text-success" />
-            <span className="font-semibold">{calendarSyncNotification}</span>
+            <span className="font-semibold">
+              {calendarSyncNotification.ok
+                ? t('community.calendar.exported')
+                : calendarSyncNotification.message || t('community.calendar.exportFailed')}
+            </span>
           </div>
         )}
 
@@ -155,7 +174,9 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
                 <Clock className="h-4 w-4" />
               </div>
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-danger block">Next Academic Deadline</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-danger block">
+                  {t('community.calendar.nextDeadline')}
+                </span>
                 <strong className="text-xs text-ink">{nextView.title}</strong>
                 <span className="text-xs text-ink-muted ml-2">• {nextView.time}</span>
               </div>
@@ -172,33 +193,35 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
           {/* View Toggles */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-ink">Upcoming Academic Itinerary</span>
-              <span className="text-xs text-ink-muted">({plural(events.length, 'Event')})</span>
+              <span className="text-sm font-bold text-ink">{t('community.calendar.itinerary')}</span>
+              <span className="text-xs text-ink-muted">
+                ({t.plural('community.calendar.events', events.length, { count: t.number(events.length) })})
+              </span>
             </div>
 
             <div className="flex items-center gap-2 text-xs">
               <span className="flex items-center gap-1.5 text-ink-muted">
                 <span className="h-2 w-2 rounded-full bg-rose-500" />
-                <span>Exams</span>
+                <span>{t('community.calendar.legendExams')}</span>
               </span>
               <span className="flex items-center gap-1.5 text-ink-muted">
                 <span className="h-2 w-2 rounded-full bg-brand-hover" />
-                <span>Labs</span>
+                <span>{t('community.calendar.legendLabs')}</span>
               </span>
               <span className="flex items-center gap-1.5 text-ink-muted">
                 <span className="h-2 w-2 rounded-full bg-purple-500" />
-                <span>Lectures</span>
+                <span>{t('community.calendar.legendLectures')}</span>
               </span>
               <span className="flex items-center gap-1.5 text-ink-muted">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                <span>Office Hours</span>
+                <span>{t('community.calendar.legendOfficeHours')}</span>
               </span>
             </div>
           </div>
 
           {/* Agenda Event Cards */}
           <div className="space-y-3">
-            {isLoading && <div className="text-xs text-ink-subtle p-6 text-center">Loading your schedule...</div>}
+            {isLoading && <div className="text-xs text-ink-subtle p-6 text-center">{t('community.calendar.loading')}</div>}
             {error && (
               <div role="alert" className="text-xs text-danger p-6 text-center">
                 {error}
@@ -206,7 +229,7 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
             )}
             {!isLoading && !error && events.length === 0 && (
               <div className="text-xs text-ink-subtle p-10 text-center bg-canvas border border-line rounded-2xl">
-                Nothing is scheduled yet.
+                {t('community.calendar.empty')}
               </div>
             )}
             {events.map((ev) => (
@@ -259,13 +282,13 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
                       </span>
                       {ev.extended && (
                         <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/30">
-                          Extended
+                          {t('community.calendar.extended')}
                         </span>
                       )}
                       {ev.completed && (
                         <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/30 inline-flex items-center gap-1">
                           <CheckCircle2 className="h-2.5 w-2.5" />
-                          Done
+                          {t('community.calendar.done')}
                         </span>
                       )}
                     </div>

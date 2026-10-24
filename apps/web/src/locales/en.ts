@@ -3,10 +3,18 @@
 // the same placeholders in each (test/i18n.test.ts). **text** is rendered bold by <RichText>.
 import { billingEn } from './billing.en';
 import { plansEn } from './plans.en';
+import { learnEn } from './s-learn.en';
+import { workEn } from './s-work.en';
+import { communityEn } from './s-community.en';
+import { privacyEn } from './s-privacy.en';
 
 export const en = {
   ...billingEn,
   ...plansEn,
+  ...learnEn,
+  ...workEn,
+  ...communityEn,
+  ...privacyEn,
   'language.label': 'Language',
 
   'common.loading': 'Loading…',
