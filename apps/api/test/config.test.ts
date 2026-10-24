@@ -31,4 +31,31 @@ describe('loadConfig', () => {
   ])('rejects %s', (_label, override, message) => {
     expect(() => loadConfig({ ...good(), ...override } as NodeJS.ProcessEnv)).toThrow(message);
   });
+
+  describe('seller details on invoices', () => {
+    const billing = { NODE_ENV: 'production', RAZORPAY_KEY_ID: 'rzp_live_12345678' };
+    const seller = { SELLER_LEGAL_NAME: 'Acme Learning Pvt Ltd', SELLER_ADDRESS: '1 MG Road, Mumbai', SELLER_STATE_CODE: '27' };
+
+    it('refuses production billing with the placeholder company or no address', () => {
+      expect(() => loadConfig({ ...good(), ...billing } as NodeJS.ProcessEnv)).toThrow(/SELLER_LEGAL_NAME/);
+      expect(() => loadConfig({ ...good(), ...billing, ...seller, SELLER_ADDRESS: '' } as NodeJS.ProcessEnv)).toThrow(/SELLER_ADDRESS/);
+    });
+
+    it('accepts production billing with the seller filled in', () => {
+      expect(() => loadConfig({ ...good(), ...billing, ...seller } as NodeJS.ProcessEnv)).not.toThrow();
+    });
+
+    it('does not insist on seller details when billing is off', () => {
+      expect(() => loadConfig({ ...good(), NODE_ENV: 'production' } as NodeJS.ProcessEnv)).not.toThrow();
+    });
+
+    it('checks the GSTIN format and that its state matches SELLER_STATE_CODE', () => {
+      const gstin = '27AAPFU0939F1ZV';
+      expect(loadConfig({ ...good(), ...seller, SELLER_GSTIN: gstin } as NodeJS.ProcessEnv).SELLER_GSTIN).toBe(gstin);
+      expect(() => loadConfig({ ...good(), ...seller, SELLER_GSTIN: 'not-a-gstin' } as NodeJS.ProcessEnv)).toThrow(/15-character GSTIN/);
+      expect(() => loadConfig({ ...good(), ...seller, SELLER_GSTIN: gstin, SELLER_STATE_CODE: '29' } as NodeJS.ProcessEnv)).toThrow(
+        /match/
+      );
+    });
+  });
 });

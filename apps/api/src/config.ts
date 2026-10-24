@@ -270,6 +270,18 @@ const envSchema = z
   .refine((c) => !c.TURNSTILE_SITE_KEY === !c.TURNSTILE_SECRET_KEY, {
     message: 'Set both TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY, or neither',
   })
+  .refine(
+    (c) => c.NODE_ENV !== 'production' || !c.RAZORPAY_KEY_ID || (c.SELLER_LEGAL_NAME !== 'Your Company Pvt Ltd' && !!c.SELLER_ADDRESS),
+    {
+      message: 'Billing in production needs SELLER_LEGAL_NAME (not the placeholder) and SELLER_ADDRESS: they are printed on every invoice',
+    }
+  )
+  .refine((c) => !c.SELLER_GSTIN || /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(c.SELLER_GSTIN), {
+    message: 'SELLER_GSTIN must be a 15-character GSTIN (or empty if unregistered)',
+  })
+  .refine((c) => !c.SELLER_GSTIN || c.SELLER_GSTIN.slice(0, 2) === c.SELLER_STATE_CODE, {
+    message: 'SELLER_STATE_CODE must match the first two digits of SELLER_GSTIN',
+  })
   .refine((c) => !(c.COPYLEAKS_API_KEY && c.PLAGIARISM_SUBMIT_URL), { message: 'Use either Copyleaks or PLAGIARISM_SUBMIT_URL, not both' });
 
 export type AppConfig = z.infer<typeof envSchema> & { corsOrigins: string[] };
