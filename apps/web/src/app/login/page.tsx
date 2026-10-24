@@ -1,26 +1,19 @@
-"use client";
+'use client';
 
-import React, { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import {
-  Lock,
-  Mail,
-  ArrowRight,
-  AlertCircle,
-  KeyRound,
-  ShieldCheck,
-} from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { BrandLogo } from "@/components/BrandLogo";
-import { api, ApiError } from "@/lib/api";
-import { isOwnSubdomain } from "@/lib/org-address";
-import { safeNextPath } from "@/lib/safe-redirect";
-import { LanguageSwitcher, useT } from "@/lib/i18n";
+import React, { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Lock, Mail, ArrowRight, AlertCircle, KeyRound, ShieldCheck } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { BrandLogo } from '@/components/BrandLogo';
+import { api, ApiError } from '@/lib/api';
+import { isOwnSubdomain } from '@/lib/org-address';
+import { safeNextPath } from '@/lib/safe-redirect';
+import { LanguageSwitcher, useT } from '@/lib/i18n';
 
 // Error codes the API puts in /login?error= after a failed single sign-on round trip (messages: login.error.<code>).
-const SSO_ERROR_CODES = ["sso_failed", "sso_unavailable"] as const;
+const SSO_ERROR_CODES = ['sso_failed', 'sso_unavailable'] as const;
 
 function LoginForm() {
   const router = useRouter();
@@ -28,12 +21,12 @@ function LoginForm() {
   const { login } = useAuth();
   const t = useT();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mfaCode, setMfaCode] = useState("");
+  const [mfaCode, setMfaCode] = useState('');
   const [needsMfa, setNeedsMfa] = useState(false);
   const [sso, setSso] = useState<{ oidc: boolean; saml: boolean }>({ oidc: false, saml: false });
   // The organisation is the one this web address belongs to (its own subdomain or custom domain); the header
@@ -47,11 +40,11 @@ function LoginForm() {
   useEffect(() => {
     let alive = true;
     api
-      .get<{ enabled: boolean; oidc?: boolean; saml?: boolean }>("/api/v1/auth/sso/status")
+      .get<{ enabled: boolean; oidc?: boolean; saml?: boolean }>('/api/v1/auth/sso/status')
       .then((r) => alive && setSso({ oidc: !!r.oidc, saml: !!r.saml }))
       .catch(() => alive && setSso({ oidc: false, saml: false }));
     api
-      .get<{ slug: string }>("/api/v1/tenant/config")
+      .get<{ slug: string }>('/api/v1/tenant/config')
       .then((r) => {
         if (!alive) return;
         setNoOrganisation(false);
@@ -60,16 +53,17 @@ function LoginForm() {
       .catch((e) => {
         if (!alive || !(e instanceof ApiError)) return;
         setNoOrganisation(e.status === 404);
-        setSuspended(e.status === 403 && e.details?.code === "TENANT_SUSPENDED");
+        setSuspended(e.status === 403 && e.details?.code === 'TENANT_SUSPENDED');
       });
     return () => {
       alive = false;
     };
   }, []);
 
-  const callbackError = searchParams.get("error");
+  const callbackError = searchParams.get('error');
   useEffect(() => {
-    if (callbackError && (SSO_ERROR_CODES as readonly string[]).includes(callbackError)) setErrorMsg(t.dyn(`login.error.${callbackError}`, callbackError));
+    if (callbackError && (SSO_ERROR_CODES as readonly string[]).includes(callbackError))
+      setErrorMsg(t.dyn(`login.error.${callbackError}`, callbackError));
   }, [callbackError, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,7 +71,7 @@ function LoginForm() {
     setErrorMsg(null);
 
     if (!email || !password) {
-      setErrorMsg(t("login.enterCredentials"));
+      setErrorMsg(t('login.enterCredentials'));
       return;
     }
 
@@ -86,23 +80,26 @@ function LoginForm() {
 
     if (result.success && result.targetRoute) {
       // Only follow same-site relative paths from ?next= (browsers read "/\evil.com" and "/<TAB>/evil.com" as off-site)
-      router.push(safeNextPath(searchParams.get("next")) ?? result.targetRoute);
+      router.push(safeNextPath(searchParams.get('next')) ?? result.targetRoute);
     } else if (result.mfaRequired) {
       // Either the code is still needed or the one entered was wrong; the server's message says which.
       setNeedsMfa(true);
-      setMfaCode("");
-      setErrorMsg(needsMfa ? result.error || t("login.codeRejected") : null);
+      setMfaCode('');
+      setErrorMsg(needsMfa ? result.error || t('login.codeRejected') : null);
       setIsSubmitting(false);
     } else {
       setNeedsMfa(false);
-      setErrorMsg(result.error || t("login.failed"));
+      setErrorMsg(result.error || t('login.failed'));
       setIsSubmitting(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-canvas text-ink flex flex-col relative overflow-hidden">
-      <div aria-hidden="true" className="absolute top-24 left-1/2 -translate-x-1/2 h-[420px] w-[720px] max-w-full rounded-full bg-brand/15 blur-3xl" />
+      <div
+        aria-hidden="true"
+        className="absolute top-24 left-1/2 -translate-x-1/2 h-[420px] w-[720px] max-w-full rounded-full bg-brand/15 blur-3xl"
+      />
       <div aria-hidden="true" className="absolute bottom-0 right-0 h-[300px] w-[300px] rounded-full bg-accent/10 blur-3xl" />
 
       {/* Top Header */}
@@ -123,35 +120,39 @@ function LoginForm() {
             <div className="mx-auto h-11 w-11 rounded-2xl bg-brand/10 border border-brand/20 text-brand-fg flex items-center justify-center">
               <Lock className="h-5 w-5" />
             </div>
-            <h1 className="text-2xl font-extrabold text-ink">{t("login.title")}</h1>
-            <p className="text-xs text-ink-muted">
-              {t("login.subtitle")}
-            </p>
+            <h1 className="text-2xl font-extrabold text-ink">{t('login.title')}</h1>
+            <p className="text-xs text-ink-muted">{t('login.subtitle')}</p>
           </div>
 
           {noOrganisation && (
             <div role="status" className="p-3.5 bg-accent/10 border border-accent/30 rounded-2xl flex items-start gap-2.5 text-xs text-ink">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-accent" />
               <span>
-                {t("login.noOrganisationBefore")}{" "}
+                {t('login.noOrganisationBefore')}{' '}
                 <Link href="/find-organisation" className="font-semibold text-brand-fg hover:underline underline-offset-2">
-                  {t("login.noOrganisationLink")}
+                  {t('login.noOrganisationLink')}
                 </Link>
-                {t("login.noOrganisationAfter")}
+                {t('login.noOrganisationAfter')}
               </span>
             </div>
           )}
 
           {suspended && (
-            <div role="status" className="p-3.5 bg-danger/10 border border-danger/30 rounded-2xl flex items-start gap-2.5 text-xs text-danger">
+            <div
+              role="status"
+              className="p-3.5 bg-danger/10 border border-danger/30 rounded-2xl flex items-start gap-2.5 text-xs text-danger"
+            >
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{t("login.suspended")}</span>
+              <span>{t('login.suspended')}</span>
             </div>
           )}
 
           {/* Error Banner */}
           {errorMsg && (
-            <div role="alert" className="p-3.5 bg-danger/10 border border-danger/30 rounded-2xl flex items-start gap-2.5 text-xs text-danger animate-fadeIn">
+            <div
+              role="alert"
+              className="p-3.5 bg-danger/10 border border-danger/30 rounded-2xl flex items-start gap-2.5 text-xs text-danger animate-fadeIn"
+            >
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
@@ -161,7 +162,7 @@ function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="login-email" className="text-xs font-semibold text-ink">
-                {t("login.email")}
+                {t('login.email')}
               </label>
               <div className="relative">
                 <Mail className="h-4 w-4 text-ink-subtle absolute left-3.5 top-3" />
@@ -170,7 +171,7 @@ function LoginForm() {
                   type="email"
                   required
                   autoComplete="username"
-                  placeholder={t("common.emailPlaceholder")}
+                  placeholder={t('common.emailPlaceholder')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-canvas border border-line rounded-xl pl-10 pr-4 py-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
@@ -180,12 +181,11 @@ function LoginForm() {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label htmlFor="login-password" className="text-xs font-semibold text-ink">{t("login.password")}</label>
-                <Link
-                  href="/forgot-password"
-                  className="text-[11px] text-brand-fg hover:underline underline-offset-2 transition-colors"
-                >
-                  {t("login.forgot")}
+                <label htmlFor="login-password" className="text-xs font-semibold text-ink">
+                  {t('login.password')}
+                </label>
+                <Link href="/forgot-password" className="text-[11px] text-brand-fg hover:underline underline-offset-2 transition-colors">
+                  {t('login.forgot')}
                 </Link>
               </div>
               <div className="relative">
@@ -206,7 +206,7 @@ function LoginForm() {
             {needsMfa && (
               <div className="space-y-1.5">
                 <label htmlFor="mfa-code" className="text-xs font-semibold text-ink">
-                  {t("login.mfaCode")}
+                  {t('login.mfaCode')}
                 </label>
                 <div className="relative">
                   <ShieldCheck className="h-4 w-4 text-ink-subtle absolute left-3.5 top-3" />
@@ -218,15 +218,13 @@ function LoginForm() {
                     autoFocus
                     required
                     maxLength={32}
-                    placeholder={t("login.mfaPlaceholder")}
+                    placeholder={t('login.mfaPlaceholder')}
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value)}
                     className="w-full bg-canvas border border-line rounded-xl pl-10 pr-4 py-2.5 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
                   />
                 </div>
-                <p className="text-[11px] text-ink-subtle">
-                  {t("login.mfaHelp")}
-                </p>
+                <p className="text-[11px] text-ink-subtle">{t('login.mfaHelp')}</p>
               </div>
             )}
 
@@ -238,7 +236,7 @@ function LoginForm() {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="rounded border-line accent-brand"
                 />
-                <span>{t("login.remember")}</span>
+                <span>{t('login.remember')}</span>
               </label>
             </div>
 
@@ -248,10 +246,10 @@ function LoginForm() {
               className="w-full py-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-brand/25 transition-all"
             >
               {isSubmitting ? (
-                <span>{t("login.submitting")}</span>
+                <span>{t('login.submitting')}</span>
               ) : (
                 <>
-                  <span>{t("login.submit")}</span>
+                  <span>{t('login.submit')}</span>
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -262,13 +260,13 @@ function LoginForm() {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-[11px] text-ink-subtle">
                 <span className="h-px flex-1 bg-line" />
-                <span>{t("common.or")}</span>
+                <span>{t('common.or')}</span>
                 <span className="h-px flex-1 bg-line" />
               </div>
               {/* A full-page navigation: the identity provider redirects back to the API callback. */}
               {[
-                { on: sso.oidc, href: "/api/v1/auth/sso/start", label: t("login.sso") },
-                { on: sso.saml, href: "/api/v1/auth/saml/start", label: sso.oidc ? t("login.saml") : t("login.sso") },
+                { on: sso.oidc, href: '/api/v1/auth/sso/start', label: t('login.sso') },
+                { on: sso.saml, href: '/api/v1/auth/saml/start', label: sso.oidc ? t('login.saml') : t('login.sso') },
               ]
                 .filter((m) => m.on)
                 .map((m) => (
@@ -286,15 +284,15 @@ function LoginForm() {
 
           <div className="space-y-1.5 text-center text-[11px]">
             <p className="text-ink-muted">
-              {t("login.newOrganisation")}{" "}
+              {t('login.newOrganisation')}{' '}
               <Link href="/register" className="font-semibold text-brand-fg hover:underline underline-offset-2">
-                {t("common.registerOrganisation")}
+                {t('common.registerOrganisation')}
               </Link>
             </p>
             {sharedAddress && (
               <p>
                 <Link href="/find-organisation" className="text-brand-fg hover:underline underline-offset-2">
-                  {t("login.cantFindAddress")}
+                  {t('login.cantFindAddress')}
                 </Link>
               </p>
             )}

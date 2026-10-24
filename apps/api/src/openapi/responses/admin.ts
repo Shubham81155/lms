@@ -267,7 +267,9 @@ export const TenantExport = z.object({
       code: z.string(),
       createdAt: z.string(),
       updatedAt: z.string(),
-      departments: z.array(z.object({ id: z.string(), campusId: z.string(), name: z.string(), code: z.string(), createdAt: z.string(), updatedAt: z.string() })),
+      departments: z.array(
+        z.object({ id: z.string(), campusId: z.string(), name: z.string(), code: z.string(), createdAt: z.string(), updatedAt: z.string() })
+      ),
     })
   ),
   courses: z.array(
@@ -403,8 +405,22 @@ export const SamlConnectionView = z.object({
 
 // ---- campuses, compliance
 
-const Department = z.object({ id: z.string(), campusId: z.string(), name: z.string(), code: z.string(), createdAt: z.string(), updatedAt: z.string() });
-const CampusRecord = z.object({ id: z.string(), tenantId: z.string(), name: z.string(), code: z.string(), createdAt: z.string(), updatedAt: z.string() });
+const Department = z.object({
+  id: z.string(),
+  campusId: z.string(),
+  name: z.string(),
+  code: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+const CampusRecord = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  name: z.string(),
+  code: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
 
 export const CampusTreeItem = z.object({
   id: z.string(),
@@ -471,9 +487,16 @@ export const RESPONSES: ResponseTable = {
   // ---- tenant settings, audit log, stats
   'GET /api/v1/admin/tenant': { response: ok(z.object({ data: TenantSettings })), errors: [404] },
   'PATCH /api/v1/admin/tenant': { response: ok(z.object({ data: TenantRecord })), errors: [400, 404] },
-  'GET /api/v1/admin/audit-logs/actions': { response: ok(z.object({ data: z.array(z.object({ action: z.string(), count: z.number() })) })) },
+  'GET /api/v1/admin/audit-logs/actions': {
+    response: ok(z.object({ data: z.array(z.object({ action: z.string(), count: z.number() })) })),
+  },
   'GET /api/v1/admin/audit-logs/export.csv': {
-    response: { status: 200, contentType: 'text/csv', schema: z.string(), description: 'The filtered audit trail as CSV, newest first, at most 50,000 rows (sent as an attachment).' },
+    response: {
+      status: 200,
+      contentType: 'text/csv',
+      schema: z.string(),
+      description: 'The filtered audit trail as CSV, newest first, at most 50,000 rows (sent as an attachment).',
+    },
     errors: [400],
   },
   'GET /api/v1/admin/audit-logs': { response: ok(z.object({ data: z.array(AuditLogItem), pagination: Pagination })), errors: [400] },
@@ -484,7 +507,10 @@ export const RESPONSES: ResponseTable = {
   'GET /api/v1/operator/tenants': { response: ok(z.object({ data: z.array(OperatorTenant) })) },
   'GET /api/v1/operator/tenants/:id/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [404] },
   'PUT /api/v1/operator/tenants/:id/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [400, 404, 409] },
-  'POST /api/v1/operator/tenants/:id/custom-domain/verify': { response: ok(z.object({ data: CustomDomainCheck })), errors: [404, 409, 429] },
+  'POST /api/v1/operator/tenants/:id/custom-domain/verify': {
+    response: ok(z.object({ data: CustomDomainCheck })),
+    errors: [404, 409, 429],
+  },
   'DELETE /api/v1/operator/tenants/:id/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [400, 404] },
   'GET /api/v1/admin/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [404] },
   'PUT /api/v1/admin/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [400, 404, 409] },
@@ -492,11 +518,20 @@ export const RESPONSES: ResponseTable = {
   'DELETE /api/v1/admin/custom-domain': { response: ok(z.object({ data: CustomDomainState })), errors: [400, 404] },
   'GET /internal/tls/allowed': {
     response: ok(z.object({ allowed: z.literal(true) })),
-    otherResponses: [{ status: 404, schema: z.object({ allowed: z.literal(false) }), description: 'Not a host of the platform, or the check is off (no TLS_ASK_SECRET)' }],
+    otherResponses: [
+      {
+        status: 404,
+        schema: z.object({ allowed: z.literal(false) }),
+        description: 'Not a host of the platform, or the check is off (no TLS_ASK_SECRET)',
+      },
+    ],
     errors: [400, 403, 429],
   },
   'PATCH /api/v1/operator/tenants/:id': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
-  'POST /api/v1/operator/tenants': { response: ok(z.object({ data: z.object({ organization: OperatorTenant, invitation: Invitation }) }), 201), errors: [400, 409] },
+  'POST /api/v1/operator/tenants': {
+    response: ok(z.object({ data: z.object({ organization: OperatorTenant, invitation: Invitation }) }), 201),
+    errors: [400, 409],
+  },
   'PATCH /api/v1/operator/tenants/:id/status': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
   'GET /api/v1/operator/trial-settings': { response: ok(z.object({ data: z.object({ defaultDays: z.number(), graceDays: z.number() }) })) },
   'POST /api/v1/operator/tenants/:id/trial': { response: ok(z.object({ data: OperatorTenant })), errors: [400, 404, 409] },
@@ -520,7 +555,10 @@ export const RESPONSES: ResponseTable = {
       })
     ),
   },
-  'GET /api/v1/operator/requests': { response: ok(z.object({ data: z.array(OrganizationRequest), pagination: Pagination })), errors: [400] },
+  'GET /api/v1/operator/requests': {
+    response: ok(z.object({ data: z.array(OrganizationRequest), pagination: Pagination })),
+    errors: [400],
+  },
   'POST /api/v1/operator/requests/:id/approve': {
     response: ok(z.object({ data: z.object({ request: OrganizationRequest, organization: OperatorTenant, invitation: Invitation }) })),
     errors: [400, 404, 409],
@@ -541,7 +579,10 @@ export const RESPONSES: ResponseTable = {
     errors: [400, 429],
   },
   'GET /api/v1/organizations/captcha': { response: ok(z.object({ data: z.object({ siteKey: z.string().nullable() }) })), errors: [429] },
-  'GET /api/v1/organizations/lookup': { response: ok(z.object({ data: z.object({ slug: z.string(), name: z.string() }) })), errors: [400, 404, 429] },
+  'GET /api/v1/organizations/lookup': {
+    response: ok(z.object({ data: z.object({ slug: z.string(), name: z.string() }) })),
+    errors: [400, 404, 429],
+  },
   'POST /api/v1/organizations/requests': {
     response: ok(
       z.object({
@@ -575,18 +616,34 @@ export const RESPONSES: ResponseTable = {
   },
   'GET /api/v1/admin/usage': { response: ok(z.object({ data: UsageReport })) },
   'GET /api/v1/admin/export': {
-    response: { status: 200, schema: TenantExport, description: 'Tenant data as a JSON download (Content-Disposition: attachment). No credentials or secrets. Streamed; if it fails midway the connection is cut and the file is truncated.' },
+    response: {
+      status: 200,
+      schema: TenantExport,
+      description:
+        'Tenant data as a JSON download (Content-Disposition: attachment). No credentials or secrets. Streamed; if it fails midway the connection is cut and the file is truncated.',
+    },
   },
 
   // ---- webhooks
   'GET /api/v1/admin/webhooks': { response: ok(z.object({ data: z.array(WebhookEndpointView) })) },
   'POST /api/v1/admin/webhooks': {
-    response: { status: 201, schema: z.object({ data: WebhookEndpointCreated }), description: 'The signing secret is returned here once and never again.' },
+    response: {
+      status: 201,
+      schema: z.object({ data: WebhookEndpointCreated }),
+      description: 'The signing secret is returned here once and never again.',
+    },
     errors: [400],
   },
   'PATCH /api/v1/admin/webhooks/:id': { response: ok(z.object({ data: WebhookEndpointView })), errors: [400, 404] },
   'DELETE /api/v1/admin/webhooks/:id': { response: noBody('Deleted'), errors: [404] },
-  'GET /api/v1/admin/webhooks/:id/deliveries': { response: { status: 200, schema: z.object({ data: z.array(WebhookDeliveryItem) }), description: 'The 50 most recent delivery attempts, newest first.' }, errors: [404] },
+  'GET /api/v1/admin/webhooks/:id/deliveries': {
+    response: {
+      status: 200,
+      schema: z.object({ data: z.array(WebhookDeliveryItem) }),
+      description: 'The 50 most recent delivery attempts, newest first.',
+    },
+    errors: [404],
+  },
   'POST /api/v1/admin/webhooks/:id/test': {
     response: {
       status: 200,
@@ -599,7 +656,11 @@ export const RESPONSES: ResponseTable = {
   // ---- SCIM tokens
   'GET /api/v1/admin/scim-tokens': { response: ok(z.object({ data: z.array(ScimTokenItem) })) },
   'POST /api/v1/admin/scim-tokens': {
-    response: { status: 201, schema: z.object({ data: ScimTokenCreated }), description: 'The bearer token is returned here once; only its hash is stored.' },
+    response: {
+      status: 201,
+      schema: z.object({ data: ScimTokenCreated }),
+      description: 'The bearer token is returned here once; only its hash is stored.',
+    },
     errors: [400],
   },
   'DELETE /api/v1/admin/scim-tokens/:id': { response: noBody('Revoked'), errors: [404] },
@@ -641,14 +702,25 @@ export const RESPONSES: ResponseTable = {
   'POST /api/v1/courses/:courseId/live-sessions': { response: ok(z.object({ data: LiveSessionView }), 201), errors: [400, 403, 404] },
   'GET /api/v1/live-sessions/mine': { response: ok(z.object({ configured: z.boolean(), data: z.array(LiveSessionMineItem) })) },
   'PATCH /api/v1/live-sessions/:id': { response: ok(z.object({ data: LiveSessionView })), errors: [400, 403, 404, 409] },
-  'POST /api/v1/live-sessions/:id/cancel': { response: ok(z.object({ data: z.object({ id: z.string(), status: z.literal('CANCELLED') }) })), errors: [403, 404, 409] },
+  'POST /api/v1/live-sessions/:id/cancel': {
+    response: ok(z.object({ data: z.object({ id: z.string(), status: z.literal('CANCELLED') }) })),
+    errors: [403, 404, 409],
+  },
   'POST /api/v1/live-sessions/:id/start': {
-    response: { status: 200, schema: z.object({ data: LiveSessionView }), description: 'The session is live. Also the answer when it already was (idempotent).' },
+    response: {
+      status: 200,
+      schema: z.object({ data: LiveSessionView }),
+      description: 'The session is live. Also the answer when it already was (idempotent).',
+    },
     errors: [403, 404, 409, 503],
   },
   'POST /api/v1/live-sessions/:id/end': { response: ok(z.object({ data: LiveSessionView })), errors: [403, 404, 409] },
   'POST /api/v1/live-sessions/:id/join': {
-    response: { status: 200, schema: z.object({ data: LiveJoin }), description: 'A signed token for the media server. Only while the class is live.' },
+    response: {
+      status: 200,
+      schema: z.object({ data: LiveJoin }),
+      description: 'A signed token for the media server. Only while the class is live.',
+    },
     errors: [403, 404, 409, 503],
   },
   'GET /api/v1/live-sessions/:id/attendance': {
@@ -657,7 +729,9 @@ export const RESPONSES: ResponseTable = {
   },
 
   // ---- two-factor authentication
-  'GET /api/v1/auth/mfa/status': { response: ok(z.object({ data: z.object({ enabled: z.boolean(), recoveryCodesRemaining: z.number(), hasPassword: z.boolean() }) })) },
+  'GET /api/v1/auth/mfa/status': {
+    response: ok(z.object({ data: z.object({ enabled: z.boolean(), recoveryCodesRemaining: z.number(), hasPassword: z.boolean() }) })),
+  },
   'POST /api/v1/auth/mfa/setup': {
     response: {
       status: 200,

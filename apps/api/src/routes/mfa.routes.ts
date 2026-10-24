@@ -17,7 +17,12 @@ const router = Router();
 router.use(authenticateJWT);
 
 const ISSUER = 'Enterprise LMS';
-export const codeSchema = z.object({ code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code') });
+export const codeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'Enter the 6-digit code'),
+});
 export const disableSchema = z.object({ password: z.string().min(1).max(128), code: z.string().trim().min(6).max(32) });
 
 const me = (req: any) =>
@@ -69,8 +74,13 @@ router.post(
     const { codes, hashes } = generateRecoveryCodes();
     await prisma.user.update({ where: { id: u.id }, data: { mfaEnabled: true, mfaRecoveryHashes: hashes } });
     await logAuditEvent({
-      tenantId: tenantIdOf(req), userId: u.id, action: 'MFA_ENABLED', resourceType: 'USER', resourceId: u.id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'],
+      tenantId: tenantIdOf(req),
+      userId: u.id,
+      action: 'MFA_ENABLED',
+      resourceType: 'USER',
+      resourceId: u.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
     });
     return res.json({ data: { enabled: true, recoveryCodes: codes } });
   })
@@ -90,8 +100,13 @@ router.post(
 
     await prisma.user.update({ where: { id: u.id }, data: { mfaEnabled: false, mfaSecret: null, mfaRecoveryHashes: [] } });
     await logAuditEvent({
-      tenantId: tenantIdOf(req), userId: u.id, action: 'MFA_DISABLED', resourceType: 'USER', resourceId: u.id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'],
+      tenantId: tenantIdOf(req),
+      userId: u.id,
+      action: 'MFA_DISABLED',
+      resourceType: 'USER',
+      resourceId: u.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
     });
     return res.json({ data: { enabled: false } });
   })

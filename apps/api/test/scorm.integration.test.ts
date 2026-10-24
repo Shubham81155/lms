@@ -29,21 +29,39 @@ function zip(entries: Record<string, string>): Buffer {
     const fname = Buffer.from(name);
     const crc = zlib.crc32(data);
     const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0x0800, 6); local.writeUInt16LE(0, 8);
-    local.writeUInt32LE(0, 10); local.writeUInt32LE(crc, 14); local.writeUInt32LE(data.length, 18); local.writeUInt32LE(data.length, 22);
-    local.writeUInt16LE(fname.length, 26); local.writeUInt16LE(0, 28);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0x0800, 6);
+    local.writeUInt16LE(0, 8);
+    local.writeUInt32LE(0, 10);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(fname.length, 26);
+    local.writeUInt16LE(0, 28);
     const central = Buffer.alloc(46);
-    central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6); central.writeUInt16LE(0x0800, 8); central.writeUInt16LE(0, 10);
-    central.writeUInt32LE(0, 12); central.writeUInt32LE(crc, 16); central.writeUInt32LE(data.length, 20); central.writeUInt32LE(data.length, 24);
-    central.writeUInt16LE(fname.length, 28); central.writeUInt32LE(offset, 42);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0x0800, 8);
+    central.writeUInt16LE(0, 10);
+    central.writeUInt32LE(0, 12);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(fname.length, 28);
+    central.writeUInt32LE(offset, 42);
     locals.push(local, fname, data);
     centrals.push(central, fname);
     offset += 30 + fname.length + data.length;
   }
   const cd = Buffer.concat(centrals);
   const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(entries).length, 8); end.writeUInt16LE(Object.keys(entries).length, 10);
-  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(Object.keys(entries).length, 8);
+  end.writeUInt16LE(Object.keys(entries).length, 10);
+  end.writeUInt32LE(cd.length, 12);
+  end.writeUInt32LE(offset, 16);
   return Buffer.concat([...locals, cd, end]);
 }
 
@@ -61,7 +79,18 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any, firstName = id) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('teacher', 'INSTRUCTOR');
   await user('s1', 'STUDENT', 'Ada');
   await user('outsider', 'STUDENT');
@@ -88,13 +117,20 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
 
 const uploadZip = (agent: request.Agent, body: Buffer, courseId = 'c1', type = 'application/zip') =>
-  agent.post('/api/v1/files').query({ purpose: 'SCORM_PACKAGE', courseId, filename: 'fire-safety.zip' }).set('content-type', type).send(body);
+  agent
+    .post('/api/v1/files')
+    .query({ purpose: 'SCORM_PACKAGE', courseId, filename: 'fire-safety.zip' })
+    .set('content-type', type)
+    .send(body);
 
 const addPackage = async (agent: request.Agent, entries: Record<string, string>, courseId = 'c1') => {
   const up = await uploadZip(agent, zip(entries), courseId);
@@ -119,8 +155,16 @@ describe('reading packages', () => {
   });
 
   it('summarises both SCORM versions in one vocabulary', () => {
-    expect(scorm.summarise('1.2', { 'cmi.core.lesson_status': 'passed', 'cmi.core.score.raw': '8', 'cmi.core.score.max': '10' })).toEqual({ status: 'passed', scorePercent: 80, completed: true });
-    expect(scorm.summarise('2004', { 'cmi.completion_status': 'incomplete', 'cmi.score.scaled': '0.5' })).toEqual({ status: 'incomplete', scorePercent: 50, completed: false });
+    expect(scorm.summarise('1.2', { 'cmi.core.lesson_status': 'passed', 'cmi.core.score.raw': '8', 'cmi.core.score.max': '10' })).toEqual({
+      status: 'passed',
+      scorePercent: 80,
+      completed: true,
+    });
+    expect(scorm.summarise('2004', { 'cmi.completion_status': 'incomplete', 'cmi.score.scaled': '0.5' })).toEqual({
+      status: 'incomplete',
+      scorePercent: 50,
+      completed: false,
+    });
     expect(scorm.summarise('2004', { 'cmi.success_status': 'passed' }).completed).toBe(true);
   });
 });
@@ -172,9 +216,19 @@ describe('adding a package', () => {
     const t = await as('teacher');
     expect((await t.post('/api/v1/courses/c2/modules').send({ title: 'W' })).status).toBe(201);
     const c2Module = (await admin.module.findFirstOrThrow({ where: { courseId: 'c2' } })).id;
-    expect((await t.post(`/api/v1/courses/c2/modules/${c2Module}/lessons`).send({ title: 'Wrong course', contentType: 'SCORM_PACKAGE', scormPackageId: pkgId })).status).toBe(400);
-    expect((await t.post('/api/v1/courses/c1/modules/m1/lessons').send({ title: 'No package', contentType: 'SCORM_PACKAGE' })).status).toBe(400);
-    const ok = await t.post('/api/v1/courses/c1/modules/m1/lessons').send({ title: 'Fire safety', contentType: 'SCORM_PACKAGE', scormPackageId: pkgId });
+    expect(
+      (
+        await t
+          .post(`/api/v1/courses/c2/modules/${c2Module}/lessons`)
+          .send({ title: 'Wrong course', contentType: 'SCORM_PACKAGE', scormPackageId: pkgId })
+      ).status
+    ).toBe(400);
+    expect((await t.post('/api/v1/courses/c1/modules/m1/lessons').send({ title: 'No package', contentType: 'SCORM_PACKAGE' })).status).toBe(
+      400
+    );
+    const ok = await t
+      .post('/api/v1/courses/c1/modules/m1/lessons')
+      .send({ title: 'Fire safety', contentType: 'SCORM_PACKAGE', scormPackageId: pkgId });
     expect(ok.status).toBe(201);
   });
 });
@@ -222,26 +276,48 @@ describe('playing a package', () => {
 
   it('starts fresh, then resumes where the learner left off; read-only values cannot be changed', async () => {
     const first = await request(app).get(`${contentBase}__state`);
-    expect(first.body.cmi).toMatchObject({ 'cmi.core.student_id': 's1', 'cmi.core.student_name': 'L, Ada', 'cmi.core.lesson_status': 'not attempted', 'cmi.core.entry': 'ab-initio' });
+    expect(first.body.cmi).toMatchObject({
+      'cmi.core.student_id': 's1',
+      'cmi.core.student_name': 'L, Ada',
+      'cmi.core.lesson_status': 'not attempted',
+      'cmi.core.entry': 'ab-initio',
+    });
 
-    const saved = await request(app).post(`${contentBase}__commit`).send({ cmi: { 'cmi.core.lesson_status': 'incomplete', 'cmi.suspend_data': 'page=3', 'cmi.core.student_id': 'someone-else' } });
+    const saved = await request(app)
+      .post(`${contentBase}__commit`)
+      .send({ cmi: { 'cmi.core.lesson_status': 'incomplete', 'cmi.suspend_data': 'page=3', 'cmi.core.student_id': 'someone-else' } });
     expect(saved.body).toEqual({ status: 'incomplete', scorePercent: null, completed: false });
     const again = await request(app).get(`${contentBase}__state`);
     expect(again.body.cmi).toMatchObject({ 'cmi.suspend_data': 'page=3', 'cmi.core.student_id': 's1', 'cmi.core.entry': 'resume' });
-    expect((await request(app).post(`${contentBase}__commit`).send({ cmi: { 'cmi.x': 5 } })).status).toBe(400);
+    expect(
+      (
+        await request(app)
+          .post(`${contentBase}__commit`)
+          .send({ cmi: { 'cmi.x': 5 } })
+      ).status
+    ).toBe(400);
   });
 
   it('finishes the lesson, and the course, when the package reports a pass', async () => {
-    const done = await request(app).post(`${contentBase}__commit`).send({ cmi: { 'cmi.core.lesson_status': 'passed', 'cmi.core.score.raw': '80', 'cmi.core.score.max': '100' } });
+    const done = await request(app)
+      .post(`${contentBase}__commit`)
+      .send({ cmi: { 'cmi.core.lesson_status': 'passed', 'cmi.core.score.raw': '80', 'cmi.core.score.max': '100' } });
     expect(done.body).toEqual({ status: 'passed', scorePercent: 80, completed: true });
     const lesson = await admin.lesson.findFirstOrThrow({ where: { scormPackageId: pkgId } });
     expect(await admin.lessonProgress.count({ where: { userId: 's1', lessonId: lesson.id } })).toBe(1);
     // The only lesson of a course without a gradebook: the course is complete.
-    expect(await admin.enrollment.findUniqueOrThrow({ where: { courseId_userId: { courseId: 'c1', userId: 's1' } } })).toMatchObject({ status: 'COMPLETED', progressPercent: 100 });
+    expect(await admin.enrollment.findUniqueOrThrow({ where: { courseId_userId: { courseId: 'c1', userId: 's1' } } })).toMatchObject({
+      status: 'COMPLETED',
+      progressPercent: 100,
+    });
 
     // Enrolled learners who never opened the package are listed too; a dropped one is not.
-    await admin.user.create({ data: { id: 's2', tenantId: 't-h', email: 's2@x.edu', firstName: 'Bo', lastName: 'L', role: 'STUDENT', passwordHash: 'x' } });
-    await admin.user.create({ data: { id: 's3', tenantId: 't-h', email: 's3@x.edu', firstName: 'Cy', lastName: 'L', role: 'STUDENT', passwordHash: 'x' } });
+    await admin.user.create({
+      data: { id: 's2', tenantId: 't-h', email: 's2@x.edu', firstName: 'Bo', lastName: 'L', role: 'STUDENT', passwordHash: 'x' },
+    });
+    await admin.user.create({
+      data: { id: 's3', tenantId: 't-h', email: 's3@x.edu', firstName: 'Cy', lastName: 'L', role: 'STUDENT', passwordHash: 'x' },
+    });
     await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: 's2', status: 'ENROLLED' } });
     await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: 's3', status: 'DROPPED' } });
     const results = await (await as('teacher')).get(`/api/v1/scorm-packages/${pkgId}/attempts`);
@@ -279,7 +355,13 @@ describe('playing a package', () => {
     const attempt = await admin.scormAttempt.findFirstOrThrow({ where: { userId: 's1' } });
     expect(attempt).toMatchObject({ cmiJson: {}, status: 'passed', scorePercent: 80 });
     // A launch link issued before the erasure cannot write the data back.
-    expect((await request(app).post(`${contentBase}__commit`).send({ cmi: { 'cmi.suspend_data': 'again' } })).status).toBe(403);
+    expect(
+      (
+        await request(app)
+          .post(`${contentBase}__commit`)
+          .send({ cmi: { 'cmi.suspend_data': 'again' } })
+      ).status
+    ).toBe(403);
     expect((await admin.scormAttempt.findFirstOrThrow({ where: { userId: 's1' } })).cmiJson).toEqual({});
   });
 });

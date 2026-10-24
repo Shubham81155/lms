@@ -9,7 +9,12 @@ export interface RazorpayClient {
   /** Registers a price as a Razorpay plan; returns its id. `amountPaise` is per seat per interval. */
   createPlan(input: { name: string; interval: 'MONTH' | 'YEAR'; amountPaise: number }): Promise<{ id: string }>;
   /** Starts a subscription of `quantity` seats; `shortUrl` is the hosted page where the customer pays. */
-  createSubscription(input: { planId: string; quantity: number; totalCount: number; notes: Record<string, string> }): Promise<{ id: string; shortUrl: string }>;
+  createSubscription(input: {
+    planId: string;
+    quantity: number;
+    totalCount: number;
+    notes: Record<string, string>;
+  }): Promise<{ id: string; shortUrl: string }>;
   /** Stops renewals at the end of the paid period (atCycleEnd) or at once. */
   cancelSubscription(id: string, atCycleEnd: boolean): Promise<void>;
   /** Undoes a cancellation scheduled for the end of the period. */
@@ -41,7 +46,13 @@ export const httpRazorpayClient: RazorpayClient = {
     return { id: plan.id };
   },
   async createSubscription({ planId, quantity, totalCount, notes }) {
-    const sub = await call<{ id: string; short_url: string }>('POST', '/subscriptions', { plan_id: planId, quantity, total_count: totalCount, customer_notify: 1, notes });
+    const sub = await call<{ id: string; short_url: string }>('POST', '/subscriptions', {
+      plan_id: planId,
+      quantity,
+      total_count: totalCount,
+      customer_notify: 1,
+      notes,
+    });
     return { id: sub.id, shortUrl: sub.short_url };
   },
   async cancelSubscription(id, atCycleEnd) {

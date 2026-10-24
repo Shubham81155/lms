@@ -13,7 +13,9 @@ type GetPaths = { [P in keyof paths]: paths[P] extends { get: any } ? P : never 
 export type GetResponse<P extends GetPaths> = paths[P] extends { get: { responses: { 200: infer OK } } } ? JsonBody<OK> : never;
 export type GetQuery<P extends GetPaths> = paths[P] extends { get: { parameters: { query?: infer Q } } } ? NonNullable<Q> : never;
 
-type PathParamsOf<P extends keyof paths, M extends string> = paths[P] extends { [K in M]: { parameters: { path: infer PP } } } ? PP : undefined;
+type PathParamsOf<P extends keyof paths, M extends string> = paths[P] extends { [K in M]: { parameters: { path: infer PP } } }
+  ? PP
+  : undefined;
 /** `[]` for paths without parameters, otherwise the one argument naming them. */
 type ParamsArg<P extends keyof paths, M extends string> = PathParamsOf<P, M> extends undefined ? [] : [params: PathParamsOf<P, M>];
 
@@ -23,13 +25,25 @@ const fill = (path: string, params?: Record<string, string>) =>
 const paramsOf = (rest: unknown[]) => rest[0] as Record<string, string> | undefined;
 
 export const typedGet = <P extends GetPaths>(path: P, query?: GetQuery<P>, ...rest: ParamsArg<P, 'get'>) =>
-  api.get<GetResponse<P>>(fill(path, paramsOf(rest)), { params: query as Record<string, string | number | boolean | undefined | null> | undefined });
+  api.get<GetResponse<P>>(fill(path, paramsOf(rest)), {
+    params: query as Record<string, string | number | boolean | undefined | null> | undefined,
+  });
 
 type Method = 'post' | 'put' | 'patch';
 type WritePaths<M extends Method> = { [P in keyof paths]: paths[P] extends { [K in M]: any } ? P : never }[keyof paths];
-type BodyOf<P extends keyof paths, M extends Method> = paths[P] extends { [K in M]: { requestBody: { content: { 'application/json': infer B } } } } ? B : paths[P] extends { [K in M]: { requestBody?: never } } ? undefined : never;
+type BodyOf<P extends keyof paths, M extends Method> = paths[P] extends {
+  [K in M]: { requestBody: { content: { 'application/json': infer B } } };
+}
+  ? B
+  : paths[P] extends { [K in M]: { requestBody?: never } }
+    ? undefined
+    : never;
 type ResponseOf<P extends keyof paths, M extends Method> = paths[P] extends { [K in M]: { responses: infer R } }
-  ? R extends { 200: infer OK } ? JsonBody<OK> : R extends { 201: infer Created } ? JsonBody<Created> : unknown
+  ? R extends { 200: infer OK }
+    ? JsonBody<OK>
+    : R extends { 201: infer Created }
+      ? JsonBody<Created>
+      : unknown
   : never;
 
 export type PostBody<P extends WritePaths<'post'>> = BodyOf<P, 'post'>;

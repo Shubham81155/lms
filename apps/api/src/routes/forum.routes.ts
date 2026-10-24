@@ -37,17 +37,29 @@ export const moderatePostSchema = z.object({ hidden: z.boolean() });
 export const listQuery = z.object({
   ...paginationShape,
   category: z.enum(CATEGORIES).optional(),
-  includeHidden: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  includeHidden: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 const authorSelect = { select: { id: true, firstName: true, lastName: true, role: true, directoryOptOut: true } } as const;
 
 /** Learners see "First L." so a thread does not publish a classmate's full name. */
-function authorView(a: { id: string; firstName: string; lastName: string; role: string; directoryOptOut?: boolean }, access: CourseAccess, viewerId?: string) {
+function authorView(
+  a: { id: string; firstName: string; lastName: string; role: string; directoryOptOut?: boolean },
+  access: CourseAccess,
+  viewerId?: string
+) {
   const staffLike = ['INSTRUCTOR', 'TEACHING_ASSISTANT', 'TENANT_ADMIN', 'SUPER_ADMIN'].includes(a.role);
   return {
     id: a.id,
-    name: a.directoryOptOut && !staffLike && !access.isStaff && a.id !== viewerId ? 'Anonymous learner' : staffLike || access.isStaff ? `${a.firstName} ${a.lastName}` : `${a.firstName} ${a.lastName.charAt(0)}.`,
+    name:
+      a.directoryOptOut && !staffLike && !access.isStaff && a.id !== viewerId
+        ? 'Anonymous learner'
+        : staffLike || access.isStaff
+          ? `${a.firstName} ${a.lastName}`
+          : `${a.firstName} ${a.lastName.charAt(0)}.`,
     role: a.role,
   };
 }
@@ -102,7 +114,12 @@ router.get(
       }),
       prisma.forumThread.count({ where }),
     ]);
-    const { counts, mine } = await voteCounts(tenantId, 'THREAD', threads.map((t) => t.id), req.user!.id);
+    const { counts, mine } = await voteCounts(
+      tenantId,
+      'THREAD',
+      threads.map((t) => t.id),
+      req.user!.id
+    );
 
     return res.json({
       data: threads.map((t) => ({
@@ -165,7 +182,12 @@ router.get(
     ]);
     const hasMore = fetched.length > limit;
     const posts = hasMore ? fetched.slice(0, limit) : fetched;
-    const postVotes = await voteCounts(tenantId, 'POST', posts.map((p) => p.id), req.user!.id);
+    const postVotes = await voteCounts(
+      tenantId,
+      'POST',
+      posts.map((p) => p.id),
+      req.user!.id
+    );
     const threadVotes = await voteCounts(tenantId, 'THREAD', [thread.id], req.user!.id);
 
     return res.json({
@@ -233,7 +255,8 @@ router.post(
     const courseId =
       targetType === 'THREAD'
         ? (await prisma.forumThread.findFirst({ where: { id: targetId }, select: { courseId: true } }))?.courseId
-        : (await prisma.forumPost.findFirst({ where: { id: targetId }, select: { thread: { select: { courseId: true } } } }))?.thread.courseId;
+        : (await prisma.forumPost.findFirst({ where: { id: targetId }, select: { thread: { select: { courseId: true } } } }))?.thread
+            .courseId;
     if (!courseId) throw new HttpError(404, 'Target not found');
     await requireContentAccess(req, courseId);
 
@@ -264,7 +287,8 @@ router.post(
     const courseId =
       targetType === 'THREAD'
         ? (await prisma.forumThread.findFirst({ where: { id: targetId }, select: { courseId: true } }))?.courseId
-        : (await prisma.forumPost.findFirst({ where: { id: targetId }, select: { thread: { select: { courseId: true } } } }))?.thread.courseId;
+        : (await prisma.forumPost.findFirst({ where: { id: targetId }, select: { thread: { select: { courseId: true } } } }))?.thread
+            .courseId;
     if (!courseId) throw new HttpError(404, 'Target not found');
     const access = await requireContentAccess(req, courseId);
 
@@ -276,7 +300,14 @@ router.post(
     }
     await Promise.all(
       access.course.instructorIds.map((userId) =>
-        notify({ tenantId, userId, category: 'FORUM', title: 'A discussion post was reported', body: reason.slice(0, 140), link: `/courses/${courseId}/forum/moderation` })
+        notify({
+          tenantId,
+          userId,
+          category: 'FORUM',
+          title: 'A discussion post was reported',
+          body: reason.slice(0, 140),
+          link: `/courses/${courseId}/forum/moderation`,
+        })
       )
     );
     return res.status(201).json({ data: { reported: true } });
@@ -307,7 +338,10 @@ router.get(
         where: { id: { in: flags.filter((f) => f.targetType === 'POST').map((f) => f.targetId) } },
         select: { id: true, body: true, hidden: true, threadId: true, thread: { select: { title: true } } },
       }),
-      prisma.user.findMany({ where: { id: { in: [...new Set(flags.map((f) => f.reporterId))] } }, select: { id: true, firstName: true, lastName: true } }),
+      prisma.user.findMany({
+        where: { id: { in: [...new Set(flags.map((f) => f.reporterId))] } },
+        select: { id: true, firstName: true, lastName: true },
+      }),
     ]);
     const threadById = new Map(flaggedThreads.map((t) => [t.id, t]));
     const postById = new Map(flaggedPosts.map((p) => [p.id, p]));
@@ -341,7 +375,8 @@ router.post(
     const courseId =
       flag.targetType === 'THREAD'
         ? (await prisma.forumThread.findFirst({ where: { id: flag.targetId }, select: { courseId: true } }))?.courseId
-        : (await prisma.forumPost.findFirst({ where: { id: flag.targetId }, select: { thread: { select: { courseId: true } } } }))?.thread.courseId;
+        : (await prisma.forumPost.findFirst({ where: { id: flag.targetId }, select: { thread: { select: { courseId: true } } } }))?.thread
+            .courseId;
     if (!courseId) throw new HttpError(404, 'Report not found');
     const access = await requireContentAccess(req, courseId);
     if (!access.isStaff) throw new HttpError(403, 'Forbidden: moderation is limited to course staff');
@@ -359,8 +394,14 @@ router.patch(
     const patch = parseBody(req, moderateThreadSchema);
     const updated = await prisma.forumThread.update({ where: { id: thread.id }, data: patch });
     await logAuditEvent({
-      tenantId: tenantIdOf(req), userId: req.user!.id, action: 'FORUM_THREAD_MODERATED', resourceType: 'FORUM_THREAD',
-      resourceId: thread.id, ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: patch,
+      tenantId: tenantIdOf(req),
+      userId: req.user!.id,
+      action: 'FORUM_THREAD_MODERATED',
+      resourceType: 'FORUM_THREAD',
+      resourceId: thread.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: patch,
     });
     return res.json({ data: updated });
   })
@@ -370,15 +411,24 @@ router.patch(
 router.patch(
   '/posts/:id/moderate',
   route('Failed to moderate reply', async (req, res) => {
-    const post = await prisma.forumPost.findFirst({ where: { id: idSchema.parse(req.params.id) }, include: { thread: { select: { courseId: true } } } });
+    const post = await prisma.forumPost.findFirst({
+      where: { id: idSchema.parse(req.params.id) },
+      include: { thread: { select: { courseId: true } } },
+    });
     if (!post) throw new HttpError(404, 'Reply not found');
     const access = await requireContentAccess(req, post.thread.courseId);
     if (!access.isStaff) throw new HttpError(403, 'Forbidden: moderation is limited to course staff');
     const patch = parseBody(req, moderatePostSchema);
     const updated = await prisma.forumPost.update({ where: { id: post.id }, data: patch });
     await logAuditEvent({
-      tenantId: tenantIdOf(req), userId: req.user!.id, action: 'FORUM_POST_MODERATED', resourceType: 'FORUM_POST',
-      resourceId: post.id, ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: patch,
+      tenantId: tenantIdOf(req),
+      userId: req.user!.id,
+      action: 'FORUM_POST_MODERATED',
+      resourceType: 'FORUM_POST',
+      resourceId: post.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: patch,
     });
     return res.json({ data: updated });
   })
@@ -388,7 +438,10 @@ router.patch(
 router.post(
   '/posts/:id/endorse',
   route('Failed to endorse reply', async (req, res) => {
-    const post = await prisma.forumPost.findFirst({ where: { id: idSchema.parse(req.params.id) }, include: { thread: { select: { courseId: true } } } });
+    const post = await prisma.forumPost.findFirst({
+      where: { id: idSchema.parse(req.params.id) },
+      include: { thread: { select: { courseId: true } } },
+    });
     if (!post) throw new HttpError(404, 'Reply not found');
     const access = await requireContentAccess(req, post.thread.courseId);
     if (!access.isStaff) throw new HttpError(403, 'Forbidden: only course staff can endorse answers');

@@ -70,7 +70,12 @@ async function accessToken(): Promise<string | null> {
  * Starts a scan of the text. Returns the HTTP status to treat the attempt as (null when it should be retried
  * without one): a scan id that already exists means an earlier attempt arrived, which counts as success.
  */
-export async function submitCopyleaksScan(s: { scanId: string; submissionId: string; tenantSlug: string; text: string }): Promise<number | null> {
+export async function submitCopyleaksScan(s: {
+  scanId: string;
+  submissionId: string;
+  tenantSlug: string;
+  text: string;
+}): Promise<number | null> {
   const token = await accessToken();
   if (!token) return null;
   const callbackBase = `${config.API_PUBLIC_URL!.replace(/\/+$/, '')}/api/v1/integrations/copyleaks/${encodeURIComponent(s.tenantSlug)}/${encodeURIComponent(s.submissionId)}`;

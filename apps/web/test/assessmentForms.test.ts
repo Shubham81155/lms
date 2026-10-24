@@ -2,7 +2,20 @@ import { describe, it, expect } from 'vitest';
 import { assignmentProblem, eventProblem, quizSettingsProblem, toLocalInput } from '../src/lib/assessmentForms';
 import { blankQuestion, questionBody } from '../src/lib/questionDraft';
 
-const quiz = { title: 'Midterm', timed: false, minutes: '30', attempts: '2', passing: '70', randomize: false, proctoring: false, camera: false, microphone: false, opens: '', closes: '', review: 'RESPONSES' as const };
+const quiz = {
+  title: 'Midterm',
+  timed: false,
+  minutes: '30',
+  attempts: '2',
+  passing: '70',
+  randomize: false,
+  proctoring: false,
+  camera: false,
+  microphone: false,
+  opens: '',
+  closes: '',
+  review: 'RESPONSES' as const,
+};
 
 describe('quizSettingsProblem', () => {
   it('accepts sensible settings', () => {
@@ -73,18 +86,32 @@ describe('toLocalInput', () => {
 
 describe('questionBody', () => {
   it('sends only filled options for choice questions and no answer key', () => {
-    const d = { ...blankQuestion('MULTIPLE_CHOICE'), text: ' 2 + 2? ', options: [{ text: '3', isCorrect: false }, { text: ' 4 ', isCorrect: true }, { text: '  ', isCorrect: false }] };
+    const d = {
+      ...blankQuestion('MULTIPLE_CHOICE'),
+      text: ' 2 + 2? ',
+      options: [
+        { text: '3', isCorrect: false },
+        { text: ' 4 ', isCorrect: true },
+        { text: '  ', isCorrect: false },
+      ],
+    };
     expect(questionBody(d)).toEqual({
       questionText: '2 + 2?',
       questionType: 'MULTIPLE_CHOICE',
       points: 1,
-      optionsJson: [{ text: '3', isCorrect: false }, { text: '4', isCorrect: true }],
+      optionsJson: [
+        { text: '3', isCorrect: false },
+        { text: '4', isCorrect: true },
+      ],
       correctAnswer: null,
       bloomLevel: null,
     });
   });
   it('sends an answer key for keyed types and nothing for essays', () => {
-    expect(questionBody({ ...blankQuestion('SHORT_ANSWER'), text: 'Capital of France?', answer: ' Paris ' })).toMatchObject({ optionsJson: null, correctAnswer: 'Paris' });
+    expect(questionBody({ ...blankQuestion('SHORT_ANSWER'), text: 'Capital of France?', answer: ' Paris ' })).toMatchObject({
+      optionsJson: null,
+      correctAnswer: 'Paris',
+    });
     expect(questionBody({ ...blankQuestion('ESSAY'), text: 'Discuss.' })).toMatchObject({ optionsJson: null, correctAnswer: null });
   });
   it('starts true/false questions with both options', () => {

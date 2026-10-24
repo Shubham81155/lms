@@ -25,7 +25,18 @@ const covered = new Set<string>();
 async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(pw('harvard'), 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(pw('harvard'), 4),
+        emailVerified: true,
+      },
+    });
   await user('admin', 'TENANT_ADMIN');
   await user('teacher', 'INSTRUCTOR');
   await user('ta', 'TEACHING_ASSISTANT');
@@ -33,16 +44,39 @@ async function seed() {
   await user('mfauser', 'STUDENT');
   for (const s of ['s1', 's2']) await user(s, 'STUDENT');
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course 1', status: 'PUBLISHED' } });
-  await admin.courseInstructor.createMany({ data: [{ courseId: 'c1', userId: 'teacher', isPrimary: true }, { courseId: 'c1', userId: 'ta' }] });
-  for (const s of ['s1', 's2']) await admin.enrollment.create({ data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
-  await admin.module.create({ data: { id: 'mod1', courseId: 'c1', title: 'Module 1', lessons: { create: [{ id: 'les1', title: 'Lesson 1' }] } } });
+  await admin.courseInstructor.createMany({
+    data: [
+      { courseId: 'c1', userId: 'teacher', isPrimary: true },
+      { courseId: 'c1', userId: 'ta' },
+    ],
+  });
+  for (const s of ['s1', 's2'])
+    await admin.enrollment.create({ data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
+  await admin.module.create({
+    data: { id: 'mod1', courseId: 'c1', title: 'Module 1', lessons: { create: [{ id: 'les1', title: 'Lesson 1' }] } },
+  });
   await admin.enrollment.update({ where: { id: 'e-s1' }, data: { status: 'COMPLETED', completedAt: new Date(), finalGrade: 90 } });
-  await admin.certificate.create({ data: { id: 'cert1', enrollmentId: 'e-s1', certificateNumber: 'CERT-1', verificationQr: 'https://x.example/verify/CERT-1' } });
+  await admin.certificate.create({
+    data: { id: 'cert1', enrollmentId: 'e-s1', certificateNumber: 'CERT-1', verificationQr: 'https://x.example/verify/CERT-1' },
+  });
   // The platform operator's organisation, whose super administrators manage every plan.
   await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator', tier: 'ENTERPRISE' } });
-  await admin.user.create({ data: { id: 'operator', tenantId: 't-op', email: 'operator@x.edu', firstName: 'Op', lastName: 'L', role: 'SUPER_ADMIN', passwordHash: bcrypt.hashSync(pw('ops'), 4), emailVerified: true } });
+  await admin.user.create({
+    data: {
+      id: 'operator',
+      tenantId: 't-op',
+      email: 'operator@x.edu',
+      firstName: 'Op',
+      lastName: 'L',
+      role: 'SUPER_ADMIN',
+      passwordHash: bcrypt.hashSync(pw('ops'), 4),
+      emailVerified: true,
+    },
+  });
   // An audit row whose acting user no longer exists.
-  await admin.auditLog.create({ data: { tenantId: 't-h', userId: null, action: 'SEEDED_ORPHAN', resourceType: 'TENANT', diffJson: { a: 1 } } });
+  await admin.auditLog.create({
+    data: { tenantId: 't-h', userId: null, action: 'SEEDED_ORPHAN', resourceType: 'TENANT', diffJson: { a: 1 } },
+  });
 }
 
 beforeAll(async () => {
@@ -66,7 +100,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -98,7 +135,10 @@ describe('tenant settings, audit log and stats', () => {
     const a = await as('admin');
     const got = check('GET /api/v1/admin/tenant', await a.get('/api/v1/admin/tenant'));
     expect(got.data).toMatchObject({ id: 't-h', userCount: 7, courseCount: 1, campusCount: 0, ltiDeploymentCount: 0 });
-    const patched = check('PATCH /api/v1/admin/tenant', await a.patch('/api/v1/admin/tenant').send({ name: 'Harvard U', primaryColor: '#112233', logoUrl: '' }));
+    const patched = check(
+      'PATCH /api/v1/admin/tenant',
+      await a.patch('/api/v1/admin/tenant').send({ name: 'Harvard U', primaryColor: '#112233', logoUrl: '' })
+    );
     expect(patched.data).toMatchObject({ name: 'Harvard U', logoUrl: null });
     expect(patched.data).not.toHaveProperty('userCount');
     expect((await (await as('teacher')).get('/api/v1/admin/tenant')).status).toBe(403);
@@ -118,7 +158,10 @@ describe('tenant settings, audit log and stats', () => {
     check('GET /api/v1/admin/audit-logs/export.csv', { ...csv, body: csv.text } as any);
     expect(csv.headers['content-type']).toContain('text/csv');
     expect(csv.headers['content-disposition']).toContain('attachment');
-    const lines = csv.text.replace(/^\uFEFF/, '').trim().split('\r\n');
+    const lines = csv.text
+      .replace(/^\uFEFF/, '')
+      .trim()
+      .split('\r\n');
     expect(lines[0]).toBe('time,action,resource_type,resource_id,user_email,user_role,ip_address,user_agent,details');
     expect(lines).toHaveLength(2);
     expect(lines[1]).toContain('SEEDED_ORPHAN');
@@ -139,7 +182,14 @@ describe('tenant settings, audit log and stats', () => {
 
   it('GET /admin/stats', async () => {
     const body = check('GET /api/v1/admin/stats', await (await as('admin')).get('/api/v1/admin/stats'));
-    expect(body.data).toMatchObject({ totalUsers: 7, totalCourses: 1, totalEnrollments: 2, completedEnrollments: 1, activeEnrollments: 1, completionRate: 50 });
+    expect(body.data).toMatchObject({
+      totalUsers: 7,
+      totalCourses: 1,
+      totalEnrollments: 2,
+      completedEnrollments: 1,
+      activeEnrollments: 1,
+      completionRate: 50,
+    });
     expect(body.data.roleCounts).toMatchObject({ TENANT_ADMIN: 1, STUDENT: 3 });
   });
 });
@@ -162,7 +212,10 @@ describe('features, usage and export', () => {
     const harvard = list.data.find((t: any) => t.slug === 'harvard');
     expect(harvard).toMatchObject({ tier: 'ENTERPRISE', seatQuota: null, seatsUsed: 7, overrides: {} });
 
-    const set = check('PATCH /api/v1/operator/tenants/:id', await op.patch('/api/v1/operator/tenants/t-h').send({ seatQuota: 50, features: { aiAssistant: false } }));
+    const set = check(
+      'PATCH /api/v1/operator/tenants/:id',
+      await op.patch('/api/v1/operator/tenants/t-h').send({ seatQuota: 50, features: { aiAssistant: false } })
+    );
     expect(set.data).toMatchObject({ seatQuota: 50, features: { aiAssistant: false }, overrides: { aiAssistant: false } });
     const a = await as('admin');
     expect((await a.get('/api/v1/admin/usage')).body.data.seats).toMatchObject({ quota: 50, remaining: 43 });
@@ -172,7 +225,10 @@ describe('features, usage and export', () => {
     expect((await op.patch('/api/v1/operator/tenants/t-h').send({})).status).toBe(400);
     expect((await op.patch('/api/v1/operator/tenants/t-h').send({ tier: 'GOLD' })).status).toBe(400);
     expect((await op.patch('/api/v1/operator/tenants/nope').send({ seatQuota: 5 })).status).toBe(404);
-    const back = check('PATCH /api/v1/operator/tenants/:id', await op.patch('/api/v1/operator/tenants/t-h').send({ seatQuota: null, features: { aiAssistant: null } }));
+    const back = check(
+      'PATCH /api/v1/operator/tenants/:id',
+      await op.patch('/api/v1/operator/tenants/t-h').send({ seatQuota: null, features: { aiAssistant: null } })
+    );
     expect(back.data).toMatchObject({ seatQuota: null, features: { aiAssistant: true }, overrides: {} });
 
     // Both audit trails record the change.
@@ -182,7 +238,11 @@ describe('features, usage and export', () => {
 
   it('GET /admin/usage', async () => {
     const usage = check('GET /api/v1/admin/usage', await (await as('admin')).get('/api/v1/admin/usage'));
-    expect(usage.data).toMatchObject({ tier: 'ENTERPRISE', seats: { used: 7, quota: null, remaining: null }, totals: { courses: 1, enrollments: 2, certificates: 1 } });
+    expect(usage.data).toMatchObject({
+      tier: 'ENTERPRISE',
+      seats: { used: 7, quota: null, remaining: null },
+      totals: { courses: 1, enrollments: 2, certificates: 1 },
+    });
   });
 
   it('GET /admin/export contains the documented sections and no credentials', async () => {
@@ -190,8 +250,26 @@ describe('features, usage and export', () => {
     const body = check('GET /api/v1/admin/export', res);
     expect(res.headers['content-disposition']).toContain('tenant-export-harvard.json');
     expect(keys(body)).toEqual([
-      'assignmentSubmissions', 'assignments', 'auditLog', 'calendarEvents', 'campuses', 'certificates', 'courseGrades', 'courses', 'enrollments', 'exportedAt',
-      'forumPosts', 'forumThreads', 'gradeAppeals', 'gradeCategories', 'liveAttendance', 'liveSessions', 'quizAttempts', 'quizzes', 'tenant', 'users',
+      'assignmentSubmissions',
+      'assignments',
+      'auditLog',
+      'calendarEvents',
+      'campuses',
+      'certificates',
+      'courseGrades',
+      'courses',
+      'enrollments',
+      'exportedAt',
+      'forumPosts',
+      'forumThreads',
+      'gradeAppeals',
+      'gradeCategories',
+      'liveAttendance',
+      'liveSessions',
+      'quizAttempts',
+      'quizzes',
+      'tenant',
+      'users',
     ]);
     expect(body.auditLog.length).toBeGreaterThan(0);
     expect(body.users).toHaveLength(7);
@@ -224,7 +302,10 @@ describe('webhooks', () => {
 
   it('shows the signing secret once, on creation only', async () => {
     const a = await as('admin');
-    const created = check('POST /api/v1/admin/webhooks', await a.post('/api/v1/admin/webhooks').send({ url: `${url}/ok`, events: ['webhook.test', 'quiz.submitted'] }));
+    const created = check(
+      'POST /api/v1/admin/webhooks',
+      await a.post('/api/v1/admin/webhooks').send({ url: `${url}/ok`, events: ['webhook.test', 'quiz.submitted'] })
+    );
     expect(keys(created.data)).toEqual(['createdAt', 'events', 'id', 'isActive', 'secret', 'url']);
     expect(created.data.secret).toMatch(/^whsec_/);
     id = created.data.id;
@@ -250,13 +331,25 @@ describe('webhooks', () => {
     const bad = (await a.post('/api/v1/admin/webhooks').send({ url: `${url}/fail`, events: ['webhook.test'] })).body.data.id;
     const failed = check('POST /api/v1/admin/webhooks/:id/test', await a.post(`/api/v1/admin/webhooks/${bad}/test`));
     expect(failed.data).toEqual({ success: false, statusCode: 500, error: 'HTTP 500' });
-    const dead = (await a.post('/api/v1/admin/webhooks').send({ url: 'http://127.0.0.1:1/nothing', events: ['webhook.test'] })).body.data.id;
+    const dead = (await a.post('/api/v1/admin/webhooks').send({ url: 'http://127.0.0.1:1/nothing', events: ['webhook.test'] })).body.data
+      .id;
     const unreachable = check('POST /api/v1/admin/webhooks/:id/test', await a.post(`/api/v1/admin/webhooks/${dead}/test`));
     expect(unreachable.data).toMatchObject({ success: false, statusCode: null });
     expect(typeof unreachable.data.error).toBe('string');
 
     // A failed delivery that may be retried keeps its request body for the worker.
-    await admin.webhookDelivery.create({ data: { tenantId: 't-h', endpointId: id, event: 'quiz.submitted', success: false, statusCode: 500, error: 'HTTP 500', payload: '{"x":1}', nextAttemptAt: new Date() } });
+    await admin.webhookDelivery.create({
+      data: {
+        tenantId: 't-h',
+        endpointId: id,
+        event: 'quiz.submitted',
+        success: false,
+        statusCode: 500,
+        error: 'HTTP 500',
+        payload: '{"x":1}',
+        nextAttemptAt: new Date(),
+      },
+    });
     const deliveries = check('GET /api/v1/admin/webhooks/:id/deliveries', await a.get(`/api/v1/admin/webhooks/${id}/deliveries`));
     expect(deliveries.data.some((d: any) => d.payload !== null && d.nextAttemptAt !== null)).toBe(true);
     expect(deliveries.data.some((d: any) => d.success === true && d.statusCode === 200)).toBe(true);
@@ -305,7 +398,14 @@ describe('OIDC single sign-on', () => {
     idp = http.createServer((req, res) => {
       res.setHeader('content-type', 'application/json');
       if (req.url === '/.well-known/openid-configuration') {
-        return void res.end(JSON.stringify({ issuer, authorization_endpoint: `${issuer}/authorize`, token_endpoint: `${issuer}/token`, jwks_uri: `${issuer}/jwks` }));
+        return void res.end(
+          JSON.stringify({
+            issuer,
+            authorization_endpoint: `${issuer}/authorize`,
+            token_endpoint: `${issuer}/token`,
+            jwks_uri: `${issuer}/jwks`,
+          })
+        );
       }
       res.statusCode = 404;
       res.end('{}');
@@ -321,7 +421,12 @@ describe('OIDC single sign-on', () => {
     expect(empty.data).toBeNull();
     expect(empty.redirectUris.length).toBeGreaterThan(0);
 
-    const put = check('PUT /api/v1/admin/sso', await a.put('/api/v1/admin/sso').send({ issuer, clientId: 'lms', clientSecret: CLIENT_SECRET, enabled: true, allowedDomains: ['x.edu'] }));
+    const put = check(
+      'PUT /api/v1/admin/sso',
+      await a
+        .put('/api/v1/admin/sso')
+        .send({ issuer, clientId: 'lms', clientSecret: CLIENT_SECRET, enabled: true, allowedDomains: ['x.edu'] })
+    );
     expect(keys(put.data)).toEqual(['allowedDomains', 'autoCreateAccounts', 'clientId', 'enabled', 'hasSecret', 'issuer', 'redirectUris']);
     expect(JSON.stringify(put)).not.toContain(CLIENT_SECRET);
 
@@ -330,7 +435,9 @@ describe('OIDC single sign-on', () => {
     expect(got.data.hasSecret).toBe(true);
     expect(JSON.stringify(got)).not.toContain(CLIENT_SECRET);
     expect(JSON.stringify((await a.get('/api/v1/admin/audit-logs?limit=100')).body)).not.toContain(CLIENT_SECRET);
-    expect((await a.put('/api/v1/admin/sso').send({ issuer: 'http://127.0.0.1:1', clientId: 'lms', enabled: true, allowedDomains: [] })).status).toBe(400);
+    expect(
+      (await a.put('/api/v1/admin/sso').send({ issuer: 'http://127.0.0.1:1', clientId: 'lms', enabled: true, allowedDomains: [] })).status
+    ).toBe(400);
   });
 
   it('removes the connection', async () => {
@@ -343,8 +450,20 @@ describe('OIDC single sign-on', () => {
 
 // ---------------------------------------------------------------------------
 describe('SAML single sign-on', () => {
-  const idpKey = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
-  const body = (over: object = {}) => ({ entryPoint: 'https://idp.example.org/sso', idpIssuer: 'https://idp.example.org/metadata', idpCert: idpKey.publicKey, emailAttribute: 'email', enabled: true, allowedDomains: [], ...over });
+  const idpKey = crypto.generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+  const body = (over: object = {}) => ({
+    entryPoint: 'https://idp.example.org/sso',
+    idpIssuer: 'https://idp.example.org/metadata',
+    idpCert: idpKey.publicKey,
+    emailAttribute: 'email',
+    enabled: true,
+    allowedDomains: [],
+    ...over,
+  });
 
   it('returns the pinned key only as a fingerprint', async () => {
     const a = await as('admin');
@@ -353,12 +472,26 @@ describe('SAML single sign-on', () => {
     expect(keys(empty.sp)).toEqual(['acsUrls', 'entityIds', 'metadataUrls']);
 
     const put = check('PUT /api/v1/admin/saml', await a.put('/api/v1/admin/saml').send(body()));
-    expect(keys(put.data)).toEqual(['allowedDomains', 'autoCreateAccounts', 'emailAttribute', 'enabled', 'entryPoint', 'idpIssuer', 'keyExpires', 'keyFingerprint', 'keyKind']);
+    expect(keys(put.data)).toEqual([
+      'allowedDomains',
+      'autoCreateAccounts',
+      'emailAttribute',
+      'enabled',
+      'entryPoint',
+      'idpIssuer',
+      'keyExpires',
+      'keyFingerprint',
+      'keyKind',
+    ]);
     expect(put.data).toMatchObject({ keyKind: 'PUBLIC KEY', keyExpires: null });
     expect(put.data.keyFingerprint).toMatch(/^[0-9a-f]{64}$/);
 
     const got = check('GET /api/v1/admin/saml', await a.get('/api/v1/admin/saml'));
-    for (const text of [JSON.stringify(put), JSON.stringify(got), JSON.stringify((await a.get('/api/v1/admin/audit-logs?limit=100')).body)]) {
+    for (const text of [
+      JSON.stringify(put),
+      JSON.stringify(got),
+      JSON.stringify((await a.get('/api/v1/admin/audit-logs?limit=100')).body),
+    ]) {
       expect(text).not.toMatch(/BEGIN (PUBLIC|PRIVATE)? ?KEY/);
       expect(text).not.toContain(idpKey.publicKey.split('\n')[1]);
     }
@@ -381,12 +514,22 @@ describe('campuses, departments and compliance', () => {
     expect((await a.post('/api/v1/admin/campuses').send({ name: 'Dup', code: 'MAIN' })).status).toBe(409);
     check('PATCH /api/v1/admin/campuses/:id', await a.patch(`/api/v1/admin/campuses/${campus.data.id}`).send({ name: 'Main Campus 2' }));
 
-    const dept = check('POST /api/v1/admin/campuses/:id/departments', await a.post(`/api/v1/admin/campuses/${campus.data.id}/departments`).send({ name: 'Computing', code: 'cs' }));
-    check('PATCH /api/v1/admin/departments/:id', await a.patch(`/api/v1/admin/departments/${dept.data.id}`).send({ name: 'Computer Science' }));
+    const dept = check(
+      'POST /api/v1/admin/campuses/:id/departments',
+      await a.post(`/api/v1/admin/campuses/${campus.data.id}/departments`).send({ name: 'Computing', code: 'cs' })
+    );
+    check(
+      'PATCH /api/v1/admin/departments/:id',
+      await a.patch(`/api/v1/admin/departments/${dept.data.id}`).send({ name: 'Computer Science' })
+    );
     await admin.course.update({ where: { id: 'c1' }, data: { departmentId: dept.data.id } });
 
     const list = check('GET /api/v1/admin/campuses', await a.get('/api/v1/admin/campuses'));
-    expect(list.data[0]).toMatchObject({ code: 'MAIN', courseCount: 1, departments: [{ code: 'CS', name: 'Computer Science', courseCount: 1 }] });
+    expect(list.data[0]).toMatchObject({
+      code: 'MAIN',
+      courseCount: 1,
+      departments: [{ code: 'CS', name: 'Computer Science', courseCount: 1 }],
+    });
 
     expect((await a.delete(`/api/v1/admin/campuses/${campus.data.id}`)).status).toBe(409); // still has departments
     expect((await a.delete(`/api/v1/admin/departments/${dept.data.id}`)).status).toBe(409); // still has a course
@@ -409,7 +552,12 @@ describe('live classes', () => {
 
   it('schedules, lists and reschedules', async () => {
     const t = await as('teacher');
-    const created = check('POST /api/v1/courses/:courseId/live-sessions', await t.post('/api/v1/courses/c1/live-sessions').send({ title: 'Raft consensus', description: 'Leader election', scheduledAt: inFuture(60_000), durationMins: 90 }));
+    const created = check(
+      'POST /api/v1/courses/:courseId/live-sessions',
+      await t
+        .post('/api/v1/courses/c1/live-sessions')
+        .send({ title: 'Raft consensus', description: 'Leader election', scheduledAt: inFuture(60_000), durationMins: 90 })
+    );
     id = created.data.id;
     expect(created.data).toMatchObject({ status: 'SCHEDULED', startedAt: null, endedAt: null, durationMins: 90 });
     expect(created.data).not.toHaveProperty('roomName');
@@ -424,7 +572,10 @@ describe('live classes', () => {
     const mine = check('GET /api/v1/live-sessions/mine', await (await as('s1')).get('/api/v1/live-sessions/mine'));
     expect(mine.data.find((s: any) => s.id === id).course).toMatchObject({ id: 'c1', code: 'C1' });
 
-    const patched = check('PATCH /api/v1/live-sessions/:id', await t.patch(`/api/v1/live-sessions/${id}`).send({ title: 'Raft, revisited' }));
+    const patched = check(
+      'PATCH /api/v1/live-sessions/:id',
+      await t.patch(`/api/v1/live-sessions/${id}`).send({ title: 'Raft, revisited' })
+    );
     expect(patched.data.title).toBe('Raft, revisited');
   });
 
@@ -489,35 +640,59 @@ describe('two-factor authentication', () => {
     expect((await u.post('/api/v1/auth/mfa/setup')).status).toBe(409);
 
     expect((await u.post('/api/v1/auth/mfa/disable').send({ password: 'wrong', code: totp(secret) })).status).toBe(401);
-    const off = check('POST /api/v1/auth/mfa/disable', await u.post('/api/v1/auth/mfa/disable').send({ password: pw('harvard'), code: enable.data.recoveryCodes[0] }));
+    const off = check(
+      'POST /api/v1/auth/mfa/disable',
+      await u.post('/api/v1/auth/mfa/disable').send({ password: pw('harvard'), code: enable.data.recoveryCodes[0] })
+    );
     expect(off.data).toEqual({ enabled: false });
-    expect(JSON.stringify((await admin.auditLog.findMany({ where: { userId: 'mfauser' } })))).not.toContain(secret);
+    expect(JSON.stringify(await admin.auditLog.findMany({ where: { userId: 'mfauser' } }))).not.toContain(secret);
   });
 });
 
 // ---------------------------------------------------------------------------
 describe('organisation registration and the platform operator', () => {
   const ask = (slug: string) => ({
-    organizationName: `College ${slug}`, slug, institutionType: 'COLLEGE', contactFirstName: 'Ann', contactLastName: 'Lee', contactEmail: `ann@${slug}.edu`, acceptTerms: true,
+    organizationName: `College ${slug}`,
+    slug,
+    institutionType: 'COLLEGE',
+    contactFirstName: 'Ann',
+    contactLastName: 'Lee',
+    contactEmail: `ann@${slug}.edu`,
+    acceptTerms: true,
   });
 
   const outbox: { to: string; text: string }[] = [];
   const confirm = async (slug: string) => {
     const mail = outbox.find((m) => m.to === `ann@${slug}.edu`)!;
     const token = decodeURIComponent(mail.text.match(/confirm=([^\s]+)/)![1]);
-    return check('POST /api/v1/organizations/requests/confirm', await request(app).post('/api/v1/organizations/requests/confirm').send({ token }));
+    return check(
+      'POST /api/v1/organizations/requests/confirm',
+      await request(app).post('/api/v1/organizations/requests/confirm').send({ token })
+    );
   };
 
   it('public: availability, lookup, requests and confirming them', async () => {
-    (await import('../src/lib/mailer.js')).setMailer({ async send(m) { outbox.push(m); } });
-    const free = check('GET /api/v1/organizations/availability', await request(app).get('/api/v1/organizations/availability?slug=contract-college'));
+    (await import('../src/lib/mailer.js')).setMailer({
+      async send(m) {
+        outbox.push(m);
+      },
+    });
+    const free = check(
+      'GET /api/v1/organizations/availability',
+      await request(app).get('/api/v1/organizations/availability?slug=contract-college')
+    );
     expect(free.data).toMatchObject({ slug: 'contract-college', available: true });
     expect(typeof free.data.url).toBe('string');
     // No CAPTCHA configured in tests: the register page is told there is none.
-    expect(check('GET /api/v1/organizations/captcha', await request(app).get('/api/v1/organizations/captcha')).data).toEqual({ siteKey: null });
+    expect(check('GET /api/v1/organizations/captcha', await request(app).get('/api/v1/organizations/captcha')).data).toEqual({
+      siteKey: null,
+    });
     const found = check('GET /api/v1/organizations/lookup', await request(app).get('/api/v1/organizations/lookup?slug=harvard'));
     expect(found.data).toEqual({ slug: 'harvard', name: 'Harvard U' });
-    const sent = check('POST /api/v1/organizations/requests', await request(app).post('/api/v1/organizations/requests').send(ask('contract-college')));
+    const sent = check(
+      'POST /api/v1/organizations/requests',
+      await request(app).post('/api/v1/organizations/requests').send(ask('contract-college'))
+    );
     expect(sent.data).toMatchObject({ status: 'UNVERIFIED', slug: 'contract-college', contactEmail: 'ann@contract-college.edu' });
     check('POST /api/v1/organizations/requests', await request(app).post('/api/v1/organizations/requests').send(ask('contract-other')));
     expect((await confirm('contract-college')).data).toMatchObject({ status: 'PENDING', slug: 'contract-college' });
@@ -530,17 +705,45 @@ describe('organisation registration and the platform operator', () => {
     expect(pending.pagination).toMatchObject({ page: 1, total: 2 });
     const one = pending.data.find((r: any) => r.slug === 'contract-college');
     const other = pending.data.find((r: any) => r.slug === 'contract-other');
-    const approved = check('POST /api/v1/operator/requests/:id/approve', await op.post(`/api/v1/operator/requests/${one.id}/approve`).send({ tier: 'PROFESSIONAL', seatQuota: 20 }));
-    expect(approved.data.organization).toMatchObject({ slug: 'contract-college', tier: 'PROFESSIONAL', seatQuota: 20, seatsUsed: 1, status: 'ACTIVE' });
-    expect(approved.data.request).toMatchObject({ status: 'APPROVED', createdTenantId: approved.data.organization.id, decidedByEmail: 'operator@x.edu' });
-    const rejected = check('POST /api/v1/operator/requests/:id/reject', await op.post(`/api/v1/operator/requests/${other.id}/reject`).send({ reason: 'Not an eligible institution.' }));
+    const approved = check(
+      'POST /api/v1/operator/requests/:id/approve',
+      await op.post(`/api/v1/operator/requests/${one.id}/approve`).send({ tier: 'PROFESSIONAL', seatQuota: 20 })
+    );
+    expect(approved.data.organization).toMatchObject({
+      slug: 'contract-college',
+      tier: 'PROFESSIONAL',
+      seatQuota: 20,
+      seatsUsed: 1,
+      status: 'ACTIVE',
+    });
+    expect(approved.data.request).toMatchObject({
+      status: 'APPROVED',
+      createdTenantId: approved.data.organization.id,
+      decidedByEmail: 'operator@x.edu',
+    });
+    const rejected = check(
+      'POST /api/v1/operator/requests/:id/reject',
+      await op.post(`/api/v1/operator/requests/${other.id}/reject`).send({ reason: 'Not an eligible institution.' })
+    );
     expect(rejected.data).toMatchObject({ status: 'REJECTED', decisionNote: 'Not an eligible institution.' });
 
-    const made = check('POST /api/v1/operator/tenants', await op.post('/api/v1/operator/tenants').send({ name: 'Direct College', slug: 'contract-direct', adminFirstName: 'Bo', adminLastName: 'Ray', adminEmail: 'bo@direct.edu' }), 201);
+    const made = check(
+      'POST /api/v1/operator/tenants',
+      await op
+        .post('/api/v1/operator/tenants')
+        .send({ name: 'Direct College', slug: 'contract-direct', adminFirstName: 'Bo', adminLastName: 'Ray', adminEmail: 'bo@direct.edu' }),
+      201
+    );
     expect(made.data.organization).toMatchObject({ slug: 'contract-direct', tier: 'STARTER', seatQuota: 100 });
-    const off = check('PATCH /api/v1/operator/tenants/:id/status', await op.patch(`/api/v1/operator/tenants/${made.data.organization.id}/status`).send({ status: 'SUSPENDED' }));
+    const off = check(
+      'PATCH /api/v1/operator/tenants/:id/status',
+      await op.patch(`/api/v1/operator/tenants/${made.data.organization.id}/status`).send({ status: 'SUSPENDED' })
+    );
     expect(off.data.status).toBe('SUSPENDED');
-    check('PATCH /api/v1/operator/tenants/:id/status', await op.patch(`/api/v1/operator/tenants/${made.data.organization.id}/status`).send({ status: 'ACTIVE' }));
+    check(
+      'PATCH /api/v1/operator/tenants/:id/status',
+      await op.patch(`/api/v1/operator/tenants/${made.data.organization.id}/status`).send({ status: 'ACTIVE' })
+    );
   });
 });
 
@@ -560,7 +763,10 @@ describe('custom domains', () => {
   it('administrators: ask, verify and remove', async () => {
     const a = await as('admin');
     expect(check('GET /api/v1/admin/custom-domain', await a.get('/api/v1/admin/custom-domain')).data.pending).toBeNull();
-    const asked = check('PUT /api/v1/admin/custom-domain', await a.put('/api/v1/admin/custom-domain').send({ domain: 'learn.contract-harvard.edu' }));
+    const asked = check(
+      'PUT /api/v1/admin/custom-domain',
+      await a.put('/api/v1/admin/custom-domain').send({ domain: 'learn.contract-harvard.edu' })
+    );
     const { txtName, txtValue } = asked.data.pending;
     const failed = check('POST /api/v1/admin/custom-domain/verify', await a.post('/api/v1/admin/custom-domain/verify'));
     expect(failed.data.check).toMatchObject({ verified: false });
@@ -568,7 +774,8 @@ describe('custom domains', () => {
     const live = check('POST /api/v1/admin/custom-domain/verify', await a.post('/api/v1/admin/custom-domain/verify'));
     expect(live.data).toMatchObject({ customDomain: 'learn.contract-harvard.edu', pending: null, check: { verified: true } });
 
-    const tls = (domain: string) => request(app).get(`/internal/tls/allowed?domain=${domain}`).set('x-tls-ask-secret', 'tls-ask-secret-for-contract-tests');
+    const tls = (domain: string) =>
+      request(app).get(`/internal/tls/allowed?domain=${domain}`).set('x-tls-ask-secret', 'tls-ask-secret-for-contract-tests');
     check('GET /internal/tls/allowed', await tls('learn.contract-harvard.edu'));
     check('GET /internal/tls/allowed', await tls('unknown.example.org'), 404);
 
@@ -578,10 +785,19 @@ describe('custom domains', () => {
   it('operator: the same for any organisation', async () => {
     const op = await as('operator', 'ops');
     check('GET /api/v1/operator/tenants/:id/custom-domain', await op.get('/api/v1/operator/tenants/t-h/custom-domain'));
-    const asked = check('PUT /api/v1/operator/tenants/:id/custom-domain', await op.put('/api/v1/operator/tenants/t-h/custom-domain').send({ domain: 'lms.contract-harvard.edu' }));
+    const asked = check(
+      'PUT /api/v1/operator/tenants/:id/custom-domain',
+      await op.put('/api/v1/operator/tenants/t-h/custom-domain').send({ domain: 'lms.contract-harvard.edu' })
+    );
     txt[asked.data.pending.txtName] = [asked.data.pending.txtValue];
-    expect(check('POST /api/v1/operator/tenants/:id/custom-domain/verify', await op.post('/api/v1/operator/tenants/t-h/custom-domain/verify')).data.check.verified).toBe(true);
-    expect(check('DELETE /api/v1/operator/tenants/:id/custom-domain', await op.delete('/api/v1/operator/tenants/t-h/custom-domain')).data.customDomain).toBeNull();
+    expect(
+      check('POST /api/v1/operator/tenants/:id/custom-domain/verify', await op.post('/api/v1/operator/tenants/t-h/custom-domain/verify'))
+        .data.check.verified
+    ).toBe(true);
+    expect(
+      check('DELETE /api/v1/operator/tenants/:id/custom-domain', await op.delete('/api/v1/operator/tenants/t-h/custom-domain')).data
+        .customDomain
+    ).toBeNull();
   });
 });
 
@@ -592,10 +808,17 @@ describe('trials', () => {
     expect(check('GET /api/v1/trial', await a.get('/api/v1/trial')).data.state).toBe('NONE');
 
     const op = await as('operator', 'ops');
-    expect(check('GET /api/v1/operator/trial-settings', await op.get('/api/v1/operator/trial-settings')).data).toMatchObject({ defaultDays: 0 });
-    expect(check('POST /api/v1/operator/tenants/:id/trial', await op.post('/api/v1/operator/tenants/t-trial/trial').send({ days: 14 })).data.status).toBe('TRIAL');
+    expect(check('GET /api/v1/operator/trial-settings', await op.get('/api/v1/operator/trial-settings')).data).toMatchObject({
+      defaultDays: 0,
+    });
+    expect(
+      check('POST /api/v1/operator/tenants/:id/trial', await op.post('/api/v1/operator/tenants/t-trial/trial').send({ days: 14 })).data
+        .status
+    ).toBe('TRIAL');
     check('PATCH /api/v1/operator/tenants/:id/trial', await op.patch('/api/v1/operator/tenants/t-trial/trial').send({ days: 7 }));
-    expect(check('POST /api/v1/operator/tenants/:id/trial/end', await op.post('/api/v1/operator/tenants/t-trial/trial/end')).data.trialExpiredAt).toBeTruthy();
+    expect(
+      check('POST /api/v1/operator/tenants/:id/trial/end', await op.post('/api/v1/operator/tenants/t-trial/trial/end')).data.trialExpiredAt
+    ).toBeTruthy();
     const paid = check('POST /api/v1/operator/tenants/:id/trial/convert', await op.post('/api/v1/operator/tenants/t-trial/trial/convert'));
     expect(paid.data).toMatchObject({ status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null });
   });

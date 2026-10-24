@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { api, ApiError } from "@/lib/api";
-import { AuthCard, buttonClass, inputClass } from "@/components/AuthCard";
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { api, ApiError } from '@/lib/api';
+import { AuthCard, buttonClass, inputClass } from '@/components/AuthCard';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -16,10 +16,10 @@ export default function ForgotPasswordPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await api.post<{ message: string }>("/api/v1/auth/forgot-password", { email });
+      const res = await api.post<{ message: string }>('/api/v1/auth/forgot-password', { email });
       setMessage(res.message);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -28,12 +28,14 @@ export default function ForgotPasswordPage() {
   return (
     <AuthCard title="Reset your password" subtitle="We will email you a link to choose a new one.">
       {message ? (
-        <p className="text-xs text-success bg-success/10 border border-success/25 rounded-2xl p-3.5">
-          {message}
-        </p>
+        <p className="text-xs text-success bg-success/10 border border-success/25 rounded-2xl p-3.5">{message}</p>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          {error && <p role="alert" className="text-xs text-danger">{error}</p>}
+          {error && (
+            <p role="alert" className="text-xs text-danger">
+              {error}
+            </p>
+          )}
           <input
             type="email"
             aria-label="E-mail address"
@@ -45,7 +47,7 @@ export default function ForgotPasswordPage() {
             className={inputClass}
           />
           <button type="submit" disabled={busy} className={buttonClass}>
-            {busy ? "Sending..." : "Send reset link"}
+            {busy ? 'Sending...' : 'Send reset link'}
           </button>
         </form>
       )}

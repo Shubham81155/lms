@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { AuthCard } from "@/components/AuthCard";
-import { useAuth } from "@/context/AuthContext";
-import { resolveDeepLink } from "@/lib/deeplink";
+import { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { AuthCard } from '@/components/AuthCard';
+import { useAuth } from '@/context/AuthContext';
+import { resolveDeepLink } from '@/lib/deeplink';
 
 /**
  * Landing page for links in notifications and emails (/courses/…, /quizzes/…, /assignments/…).
@@ -20,7 +20,7 @@ export function DeepLink() {
     if (isLoading) return;
     if (!user) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     // Course links mean nothing in the platform console; operators go to its overview.
-    else router.replace(user.platformOperator ? "/platform" : resolveDeepLink(pathname, user.role));
+    else router.replace(user.platformOperator ? '/platform' : resolveDeepLink(pathname, user.role));
   }, [user, isLoading, pathname, router]);
 
   return (

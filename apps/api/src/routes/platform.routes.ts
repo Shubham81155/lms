@@ -25,8 +25,14 @@ router.use(authenticateJWT, requireRole('SUPER_ADMIN', 'TENANT_ADMIN'));
 
 const audit = (req: any, action: string, resourceType: string, resourceId?: string, diffJson?: unknown) =>
   logAuditEvent({
-    tenantId: tenantIdOf(req), userId: req.user!.id, action, resourceType, resourceId, diffJson,
-    ipAddress: req.ip, userAgent: req.headers['user-agent'],
+    tenantId: tenantIdOf(req),
+    userId: req.user!.id,
+    action,
+    resourceType,
+    resourceId,
+    diffJson,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
   });
 
 // --------------------------------------------------------------------------- feature flags
@@ -82,13 +88,20 @@ router.get(
  * Streamed in pages of 1000 rows so a large tenant does not have to fit in memory.
  */
 const EXPORT_PAGE = 1000;
-const pageArgs = (cursor: string | undefined) => ({ orderBy: { id: 'asc' as const }, take: EXPORT_PAGE, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) });
+const pageArgs = (cursor: string | undefined) => ({
+  orderBy: { id: 'asc' as const },
+  take: EXPORT_PAGE,
+  ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+});
 
 router.get(
   '/export',
   route('Failed to export tenant data', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, slug: true, name: true, tier: true, customDomain: true, dataRegion: true, createdAt: true } });
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, slug: true, name: true, tier: true, customDomain: true, dataRegion: true, createdAt: true },
+    });
     res.status(200);
     res.setHeader('content-type', 'application/json; charset=utf-8');
     res.setHeader('content-disposition', `attachment; filename="tenant-export-${tenant?.slug ?? 'data'}.json"`);
@@ -98,18 +111,63 @@ router.get(
       await out.start();
       await out.value('exportedAt', new Date().toISOString());
       await out.value('tenant', tenant);
-      const users = await out.array('users', (c) =>
-        prisma.user.findMany({ where: { tenantId }, select: { id: true, email: true, firstName: true, lastName: true, role: true, status: true, createdAt: true, lastLoginAt: true }, ...pageArgs(c) }), EXPORT_PAGE);
-      await out.array('campuses', (c) => prisma.campus.findMany({ where: { tenantId }, include: { departments: true }, ...pageArgs(c) }), EXPORT_PAGE);
-      const courses = await out.array('courses', (c) =>
-        prisma.course.findMany({ where: { tenantId }, include: { modules: { include: { lessons: true } }, instructors: { select: { userId: true, isPrimary: true } } }, ...pageArgs(c) }), EXPORT_PAGE);
+      const users = await out.array(
+        'users',
+        (c) =>
+          prisma.user.findMany({
+            where: { tenantId },
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              status: true,
+              createdAt: true,
+              lastLoginAt: true,
+            },
+            ...pageArgs(c),
+          }),
+        EXPORT_PAGE
+      );
+      await out.array(
+        'campuses',
+        (c) => prisma.campus.findMany({ where: { tenantId }, include: { departments: true }, ...pageArgs(c) }),
+        EXPORT_PAGE
+      );
+      const courses = await out.array(
+        'courses',
+        (c) =>
+          prisma.course.findMany({
+            where: { tenantId },
+            include: { modules: { include: { lessons: true } }, instructors: { select: { userId: true, isPrimary: true } } },
+            ...pageArgs(c),
+          }),
+        EXPORT_PAGE
+      );
       await out.array('enrollments', (c) => prisma.enrollment.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
-      await out.array('certificates', (c) => prisma.certificate.findMany({ where: { enrollment: { tenantId } }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array(
+        'certificates',
+        (c) => prisma.certificate.findMany({ where: { enrollment: { tenantId } }, ...pageArgs(c) }),
+        EXPORT_PAGE
+      );
       // Teaching and assessment records: what a successor system needs to keep academic history.
-      await out.array('quizzes', (c) => prisma.quiz.findMany({ where: { tenantId }, include: { questions: true }, ...pageArgs(c) }), EXPORT_PAGE);
-      await out.array('quizAttempts', (c) => prisma.quizSubmission.findMany({ where: { quiz: { tenantId } }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array(
+        'quizzes',
+        (c) => prisma.quiz.findMany({ where: { tenantId }, include: { questions: true }, ...pageArgs(c) }),
+        EXPORT_PAGE
+      );
+      await out.array(
+        'quizAttempts',
+        (c) => prisma.quizSubmission.findMany({ where: { quiz: { tenantId } }, ...pageArgs(c) }),
+        EXPORT_PAGE
+      );
       await out.array('assignments', (c) => prisma.assignment.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
-      await out.array('assignmentSubmissions', (c) => prisma.assignmentSubmission.findMany({ where: { assignment: { tenantId } }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array(
+        'assignmentSubmissions',
+        (c) => prisma.assignmentSubmission.findMany({ where: { assignment: { tenantId } }, ...pageArgs(c) }),
+        EXPORT_PAGE
+      );
       await out.array('gradeAppeals', (c) => prisma.gradeAppeal.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
       await out.array('gradeCategories', (c) => prisma.gradeCategory.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
       await out.array('courseGrades', (c) => prisma.courseGrade.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
@@ -118,8 +176,26 @@ router.get(
       await out.array('calendarEvents', (c) => prisma.calendarEvent.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
       await out.array('liveSessions', (c) => prisma.liveSession.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
       await out.array('liveAttendance', (c) => prisma.liveAttendance.findMany({ where: { tenantId }, ...pageArgs(c) }), EXPORT_PAGE);
-      await out.array('auditLog', (c) =>
-        prisma.auditLog.findMany({ where: { tenantId }, select: { id: true, userId: true, action: true, resourceType: true, resourceId: true, ipAddress: true, userAgent: true, diffJson: true, createdAt: true }, ...pageArgs(c) }), EXPORT_PAGE);
+      await out.array(
+        'auditLog',
+        (c) =>
+          prisma.auditLog.findMany({
+            where: { tenantId },
+            select: {
+              id: true,
+              userId: true,
+              action: true,
+              resourceType: true,
+              resourceId: true,
+              ipAddress: true,
+              userAgent: true,
+              diffJson: true,
+              createdAt: true,
+            },
+            ...pageArgs(c),
+          }),
+        EXPORT_PAGE
+      );
       // Recorded before the response ends, so a client that has the whole file can already find the audit entry.
       await audit(req, 'TENANT_DATA_EXPORTED', 'TENANT', tenantId, { users, courses });
       await out.end();
@@ -167,7 +243,9 @@ router.post(
     const body = parseBody(req, endpointSchema);
     safeUrl(body.url);
     const secret = `whsec_${crypto.randomBytes(24).toString('base64url')}`;
-    const row = await prisma.webhookEndpoint.create({ data: { tenantId, url: body.url, events: [...new Set(body.events)], isActive: body.isActive ?? true, secret } });
+    const row = await prisma.webhookEndpoint.create({
+      data: { tenantId, url: body.url, events: [...new Set(body.events)], isActive: body.isActive ?? true, secret },
+    });
     await audit(req, 'WEBHOOK_CREATED', 'WEBHOOK', row.id, { url: body.url, events: body.events });
     return res.status(201).json({ data: { ...endpointView(row), secret } });
   })
@@ -177,7 +255,10 @@ router.patch(
   '/webhooks/:id',
   route('Failed to update webhook', async (req, res) => {
     const id = idSchema.parse(req.params.id);
-    const body = parseBody(req, endpointSchema.partial().refine((v) => Object.keys(v).length > 0, 'Nothing to change'));
+    const body = parseBody(
+      req,
+      endpointSchema.partial().refine((v) => Object.keys(v).length > 0, 'Nothing to change')
+    );
     if (body.url) safeUrl(body.url);
     const r = await prisma.webhookEndpoint.updateMany({ where: { id, tenantId: tenantIdOf(req) }, data: body });
     if (r.count === 0) throw new HttpError(404, 'Webhook not found');
@@ -208,7 +289,18 @@ router.get(
       where: { endpointId: id },
       orderBy: { createdAt: 'desc' },
       take: 50,
-      select: { id: true, tenantId: true, endpointId: true, event: true, statusCode: true, success: true, error: true, createdAt: true, attempt: true, nextAttemptAt: true },
+      select: {
+        id: true,
+        tenantId: true,
+        endpointId: true,
+        event: true,
+        statusCode: true,
+        success: true,
+        error: true,
+        createdAt: true,
+        attempt: true,
+        nextAttemptAt: true,
+      },
     });
     return res.json({ data: rows });
   })
@@ -223,7 +315,13 @@ router.post(
     const ep = await prisma.webhookEndpoint.findFirst({ where: { id, tenantId } });
     if (!ep) throw new HttpError(404, 'Webhook not found');
     safeUrl(ep.url);
-    const body = JSON.stringify({ id: crypto.randomUUID(), event: 'webhook.test', tenantId, createdAt: new Date().toISOString(), data: { ping: true } });
+    const body = JSON.stringify({
+      id: crypto.randomUUID(),
+      event: 'webhook.test',
+      tenantId,
+      createdAt: new Date().toISOString(),
+      data: { ping: true },
+    });
     return res.json({ data: await deliverWebhook(ep, tenantId, 'webhook.test', body) });
   })
 );
@@ -235,7 +333,11 @@ export const tokenSchema = z.object({ label: z.string().trim().min(1).max(100) }
 router.get(
   '/scim-tokens',
   route('Failed to list SCIM tokens', async (req, res) => {
-    const rows = await prisma.scimToken.findMany({ where: { tenantId: tenantIdOf(req) }, orderBy: { createdAt: 'desc' }, select: { id: true, label: true, createdAt: true, revokedAt: true } });
+    const rows = await prisma.scimToken.findMany({
+      where: { tenantId: tenantIdOf(req) },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, label: true, createdAt: true, revokedAt: true },
+    });
     return res.json({ data: rows });
   })
 );
@@ -258,7 +360,10 @@ router.delete(
   '/scim-tokens/:id',
   route('Failed to revoke SCIM token', async (req, res) => {
     const id = idSchema.parse(req.params.id);
-    const r = await prisma.scimToken.updateMany({ where: { id, tenantId: tenantIdOf(req), revokedAt: null }, data: { revokedAt: new Date() } });
+    const r = await prisma.scimToken.updateMany({
+      where: { id, tenantId: tenantIdOf(req), revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     if (r.count === 0) throw new HttpError(404, 'Token not found or already revoked');
     await audit(req, 'SCIM_TOKEN_REVOKED', 'SCIM_TOKEN', id);
     return res.status(204).end();
@@ -267,20 +372,34 @@ router.delete(
 
 // --------------------------------------------------------------------------- OIDC single sign-on
 
-const domain = z.string().trim().toLowerCase().regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/, 'Invalid domain');
-export const ssoSchema = z.object({
-  issuer: z.string().url().max(2048),
-  clientId: z.string().trim().min(1).max(256),
-  /** Required the first time; omit it later to keep the stored secret. */
-  clientSecret: z.string().min(8).max(2048).optional(),
-  enabled: z.boolean(),
-  allowedDomains: z.array(domain).max(50).default([]),
-  /** Create a learner account at someone's first sign-in. Only with allowedDomains, so it never admits the whole world. */
-  autoCreateAccounts: z.boolean().default(false),
-}).refine((b) => !b.autoCreateAccounts || b.allowedDomains.length > 0, { message: 'Creating accounts at first sign-in needs at least one allowed e-mail domain', path: ['allowedDomains'] });
+const domain = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/, 'Invalid domain');
+export const ssoSchema = z
+  .object({
+    issuer: z.string().url().max(2048),
+    clientId: z.string().trim().min(1).max(256),
+    /** Required the first time; omit it later to keep the stored secret. */
+    clientSecret: z.string().min(8).max(2048).optional(),
+    enabled: z.boolean(),
+    allowedDomains: z.array(domain).max(50).default([]),
+    /** Create a learner account at someone's first sign-in. Only with allowedDomains, so it never admits the whole world. */
+    autoCreateAccounts: z.boolean().default(false),
+  })
+  .refine((b) => !b.autoCreateAccounts || b.allowedDomains.length > 0, {
+    message: 'Creating accounts at first sign-in needs at least one allowed e-mail domain',
+    path: ['allowedDomains'],
+  });
 
 const ssoView = (c: any, tenant: { slug: string; customDomain: string | null }) => ({
-  issuer: c.issuer, clientId: c.clientId, enabled: c.enabled, allowedDomains: c.allowedDomains, autoCreateAccounts: c.autoCreateAccounts, hasSecret: true,
+  issuer: c.issuer,
+  clientId: c.clientId,
+  enabled: c.enabled,
+  allowedDomains: c.allowedDomains,
+  autoCreateAccounts: c.autoCreateAccounts,
+  hasSecret: true,
   redirectUris: redirectUrisFor(tenant),
 });
 
@@ -330,7 +449,14 @@ router.put(
     const saved = existing
       ? await prisma.ssoConnection.update({ where: { tenantId }, data })
       : await prisma.ssoConnection.create({ data: { tenantId, ...data, clientSecretEnc: encryptSecret(body.clientSecret!) } });
-    await audit(req, 'SSO_CONFIG_UPDATED', 'SSO', saved.id, { issuer: data.issuer, clientId: data.clientId, enabled: data.enabled, allowedDomains: data.allowedDomains, autoCreateAccounts: data.autoCreateAccounts, secretChanged: !!body.clientSecret });
+    await audit(req, 'SSO_CONFIG_UPDATED', 'SSO', saved.id, {
+      issuer: data.issuer,
+      clientId: data.clientId,
+      enabled: data.enabled,
+      allowedDomains: data.allowedDomains,
+      autoCreateAccounts: data.autoCreateAccounts,
+      secretChanged: !!body.clientSecret,
+    });
     const owner = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true, customDomain: true } });
     return res.json({ data: ssoView(saved, { slug: owner?.slug ?? '', customDomain: owner?.customDomain ?? null }) });
   })
@@ -348,22 +474,31 @@ router.delete(
 
 // --------------------------------------------------------------------------- SAML 2.0 single sign-on
 
-export const samlSchema = z.object({
-  entryPoint: z.string().url().max(2048),
-  idpIssuer: z.string().trim().min(1).max(1024),
-  /** Required the first time; omit it later to keep the pinned key. */
-  idpCert: z.string().trim().min(20).max(20_000).optional(),
-  emailAttribute: z.string().trim().min(1).max(200).default('email'),
-  enabled: z.boolean(),
-  allowedDomains: z.array(domain).max(50).default([]),
-  /** As for OIDC: a learner account at the first sign-in, only with allowedDomains. */
-  autoCreateAccounts: z.boolean().default(false),
-}).refine((b) => !b.autoCreateAccounts || b.allowedDomains.length > 0, { message: 'Creating accounts at first sign-in needs at least one allowed e-mail domain', path: ['allowedDomains'] });
+export const samlSchema = z
+  .object({
+    entryPoint: z.string().url().max(2048),
+    idpIssuer: z.string().trim().min(1).max(1024),
+    /** Required the first time; omit it later to keep the pinned key. */
+    idpCert: z.string().trim().min(20).max(20_000).optional(),
+    emailAttribute: z.string().trim().min(1).max(200).default('email'),
+    enabled: z.boolean(),
+    allowedDomains: z.array(domain).max(50).default([]),
+    /** As for OIDC: a learner account at the first sign-in, only with allowedDomains. */
+    autoCreateAccounts: z.boolean().default(false),
+  })
+  .refine((b) => !b.autoCreateAccounts || b.allowedDomains.length > 0, {
+    message: 'Creating accounts at first sign-in needs at least one allowed e-mail domain',
+    path: ['allowedDomains'],
+  });
 
 /** What the administrator hands to the IdP: one entity id and ACS URL per origin the tenant can sign in from. */
 const samlSp = (tenant: { slug: string; customDomain: string | null }) => {
   const origins = allowedOrigins(tenant);
-  return { entityIds: origins.map((o) => spEntityId(o, tenant.slug)), acsUrls: origins.map(acsUrl), metadataUrls: origins.map((o) => spEntityId(o, tenant.slug)) };
+  return {
+    entityIds: origins.map((o) => spEntityId(o, tenant.slug)),
+    acsUrls: origins.map(acsUrl),
+    metadataUrls: origins.map((o) => spEntityId(o, tenant.slug)),
+  };
 };
 
 const samlView = (c: any) => {
@@ -374,8 +509,15 @@ const samlView = (c: any) => {
     /* an expired pinned certificate is still shown, without details */
   }
   return {
-    entryPoint: c.entryPoint, idpIssuer: c.idpIssuer, emailAttribute: c.emailAttribute, enabled: c.enabled, allowedDomains: c.allowedDomains, autoCreateAccounts: c.autoCreateAccounts,
-    keyKind: key?.kind ?? null, keyFingerprint: key?.fingerprint ?? null, keyExpires: key?.notAfter ?? null,
+    entryPoint: c.entryPoint,
+    idpIssuer: c.idpIssuer,
+    emailAttribute: c.emailAttribute,
+    enabled: c.enabled,
+    allowedDomains: c.allowedDomains,
+    autoCreateAccounts: c.autoCreateAccounts,
+    keyKind: key?.kind ?? null,
+    keyFingerprint: key?.fingerprint ?? null,
+    keyExpires: key?.notAfter ?? null,
   };
 };
 
@@ -403,7 +545,7 @@ router.put(
     if (!(await tenantFeatures(tenantId)).sso) throw new HttpError(403, 'Single sign-on is not enabled for this organisation');
     const body = parseBody(req, samlSchema);
     const existing = await prisma.samlConnection.findUnique({ where: { tenantId } });
-    if (!existing && !body.idpCert) throw new HttpError(400, 'The identity provider\'s signing certificate is required');
+    if (!existing && !body.idpCert) throw new HttpError(400, "The identity provider's signing certificate is required");
     try {
       assertSafeWebhookUrl(body.entryPoint);
     } catch (e: any) {
@@ -422,13 +564,25 @@ router.put(
       }
     }
     const data = {
-      entryPoint: body.entryPoint, idpIssuer: body.idpIssuer, emailAttribute: body.emailAttribute, enabled: body.enabled,
-      allowedDomains: [...new Set(body.allowedDomains)], autoCreateAccounts: body.autoCreateAccounts, ...(pem ? { idpCert: pem } : {}),
+      entryPoint: body.entryPoint,
+      idpIssuer: body.idpIssuer,
+      emailAttribute: body.emailAttribute,
+      enabled: body.enabled,
+      allowedDomains: [...new Set(body.allowedDomains)],
+      autoCreateAccounts: body.autoCreateAccounts,
+      ...(pem ? { idpCert: pem } : {}),
     };
     const saved = existing
       ? await prisma.samlConnection.update({ where: { tenantId }, data })
       : await prisma.samlConnection.create({ data: { tenantId, ...data, idpCert: pem! } });
-    await audit(req, 'SAML_CONFIG_UPDATED', 'SSO', saved.id, { entryPoint: data.entryPoint, idpIssuer: data.idpIssuer, enabled: data.enabled, allowedDomains: data.allowedDomains, autoCreateAccounts: data.autoCreateAccounts, keyFingerprint: fingerprint ?? 'unchanged' });
+    await audit(req, 'SAML_CONFIG_UPDATED', 'SSO', saved.id, {
+      entryPoint: data.entryPoint,
+      idpIssuer: data.idpIssuer,
+      enabled: data.enabled,
+      allowedDomains: data.allowedDomains,
+      autoCreateAccounts: data.autoCreateAccounts,
+      keyFingerprint: fingerprint ?? 'unchanged',
+    });
     return res.json({ data: samlView(saved) });
   })
 );

@@ -26,8 +26,21 @@ const otherKey = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 let idp: http.Server;
 let ISSUER: string;
 
-interface Grant { claims: Record<string, unknown>; challenge: string; nonce: string; redirectUri?: string; override?: TokenOverride }
-interface TokenOverride { key?: crypto.KeyObject; alg?: 'RS256' | 'HS256'; aud?: string; nonce?: string; expiresIn?: number; iss?: string }
+interface Grant {
+  claims: Record<string, unknown>;
+  challenge: string;
+  nonce: string;
+  redirectUri?: string;
+  override?: TokenOverride;
+}
+interface TokenOverride {
+  key?: crypto.KeyObject;
+  alg?: 'RS256' | 'HS256';
+  aud?: string;
+  nonce?: string;
+  expiresIn?: number;
+  iss?: string;
+}
 const grants = new Map<string, Grant>();
 const tokenRequests: URLSearchParams[] = [];
 
@@ -40,7 +53,12 @@ function startIdp() {
       res.end(JSON.stringify(b));
     };
     if (url.pathname === '/.well-known/openid-configuration') {
-      return json({ issuer: ISSUER, authorization_endpoint: `${ISSUER}/authorize`, token_endpoint: `${ISSUER}/token`, jwks_uri: `${ISSUER}/jwks` });
+      return json({
+        issuer: ISSUER,
+        authorization_endpoint: `${ISSUER}/authorize`,
+        token_endpoint: `${ISSUER}/token`,
+        jwks_uri: `${ISSUER}/jwks`,
+      });
     }
     if (url.pathname === '/jwks') {
       return json({ keys: [{ ...idpKey.publicKey.export({ format: 'jwk' }), kid: 'k1', use: 'sig', alg: 'RS256' }] });
@@ -53,9 +71,21 @@ function startIdp() {
         tokenRequests.push(f);
         const grant = grants.get(f.get('code') ?? '');
         grants.delete(f.get('code') ?? ''); // codes are single use
-        const verifierOk = grant && crypto.createHash('sha256').update(f.get('code_verifier') ?? '').digest('base64url') === grant.challenge;
+        const verifierOk =
+          grant &&
+          crypto
+            .createHash('sha256')
+            .update(f.get('code_verifier') ?? '')
+            .digest('base64url') === grant.challenge;
         const redirectOk = grant && (grant.redirectUri === undefined || f.get('redirect_uri') === grant.redirectUri);
-        if (!grant || !verifierOk || !redirectOk || f.get('client_id') !== CLIENT_ID || f.get('client_secret') !== CLIENT_SECRET || f.get('grant_type') !== 'authorization_code') {
+        if (
+          !grant ||
+          !verifierOk ||
+          !redirectOk ||
+          f.get('client_id') !== CLIENT_ID ||
+          f.get('client_secret') !== CLIENT_SECRET ||
+          f.get('grant_type') !== 'authorization_code'
+        ) {
           return json({ error: 'invalid_grant' }, 400);
         }
         const o = grant.override ?? {};
@@ -71,17 +101,31 @@ function startIdp() {
     res.statusCode = 404;
     res.end();
   });
-  return new Promise<void>((r) => idp.listen(0, '127.0.0.1', () => {
-    ISSUER = `http://127.0.0.1:${(idp.address() as any).port}`;
-    r();
-  }));
+  return new Promise<void>((r) =>
+    idp.listen(0, '127.0.0.1', () => {
+      ISSUER = `http://127.0.0.1:${(idp.address() as any).port}`;
+      r();
+    })
+  );
 }
 
 async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', tier: 'STARTER' } });
   const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true, ...extra } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+        ...extra,
+      },
+    });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 's3', 's4', 's5', 's6']) await user(s, 't-h', 'harvard', 'STUDENT');
@@ -108,7 +152,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -117,7 +164,18 @@ async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
  * Plays the browser: starts the flow, lets the mock IdP authenticate `claims`, and returns to the
  * callback. `tweak` lets a test corrupt one step.
  */
-async function signIn(claims: Record<string, unknown>, tweak: { override?: TokenOverride; state?: string; skipCookie?: boolean; error?: string; code?: string; host?: string; noTenantHeader?: boolean } = {}) {
+async function signIn(
+  claims: Record<string, unknown>,
+  tweak: {
+    override?: TokenOverride;
+    state?: string;
+    skipCookie?: boolean;
+    error?: string;
+    code?: string;
+    host?: string;
+    noTenantHeader?: boolean;
+  } = {}
+) {
   const agent = request.agent(app);
   const via = (r: request.Test) => {
     if (!tweak.noTenantHeader) r.set('x-tenant-id', 'harvard');
@@ -128,9 +186,17 @@ async function signIn(claims: Record<string, unknown>, tweak: { override?: Token
   if (start.status !== 302 || !start.headers.location.startsWith(ISSUER)) return { agent, start, callback: start };
   const q = new URL(start.headers.location).searchParams;
   const code = tweak.code ?? crypto.randomUUID();
-  grants.set(code, { claims, challenge: q.get('code_challenge')!, nonce: q.get('nonce')!, redirectUri: q.get('redirect_uri')!, override: tweak.override });
+  grants.set(code, {
+    claims,
+    challenge: q.get('code_challenge')!,
+    nonce: q.get('nonce')!,
+    redirectUri: q.get('redirect_uri')!,
+    override: tweak.override,
+  });
 
-  const params = new URLSearchParams(tweak.error ? { error: tweak.error, state: q.get('state')! } : { code, state: tweak.state ?? q.get('state')! });
+  const params = new URLSearchParams(
+    tweak.error ? { error: tweak.error, state: q.get('state')! } : { code, state: tweak.state ?? q.get('state')! }
+  );
   const cb = tweak.skipCookie ? request(app) : agent;
   const callback = await via(cb.get(`/api/v1/auth/sso/callback?${params}`));
   return { agent, start, callback, query: q };
@@ -142,14 +208,30 @@ const refused = (r: { callback: request.Response }) => {
   expect(String(r.callback.headers['set-cookie'] ?? '')).not.toContain('lms_token=ey');
 };
 
-const goodClaims = (id: string, extra: Record<string, unknown> = {}) => ({ sub: `sub-${id}`, email: `${id}@x.edu`, email_verified: true, ...extra });
+const goodClaims = (id: string, extra: Record<string, unknown> = {}) => ({
+  sub: `sub-${id}`,
+  email: `${id}@x.edu`,
+  email_verified: true,
+  ...extra,
+});
 
 // ---------------------------------------------------------------------------
 describe('SSO configuration (administrator)', () => {
-  const body = (over: object = {}) => ({ issuer: ISSUER, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, enabled: true, allowedDomains: [], ...over });
+  const body = (over: object = {}) => ({
+    issuer: ISSUER,
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    enabled: true,
+    allowedDomains: [],
+    ...over,
+  });
 
   it('reports SSO as unavailable until it is configured', async () => {
-    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard')).body).toEqual({ enabled: false, oidc: false, saml: false });
+    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard')).body).toEqual({
+      enabled: false,
+      oidc: false,
+      saml: false,
+    });
     const start = await request(app).get('/api/v1/auth/sso/start').set('x-tenant-id', 'harvard');
     expect(start.status).toBe(302);
     expect(start.headers.location).toBe(`${APP}/login?error=sso_unavailable`);
@@ -195,9 +277,19 @@ describe('SSO configuration (administrator)', () => {
   });
 
   it('shows the login button only for the configured tenant', async () => {
-    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard')).body).toEqual({ enabled: true, oidc: true, saml: false });
-    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'mit')).body).toEqual({ enabled: false, oidc: false, saml: false });
-    expect((await request(app).get('/api/v1/auth/sso/start').set('x-tenant-id', 'mit')).headers.location).toBe(`${APP}/login?error=sso_unavailable`);
+    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard')).body).toEqual({
+      enabled: true,
+      oidc: true,
+      saml: false,
+    });
+    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'mit')).body).toEqual({
+      enabled: false,
+      oidc: false,
+      saml: false,
+    });
+    expect((await request(app).get('/api/v1/auth/sso/start').set('x-tenant-id', 'mit')).headers.location).toBe(
+      `${APP}/login?error=sso_unavailable`
+    );
   });
 });
 
@@ -254,7 +346,9 @@ describe('OIDC sign-in', () => {
   it('clears the flow cookie so a callback cannot be replayed', async () => {
     const r = await signIn(goodClaims('s2'));
     expect(r.callback.headers.location).toBe(`${APP}/`);
-    const replay = await r.agent.get(`/api/v1/auth/sso/callback?code=anything&state=${r.query!.get('state')}`).set('x-tenant-id', 'harvard');
+    const replay = await r.agent
+      .get(`/api/v1/auth/sso/callback?code=anything&state=${r.query!.get('state')}`)
+      .set('x-tenant-id', 'harvard');
     expect(replay.headers.location).toBe(`${APP}/login?error=sso_failed`);
   });
 
@@ -284,13 +378,24 @@ describe('OIDC sign-in', () => {
 
     const ok = await signIn({ sub: 'oidc-sub-for-scim-user', email: 'scim@x.edu', email_verified: true });
     expect(ok.callback.headers.location).toBe(`${APP}/`);
-    expect(await admin.user.findUnique({ where: { id: 'scim' } })).toMatchObject({ idpProvider: 'OIDC', idpSubjectId: 'oidc-sub-for-scim-user' });
+    expect(await admin.user.findUnique({ where: { id: 'scim' } })).toMatchObject({
+      idpProvider: 'OIDC',
+      idpSubjectId: 'oidc-sub-for-scim-user',
+    });
   });
 
   it('enforces the allowed e-mail domains', async () => {
-    await (await as('admin')).put('/api/v1/admin/sso').send({ issuer: ISSUER, clientId: CLIENT_ID, enabled: true, allowedDomains: ['partner.org'] });
+    await (
+      await as('admin')
+    )
+      .put('/api/v1/admin/sso')
+      .send({ issuer: ISSUER, clientId: CLIENT_ID, enabled: true, allowedDomains: ['partner.org'] });
     refused(await signIn(goodClaims('s5')));
-    await (await as('admin')).put('/api/v1/admin/sso').send({ issuer: ISSUER, clientId: CLIENT_ID, enabled: true, allowedDomains: ['x.edu'] });
+    await (
+      await as('admin')
+    )
+      .put('/api/v1/admin/sso')
+      .send({ issuer: ISSUER, clientId: CLIENT_ID, enabled: true, allowedDomains: ['x.edu'] });
     expect((await signIn(goodClaims('s5'))).callback.headers.location).toBe(`${APP}/`);
   });
 
@@ -334,13 +439,27 @@ describe('OIDC sign-in', () => {
   });
 
   it('keeps the password login working alongside SSO', async () => {
-    expect((await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 's1@x.edu', password: pw('harvard') })).status).toBe(200);
+    expect(
+      (
+        await request(app)
+          .post('/api/v1/auth/login')
+          .set('x-tenant-id', 'harvard')
+          .send({ email: 's1@x.edu', password: pw('harvard') })
+      ).status
+    ).toBe(200);
   });
 });
 
 // ---------------------------------------------------------------------------
 describe('accounts created at first sign-in (OIDC)', () => {
-  const conf = (over: object) => ({ issuer: ISSUER, clientId: CLIENT_ID, enabled: true, allowedDomains: [], autoCreateAccounts: false, ...over });
+  const conf = (over: object) => ({
+    issuer: ISSUER,
+    clientId: CLIENT_ID,
+    enabled: true,
+    allowedDomains: [],
+    autoCreateAccounts: false,
+    ...over,
+  });
   const created = (email: string) => admin.user.findFirst({ where: { tenantId: 't-h', email } });
 
   it('is off by default, and needs allowed domains to be switched on', async () => {
@@ -358,7 +477,16 @@ describe('accounts created at first sign-in (OIDC)', () => {
     const r = await signIn({ sub: 'sub-new1', email: 'New1@X.edu', email_verified: true, given_name: 'Nia', family_name: 'Patel' });
     expect(r.callback.headers.location).toBe(`${APP}/`);
     const u = await created('new1@x.edu');
-    expect(u).toMatchObject({ role: 'STUDENT', status: 'ACTIVE', firstName: 'Nia', lastName: 'Patel', emailVerified: true, passwordHash: null, idpProvider: 'OIDC', idpSubjectId: 'sub-new1' });
+    expect(u).toMatchObject({
+      role: 'STUDENT',
+      status: 'ACTIVE',
+      firstName: 'Nia',
+      lastName: 'Patel',
+      emailVerified: true,
+      passwordHash: null,
+      idpProvider: 'OIDC',
+      idpSubjectId: 'sub-new1',
+    });
     expect((await r.agent.get('/api/v1/auth/me').set('x-tenant-id', 'harvard')).body.user).toMatchObject({ id: u!.id, role: 'STUDENT' });
     expect(await admin.auditLog.count({ where: { action: 'SSO_USER_CREATED', resourceId: u!.id } })).toBe(1);
 
@@ -375,7 +503,10 @@ describe('accounts created at first sign-in (OIDC)', () => {
   it('never creates from an unverified e-mail, another domain, or past the seat quota', async () => {
     refused(await signIn({ sub: 'sub-new3', email: 'new3@x.edu', email_verified: false }));
     refused(await signIn({ sub: 'sub-new4', email: 'new4@elsewhere.org', email_verified: true }));
-    await admin.tenant.update({ where: { id: 't-h' }, data: { seatQuota: await admin.user.count({ where: { tenantId: 't-h', status: { in: ['ACTIVE', 'INVITED'] } } }) } });
+    await admin.tenant.update({
+      where: { id: 't-h' },
+      data: { seatQuota: await admin.user.count({ where: { tenantId: 't-h', status: { in: ['ACTIVE', 'INVITED'] } } }) },
+    });
     refused(await signIn({ sub: 'sub-new5', email: 'new5@x.edu', email_verified: true }));
     await admin.tenant.update({ where: { id: 't-h' }, data: { seatQuota: null } });
     for (const e of ['new3@x.edu', 'new4@elsewhere.org', 'new5@x.edu']) expect(await created(e)).toBeNull();
@@ -422,7 +553,13 @@ describe('custom domains', () => {
   });
 
   it('never lets a forged, foreign or inexact Host choose the destination', async () => {
-    for (const host of ['evil.example', 'learn.mit.edu', 'learn.harvard.edu:8443', 'learn.harvard.edu.evil.example', 'LEARN.HARVARD.EDU.']) {
+    for (const host of [
+      'evil.example',
+      'learn.mit.edu',
+      'learn.harvard.edu:8443',
+      'learn.harvard.edu.evil.example',
+      'LEARN.HARVARD.EDU.',
+    ]) {
       const r = await signIn(goodClaims('s1'), { host });
       const redirect = new URL(r.start.headers.location).searchParams.get('redirect_uri');
       // 'LEARN.HARVARD.EDU.' (trailing dot) is deliberately not treated as a match either.
@@ -451,7 +588,10 @@ describe('custom domains', () => {
 describe('SSO switch-off and removal', () => {
   it('stops sign-in as soon as the administrator disables it', async () => {
     const harvard = await as('admin');
-    expect((await harvard.put('/api/v1/admin/sso').send({ issuer: ISSUER, clientId: CLIENT_ID, enabled: false, allowedDomains: [] })).body.data.enabled).toBe(false);
+    expect(
+      (await harvard.put('/api/v1/admin/sso').send({ issuer: ISSUER, clientId: CLIENT_ID, enabled: false, allowedDomains: [] })).body.data
+        .enabled
+    ).toBe(false);
     expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard')).body.enabled).toBe(false);
     expect((await signIn(goodClaims('s1'))).start.headers.location).toBe(`${APP}/login?error=sso_unavailable`);
   });

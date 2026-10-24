@@ -37,8 +37,16 @@ export interface OffboardingActor {
 }
 
 type ExportRow = {
-  id: string; tenantId: string; status: string; isFinal: boolean; sizeBytes: bigint | null; error: string | null;
-  createdAt: Date; completedAt: Date | null; expiresAt: Date | null; requestedById: string | null;
+  id: string;
+  tenantId: string;
+  status: string;
+  isFinal: boolean;
+  sizeBytes: bigint | null;
+  error: string | null;
+  createdAt: Date;
+  completedAt: Date | null;
+  expiresAt: Date | null;
+  requestedById: string | null;
 };
 
 /** An export as the API shows it. Failure details stay in the log. */
@@ -58,15 +66,26 @@ export const isOperatorSlug = (slug: string) => !!config.PLATFORM_OPERATOR_TENAN
 
 /** Audits in the organisation's trail, and in the operator's when the operator acted. */
 async function audit(actor: OffboardingActor | null, tenantId: string, action: string, diffJson: Record<string, unknown>) {
-  const entry = { action, resourceType: 'TENANT', resourceId: tenantId, ipAddress: actor?.ipAddress, userAgent: actor?.userAgent, diffJson: { ...diffJson, by: actor ? (actor.operator ? 'PLATFORM_OPERATOR' : 'ADMINISTRATOR') : 'SYSTEM' } };
+  const entry = {
+    action,
+    resourceType: 'TENANT',
+    resourceId: tenantId,
+    ipAddress: actor?.ipAddress,
+    userAgent: actor?.userAgent,
+    diffJson: { ...diffJson, by: actor ? (actor.operator ? 'PLATFORM_OPERATOR' : 'ADMINISTRATOR') : 'SYSTEM' },
+  };
   const ownTrail = !actor || actor.tenantId === tenantId;
   await runWithTenant(tenantId, () => logAuditEvent({ ...entry, tenantId, userId: ownTrail ? actor?.userId : undefined }));
-  if (actor && !ownTrail) await runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId }));
+  if (actor && !ownTrail)
+    await runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId }));
 }
 
 async function adminEmails(tenantId: string): Promise<string[]> {
   const admins = await runWithTenant(tenantId, () =>
-    prisma.user.findMany({ where: { tenantId, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: 'ACTIVE', erasedAt: null }, select: { email: true } })
+    prisma.user.findMany({
+      where: { tenantId, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: 'ACTIVE', erasedAt: null },
+      select: { email: true },
+    })
   );
   return admins.map((a) => a.email);
 }
@@ -74,7 +93,9 @@ async function adminEmails(tenantId: string): Promise<string[]> {
 async function mailAll(to: string[], subject: string, text: string, tenantId: string) {
   if (!mailDelivers()) return;
   for (const address of to) {
-    await sendMail({ to: address, subject, text }).catch((err) => logger.warn({ err, tenantId }, 'could not e-mail an administrator about offboarding'));
+    await sendMail({ to: address, subject, text }).catch((err) =>
+      logger.warn({ err, tenantId }, 'could not e-mail an administrator about offboarding')
+    );
   }
 }
 
@@ -86,9 +107,14 @@ const longDate = (d: Date) => d.toUTCString().replace(/ \d\d:\d\d:\d\d GMT$/, ''
 export async function requestExport(tenantId: string, actor: OffboardingActor) {
   const tenant = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, slug: true } });
   if (!tenant) throw new HttpError(404, 'Organisation not found');
-  const busy = await basePrisma.tenantExport.findFirst({ where: { tenantId, isFinal: false, status: { in: ['QUEUED', 'RUNNING'] } }, select: { id: true } });
+  const busy = await basePrisma.tenantExport.findFirst({
+    where: { tenantId, isFinal: false, status: { in: ['QUEUED', 'RUNNING'] } },
+    select: { id: true },
+  });
   if (busy) throw new HttpError(409, 'An export is already being prepared');
-  const created = await basePrisma.tenantExport.create({ data: { tenantId, requestedById: actor.userId, requestedByTenantId: actor.tenantId } });
+  const created = await basePrisma.tenantExport.create({
+    data: { tenantId, requestedById: actor.userId, requestedByTenantId: actor.tenantId },
+  });
   await audit(actor, tenantId, 'TENANT_EXPORT_REQUESTED', { tenant: tenant.slug, exportId: created.id });
   kickOffboardingJob();
   return exportView(created);
@@ -108,7 +134,8 @@ export async function listExports(tenantId: string, opts: { includeFinal: boolea
 export async function downloadableExport(exportId: string, who: { tenantId: string; operator: boolean }) {
   const e = await basePrisma.tenantExport.findUnique({ where: { id: exportId } });
   if (!e || (!who.operator && (e.tenantId !== who.tenantId || e.isFinal))) throw new HttpError(404, 'Export not found');
-  if (e.status === 'EXPIRED' || (e.expiresAt && e.expiresAt.getTime() <= Date.now())) throw new HttpError(410, 'This export has expired. Request a new one.');
+  if (e.status === 'EXPIRED' || (e.expiresAt && e.expiresAt.getTime() <= Date.now()))
+    throw new HttpError(410, 'This export has expired. Request a new one.');
   if (e.status !== 'READY' || !e.storageKey) throw new HttpError(409, 'This export is not ready yet');
   return e;
 }
@@ -116,9 +143,20 @@ export async function downloadableExport(exportId: string, who: { tenantId: stri
 /** Audits a download (in the organisation's trail; the tombstone's operator trail for a deleted one). */
 export async function auditDownload(e: { id: string; tenantId: string; isFinal: boolean }, actor: OffboardingActor) {
   const exists = await basePrisma.tenant.findUnique({ where: { id: e.tenantId }, select: { id: true } });
-  const entry = { action: 'TENANT_EXPORT_DOWNLOADED', resourceType: 'TENANT', resourceId: e.tenantId, ipAddress: actor.ipAddress, userAgent: actor.userAgent, diffJson: { exportId: e.id, isFinal: e.isFinal } };
-  if (exists) await runWithTenant(e.tenantId, () => logAuditEvent({ ...entry, tenantId: e.tenantId, userId: actor.tenantId === e.tenantId ? actor.userId : undefined }));
-  if (actor.tenantId !== e.tenantId || !exists) await runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId }));
+  const entry = {
+    action: 'TENANT_EXPORT_DOWNLOADED',
+    resourceType: 'TENANT',
+    resourceId: e.tenantId,
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+    diffJson: { exportId: e.id, isFinal: e.isFinal },
+  };
+  if (exists)
+    await runWithTenant(e.tenantId, () =>
+      logAuditEvent({ ...entry, tenantId: e.tenantId, userId: actor.tenantId === e.tenantId ? actor.userId : undefined })
+    );
+  if (actor.tenantId !== e.tenantId || !exists)
+    await runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId }));
 }
 
 // --------------------------------------------------------------------------- scheduled deletion
@@ -126,7 +164,15 @@ export async function auditDownload(e: { id: string; tenantId: string; isFinal: 
 export async function offboardingState(tenantId: string, opts: { operator: boolean }) {
   const t = await basePrisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { id: true, slug: true, name: true, deletionScheduledAt: true, deletionRequestedAt: true, deletionRequestedBy: true, deletionByOperator: true },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      deletionScheduledAt: true,
+      deletionRequestedAt: true,
+      deletionRequestedBy: true,
+      deletionByOperator: true,
+    },
   });
   if (!t) throw new HttpError(404, 'Organisation not found');
   return {
@@ -151,7 +197,10 @@ export async function offboardingState(tenantId: string, opts: { operator: boole
 
 /** Schedules the organisation's deletion; `confirmSlug` must be its address. Administrators are e-mailed. */
 export async function scheduleDeletion(tenantId: string, confirmSlug: string, actor: OffboardingActor) {
-  const t = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, slug: true, name: true, customDomain: true, deletionScheduledAt: true } });
+  const t = await basePrisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, slug: true, name: true, customDomain: true, deletionScheduledAt: true },
+  });
   if (!t) throw new HttpError(404, 'Organisation not found');
   if (isOperatorSlug(t.slug)) throw new HttpError(409, "The platform operator's organisation cannot be deleted");
   if (confirmSlug.trim().toLowerCase() !== t.slug) throw new HttpError(400, `Type the organisation's address, ${t.slug}, to confirm`);
@@ -183,10 +232,14 @@ export async function scheduleDeletion(tenantId: string, confirmSlug: string, ac
 
 /** Cancels a scheduled deletion. Only the operator cancels one the operator scheduled. */
 export async function cancelDeletion(tenantId: string, actor: OffboardingActor) {
-  const t = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, slug: true, name: true, deletionScheduledAt: true, deletionByOperator: true } });
+  const t = await basePrisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, slug: true, name: true, deletionScheduledAt: true, deletionByOperator: true },
+  });
   if (!t) throw new HttpError(404, 'Organisation not found');
   if (!t.deletionScheduledAt) throw new HttpError(409, 'No deletion is scheduled');
-  if (t.deletionByOperator && !actor.operator) throw new HttpError(403, 'The platform operator scheduled this deletion; only the operator can cancel it');
+  if (t.deletionByOperator && !actor.operator)
+    throw new HttpError(403, 'The platform operator scheduled this deletion; only the operator can cancel it');
   const cleared = await basePrisma.tenant.updateMany({
     where: { id: tenantId, deletionScheduledAt: t.deletionScheduledAt },
     data: { deletionScheduledAt: null, deletionRequestedAt: null, deletionRequestedBy: null, deletionByOperator: false },
@@ -212,14 +265,30 @@ export async function offboardingOverview() {
     }),
     basePrisma.tenantDeletion.findMany({ orderBy: { deletedAt: 'desc' }, take: 100 }),
   ]);
-  const finals = await basePrisma.tenantExport.findMany({ where: { id: { in: deleted.flatMap((d) => (d.finalExportId ? [d.finalExportId] : [])) } } });
+  const finals = await basePrisma.tenantExport.findMany({
+    where: { id: { in: deleted.flatMap((d) => (d.finalExportId ? [d.finalExportId] : [])) } },
+  });
   return {
-    scheduled: scheduled.map((t) => ({ tenantId: t.id, slug: t.slug, name: t.name, scheduledAt: t.deletionScheduledAt!, requestedBy: t.deletionRequestedBy, byOperator: t.deletionByOperator })),
+    scheduled: scheduled.map((t) => ({
+      tenantId: t.id,
+      slug: t.slug,
+      name: t.name,
+      scheduledAt: t.deletionScheduledAt!,
+      requestedBy: t.deletionRequestedBy,
+      byOperator: t.deletionByOperator,
+    })),
     deleted: deleted.map((d) => {
       const final = finals.find((f) => f.id === d.finalExportId);
       return {
-        id: d.id, tenantId: d.tenantId, slug: d.slug, name: d.name, deletedAt: d.deletedAt, requestedBy: d.requestedBy,
-        slugHeldUntil: d.slugHeldUntil, summary: d.summaryJson, finalExport: final ? exportView(final) : null,
+        id: d.id,
+        tenantId: d.tenantId,
+        slug: d.slug,
+        name: d.name,
+        deletedAt: d.deletedAt,
+        requestedBy: d.requestedBy,
+        slugHeldUntil: d.slugHeldUntil,
+        summary: d.summaryJson,
+        finalExport: final ? exportView(final) : null,
       };
     }),
   };
@@ -233,16 +302,25 @@ export async function offboardingOverview() {
  * tombstone, then the stored files. Returns false when there was nothing (or not yet anything) to do.
  */
 export async function deleteOrganisation(tenantId: string, now = new Date()): Promise<boolean> {
-  const t = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, slug: true, name: true, deletionScheduledAt: true, deletionRequestedBy: true } });
+  const t = await basePrisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, slug: true, name: true, deletionScheduledAt: true, deletionRequestedBy: true },
+  });
   if (!t?.deletionScheduledAt || t.deletionScheduledAt.getTime() > now.getTime()) return false;
   if (isOperatorSlug(t.slug)) {
     logger.error({ tenantId }, "refusing to delete the platform operator's organisation; its deletion is cleared");
-    await basePrisma.tenant.update({ where: { id: tenantId }, data: { deletionScheduledAt: null, deletionRequestedAt: null, deletionRequestedBy: null, deletionByOperator: false } });
+    await basePrisma.tenant.update({
+      where: { id: tenantId },
+      data: { deletionScheduledAt: null, deletionRequestedAt: null, deletionRequestedBy: null, deletionByOperator: false },
+    });
     return false;
   }
 
   // 1. The final export (an earlier attempt's is reused).
-  let final = await basePrisma.tenantExport.findFirst({ where: { tenantId, isFinal: true, status: { in: ['QUEUED', 'RUNNING', 'READY'] } }, orderBy: { createdAt: 'desc' } });
+  let final = await basePrisma.tenantExport.findFirst({
+    where: { tenantId, isFinal: true, status: { in: ['QUEUED', 'RUNNING', 'READY'] } },
+    orderBy: { createdAt: 'desc' },
+  });
   if (!final) final = await basePrisma.tenantExport.create({ data: { tenantId, isFinal: true } });
   if (final.status !== 'READY') {
     if (final.status === 'RUNNING') await basePrisma.tenantExport.update({ where: { id: final.id }, data: { status: 'QUEUED' } });
@@ -257,14 +335,19 @@ export async function deleteOrganisation(tenantId: string, now = new Date()): Pr
   const rowCounts = await countRows(tenantId);
   const files = await storedFilesOf(tenantId);
   const admins = await adminEmails(tenantId);
-  const otherExports = await basePrisma.tenantExport.findMany({ where: { tenantId, isFinal: false, storageKey: { not: null } }, select: { id: true, storageKey: true } });
+  const otherExports = await basePrisma.tenantExport.findMany({
+    where: { tenantId, isFinal: false, storageKey: { not: null } },
+    select: { id: true, storageKey: true },
+  });
   const slugHeldUntil = new Date(now.getTime() + config.ORG_DELETED_SLUG_HOLD_DAYS * DAY_MS);
 
   // 3. The rows, and the tombstone, together. A cancel that got in first wins (the row is locked and re-checked).
   const deleted = await runInTenantTransaction(
     tenantId,
     async (tx) => {
-      const [row] = await tx.$queryRaw<{ deletionScheduledAt: Date | null }[]>`SELECT "deletionScheduledAt" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
+      const [row] = await tx.$queryRaw<
+        { deletionScheduledAt: Date | null }[]
+      >`SELECT "deletionScheduledAt" FROM "Tenant" WHERE "id" = ${tenantId} FOR UPDATE`;
       if (!row?.deletionScheduledAt || row.deletionScheduledAt.getTime() > now.getTime()) return false;
       await tx.course.deleteMany({ where: { tenantId } });
       // Tables with tenantId but no foreign key to Tenant (SupportPass, SupportHandoff, ...) do not cascade.
@@ -272,8 +355,15 @@ export async function deleteOrganisation(tenantId: string, now = new Date()): Pr
       await tx.tenant.delete({ where: { id: tenantId } });
       await tx.tenantDeletion.create({
         data: {
-          tenantId, slug: t.slug, name: t.name, deletedAt: now, requestedBy: t.deletionRequestedBy, finalExportId: final!.id, finalExportKey: final!.storageKey,
-          slugHeldUntil, summaryJson: { rows: rowCounts, files: files.length },
+          tenantId,
+          slug: t.slug,
+          name: t.name,
+          deletedAt: now,
+          requestedBy: t.deletionRequestedBy,
+          finalExportId: final!.id,
+          finalExportKey: final!.storageKey,
+          slugHeldUntil,
+          summaryJson: { rows: rowCounts, files: files.length },
         },
       });
       return true;
@@ -292,17 +382,34 @@ export async function deleteOrganisation(tenantId: string, now = new Date()): Pr
         logger.warn({ err, tenantId, key }, 'deleted organisation: a stored file could not be removed');
       });
   }
-  await basePrisma.tenantExport.updateMany({ where: { id: { in: otherExports.map((e) => e.id) } }, data: { status: 'EXPIRED', storageKey: null } });
-  await basePrisma.tenantDeletion.update({ where: { tenantId }, data: { summaryJson: { rows: rowCounts, files: files.length, filesNotRemoved: filesFailed } } });
+  await basePrisma.tenantExport.updateMany({
+    where: { id: { in: otherExports.map((e) => e.id) } },
+    data: { status: 'EXPIRED', storageKey: null },
+  });
+  await basePrisma.tenantDeletion.update({
+    where: { tenantId },
+    data: { summaryJson: { rows: rowCounts, files: files.length, filesNotRemoved: filesFailed } },
+  });
 
   const op = await operatorTenant();
   if (op) {
     await runWithTenant(op.id, () =>
-      logAuditEvent({ tenantId: op.id, action: 'TENANT_DELETED', resourceType: 'TENANT', resourceId: tenantId, diffJson: { tenant: t.slug, name: t.name, finalExportId: final!.id, slugHeldUntil, by: 'SYSTEM' } })
+      logAuditEvent({
+        tenantId: op.id,
+        action: 'TENANT_DELETED',
+        resourceType: 'TENANT',
+        resourceId: tenantId,
+        diffJson: { tenant: t.slug, name: t.name, finalExportId: final!.id, slugHeldUntil, by: 'SYSTEM' },
+      })
     );
   }
   logger.info({ tenantId, slug: t.slug, rows: rowCounts, files: files.length, filesFailed }, 'organisation deleted');
-  await mailAll(admins, `${t.name} has been deleted`, `Hello,\n\n${t.name} and all its data have been deleted from the learning platform, as scheduled. Its address stays reserved until ${slugHeldUntil.toUTCString()}.`, tenantId);
+  await mailAll(
+    admins,
+    `${t.name} has been deleted`,
+    `Hello,\n\n${t.name} and all its data have been deleted from the learning platform, as scheduled. Its address stays reserved until ${slugHeldUntil.toUTCString()}.`,
+    tenantId
+  );
   return true;
 }
 
@@ -317,7 +424,10 @@ export interface OffboardingRunResult {
 
 /** Expires exports past their date: the file is removed and the export is EXPIRED. */
 async function expireExports(now: Date): Promise<number> {
-  const due = await basePrisma.tenantExport.findMany({ where: { status: { in: ['READY', 'FAILED'] }, expiresAt: { lte: now } }, take: 200 });
+  const due = await basePrisma.tenantExport.findMany({
+    where: { status: { in: ['READY', 'FAILED'] }, expiresAt: { lte: now } },
+    take: 200,
+  });
   let n = 0;
   for (const e of due) {
     if (e.storageKey) {
@@ -346,7 +456,11 @@ export async function runOffboardingJobs(opts: { now?: Date; budgetMs?: number }
   await basePrisma.tenantExport.updateMany({ where: { status: 'RUNNING' }, data: { status: 'QUEUED', startedAt: null } });
 
   while (Date.now() < stopAt) {
-    const next = await basePrisma.tenantExport.findFirst({ where: { status: 'QUEUED', isFinal: false }, orderBy: { createdAt: 'asc' }, select: { id: true } });
+    const next = await basePrisma.tenantExport.findFirst({
+      where: { status: 'QUEUED', isFinal: false },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
     if (!next) break;
     const status = await buildExport(next.id);
     if (status === 'READY') result.built++;
@@ -354,7 +468,11 @@ export async function runOffboardingJobs(opts: { now?: Date; budgetMs?: number }
   }
   result.expired = await expireExports(now);
 
-  const due = await basePrisma.tenant.findMany({ where: { deletionScheduledAt: { lte: now } }, orderBy: { deletionScheduledAt: 'asc' }, select: { id: true } });
+  const due = await basePrisma.tenant.findMany({
+    where: { deletionScheduledAt: { lte: now } },
+    orderBy: { deletionScheduledAt: 'asc' },
+    select: { id: true },
+  });
   for (const t of due) {
     if (Date.now() >= stopAt) break;
     try {
@@ -363,7 +481,8 @@ export async function runOffboardingJobs(opts: { now?: Date; budgetMs?: number }
       logger.error({ err, tenantId: t.id }, 'organisation deletion failed; retried next round');
     }
   }
-  if (result.built || result.failed || result.expired || result.deleted) logger.info({ job: OFFBOARDING_JOB, ...result }, 'offboarding round');
+  if (result.built || result.failed || result.expired || result.deleted)
+    logger.info({ job: OFFBOARDING_JOB, ...result }, 'offboarding round');
   return result;
 }
 
@@ -378,6 +497,8 @@ export function startOffboardingJob(): void {
 export function kickOffboardingJob(): void {
   if (config.NODE_ENV === 'test' || config.OFFBOARDING_JOB_INTERVAL_SECONDS <= 0) return;
   setImmediate(() => {
-    withJobLock(OFFBOARDING_JOB, () => runOffboardingJobs(), JOB_MAX_MS).catch((err) => logger.error({ err, job: OFFBOARDING_JOB }, 'background job failed'));
+    withJobLock(OFFBOARDING_JOB, () => runOffboardingJobs(), JOB_MAX_MS).catch((err) =>
+      logger.error({ err, job: OFFBOARDING_JOB }, 'background job failed')
+    );
   });
 }

@@ -10,21 +10,11 @@ import { tenantUrl } from '../lib/tenant-url';
 import { endSupportSession } from '../lib/support-access';
 import { logAuditEvent } from '../lib/audit';
 import { config } from '../config';
-import {
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
-  hashPassword,
-  verifyPassword,
-} from '../lib/password';
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, hashPassword, verifyPassword } from '../lib/password';
 import { generateOneTimeToken, hashOneTimeToken } from '../lib/one-time-token';
 import { sendMail } from '../lib/mailer';
 import { verifySecondFactor } from '../lib/mfa';
-import {
-  authenticateJWT,
-  clearAuthCookie,
-  optionalAuth,
-  startSession,
-} from '../middleware/auth';
+import { authenticateJWT, clearAuthCookie, optionalAuth, startSession } from '../middleware/auth';
 import { invalidateSessionCache, revokeSessions, TENANT_SUSPENDED_MESSAGE, tenantIsBlocked } from '../lib/session';
 
 const router = Router();
@@ -101,7 +91,6 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
     }
 
     return await runWithTenant(tenant.id, async () => {
-
       const user = await prisma.user.findFirst({
         where: { tenantId: tenant.id, email: email.toLowerCase() },
       });
@@ -311,7 +300,11 @@ router.post('/forgot-password', tokenFlowLimiter, async (req: Request, res: Resp
   }
 });
 
-async function sendResetLink(req: Request, tenant: { id: string; slug: string; customDomain: string | null }, email: string): Promise<void> {
+async function sendResetLink(
+  req: Request,
+  tenant: { id: string; slug: string; customDomain: string | null },
+  email: string
+): Promise<void> {
   const tenantId = tenant.id;
   {
     const user = await prisma.user.findFirst({
@@ -387,7 +380,14 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
 
       await tx.user.update({
         where: { id: record.userId },
-        data: { passwordHash, failedLoginCount: 0, lockedUntil: null, emailVerified: true, status: 'ACTIVE', tokenVersion: { increment: 1 } },
+        data: {
+          passwordHash,
+          failedLoginCount: 0,
+          lockedUntil: null,
+          emailVerified: true,
+          status: 'ACTIVE',
+          tokenVersion: { increment: 1 },
+        },
       });
       await tx.passwordResetToken.updateMany({
         where: { userId: record.userId, usedAt: null },
@@ -414,7 +414,10 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
     );
 
     // Which organisation to sign in to, and its address: the link may have been opened on another host.
-    const tenant = await basePrisma.tenant.findUnique({ where: { id: record.tenantId }, select: { slug: true, name: true, customDomain: true } });
+    const tenant = await basePrisma.tenant.findUnique({
+      where: { id: record.tenantId },
+      select: { slug: true, name: true, customDomain: true },
+    });
     return res.status(200).json({
       message: changed === 'INVITED' ? 'Your account is ready. You can now sign in.' : 'Password updated. You can now sign in.',
       ...(tenant ? { organization: { slug: tenant.slug, name: tenant.name, url: tenantUrl(tenant) } } : {}),

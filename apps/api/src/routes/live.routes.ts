@@ -34,12 +34,21 @@ export const updateSchema = createSchema.partial().refine((v) => Object.keys(v).
 
 const audit = (req: Request, action: string, id: string, diffJson?: unknown) =>
   logAuditEvent({
-    tenantId: tenantIdOf(req), userId: req.user!.id, action, resourceType: 'LIVE_SESSION', resourceId: id,
-    ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson,
+    tenantId: tenantIdOf(req),
+    userId: req.user!.id,
+    action,
+    resourceType: 'LIVE_SESSION',
+    resourceId: id,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    diffJson,
   });
 
 async function enrolledLearnerIds(courseId: string) {
-  const rows = await prisma.enrollment.findMany({ where: { courseId, status: { in: ['ENROLLED', 'IN_PROGRESS'] } }, select: { userId: true } });
+  const rows = await prisma.enrollment.findMany({
+    where: { courseId, status: { in: ['ENROLLED', 'IN_PROGRESS'] } },
+    select: { userId: true },
+  });
   return rows.map((r) => r.userId);
 }
 
@@ -50,8 +59,17 @@ async function loadSession(req: Request, id: string) {
 }
 
 const view = (s: any, extra: object = {}) => ({
-  id: s.id, courseId: s.courseId, title: s.title, description: s.description, scheduledAt: s.scheduledAt, durationMins: s.durationMins,
-  status: s.status, allowStudentVideo: s.allowStudentVideo, startedAt: s.startedAt, endedAt: s.endedAt, ...extra,
+  id: s.id,
+  courseId: s.courseId,
+  title: s.title,
+  description: s.description,
+  scheduledAt: s.scheduledAt,
+  durationMins: s.durationMins,
+  status: s.status,
+  allowStudentVideo: s.allowStudentVideo,
+  startedAt: s.startedAt,
+  endedAt: s.endedAt,
+  ...extra,
 });
 
 /** GET /api/v1/courses/:courseId/live-sessions */
@@ -69,9 +87,7 @@ router.get(
       configured: liveConfigured(),
       data: sessions.map((s) => {
         const mine = s.attendance.find((a) => a.userId === req.user!.id);
-        return view(s, access.isStaff
-          ? { attendeeCount: s.attendance.length }
-          : { attended: !!mine && isPresent(mine.totalSeconds) });
+        return view(s, access.isStaff ? { attendeeCount: s.attendance.length } : { attended: !!mine && isPresent(mine.totalSeconds) });
       }),
     });
   })
@@ -89,16 +105,38 @@ router.post(
     const id = randomUUID();
     const event = await prisma.calendarEvent.create({
       data: {
-        tenantId, courseId: access.course.id, createdById: req.user!.id, title: `Live class: ${body.title}`, description: body.description ?? null,
-        category: 'LECTURE', startsAt: body.scheduledAt, endsAt: new Date(body.scheduledAt.getTime() + body.durationMins * 60_000), timezone: 'UTC',
+        tenantId,
+        courseId: access.course.id,
+        createdById: req.user!.id,
+        title: `Live class: ${body.title}`,
+        description: body.description ?? null,
+        category: 'LECTURE',
+        startsAt: body.scheduledAt,
+        endsAt: new Date(body.scheduledAt.getTime() + body.durationMins * 60_000),
+        timezone: 'UTC',
       },
     });
     const session = await prisma.liveSession.create({
-      data: { id, tenantId, courseId: access.course.id, createdById: req.user!.id, roomName: roomNameFor(tenantId, id), calendarEventId: event.id, ...body },
+      data: {
+        id,
+        tenantId,
+        courseId: access.course.id,
+        createdById: req.user!.id,
+        roomName: roomNameFor(tenantId, id),
+        calendarEventId: event.id,
+        ...body,
+      },
     });
     await Promise.all(
       (await enrolledLearnerIds(access.course.id)).map((userId) =>
-        notify({ tenantId, userId, category: 'LIVE', title: `Live class scheduled: ${body.title}`, body: `Starts ${body.scheduledAt.toISOString().replace('T', ' ').slice(0, 16)} UTC`, link: `/courses/${access.course.id}/live` })
+        notify({
+          tenantId,
+          userId,
+          category: 'LIVE',
+          title: `Live class scheduled: ${body.title}`,
+          body: `Starts ${body.scheduledAt.toISOString().replace('T', ' ').slice(0, 16)} UTC`,
+          link: `/courses/${access.course.id}/live`,
+        })
       )
     );
     await audit(req, 'LIVE_SESSION_SCHEDULED', session.id, { courseId: access.course.id, scheduledAt: body.scheduledAt });
@@ -142,13 +180,16 @@ router.patch(
     await requireCourseEditor(req, s.courseId);
     if (s.status !== 'SCHEDULED') throw new HttpError(409, 'Only a class that has not started can be changed');
     const body = parseBody(req, updateSchema);
-    if (body.scheduledAt && body.scheduledAt.getTime() < Date.now() - PAST_GRACE_MS) throw new HttpError(400, 'A live class cannot be scheduled in the past');
+    if (body.scheduledAt && body.scheduledAt.getTime() < Date.now() - PAST_GRACE_MS)
+      throw new HttpError(400, 'A live class cannot be scheduled in the past');
     const updated = await prisma.liveSession.update({ where: { id: s.id }, data: body });
     if (s.calendarEventId) {
       await prisma.calendarEvent.updateMany({
         where: { id: s.calendarEventId },
         data: {
-          title: `Live class: ${updated.title}`, description: updated.description, startsAt: updated.scheduledAt,
+          title: `Live class: ${updated.title}`,
+          description: updated.description,
+          startsAt: updated.scheduledAt,
           endsAt: new Date(updated.scheduledAt.getTime() + updated.durationMins * 60_000),
         },
       });
@@ -168,7 +209,11 @@ router.post(
     const claimed = await prisma.liveSession.updateMany({ where: { id: s.id, status: 'SCHEDULED' }, data: { status: 'CANCELLED' } });
     if (claimed.count !== 1) throw new HttpError(409, 'Only a class that has not started can be cancelled');
     if (s.calendarEventId) await prisma.calendarEvent.deleteMany({ where: { id: s.calendarEventId } });
-    await Promise.all((await enrolledLearnerIds(s.courseId)).map((userId) => notify({ tenantId, userId, category: 'LIVE', title: `Live class cancelled: ${s.title}`, link: `/courses/${s.courseId}/live` })));
+    await Promise.all(
+      (await enrolledLearnerIds(s.courseId)).map((userId) =>
+        notify({ tenantId, userId, category: 'LIVE', title: `Live class cancelled: ${s.title}`, link: `/courses/${s.courseId}/live` })
+      )
+    );
     await audit(req, 'LIVE_SESSION_CANCELLED', s.id);
     return res.json({ data: { id: s.id, status: 'CANCELLED' } });
   })
@@ -183,14 +228,28 @@ router.post(
     await requireCourseEditor(req, s.courseId);
     if (!liveConfigured()) throw new HttpError(503, 'Live classes are not configured on this server');
     if (s.status === 'LIVE') return res.json({ data: view(s) }); // already live: idempotent
-    const claimed = await prisma.liveSession.updateMany({ where: { id: s.id, status: 'SCHEDULED' }, data: { status: 'LIVE', startedAt: new Date() } });
+    const claimed = await prisma.liveSession.updateMany({
+      where: { id: s.id, status: 'SCHEDULED' },
+      data: { status: 'LIVE', startedAt: new Date() },
+    });
     if (claimed.count !== 1) {
       // Lost a race with another start (a double click): if it is live now, that is the outcome asked for.
       const current = await loadSession(req, s.id);
       if (current.status === 'LIVE') return res.json({ data: view(current) });
       throw new HttpError(409, 'This class has already ended or been cancelled');
     }
-    await Promise.all((await enrolledLearnerIds(s.courseId)).map((userId) => notify({ tenantId, userId, category: 'LIVE', title: `Live now: ${s.title}`, body: 'Join from your dashboard.', link: `/courses/${s.courseId}/live` })));
+    await Promise.all(
+      (await enrolledLearnerIds(s.courseId)).map((userId) =>
+        notify({
+          tenantId,
+          userId,
+          category: 'LIVE',
+          title: `Live now: ${s.title}`,
+          body: 'Join from your dashboard.',
+          link: `/courses/${s.courseId}/live`,
+        })
+      )
+    );
     await audit(req, 'LIVE_SESSION_STARTED', s.id);
     return res.json({ data: view(await loadSession(req, s.id)) });
   })
@@ -237,7 +296,8 @@ router.post(
     if (user.role === 'AUDITOR') throw new HttpError(403, 'Forbidden: auditors cannot join live classes');
     if (!access.isStaff && !access.isEnrolled) throw new HttpError(403, 'Forbidden: enrol in this course to join its live classes');
     if (!liveConfigured()) throw new HttpError(503, 'Live classes are not configured on this server');
-    if (s.status !== 'LIVE') throw new HttpError(409, s.status === 'SCHEDULED' ? 'This class has not started yet' : 'This class is not live');
+    if (s.status !== 'LIVE')
+      throw new HttpError(409, s.status === 'SCHEDULED' ? 'This class has not started yet' : 'This class is not live');
 
     const person = await prisma.user.findFirst({ where: { id: user.id }, select: { firstName: true, lastName: true } });
     const isEditor = access.canEdit;
@@ -259,7 +319,9 @@ router.post(
     if (existing) await prisma.liveAttendance.update({ where: { id: existing.id }, data: { joinCount: { increment: 1 } } });
     else await prisma.liveAttendance.create({ data: { tenantId, sessionId: s.id, userId: user.id, firstJoinedAt: new Date() } });
 
-    return res.json({ data: { url: config.LIVEKIT_URL, token, roomName: s.roomName, role, canPublish: access.isStaff || s.allowStudentVideo } });
+    return res.json({
+      data: { url: config.LIVEKIT_URL, token, roomName: s.roomName, role, canPublish: access.isStaff || s.allowStudentVideo },
+    });
   })
 );
 
@@ -283,8 +345,14 @@ router.get(
       // Someone still in the room is counted up to now.
       const seconds = r ? r.totalSeconds + (r.activeSince ? secondsBetween(r.activeSince, now) : 0) : 0;
       return {
-        userId: user.id, name: `${user.firstName} ${user.lastName}`, email: user.email,
-        joinCount: r?.joinCount ?? 0, firstJoinedAt: r?.firstJoinedAt ?? null, minutes: Math.floor(seconds / 60), present: isPresent(seconds), inRoomNow: !!r?.activeSince,
+        userId: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        joinCount: r?.joinCount ?? 0,
+        firstJoinedAt: r?.firstJoinedAt ?? null,
+        minutes: Math.floor(seconds / 60),
+        present: isPresent(seconds),
+        inRoomNow: !!r?.activeSince,
       };
     });
     return res.json({ data: rows, summary: { enrolled: rows.length, present: rows.filter((r) => r.present).length } });

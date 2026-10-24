@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import type { OperationDoc } from '../docs';
-import { breachQuerySchema, BREACH_SEVERITIES, BREACH_STATUSES, createBreachSchema, notifyPeopleSchema, updateBreachSchema } from '../../lib/breaches';
+import {
+  breachQuerySchema,
+  BREACH_SEVERITIES,
+  BREACH_STATUSES,
+  createBreachSchema,
+  notifyPeopleSchema,
+  updateBreachSchema,
+} from '../../lib/breaches';
 import { savePurposesSchema } from '../../lib/consent';
 import { guardianRequestSchema, guardianTokenSchema, setMinorSchema } from '../../lib/guardian';
 import { grievanceOfficerSchema } from '../../routes/dpdp.routes';
@@ -89,21 +96,25 @@ const MinorStatus = z.object({
 
 export const DPDP_DOCS: Record<string, OperationDoc> = {
   'GET /api/v1/privacy/consents': {
-    summary: "The organisation's active consent purposes in plain language, each with your own answer (GRANTED, WITHDRAWN or NONE) and whether it is outdated (you agreed to an older wording).",
+    summary:
+      "The organisation's active consent purposes in plain language, each with your own answer (GRANTED, WITHDRAWN or NONE) and whether it is outdated (you agreed to an older wording).",
     response: ok(z.object({ data: z.array(MyConsent) })),
   },
   'POST /api/v1/privacy/consents/:key/grant': {
-    summary: 'Give consent to one purpose. Appends to the consent history (with the wording you saw) and the audit trail. A person under 18 needs a guardian\'s consent on file first (403). Answering the same way twice records nothing new.',
+    summary:
+      "Give consent to one purpose. Appends to the consent history (with the wording you saw) and the audit trail. A person under 18 needs a guardian's consent on file first (403). Answering the same way twice records nothing new.",
     response: ok(z.object({ data: z.object({ purpose: MyConsent, consequence: z.string().nullable() }) })),
     errors: [403, 404],
   },
   'POST /api/v1/privacy/consents/:key/withdraw': {
-    summary: 'Withdraw consent to one purpose, as easy as giving it and effective at once. For a required purpose the answer carries `consequence` (what withdrawing means; nothing is erased on your behalf). Audited.',
+    summary:
+      'Withdraw consent to one purpose, as easy as giving it and effective at once. For a required purpose the answer carries `consequence` (what withdrawing means; nothing is erased on your behalf). Audited.',
     response: ok(z.object({ data: z.object({ purpose: MyConsent, consequence: z.string().nullable() }) })),
     errors: [404],
   },
   'GET /api/v1/privacy/consents/report': {
-    summary: 'Administrators: per purpose and wording version, how many people last granted and last withdrew, and how many active people never answered.',
+    summary:
+      'Administrators: per purpose and wording version, how many people last granted and last withdrew, and how many active people never answered.',
     response: ok(z.object({ data: z.array(ConsentReportRow) })),
   },
   'GET /api/v1/privacy/consent-purposes': {
@@ -111,19 +122,22 @@ export const DPDP_DOCS: Record<string, OperationDoc> = {
     response: ok(z.object({ data: z.array(AdminPurpose) })),
   },
   'PUT /api/v1/privacy/consent-purposes': {
-    summary: 'Administrators: create or update purposes by key (purposes left out stay; switch one off with active: false). Changing the wording or `required` raises the version. Audited.',
+    summary:
+      'Administrators: create or update purposes by key (purposes left out stay; switch one off with active: false). Changing the wording or `required` raises the version. Audited.',
     body: savePurposesSchema,
     response: ok(z.object({ data: z.array(AdminPurpose) })),
     errors: [400],
   },
   'GET /api/v1/privacy/breaches': {
-    summary: "Administrators: the organisation's personal-data breach register, newest first, with the number open and overdue (Board not notified within 72 hours of detection).",
+    summary:
+      "Administrators: the organisation's personal-data breach register, newest first, with the number open and overdue (Board not notified within 72 hours of detection).",
     query: breachQuerySchema,
     response: ok(z.object({ data: z.array(Breach), summary: z.object({ open: z.number(), overdue: z.number() }) })),
     errors: [400],
   },
   'POST /api/v1/privacy/breaches': {
-    summary: 'Administrators: register a breach. The 72-hour clock to notify the Data Protection Board starts at detectedAt (default now). Audited.',
+    summary:
+      'Administrators: register a breach. The 72-hour clock to notify the Data Protection Board starts at detectedAt (default now). Audited.',
     body: createBreachSchema,
     response: ok(z.object({ data: Breach }), 201),
     errors: [400],
@@ -134,19 +148,26 @@ export const DPDP_DOCS: Record<string, OperationDoc> = {
     errors: [404],
   },
   'PATCH /api/v1/privacy/breaches/:id': {
-    summary: 'Administrators: record containment, owner, who was told and when. The status follows (containment: CONTAINED; Board notified: NOTIFIED) unless given. CLOSED needs boardNotifiedAt or noNotificationReason; a closed breach cannot be changed (409). Audited.',
+    summary:
+      'Administrators: record containment, owner, who was told and when. The status follows (containment: CONTAINED; Board notified: NOTIFIED) unless given. CLOSED needs boardNotifiedAt or noNotificationReason; a closed breach cannot be changed (409). Audited.',
     body: updateBreachSchema,
     response: ok(z.object({ data: Breach })),
     errors: [400, 404, 409],
   },
   'POST /api/v1/privacy/breaches/:id/notify-people': {
-    summary: "Administrators: e-mail the breach notice (what happened, data involved, when, likely consequences, what was done, what people can do, whom to contact) to everyone with an active account or to listed people, and to the guardians of minors. Marks the breach as people-notified (peopleNotifiedAt). 409 if already sent (resend: true overrides) or the breach is closed; 503 when the platform cannot send e-mail; dryRun only counts recipients. Audited.",
+    summary:
+      'Administrators: e-mail the breach notice (what happened, data involved, when, likely consequences, what was done, what people can do, whom to contact) to everyone with an active account or to listed people, and to the guardians of minors. Marks the breach as people-notified (peopleNotifiedAt). 409 if already sent (resend: true overrides) or the breach is closed; 503 when the platform cannot send e-mail; dryRun only counts recipients. Audited.',
     body: notifyPeopleSchema,
-    response: ok(z.object({ data: z.object({ recipients: z.number(), sent: z.number(), failed: z.number(), peopleNotifiedAt: z.string().nullable() }) })),
+    response: ok(
+      z.object({
+        data: z.object({ recipients: z.number(), sent: z.number(), failed: z.number(), peopleNotifiedAt: z.string().nullable() }),
+      })
+    ),
     errors: [400, 404, 409, 503],
   },
   'GET /api/v1/privacy/grievance-officer': {
-    summary: "Public: the grievance officer and response time of the organisation the address (host) names, for its privacy notice. `officer` is null until one is set.",
+    summary:
+      'Public: the grievance officer and response time of the organisation the address (host) names, for its privacy notice. `officer` is null until one is set.',
     response: ok(z.object({ data: GrievanceNotice })),
     errors: [404, 429],
   },
@@ -167,13 +188,14 @@ export const DPDP_DOCS: Record<string, OperationDoc> = {
     errors: [400, 403],
   },
   'POST /api/v1/privacy/me/guardian-consent': {
-    summary: "E-mail your parent or guardian a single-use consent link (valid 7 days; earlier links stop working; three requests a day, 429). 409 if you are not marked under 18 or consent is already on file; 503 when the platform cannot send e-mail. Audited.",
+    summary:
+      'E-mail your parent or guardian a single-use consent link (valid 7 days; earlier links stop working; three requests a day, 429). 409 if you are not marked under 18 or consent is already on file; 503 when the platform cannot send e-mail. Audited.',
     body: guardianRequestSchema,
     response: ok(z.object({ data: MinorStatus })),
     errors: [400, 409, 429, 503],
   },
   'GET /api/v1/privacy/users/:id/minor': {
-    summary: "Administrators: whether a person is marked under 18 and whether a guardian has consented (guardian address masked).",
+    summary: 'Administrators: whether a person is marked under 18 and whether a guardian has consented (guardian address masked).',
     response: ok(z.object({ data: MinorStatus })),
     errors: [400, 404],
   },
@@ -190,25 +212,29 @@ export const DPDP_DOCS: Record<string, OperationDoc> = {
     errors: [400, 404, 409, 429, 503],
   },
   'GET /api/v1/privacy/guardian-consent': {
-    summary: 'Public: what the guardian is asked to confirm (organisation and the minor\'s first name). Changes nothing, so mail scanners opening the link do no harm. The token comes from the e-mailed link; 400 when it is invalid, used or expired.',
+    summary:
+      "Public: what the guardian is asked to confirm (organisation and the minor's first name). Changes nothing, so mail scanners opening the link do no harm. The token comes from the e-mailed link; 400 when it is invalid, used or expired.",
     query: guardianTokenSchema,
     response: ok(z.object({ data: z.object({ organisation: z.string(), firstName: z.string(), expiresAt: z.string() }) })),
     errors: [400, 429],
   },
   'POST /api/v1/privacy/guardian-consent': {
-    summary: "Public: the guardian confirms consent with the e-mailed token; it works once. Sets the minor's guardian consent and is audited with the guardian's address and browser.",
+    summary:
+      "Public: the guardian confirms consent with the e-mailed token; it works once. Sets the minor's guardian consent and is audited with the guardian's address and browser.",
     body: guardianTokenSchema,
     response: ok(z.object({ data: z.object({ confirmedAt: z.string() }) })),
     errors: [400, 429],
   },
   'GET /api/v1/privacy/guardian-consent/withdraw': {
-    summary: "Public: what withdrawing consent means (organisation, the minor's first name, when consent was given). Changes nothing. The token comes from the confirmation e-mail sent to the guardian and works until consent changes; 400 when it is invalid or no longer current.",
+    summary:
+      "Public: what withdrawing consent means (organisation, the minor's first name, when consent was given). Changes nothing. The token comes from the confirmation e-mail sent to the guardian and works until consent changes; 400 when it is invalid or no longer current.",
     query: guardianTokenSchema,
     response: ok(z.object({ data: z.object({ organisation: z.string(), firstName: z.string(), consentGivenAt: z.string() }) })),
     errors: [400, 429],
   },
   'POST /api/v1/privacy/guardian-consent/withdraw': {
-    summary: "Public: the guardian withdraws consent. The minor loses the guardian's consent, every purpose they agreed to is withdrawn in the consent history, camera and microphone proctoring stops being allowed, and the audit trail records it.",
+    summary:
+      "Public: the guardian withdraws consent. The minor loses the guardian's consent, every purpose they agreed to is withdrawn in the consent history, camera and microphone proctoring stops being allowed, and the audit trail records it.",
     body: guardianTokenSchema,
     response: ok(z.object({ data: z.object({ withdrawnAt: z.string(), purposesWithdrawn: z.number() }) })),
     errors: [400, 429],

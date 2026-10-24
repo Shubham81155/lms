@@ -20,7 +20,19 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard' } });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', seatQuota: 2 } });
   const user = (id: string, tenantId: string, role: any, extra: object = {}) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'Lovelace', role, passwordHash: bcrypt.hashSync(`${PASSWORD}-${tenantId}`, 4), emailVerified: true, ...extra } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'Lovelace',
+        role,
+        passwordHash: bcrypt.hashSync(`${PASSWORD}-${tenantId}`, 4),
+        emailVerified: true,
+        ...extra,
+      },
+    });
   await user('admin', 't-h', 'TENANT_ADMIN');
   await user('super', 't-h', 'SUPER_ADMIN');
   await user('teacher', 't-h', 'INSTRUCTOR');
@@ -48,7 +60,10 @@ beforeEach(() => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: `${PASSWORD}-${tenant === 'harvard' ? 't-h' : 't-m'}` });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: `${PASSWORD}-${tenant === 'harvard' ? 't-h' : 't-m'}` });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -92,7 +107,10 @@ describe('bulk import', () => {
   });
 
   it('creates, invites and enrols for real, and audits it', async () => {
-    const res = await importCsv('email,first_name,last_name,role,course_code\nann@x.edu,Ann,Ames,,BIO-101\nbob@x.edu,Bob,Bell,INSTRUCTOR,\nstudent@x.edu,S,T,,BIO-101\nbad,X,Y,,', { dryRun: false });
+    const res = await importCsv(
+      'email,first_name,last_name,role,course_code\nann@x.edu,Ann,Ames,,BIO-101\nbob@x.edu,Bob,Bell,INSTRUCTOR,\nstudent@x.edu,S,T,,BIO-101\nbad,X,Y,,',
+      { dryRun: false }
+    );
     expect(res.status).toBe(200);
     expect(res.body.data.summary).toMatchObject({ created: 2, enrolled: 2, errors: 1, existing: 1 });
     const ann = await admin.user.findFirstOrThrow({ where: { email: 'ann@x.edu' } });
@@ -158,7 +176,11 @@ describe('inviting a person', () => {
   it('lets only a super administrator invite another one', async () => {
     const byAdmin = await invite({ email: 'boss1@x.edu', firstName: 'B', lastName: 'One', role: 'SUPER_ADMIN' });
     expect(byAdmin.status).toBe(403);
-    const bySuper = await (await as('super')).post('/api/v1/users').send({ email: 'boss2@x.edu', firstName: 'B', lastName: 'Two', role: 'SUPER_ADMIN' });
+    const bySuper = await (
+      await as('super')
+    )
+      .post('/api/v1/users')
+      .send({ email: 'boss2@x.edu', firstName: 'B', lastName: 'Two', role: 'SUPER_ADMIN' });
     expect(bySuper.status).toBe(201);
   });
 
@@ -208,7 +230,12 @@ describe('when the server cannot deliver mail', () => {
     const resend = await a.post(`/api/v1/users/${created.body.data.id}/invite`);
     expect(resend.body.data).toMatchObject({ invitationSent: false, emailConfigured: false });
 
-    mailer.setMailer({ mode: 'smtp', async send(m) { outbox.push(m); } });
+    mailer.setMailer({
+      mode: 'smtp',
+      async send(m) {
+        outbox.push(m);
+      },
+    });
     const again = await a.post(`/api/v1/users/${created.body.data.id}/invite`);
     expect(again.body.data).toMatchObject({ invitationSent: true, emailConfigured: true });
     expect(outbox).toHaveLength(1);
@@ -231,7 +258,10 @@ describe('when the server cannot deliver mail', () => {
 describe('accepting an invitation', () => {
   it('cannot sign in until the invitation is accepted', async () => {
     await invite({ email: 'pending@x.edu', firstName: 'P', lastName: 'Ending' });
-    const res = await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'pending@x.edu', password: 'anything-at-all-123' });
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 'pending@x.edu', password: 'anything-at-all-123' });
     expect(res.status).toBe(401);
   });
 
@@ -245,7 +275,10 @@ describe('accepting an invitation', () => {
     expect(await admin.user.findFirst({ where: { email: 'joiner@x.edu' } })).toMatchObject({ status: 'ACTIVE', emailVerified: true });
     expect(await admin.auditLog.count({ where: { action: 'USER_INVITATION_ACCEPTED' } })).toBeGreaterThan(0);
 
-    const login = await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'joiner@x.edu', password: 'Brand-new-pass-1!' });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 'joiner@x.edu', password: 'Brand-new-pass-1!' });
     expect(login.status).toBe(200);
 
     const replay = await request(app).post('/api/v1/auth/reset-password').send({ token, password: 'Another-pass-2!!' });
@@ -272,8 +305,12 @@ describe('resending an invitation', () => {
     expect(res.body.data.invitationSent).toBe(true);
     const newToken = tokenIn(outbox[outbox.length - 1].text);
     expect(newToken).not.toBe(oldToken);
-    expect((await request(app).post('/api/v1/auth/reset-password').send({ token: oldToken, password: 'Brand-new-pass-1!' })).status).toBe(400);
-    expect((await request(app).post('/api/v1/auth/reset-password').send({ token: newToken, password: 'Brand-new-pass-1!' })).status).toBe(200);
+    expect((await request(app).post('/api/v1/auth/reset-password').send({ token: oldToken, password: 'Brand-new-pass-1!' })).status).toBe(
+      400
+    );
+    expect((await request(app).post('/api/v1/auth/reset-password').send({ token: newToken, password: 'Brand-new-pass-1!' })).status).toBe(
+      200
+    );
   });
 
   it('is only for people who have not accepted, administrators, and the same organisation', async () => {

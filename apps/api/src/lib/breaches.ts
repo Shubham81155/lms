@@ -71,7 +71,16 @@ export const breachQuerySchema = z.object({
 
 type Row = NonNullable<Awaited<ReturnType<typeof prisma.dataBreach.findFirst>>>;
 const iso = (d: Date | null) => d?.toISOString() ?? null;
-const formatDate = (d: Date) => d.toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' });
+const formatDate = (d: Date) =>
+  d.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  });
 
 /** The Board has not been told and the deadline passed. */
 const isOverdue = (b: Row, now: Date) => b.status !== 'CLOSED' && !b.boardNotifiedAt && b.dueAt.getTime() <= now.getTime();
@@ -105,27 +114,70 @@ export function breachView(b: Row, now = new Date()) {
   };
 }
 
-const audit = (tenantId: string, userId: string | null, action: string, id: string, diffJson: Record<string, unknown>, ctx: BreachContext = {}) =>
-  logAuditEvent({ tenantId, userId, action, resourceType: 'DATA_BREACH', resourceId: id, ipAddress: ctx.ipAddress, userAgent: ctx.userAgent, diffJson });
+const audit = (
+  tenantId: string,
+  userId: string | null,
+  action: string,
+  id: string,
+  diffJson: Record<string, unknown>,
+  ctx: BreachContext = {}
+) =>
+  logAuditEvent({
+    tenantId,
+    userId,
+    action,
+    resourceType: 'DATA_BREACH',
+    resourceId: id,
+    ipAddress: ctx.ipAddress,
+    userAgent: ctx.userAgent,
+    diffJson,
+  });
 
 async function assertActiveAdmin(tenantId: string, userId: string) {
-  const u = await prisma.user.findFirst({ where: { id: userId, tenantId, status: 'ACTIVE', erasedAt: null, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] } }, select: { id: true } });
+  const u = await prisma.user.findFirst({
+    where: { id: userId, tenantId, status: 'ACTIVE', erasedAt: null, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] } },
+    select: { id: true },
+  });
   if (!u) throw new HttpError(400, 'The owner must be an active administrator of this organisation');
 }
 
-export async function createBreach(tenantId: string, admin: { id: string }, input: z.infer<typeof createBreachSchema>, ctx: BreachContext, now = new Date()) {
+export async function createBreach(
+  tenantId: string,
+  admin: { id: string },
+  input: z.infer<typeof createBreachSchema>,
+  ctx: BreachContext,
+  now = new Date()
+) {
   const detectedAt = input.detectedAt ?? now;
   if (detectedAt.getTime() > now.getTime() + HOUR_MS) throw new HttpError(400, 'detectedAt cannot be in the future');
-  if (input.occurredAt && input.occurredAt.getTime() > now.getTime() + HOUR_MS) throw new HttpError(400, 'occurredAt cannot be in the future');
+  if (input.occurredAt && input.occurredAt.getTime() > now.getTime() + HOUR_MS)
+    throw new HttpError(400, 'occurredAt cannot be in the future');
   if (input.ownerId) await assertActiveAdmin(tenantId, input.ownerId);
   const b = await prisma.dataBreach.create({
     data: {
-      tenantId, title: input.title, description: input.description, categories: input.categories, affectedEstimate: input.affectedEstimate ?? null, severity: input.severity,
-      status: input.containment ? 'CONTAINED' : 'DETECTED', detectedAt, occurredAt: input.occurredAt ?? null, containment: input.containment ?? null, ownerId: input.ownerId ?? null,
-      dueAt: new Date(detectedAt.getTime() + BREACH_NOTIFY_HOURS * HOUR_MS), createdById: admin.id,
+      tenantId,
+      title: input.title,
+      description: input.description,
+      categories: input.categories,
+      affectedEstimate: input.affectedEstimate ?? null,
+      severity: input.severity,
+      status: input.containment ? 'CONTAINED' : 'DETECTED',
+      detectedAt,
+      occurredAt: input.occurredAt ?? null,
+      containment: input.containment ?? null,
+      ownerId: input.ownerId ?? null,
+      dueAt: new Date(detectedAt.getTime() + BREACH_NOTIFY_HOURS * HOUR_MS),
+      createdById: admin.id,
     },
   });
-  await audit(tenantId, admin.id, 'BREACH_REGISTERED', b.id, { severity: b.severity, detectedAt: iso(b.detectedAt), dueAt: iso(b.dueAt) }, ctx);
+  await audit(
+    tenantId,
+    admin.id,
+    'BREACH_REGISTERED',
+    b.id,
+    { severity: b.severity, detectedAt: iso(b.detectedAt), dueAt: iso(b.dueAt) },
+    ctx
+  );
   return b;
 }
 
@@ -146,7 +198,14 @@ export async function getBreach(tenantId: string, id: string) {
 }
 
 /** Applies the changes; the status follows what was recorded (containment, notifications) unless given. */
-export async function updateBreach(tenantId: string, id: string, admin: { id: string }, input: z.infer<typeof updateBreachSchema>, ctx: BreachContext, now = new Date()) {
+export async function updateBreach(
+  tenantId: string,
+  id: string,
+  admin: { id: string },
+  input: z.infer<typeof updateBreachSchema>,
+  ctx: BreachContext,
+  now = new Date()
+) {
   const b = await getBreach(tenantId, id);
   if (b.status === 'CLOSED') throw new HttpError(409, 'This breach is closed');
   const next = { ...input } as Record<string, unknown>;
@@ -166,7 +225,8 @@ export async function updateBreach(tenantId: string, id: string, admin: { id: st
   }
   if (status === 'NOTIFIED' && !boardNotifiedAt) throw new HttpError(400, 'Record when the Board was notified (boardNotifiedAt) first');
   if (status === 'CLOSED') {
-    if (!boardNotifiedAt && !noReason) throw new HttpError(400, 'Record when the Board was notified, or why no notification was needed, before closing');
+    if (!boardNotifiedAt && !noReason)
+      throw new HttpError(400, 'Record when the Board was notified, or why no notification was needed, before closing');
     next.closedAt = now;
   }
   next.status = status;
@@ -175,12 +235,19 @@ export async function updateBreach(tenantId: string, id: string, admin: { id: st
   if (done.count !== 1) throw new HttpError(409, 'The breach changed meanwhile; reload it');
   const after = await getBreach(tenantId, id);
   const changed = Object.keys(input);
-  await audit(tenantId, admin.id, status === 'CLOSED' ? 'BREACH_CLOSED' : 'BREACH_UPDATED', id, {
-    fields: changed,
-    status: { before: b.status, after: status },
-    boardNotifiedAt: iso(after.boardNotifiedAt),
-    peopleNotifiedAt: iso(after.peopleNotifiedAt),
-  }, ctx);
+  await audit(
+    tenantId,
+    admin.id,
+    status === 'CLOSED' ? 'BREACH_CLOSED' : 'BREACH_UPDATED',
+    id,
+    {
+      fields: changed,
+      status: { before: b.status, after: status },
+      boardNotifiedAt: iso(after.boardNotifiedAt),
+      peopleNotifiedAt: iso(after.peopleNotifiedAt),
+    },
+    ctx
+  );
   return after;
 }
 
@@ -191,25 +258,39 @@ export async function updateBreach(tenantId: string, id: string, admin: { id: st
 // administrator supplies the consequences, advice and contact; the rest comes from the register entry. A minor's
 // guardian is told as well. Sending marks the breach as people-notified; a second send needs resend: true.
 
-export const notifyPeopleSchema = z.object({
-  /** ALL_ACTIVE: everyone with an active or invited account; USERS: only the people listed. */
-  audience: z.enum(['ALL_ACTIVE', 'USERS']),
-  userIds: z.array(idSchema).max(5000).optional(),
-  consequences: text(3000),
-  safetyAdvice: text(3000),
-  contactEmail: z.string().trim().toLowerCase().email().max(320),
-  /** Count the recipients without sending anything. */
-  dryRun: z.boolean().optional(),
-  /** Send again although people were told before. */
-  resend: z.boolean().optional(),
-}).refine((b) => b.audience !== 'USERS' || (b.userIds && b.userIds.length > 0), { message: 'userIds is required when audience is USERS' });
+export const notifyPeopleSchema = z
+  .object({
+    /** ALL_ACTIVE: everyone with an active or invited account; USERS: only the people listed. */
+    audience: z.enum(['ALL_ACTIVE', 'USERS']),
+    userIds: z.array(idSchema).max(5000).optional(),
+    consequences: text(3000),
+    safetyAdvice: text(3000),
+    contactEmail: z.string().trim().toLowerCase().email().max(320),
+    /** Count the recipients without sending anything. */
+    dryRun: z.boolean().optional(),
+    /** Send again although people were told before. */
+    resend: z.boolean().optional(),
+  })
+  .refine((b) => b.audience !== 'USERS' || (b.userIds && b.userIds.length > 0), { message: 'userIds is required when audience is USERS' });
 
-export async function notifyPeople(tenantId: string, id: string, admin: { id: string }, input: z.infer<typeof notifyPeopleSchema>, ctx: BreachContext, now = new Date()) {
+export async function notifyPeople(
+  tenantId: string,
+  id: string,
+  admin: { id: string },
+  input: z.infer<typeof notifyPeopleSchema>,
+  ctx: BreachContext,
+  now = new Date()
+) {
   const b = await getBreach(tenantId, id);
   if (b.status === 'CLOSED') throw new HttpError(409, 'This breach is closed');
-  if (b.peopleNotifiedAt && !input.resend && !input.dryRun) throw new HttpError(409, 'The people affected were already told; set resend to send again');
+  if (b.peopleNotifiedAt && !input.resend && !input.dryRun)
+    throw new HttpError(409, 'The people affected were already told; set resend to send again');
   const people = await prisma.user.findMany({
-    where: { tenantId, erasedAt: null, ...(input.audience === 'USERS' ? { id: { in: input.userIds } } : { status: { in: ['ACTIVE', 'INVITED'] } }) },
+    where: {
+      tenantId,
+      erasedAt: null,
+      ...(input.audience === 'USERS' ? { id: { in: input.userIds } } : { status: { in: ['ACTIVE', 'INVITED'] } }),
+    },
     select: { email: true, firstName: true, isMinor: true, guardianEmail: true },
     take: 100_000,
   });
@@ -222,21 +303,27 @@ export async function notifyPeople(tenantId: string, id: string, admin: { id: st
   if (recipients.size === 0) throw new HttpError(400, 'There is nobody to tell');
   if (!mailDelivers()) throw new HttpError(503, 'This platform cannot send e-mail, so people cannot be told');
 
-  const tenant = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true, slug: true, customDomain: true } });
+  const tenant = await basePrisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, name: true, slug: true, customDomain: true },
+  });
   if (!tenant) throw new HttpError(404, 'Organisation not found');
   const when = (b.occurredAt ?? b.detectedAt).toUTCString();
-  const body = (name: string) => [
-    `Hello ${name},`,
-    `We are writing to tell you about a personal data breach at ${tenant.name}.`,
-    `What happened: ${b.description}`,
-    `When: ${when}`,
-    b.categories.length ? `The data involved: ${b.categories.join(', ')}.` : '',
-    `What this may mean for you: ${input.consequences}`,
-    b.containment ? `What we have done: ${b.containment}` : '',
-    `What you can do: ${input.safetyAdvice}`,
-    `Questions: ${input.contactEmail}`,
-    tenant.name,
-  ].filter(Boolean).join('\n\n');
+  const body = (name: string) =>
+    [
+      `Hello ${name},`,
+      `We are writing to tell you about a personal data breach at ${tenant.name}.`,
+      `What happened: ${b.description}`,
+      `When: ${when}`,
+      b.categories.length ? `The data involved: ${b.categories.join(', ')}.` : '',
+      `What this may mean for you: ${input.consequences}`,
+      b.containment ? `What we have done: ${b.containment}` : '',
+      `What you can do: ${input.safetyAdvice}`,
+      `Questions: ${input.contactEmail}`,
+      tenant.name,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
   const previous = b.peopleNotifiedAt;
   await prisma.dataBreach.updateMany({ where: { id, tenantId }, data: { peopleNotifiedAt: now } });
@@ -252,7 +339,14 @@ export async function notifyPeople(tenantId: string, id: string, admin: { id: st
     }
   }
   if (sent === 0) await prisma.dataBreach.updateMany({ where: { id, tenantId }, data: { peopleNotifiedAt: previous } });
-  await audit(tenantId, admin.id, 'BREACH_PEOPLE_NOTIFIED', id, { audience: input.audience, recipients: recipients.size, sent, failed, resend: !!previous }, ctx);
+  await audit(
+    tenantId,
+    admin.id,
+    'BREACH_PEOPLE_NOTIFIED',
+    id,
+    { audience: input.audience, recipients: recipients.size, sent, failed, resend: !!previous },
+    ctx
+  );
   return { recipients: recipients.size, sent, failed, peopleNotifiedAt: (sent === 0 ? previous : now)?.toISOString() ?? null };
 }
 
@@ -270,7 +364,10 @@ export interface BreachJobResult {
  */
 export async function runBreachJob(now = new Date()): Promise<BreachJobResult> {
   const result: BreachJobResult = { dueSoon: 0, overdue: 0 };
-  const tenants = await basePrisma.tenant.findMany({ where: { status: { in: ['ACTIVE', 'TRIAL'] } }, select: { id: true, name: true, slug: true, customDomain: true } });
+  const tenants = await basePrisma.tenant.findMany({
+    where: { status: { in: ['ACTIVE', 'TRIAL'] } },
+    select: { id: true, name: true, slug: true, customDomain: true },
+  });
   for (const t of tenants) {
     try {
       await runWithTenant(t.id, async () => {
@@ -284,7 +381,9 @@ export async function runBreachJob(now = new Date()): Promise<BreachJobResult> {
             if (c.count === 1) claimed.push(b);
           }
           if (claimed.length === 0) continue;
-          const lines = claimed.map((b) => `- ${b.title} (${b.severity.toLowerCase()}), Board notification due ${formatDate(b.dueAt)}`).join('\n');
+          const lines = claimed
+            .map((b) => `- ${b.title} (${b.severity.toLowerCase()}), Board notification due ${formatDate(b.dueAt)}`)
+            .join('\n');
           await mailAdmins(
             t,
             stage === 1 ? `Breach notification due within ${BREACH_SOON_HOURS} hours` : `Breach notification deadline passed`,
@@ -292,7 +391,8 @@ export async function runBreachJob(now = new Date()): Promise<BreachJobResult> {
               ? `The Data Protection Board has to be told about:\n\n${lines}\n\nRecord the notification under Security & compliance, or close the breach with the reason none was needed.`
               : `The ${BREACH_NOTIFY_HOURS}-hour deadline to notify the Data Protection Board has passed for:\n\n${lines}\n\nNotify the Board without further delay and record it under Security & compliance.`
           );
-          for (const b of claimed) await audit(t.id, null, 'BREACH_REMINDER_SENT', b.id, { stage: stage === 1 ? 'DUE_SOON' : 'OVERDUE', dueAt: iso(b.dueAt) });
+          for (const b of claimed)
+            await audit(t.id, null, 'BREACH_REMINDER_SENT', b.id, { stage: stage === 1 ? 'DUE_SOON' : 'OVERDUE', dueAt: iso(b.dueAt) });
           if (stage === 1) result.dueSoon += claimed.length;
           else result.overdue += claimed.length;
         }

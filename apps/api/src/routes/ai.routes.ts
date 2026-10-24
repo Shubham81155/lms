@@ -59,7 +59,12 @@ async function usable(req: Request): Promise<AiSettings> {
   await requireFeature(tenantId, 'aiAssistant');
   const { settings, reason } = await availability(tenantId);
   if (!settings) {
-    throw new HttpError(503, reason === 'TURNED_OFF' ? 'AI assistance is turned off for this organisation' : 'AI assistance is not set up yet. An administrator can add a provider key in the admin area.');
+    throw new HttpError(
+      503,
+      reason === 'TURNED_OFF'
+        ? 'AI assistance is turned off for this organisation'
+        : 'AI assistance is not set up yet. An administrator can add a provider key in the admin area.'
+    );
   }
   return settings;
 }
@@ -105,7 +110,12 @@ export const aiSettingsSchema = z
   .object({
     provider: z.enum(AI_PROVIDERS),
     /** Empty means the provider's recommended model. */
-    model: z.string().trim().max(100).regex(/^[A-Za-z0-9._:/-]*$/, 'Model ids contain letters, digits, dots, dashes, colons and slashes only').optional(),
+    model: z
+      .string()
+      .trim()
+      .max(100)
+      .regex(/^[A-Za-z0-9._:/-]*$/, 'Model ids contain letters, digits, dots, dashes, colons and slashes only')
+      .optional(),
     /** A new key replaces the saved one; null removes it; leaving it out keeps it. */
     apiKey: z.string().trim().min(20, 'That does not look like a complete API key').max(500).nullable().optional(),
     /** false turns AI off for the organisation, even when the platform has a default key. */
@@ -126,7 +136,11 @@ router.put(
     }
     const model = input.model || PROVIDER_INFO[input.provider].defaultModel;
     const keyData =
-      input.apiKey === undefined ? {} : input.apiKey === null ? { apiKeyEnc: null, keyHint: null } : { apiKeyEnc: encryptKey(input.apiKey), keyHint: keyHint(input.apiKey) };
+      input.apiKey === undefined
+        ? {}
+        : input.apiKey === null
+          ? { apiKeyEnc: null, keyHint: null }
+          : { apiKeyEnc: encryptKey(input.apiKey), keyHint: keyHint(input.apiKey) };
     await prisma.tenantAiConfig.upsert({
       where: { tenantId },
       create: { tenantId, provider: input.provider, model, enabled: input.enabled, updatedById: req.user!.id, ...keyData },
@@ -163,7 +177,10 @@ router.post(
   route('Failed to test the AI settings', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const settings = await resolveAiSettings(tenantId);
-    if (!settings) return res.json({ data: { ok: false, error: 'No provider key applies to this organisation yet.', provider: null, model: null, ms: 0 } });
+    if (!settings)
+      return res.json({
+        data: { ok: false, error: 'No provider key applies to this organisation yet.', provider: null, model: null, ms: 0 },
+      });
     const started = Date.now();
     try {
       await generateJson({
@@ -178,7 +195,9 @@ router.post(
       return res.json({ data: { ok: true, error: null, provider: settings.provider, model: settings.model, ms: Date.now() - started } });
     } catch (err) {
       if (!(err instanceof HttpError)) throw err;
-      return res.json({ data: { ok: false, error: err.message, provider: settings.provider, model: settings.model, ms: Date.now() - started } });
+      return res.json({
+        data: { ok: false, error: err.message, provider: settings.provider, model: settings.model, ms: Date.now() - started },
+      });
     }
   })
 );
@@ -292,9 +311,17 @@ router.post(
     const preamble = material ? `<course_material>\n${material}\n</course_material>\n\n` : '';
     const ask = `${input.message}\n\n${input.wantPractice ? '(Also give me one multiple-choice practice question on this.)' : '(Set practice to null unless a question really helps.)'}`;
     // The models expect the conversation to open with the user, so a leading tutor greeting is dropped.
-    const history = input.history.slice(Math.max(0, input.history.findIndex((t) => t.role === 'user')));
+    const history = input.history.slice(
+      Math.max(
+        0,
+        input.history.findIndex((t) => t.role === 'user')
+      )
+    );
     const turns = [
-      ...(history[0]?.role === 'user' ? history : []).map((t) => ({ role: t.role === 'tutor' ? ('model' as const) : ('user' as const), text: t.text })),
+      ...(history[0]?.role === 'user' ? history : []).map((t) => ({
+        role: t.role === 'tutor' ? ('model' as const) : ('user' as const),
+        text: t.text,
+      })),
       { role: 'user' as const, text: ask },
     ];
     const firstUser = turns.findIndex((t) => t.role === 'user');
@@ -394,7 +421,11 @@ router.post(
       turns: [
         {
           role: 'user',
-          text: [`Topic: ${input.topic}`, input.audience ? `Audience: ${input.audience}` : '', `Modules: ${input.moduleCount}, about ${input.lessonsPerModule} lessons each.`]
+          text: [
+            `Topic: ${input.topic}`,
+            input.audience ? `Audience: ${input.audience}` : '',
+            `Modules: ${input.moduleCount}, about ${input.lessonsPerModule} lessons each.`,
+          ]
             .filter(Boolean)
             .join('\n'),
         },

@@ -38,7 +38,19 @@ async function seed() {
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT' } });
   await admin.tenant.create({ data: { id: 't-s', slug: 'frozen', name: 'Frozen U', status: 'SUSPENDED' } });
   const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true, ...extra } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+        ...extra,
+      },
+    });
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 's3', 's4', 's5']) await user(s, 't-h', 'harvard', 'STUDENT');
   await user('m1', 't-m', 'mit', 'STUDENT');
@@ -72,22 +84,36 @@ beforeEach(async () => {
   await admin.user.updateMany({ data: { status: 'ACTIVE' } });
 });
 
-const queue = (tenantId: string, userId: string, over: Partial<{ category: string; title: string; body: string | null; link: string | null }> = {}) =>
-  runWithTenant(tenantId, () => notify({ tenantId, userId, category: 'GRADE', title: 'Grade posted', body: 'You scored 90.', link: '/courses/c1', ...over }));
+const queue = (
+  tenantId: string,
+  userId: string,
+  over: Partial<{ category: string; title: string; body: string | null; link: string | null }> = {}
+) =>
+  runWithTenant(tenantId, () =>
+    notify({ tenantId, userId, category: 'GRADE', title: 'Grade posted', body: 'You scored 90.', link: '/courses/c1', ...over })
+  );
 const statusOf = async (userId: string) => (await admin.notification.findFirst({ where: { userId } }))?.emailStatus;
 /** A moment today at the given UTC hour (within a day of the real clock, so never "stale"). */
-const at = (hour: number) => { const d = new Date(); d.setUTCHours(hour, 0, 0, 0); return d; };
+const at = (hour: number) => {
+  const d = new Date();
+  d.setUTCHours(hour, 0, 0, 0);
+  return d;
+};
 
 // ---------------------------------------------------------------------------
 describe('rendering', () => {
   it('only links to same-app paths and https URLs', () => {
     expect(absoluteLink('/courses/c1')).toBe('http://localhost:3000/courses/c1');
     expect(absoluteLink('https://ok.example/x')).toBe('https://ok.example/x');
-    for (const bad of ['javascript:alert(1)', '//evil.example', 'http://insecure.example', 'data:text/html,x', null, '']) expect(absoluteLink(bad as any), String(bad)).toBeNull();
+    for (const bad of ['javascript:alert(1)', '//evil.example', 'http://insecure.example', 'data:text/html,x', null, ''])
+      expect(absoluteLink(bad as any), String(bad)).toBeNull();
   });
 
   it('escapes user-supplied text in the HTML part and keeps headers single-line', () => {
-    const m = renderEmail({ title: '<script>alert(1)</script> & "q"\nBcc: evil@x.edu', body: '<b>bold</b>\nline2', link: '/a?x=1&y="2"' }, 'Uni <X>');
+    const m = renderEmail(
+      { title: '<script>alert(1)</script> & "q"\nBcc: evil@x.edu', body: '<b>bold</b>\nline2', link: '/a?x=1&y="2"' },
+      'Uni <X>'
+    );
     expect(m.html).not.toContain('<script>');
     expect(m.html).not.toContain('<b>');
     expect(m.html).toContain('&lt;script&gt;');
@@ -137,11 +163,19 @@ describe('what gets queued', () => {
 
   it('is driven by real events and the preferences endpoint', async () => {
     const teacher = request.agent(app);
-    await teacher.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'teacher@x.edu', password: pw('harvard') });
+    await teacher
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 'teacher@x.edu', password: pw('harvard') });
     const s1 = request.agent(app);
-    await s1.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 's1@x.edu', password: pw('harvard') });
+    await s1
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 's1@x.edu', password: pw('harvard') });
 
-    expect((await teacher.post('/api/v1/analytics/at-risk/nudge').send({ courseId: 'c1', userId: 's1', message: 'Catch up!' })).status).toBe(201);
+    expect(
+      (await teacher.post('/api/v1/analytics/at-risk/nudge').send({ courseId: 'c1', userId: 's1', message: 'Catch up!' })).status
+    ).toBe(201);
     expect(await statusOf('s1')).toBe('PENDING');
 
     const prefs = await s1.get('/api/v1/notifications/preferences');
@@ -191,7 +225,10 @@ describe('sending', () => {
     await queue('t-h', 's1');
     await dispatch();
     const s1 = request.agent(app);
-    await s1.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 's1@x.edu', password: pw('harvard') });
+    await s1
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 's1@x.edu', password: pw('harvard') });
     const list = await s1.get('/api/v1/notifications');
     expect(list.body.data).toHaveLength(1);
     expect(list.body.data[0].emailStatus).toBeUndefined(); // delivery bookkeeping is not exposed
@@ -201,7 +238,9 @@ describe('sending', () => {
 // ---------------------------------------------------------------------------
 describe('quiet hours', () => {
   it('holds mail during the quiet window and sends it afterwards', async () => {
-    await admin.notificationPreference.create({ data: { tenantId: 't-h', userId: 's1', quietStartHour: 22, quietEndHour: 7, timezone: 'UTC' } });
+    await admin.notificationPreference.create({
+      data: { tenantId: 't-h', userId: 's1', quietStartHour: 22, quietEndHour: 7, timezone: 'UTC' },
+    });
     await queue('t-h', 's1');
 
     expect(await dispatch({ now: at(23) })).toMatchObject({ sent: 0, held: 1 });
@@ -214,7 +253,9 @@ describe('quiet hours', () => {
   });
 
   it('evaluates the window in the user’s own time zone', async () => {
-    await admin.notificationPreference.create({ data: { tenantId: 't-h', userId: 's2', quietStartHour: 22, quietEndHour: 7, timezone: 'Asia/Kolkata' } });
+    await admin.notificationPreference.create({
+      data: { tenantId: 't-h', userId: 's2', quietStartHour: 22, quietEndHour: 7, timezone: 'Asia/Kolkata' },
+    });
     await queue('t-h', 's2');
     // 17:00 UTC is 22:30 in Kolkata: quiet. 03:00 UTC is 08:30 there: not quiet, although 03:00 UTC itself is.
     expect((await dispatch({ now: at(17) })).held).toBe(1);
@@ -302,14 +343,19 @@ describe('student to-do list', () => {
   const day = 86_400_000;
   const login = async (who: string, tenant = 'harvard') => {
     const a = request.agent(app);
-    const r = await a.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+    const r = await a
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', tenant)
+      .send({ email: `${who}@x.edu`, password: pw(tenant) });
     expect(r.status).toBe(200);
     return a;
   };
 
   beforeAll(async () => {
     const asg = (id: string, title: string, dueMs: number | null, courseId = 'c1') =>
-      admin.assignment.create({ data: { id, tenantId: 't-h', courseId, title, instructions: 'x', dueDate: dueMs === null ? null : new Date(Date.now() + dueMs) } });
+      admin.assignment.create({
+        data: { id, tenantId: 't-h', courseId, title, instructions: 'x', dueDate: dueMs === null ? null : new Date(Date.now() + dueMs) },
+      });
     await asg('t-late', 'Late lab', -2 * day);
     await asg('t-a', 'Essay A', day);
     await asg('t-b', 'Essay B', 3 * day);
@@ -317,13 +363,22 @@ describe('student to-do list', () => {
     await asg('t-none', 'Reading response', null);
     await asg('t-graded', 'Graded already', day);
     await admin.assignmentSubmission.create({ data: { id: 'ts-pending', assignmentId: 't-pending', userId: 's1', submissionText: 'x' } });
-    await admin.assignmentSubmission.create({ data: { id: 'ts-graded', assignmentId: 't-graded', userId: 's1', submissionText: 'x', grade: 5, gradedAt: new Date() } });
+    await admin.assignmentSubmission.create({
+      data: { id: 'ts-graded', assignmentId: 't-graded', userId: 's1', submissionText: 'x', grade: 5, gradedAt: new Date() },
+    });
 
     const quiz = (id: string, title: string, maxAttempts: number, questions: boolean) =>
       admin.quiz.create({
         data: {
-          id, tenantId: 't-h', courseId: 'c1', title, maxAttempts, requireProctoring: id === 'tq-d',
-          ...(questions ? { questions: { create: [{ id: `${id}-q`, questionText: 'Q?', questionType: 'TRUE_FALSE', correctAnswer: 'true' }] } } : {}),
+          id,
+          tenantId: 't-h',
+          courseId: 'c1',
+          title,
+          maxAttempts,
+          requireProctoring: id === 'tq-d',
+          ...(questions
+            ? { questions: { create: [{ id: `${id}-q`, questionText: 'Q?', questionType: 'TRUE_FALSE', correctAnswer: 'true' }] } }
+            : {}),
         },
       });
     await quiz('tq-a', 'Quiz A', 2, true);
@@ -331,7 +386,9 @@ describe('student to-do list', () => {
     await quiz('tq-c', 'Quiz C (empty)', 1, false);
     await quiz('tq-d', 'Quiz D', 1, true);
     const sub = (id: string, quizId: string, done: boolean) =>
-      admin.quizSubmission.create({ data: { id, quizId, userId: 's1', maxScore: 1, answersJson: {}, ...(done ? { submittedAt: new Date(), score: 0 } : {}) } });
+      admin.quizSubmission.create({
+        data: { id, quizId, userId: 's1', maxScore: 1, answersJson: {}, ...(done ? { submittedAt: new Date(), score: 0 } : {}) },
+      });
     await sub('tqs-a', 'tq-a', true);
     await sub('tqs-b', 'tq-b', true);
     await sub('tqs-d', 'tq-d', false); // attempt in progress
@@ -352,7 +409,13 @@ describe('student to-do list', () => {
     const res = await (await login('s1')).get('/api/v1/enrollments/todo');
     expect(res.status).toBe(200);
     expect(res.body.data.map((i: any) => i.title)).toEqual([
-      'Late lab', 'Essay A', 'Pending essay', 'Essay B', 'Reading response', 'Quiz A', 'Quiz D',
+      'Late lab',
+      'Essay A',
+      'Pending essay',
+      'Essay B',
+      'Reading response',
+      'Quiz A',
+      'Quiz D',
     ]);
     const by = Object.fromEntries(res.body.data.map((i: any) => [i.title, i]));
     expect(by['Late lab']).toMatchObject({ type: 'ASSIGNMENT', overdue: true, submitted: false, course: { code: 'C1' } });

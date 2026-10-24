@@ -15,7 +15,16 @@ describe.skipIf(!url)('rate limiting with a shared Redis store', () => {
   /** One "API instance": its own Express app and limiter, sharing only the Redis store. */
   const instance = (limit: number, name = prefix) => {
     const app = express();
-    app.use(rateLimit({ windowMs: 60_000, limit, standardHeaders: 'draft-7', legacyHeaders: false, store: redisRateLimitStore(redis, name), message: { error: 'slow down' } }));
+    app.use(
+      rateLimit({
+        windowMs: 60_000,
+        limit,
+        standardHeaders: 'draft-7',
+        legacyHeaders: false,
+        store: redisRateLimitStore(redis, name),
+        message: { error: 'slow down' },
+      })
+    );
     app.get('/ping', (_req, res) => res.json({ ok: true }));
     return app;
   };

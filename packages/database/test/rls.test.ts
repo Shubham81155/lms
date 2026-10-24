@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import {
-  createTenantPrismaClient,
-  findRlsBypassReason,
-  runWithTenant,
-  TenantPrismaClient,
-} from '../src/index';
+import { createTenantPrismaClient, findRlsBypassReason, runWithTenant, TenantPrismaClient } from '../src/index';
 import { startTestDatabase, TestDatabase } from '../test-utils/embedded';
 
 // Real PostgreSQL (throwaway, isolated data dir, random port) so the actual migrations and
@@ -24,7 +19,10 @@ beforeAll(async () => {
   const appUrl = db.appUrl;
 
   admin = new PrismaClient({ datasourceUrl: adminUrl });
-  for (const [id, slug] of [[A, 'a'], [B, 'b']]) {
+  for (const [id, slug] of [
+    [A, 'a'],
+    [B, 'b'],
+  ]) {
     await admin.tenant.create({ data: { id, slug, name: `Tenant ${slug}` } });
     await admin.user.create({
       data: { id: `u-${slug}`, tenantId: id, email: `u@${slug}.edu`, firstName: 'U', lastName: slug },
@@ -123,21 +121,15 @@ describe('row-level security', () => {
 
   it('cannot insert a row for another tenant', async () => {
     await asTenant(A, async () => {
-      await expect(
-        app.prisma.course.create({ data: { tenantId: B, code: 'EVIL', title: 'x' } })
-      ).rejects.toThrow();
-      await expect(
-        app.prisma.user.create({ data: { tenantId: B, email: 'evil@b.edu', firstName: 'e', lastName: 'e' } })
-      ).rejects.toThrow();
+      await expect(app.prisma.course.create({ data: { tenantId: B, code: 'EVIL', title: 'x' } })).rejects.toThrow();
+      await expect(app.prisma.user.create({ data: { tenantId: B, email: 'evil@b.edu', firstName: 'e', lastName: 'e' } })).rejects.toThrow();
     });
   });
 
   it('cannot attach child rows to another tenant’s parent', async () => {
     await asTenant(A, async () => {
       await expect(app.prisma.module.create({ data: { courseId: 'c-b', title: 'evil' } })).rejects.toThrow();
-      await expect(
-        app.prisma.quizQuestion.create({ data: { quizId: 'q-b', questionText: 'evil' } })
-      ).rejects.toThrow();
+      await expect(app.prisma.quizQuestion.create({ data: { quizId: 'q-b', questionText: 'evil' } })).rejects.toThrow();
     });
     expect(await admin.module.count({ where: { title: 'evil' } })).toBe(0);
   });

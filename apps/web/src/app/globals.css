@@ -8,7 +8,17 @@
  * Linux). Devanagari has marks above and below the line, so the small fixed line heights of the UI are loosened.
  */
 :lang(hi) {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Devanagari", "Nirmala UI", "Kohinoor Devanagari", "Devanagari Sangam MN", Mangal, sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    'Noto Sans Devanagari',
+    'Nirmala UI',
+    'Kohinoor Devanagari',
+    'Devanagari Sangam MN',
+    Mangal,
+    sans-serif;
 }
 :lang(hi) .text-xs,
 :lang(hi) .text-\[9px\],
@@ -28,21 +38,21 @@
   --background: #020617;
   --foreground: #f8fafc;
 
-  --canvas: 8 11 24;          /* page background */
-  --surface: 16 21 41;        /* cards */
-  --raised: 24 30 56;         /* rows/inputs inside cards, hover */
-  --line: 38 46 78;           /* borders, tracks */
-  --ink: 236 239 250;         /* primary text */
-  --ink-muted: 163 171 198;   /* body text */
-  --ink-subtle: 130 139 172;  /* captions, placeholders (4.5:1 on every surface; test/contrast.test.ts) */
-  --brand: 79 70 229;         /* filled buttons; white text on it is 6.3:1 */
-  --brand-hover: 95 98 240;   /* white text on it is 4.7:1 */
-  --brand-fg: 165 180 252;    /* brand-coloured text and icons */
+  --canvas: 8 11 24; /* page background */
+  --surface: 16 21 41; /* cards */
+  --raised: 24 30 56; /* rows/inputs inside cards, hover */
+  --line: 38 46 78; /* borders, tracks */
+  --ink: 236 239 250; /* primary text */
+  --ink-muted: 163 171 198; /* body text */
+  --ink-subtle: 130 139 172; /* captions, placeholders (4.5:1 on every surface; test/contrast.test.ts) */
+  --brand: 79 70 229; /* filled buttons; white text on it is 6.3:1 */
+  --brand-hover: 95 98 240; /* white text on it is 4.7:1 */
+  --brand-fg: 165 180 252; /* brand-coloured text and icons */
   --on-brand: 255 255 255;
-  --accent: 251 191 36;       /* amber highlight */
+  --accent: 251 191 36; /* amber highlight */
   --success: 52 211 153;
   --danger: 253 164 175;
-  --orchid: 192 132 252;      /* purple accents (AI, proctoring) */
+  --orchid: 192 132 252; /* purple accents (AI, proctoring) */
 }
 
 html.dark {
@@ -54,7 +64,7 @@ html:not(.dark) {
   --background: #f8fafc;
   --foreground: #0f172a;
 
-  --canvas: 236 238 252;      /* soft lavender, so white cards stand out */
+  --canvas: 236 238 252; /* soft lavender, so white cards stand out */
   --surface: 255 255 255;
   --raised: 230 233 250;
   --line: 210 215 242;

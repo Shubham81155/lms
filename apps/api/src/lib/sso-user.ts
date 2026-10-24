@@ -33,8 +33,7 @@ export interface SsoIdentity {
 }
 
 export type SsoResolution =
-  | { ok: true; user: { id: string; email: string; role: string; tenantId: string }; created?: boolean }
-  | { ok: false; reason: string };
+  { ok: true; user: { id: string; email: string; role: string; tenantId: string }; created?: boolean } | { ok: false; reason: string };
 
 /**
  * Maps a verified identity to a local account. A bound subject is authoritative. Otherwise the
@@ -47,7 +46,8 @@ export async function resolveSsoUser(id: SsoIdentity): Promise<SsoResolution> {
 
   if (id.allowedDomains.length > 0) {
     const domain = email?.split('@')[1];
-    if (!domain || !id.allowedDomains.map((d) => d.toLowerCase()).includes(domain)) return { ok: false, reason: 'email domain not allowed' };
+    if (!domain || !id.allowedDomains.map((d) => d.toLowerCase()).includes(domain))
+      return { ok: false, reason: 'email domain not allowed' };
   }
 
   let user = id.subject ? await prisma.user.findFirst({ where: { tenantId: id.tenantId, idpSubjectId: id.subject } }) : null;
@@ -79,11 +79,17 @@ export async function resolveSsoUser(id: SsoIdentity): Promise<SsoResolution> {
 }
 
 /** Given and family name from the provider, or a full name split at its last space. */
-export function splitName(given?: string | null, family?: string | null, full?: string | null): { firstName: string | null; lastName: string | null } {
+export function splitName(
+  given?: string | null,
+  family?: string | null,
+  full?: string | null
+): { firstName: string | null; lastName: string | null } {
   if (given?.trim() || family?.trim()) return { firstName: given?.trim() || null, lastName: family?.trim() || null };
   const parts = full?.trim().split(/\s+/) ?? [];
   if (parts.length === 0 || !parts[0]) return { firstName: null, lastName: null };
-  return parts.length === 1 ? { firstName: parts[0], lastName: null } : { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] };
+  return parts.length === 1
+    ? { firstName: parts[0], lastName: null }
+    : { firstName: parts.slice(0, -1).join(' '), lastName: parts[parts.length - 1] };
 }
 
 const clean = (v: string | null | undefined, max = 100) => v?.replace(/\s+/g, ' ').trim().slice(0, max) || null;
@@ -93,20 +99,22 @@ async function createSsoUser(id: SsoIdentity, email: string): Promise<SsoResolut
   let user;
   try {
     // The seat check and the insert are one transaction, so two first sign-ins cannot both take the last seat.
-    user = await withSeat(id.tenantId, (tx) => tx.user.create({
-      data: {
-        tenantId: id.tenantId,
-        email,
-        firstName: clean(id.firstName) ?? email.split('@')[0].slice(0, 100),
-        lastName: clean(id.lastName) ?? '-',
-        role: 'STUDENT', // staff are promoted by an administrator
-        status: 'ACTIVE',
-        passwordHash: null, // signs in through the identity provider
-        emailVerified: true,
-        lastLoginAt: new Date(),
-        ...(id.subject ? { idpProvider: id.provider, idpSubjectId: id.subject } : {}),
-      },
-    }));
+    user = await withSeat(id.tenantId, (tx) =>
+      tx.user.create({
+        data: {
+          tenantId: id.tenantId,
+          email,
+          firstName: clean(id.firstName) ?? email.split('@')[0].slice(0, 100),
+          lastName: clean(id.lastName) ?? '-',
+          role: 'STUDENT', // staff are promoted by an administrator
+          status: 'ACTIVE',
+          passwordHash: null, // signs in through the identity provider
+          emailVerified: true,
+          lastLoginAt: new Date(),
+          ...(id.subject ? { idpProvider: id.provider, idpSubjectId: id.subject } : {}),
+        },
+      })
+    );
   } catch (err: any) {
     if (err instanceof HttpError && err.status === 409) return { ok: false, reason: 'no seats left' };
     // Two first sign-ins at once: the other one created the account, so sign in as it.
@@ -114,8 +122,14 @@ async function createSsoUser(id: SsoIdentity, email: string): Promise<SsoResolut
     throw err;
   }
   await logAuditEvent({
-    tenantId: id.tenantId, userId: user.id, action: 'SSO_USER_CREATED', resourceType: 'USER', resourceId: user.id,
-    ipAddress: id.ipAddress, userAgent: id.userAgent, diffJson: { provider: id.provider, email },
+    tenantId: id.tenantId,
+    userId: user.id,
+    action: 'SSO_USER_CREATED',
+    resourceType: 'USER',
+    resourceId: user.id,
+    ipAddress: id.ipAddress,
+    userAgent: id.userAgent,
+    diffJson: { provider: id.provider, email },
   });
   void dispatchWebhook(id.tenantId, 'user.provisioned', { userId: user.id, email });
   return { ok: true, user, created: true };

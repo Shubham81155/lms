@@ -121,10 +121,21 @@ router.post(
 
     let created;
     try {
-      created = await withSeat(tenantId, (tx) => tx.user.create({
-        data: { tenantId, email: input.email, firstName: input.firstName, lastName: input.lastName, role: input.role, status: 'INVITED', passwordHash: null, emailVerified: false },
-        select: safeUserSelect,
-      }));
+      created = await withSeat(tenantId, (tx) =>
+        tx.user.create({
+          data: {
+            tenantId,
+            email: input.email,
+            firstName: input.firstName,
+            lastName: input.lastName,
+            role: input.role,
+            status: 'INVITED',
+            passwordHash: null,
+            emailVerified: false,
+          },
+          select: safeUserSelect,
+        })
+      );
     } catch (err: any) {
       if (err?.code === 'P2002') throw new HttpError(409, 'A person with this e-mail address already exists');
       throw err;
@@ -223,10 +234,19 @@ router.post(
     };
 
     const emails = table.slice(1).map((r) => col(r, 'email').toLowerCase());
-    const codes = Array.from(new Set(table.slice(1).map((r) => col(r, 'courseCode')).filter(Boolean)));
+    const codes = Array.from(
+      new Set(
+        table
+          .slice(1)
+          .map((r) => col(r, 'courseCode'))
+          .filter(Boolean)
+      )
+    );
     const [existing, courses] = await Promise.all([
       prisma.user.findMany({ where: { tenantId, email: { in: emails.filter(Boolean) } }, select: { id: true, email: true } }),
-      codes.length ? prisma.course.findMany({ where: { tenantId, code: { in: codes } }, select: { id: true, code: true } }) : Promise.resolve([]),
+      codes.length
+        ? prisma.course.findMany({ where: { tenantId, code: { in: codes } }, select: { id: true, code: true } })
+        : Promise.resolve([]),
     ]);
     const existingByEmail = new Map(existing.map((u) => [u.email, u.id]));
     const courseByCode = new Map(courses.map((c) => [c.code, c.id]));
@@ -237,7 +257,9 @@ router.post(
       const email = col(r, 'email').toLowerCase();
       const firstName = col(r, 'firstName');
       const lastName = col(r, 'lastName');
-      const roleText = col(r, 'role').toUpperCase().replace(/[\s-]+/g, '_');
+      const roleText = col(r, 'role')
+        .toUpperCase()
+        .replace(/[\s-]+/g, '_');
       const courseCode = col(r, 'courseCode');
       const base = { line, email, firstName, lastName, role: input.defaultRole, ...(courseCode ? { enrol: courseCode } : {}) };
       const error = (message: string) => ({ ...base, status: 'ERROR' as const, message });
@@ -247,10 +269,18 @@ router.post(
       seen.add(email);
       const role = roleText ? (GlobalRole as Record<string, GlobalRole>)[roleText] : input.defaultRole;
       if (!role) return error(`Unknown role "${col(r, 'role')}"`);
-      if (role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') return error('Only a super administrator can grant the super administrator role');
+      if (role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN')
+        return error('Only a super administrator can grant the super administrator role');
       if (courseCode && !courseByCode.has(courseCode)) return error(`No course with the code "${courseCode}"`);
-      if (existingByEmail.has(email)) return { ...base, role, status: 'EXISTS' as const, message: courseCode ? 'Already has an account; will be enrolled' : 'Already has an account' };
-      if (!firstName || !lastName || firstName.length > 100 || lastName.length > 100) return error('First and last name are required (up to 100 characters each)');
+      if (existingByEmail.has(email))
+        return {
+          ...base,
+          role,
+          status: 'EXISTS' as const,
+          message: courseCode ? 'Already has an account; will be enrolled' : 'Already has an account',
+        };
+      if (!firstName || !lastName || firstName.length > 100 || lastName.length > 100)
+        return error('First and last name are required (up to 100 characters each)');
       return { ...base, role, status: 'CREATE' as const };
     });
 
@@ -259,7 +289,10 @@ router.post(
     if (tenant?.seatQuota != null && toCreate.length > 0) {
       const used = await prisma.user.count({ where: { tenantId, status: { in: ['ACTIVE', 'INVITED'] } } });
       if (used + toCreate.length > tenant.seatQuota) {
-        throw new HttpError(409, `This file adds ${toCreate.length} people, but only ${Math.max(0, tenant.seatQuota - used)} of ${tenant.seatQuota} seats are free`);
+        throw new HttpError(
+          409,
+          `This file adds ${toCreate.length} people, but only ${Math.max(0, tenant.seatQuota - used)} of ${tenant.seatQuota} seats are free`
+        );
       }
     }
 
@@ -272,7 +305,16 @@ router.post(
         if (row.status === 'CREATE') {
           try {
             const user = await prisma.user.create({
-              data: { tenantId, email: row.email, firstName: row.firstName, lastName: row.lastName, role: row.role, status: 'INVITED', passwordHash: null, emailVerified: false },
+              data: {
+                tenantId,
+                email: row.email,
+                firstName: row.firstName,
+                lastName: row.lastName,
+                role: row.role,
+                status: 'INVITED',
+                passwordHash: null,
+                emailVerified: false,
+              },
               select: { id: true },
             });
             userId = user.id;
@@ -306,7 +348,13 @@ router.post(
         resourceType: 'USER',
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
-        diffJson: { rows: rows.length, created, enrolled, errors: rows.filter((r) => r.status === 'ERROR').length, invitationsSent: input.sendInvitations },
+        diffJson: {
+          rows: rows.length,
+          created,
+          enrolled,
+          errors: rows.filter((r) => r.status === 'ERROR').length,
+          invitationsSent: input.sendInvitations,
+        },
       });
     }
 
@@ -321,7 +369,13 @@ router.post(
           enrolled,
           errors: rows.filter((r) => r.status === 'ERROR').length,
         },
-        rows: rows.map(({ line, email, status, message, enrol }) => ({ line, email, status, message: message ?? null, enrol: enrol ?? null })),
+        rows: rows.map(({ line, email, status, message, enrol }) => ({
+          line,
+          email,
+          status,
+          message: message ?? null,
+          enrol: enrol ?? null,
+        })),
       },
     });
   })
@@ -334,7 +388,10 @@ router.post(
   requireRole('SUPER_ADMIN', 'TENANT_ADMIN'),
   route('Failed to resend invitation', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const target = await prisma.user.findFirst({ where: { id: String(req.params.id), tenantId }, select: { id: true, email: true, firstName: true, status: true } });
+    const target = await prisma.user.findFirst({
+      where: { id: String(req.params.id), tenantId },
+      select: { id: true, email: true, firstName: true, status: true },
+    });
     if (!target) throw new HttpError(404, 'User not found');
     if (target.status !== 'INVITED') throw new HttpError(409, 'Only people who have not yet accepted their invitation can be sent one');
 
@@ -462,15 +519,19 @@ router.get(
       where: {
         userId: id,
         tenantId,
-        ...(!isSelf && !canSeeAllCourses(actor.role)
-          ? { course: { instructors: { some: { userId: actor.id } } } }
-          : {}),
+        ...(!isSelf && !canSeeAllCourses(actor.role) ? { course: { instructors: { some: { userId: actor.id } } } } : {}),
       },
       orderBy: { enrolledAt: 'desc' },
       include: {
         course: {
           select: {
-            id: true, code: true, title: true, description: true, thumbnailUrl: true, status: true, passingGradePercent: true,
+            id: true,
+            code: true,
+            title: true,
+            description: true,
+            thumbnailUrl: true,
+            status: true,
+            passingGradePercent: true,
           },
         },
         certificate: { select: { id: true, certificateNumber: true, issuedAt: true, pdfUrl: true } },

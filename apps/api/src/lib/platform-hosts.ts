@@ -23,7 +23,14 @@ export function isUnderBaseDomain(host: string): boolean {
 
 /** Host names of the configured service URLs. */
 export function platformHostnames(): string[] {
-  const urls = [config.APP_URL, config.API_PUBLIC_URL, config.SCORM_CONTENT_ORIGIN, config.LIVEKIT_URL, config.S3_ENDPOINT, ...config.corsOrigins];
+  const urls = [
+    config.APP_URL,
+    config.API_PUBLIC_URL,
+    config.SCORM_CONTENT_ORIGIN,
+    config.LIVEKIT_URL,
+    config.S3_ENDPOINT,
+    ...config.corsOrigins,
+  ];
   // CUSTOM_DOMAIN_TARGET is a bare host name (the CNAME target for custom domains), not a URL.
   const target = config.CUSTOM_DOMAIN_TARGET?.toLowerCase().replace(/\.$/, '') || null;
   return [...new Set([...urls.map(hostOf), target].filter((h): h is string => !!h))];
@@ -38,7 +45,12 @@ export function platformSubdomainLabels(): string[] {
   if (!base) return [];
   return platformHostnames()
     .filter((h) => h.endsWith(`.${base}`))
-    .map((h) => h.slice(0, -(base.length + 1)).split('.').pop()!)
+    .map((h) =>
+      h
+        .slice(0, -(base.length + 1))
+        .split('.')
+        .pop()!
+    )
     .filter(Boolean);
 }
 

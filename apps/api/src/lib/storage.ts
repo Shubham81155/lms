@@ -58,7 +58,8 @@ const KEY = /^[A-Za-z0-9_-]+\/[0-9a-f-]{36}$/;
 export const newStorageKey = (tenantId: string) => `${tenantId.replace(/[^A-Za-z0-9_-]/g, '_')}/${randomUUID()}`;
 /** Organisation exports (lib/offboarding.ts): exports/<tenant>/<export id>.zip. */
 const EXPORT_KEY = /^exports\/[A-Za-z0-9_-]+\/[0-9a-f-]{36}\.zip$/;
-export const exportStorageKey = (tenantId: string, exportId: string) => `exports/${tenantId.replace(/[^A-Za-z0-9_-]/g, '_')}/${exportId}.zip`;
+export const exportStorageKey = (tenantId: string, exportId: string) =>
+  `exports/${tenantId.replace(/[^A-Za-z0-9_-]/g, '_')}/${exportId}.zip`;
 const checkKey = (key: string) => {
   if (!KEY.test(key) && !EXPORT_KEY.test(key)) throw new Error(`Invalid storage key: ${key}`);
   return key;
@@ -110,7 +111,13 @@ class S3Driver implements StorageDriver {
   async putFile(key: string, filePath: string, contentType: string) {
     const { size } = await stat(filePath);
     await this.client.send(
-      new PutObjectCommand({ Bucket: this.bucket, Key: checkKey(key), Body: createReadStream(filePath), ContentLength: size, ContentType: contentType })
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: checkKey(key),
+        Body: createReadStream(filePath),
+        ContentLength: size,
+        ContentType: contentType,
+      })
     );
     await rm(filePath, { force: true });
   }
@@ -168,7 +175,10 @@ export const maxUploadBytes = () => config.UPLOAD_MAX_MB * 1024 * 1024;
  * Streams the request body to a temporary file, refusing it (413) as soon as it passes the size limit, and
  * returns the file with its size and SHA-256. The caller hands the file to the driver.
  */
-export async function receiveUpload(req: Request, maxBytes = maxUploadBytes()): Promise<{ tempPath: string; sizeBytes: number; sha256: string }> {
+export async function receiveUpload(
+  req: Request,
+  maxBytes = maxUploadBytes()
+): Promise<{ tempPath: string; sizeBytes: number; sha256: string }> {
   // The rest of the body is read and discarded (req.resume) so the client, still sending, gets the 413
   // rather than a reset connection. The web proxy's body limit bounds how much that can be.
   const tooLarge = () => new HttpError(413, `Files can be at most ${Math.floor(maxBytes / 1048576)} MB`);

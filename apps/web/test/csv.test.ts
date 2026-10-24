@@ -36,8 +36,29 @@ describe('toCsv', () => {
 const sample: CohortAnalyticsResponse = {
   tenantId: 't',
   metrics: { totalEnrolled: 4, activeThisWeek: 3, averageProgress: 61.5, completionRate: 25, averageGpa: 3.2 },
-  atRiskLearners: [{ id: 'u1', name: '=cmd|evil', email: 'a@x.edu', course: 'CS-101', courseId: 'c1', riskFactor: 'HIGH', reasons: ['Inactive 6 days', 'Quiz 58%'], suggestedAction: 'Office hours' }],
-  itemAnalysis: [{ questionId: 'q1', concept: 'Quorum', taxonomyLevel: 'EVALUATE', attempts: 9, averageScorePercent: 54, status: 'FLAGGED', recommendation: 'Review' }],
+  atRiskLearners: [
+    {
+      id: 'u1',
+      name: '=cmd|evil',
+      email: 'a@x.edu',
+      course: 'CS-101',
+      courseId: 'c1',
+      riskFactor: 'HIGH',
+      reasons: ['Inactive 6 days', 'Quiz 58%'],
+      suggestedAction: 'Office hours',
+    },
+  ],
+  itemAnalysis: [
+    {
+      questionId: 'q1',
+      concept: 'Quorum',
+      taxonomyLevel: 'EVALUATE',
+      attempts: 9,
+      averageScorePercent: 54,
+      status: 'FLAGGED',
+      recommendation: 'Review',
+    },
+  ],
   bloomsMastery: [{ level: 'APPLY', score: 82 }],
 };
 

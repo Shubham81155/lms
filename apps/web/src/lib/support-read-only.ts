@@ -19,11 +19,11 @@ export interface Control {
 export function lockedInReadOnly(c: Control): boolean {
   if (c.allowed) return false;
   const type = c.type.toLowerCase();
-  if (c.tag === "input") return type !== "hidden" && type !== "search";
-  if (c.tag === "textarea" || c.tag === "select") return true;
-  if (c.tag === "button") return c.inForm || type === "submit";
+  if (c.tag === 'input') return type !== 'hidden' && type !== 'search';
+  if (c.tag === 'textarea' || c.tag === 'select') return true;
+  if (c.tag === 'button') return c.inForm || type === 'submit';
   return false;
 }
 
 /** The tooltip on a locked control. */
-export const READ_ONLY_TITLE = "Read-only support access: changes are not allowed.";
+export const READ_ONLY_TITLE = 'Read-only support access: changes are not allowed.';

@@ -20,7 +20,18 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-y', slug: 'yale', name: 'Yale', tier: 'ENTERPRISE', customDomain: 'learn.yale.example' } });
   await admin.tenant.create({ data: { id: 't-b', slug: 'brown', name: 'Brown', tier: 'ENTERPRISE' } });
   const user = (id: string, tenantId: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('operator', 't-op', 'SUPER_ADMIN');
   await user('y-admin', 't-y', 'TENANT_ADMIN');
   process.env.PLATFORM_OPERATOR_TENANT = 'ops';
@@ -30,7 +41,14 @@ beforeAll(async () => {
 
   const login = async (who: string, tenant: string) => {
     const agent = request.agent(app);
-    expect((await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: PASSWORD })).status).toBe(200);
+    expect(
+      (
+        await agent
+          .post('/api/v1/auth/login')
+          .set('x-tenant-id', tenant)
+          .send({ email: `${who}@x.edu`, password: PASSWORD })
+      ).status
+    ).toBe(200);
     return agent;
   };
   const granted = await (await login('y-admin', 'yale')).post('/api/v1/support/passes').send({ hours: 1, reason: 'Check the gradebook' });

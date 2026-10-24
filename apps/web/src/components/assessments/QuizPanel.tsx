@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { api } from "@/lib/api";
-import { useAction, useApiData } from "@/hooks/useApiData";
-import { Banner } from "@/components/admin/IdentityPanels";
-import { quizSettingsProblem, toLocalInput, type QuizSettings as Settings } from "@/lib/assessmentForms";
-import { ExtensionsPanel } from "./ExtensionsPanel";
-import { QuizQuestions } from "./QuizQuestions";
-import { QuizResults } from "./QuizResults";
-import { card, danger, ghost, input, primary } from "./ui";
+import React, { useState } from 'react';
+import { api } from '@/lib/api';
+import { useAction, useApiData } from '@/hooks/useApiData';
+import { Banner } from '@/components/admin/IdentityPanels';
+import { quizSettingsProblem, toLocalInput, type QuizSettings as Settings } from '@/lib/assessmentForms';
+import { ExtensionsPanel } from './ExtensionsPanel';
+import { QuizQuestions } from './QuizQuestions';
+import { QuizResults } from './QuizResults';
+import { card, danger, ghost, input, primary } from './ui';
 
 interface QuizRow {
   id: string;
@@ -34,10 +34,23 @@ interface QuizDetail {
   randomizeQuestions: boolean;
   availableFrom: string | null;
   dueAt: string | null;
-  reviewPolicy: Settings["review"];
+  reviewPolicy: Settings['review'];
 }
 
-const defaults: Settings = { title: "", timed: false, minutes: "30", attempts: "1", passing: "70", randomize: false, proctoring: false, camera: false, microphone: false, opens: "", closes: "", review: "RESPONSES" };
+const defaults: Settings = {
+  title: '',
+  timed: false,
+  minutes: '30',
+  attempts: '1',
+  passing: '70',
+  randomize: false,
+  proctoring: false,
+  camera: false,
+  microphone: false,
+  opens: '',
+  closes: '',
+  review: 'RESPONSES',
+};
 
 const fromDetail = (q: QuizDetail): Settings => ({
   title: q.title,
@@ -68,7 +81,13 @@ const toBody = (s: Settings) => ({
   reviewPolicy: s.review,
 });
 
-const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boolean; onSave: (s: Settings) => void; onCancel: () => void }> = ({ initial, saveLabel, busy, onSave, onCancel }) => {
+const SettingsForm: React.FC<{
+  initial: Settings;
+  saveLabel: string;
+  busy: boolean;
+  onSave: (s: Settings) => void;
+  onCancel: () => void;
+}> = ({ initial, saveLabel, busy, onSave, onCancel }) => {
   const [s, setS] = useState(initial);
   const problem = quizSettingsProblem(s);
   const set = (p: Partial<Settings>) => setS((x) => ({ ...x, ...p }));
@@ -87,17 +106,40 @@ const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boole
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <label className="space-y-1 text-xs font-semibold text-ink-muted">
           Attempts allowed
-          <input className={`${input} w-full`} type="number" min={1} max={100} value={s.attempts} onChange={(e) => set({ attempts: e.target.value })} />
+          <input
+            className={`${input} w-full`}
+            type="number"
+            min={1}
+            max={100}
+            value={s.attempts}
+            onChange={(e) => set({ attempts: e.target.value })}
+          />
         </label>
         <label className="space-y-1 text-xs font-semibold text-ink-muted">
           Passing score (%)
-          <input className={`${input} w-full`} type="number" min={0} max={100} value={s.passing} onChange={(e) => set({ passing: e.target.value })} />
+          <input
+            className={`${input} w-full`}
+            type="number"
+            min={0}
+            max={100}
+            value={s.passing}
+            onChange={(e) => set({ passing: e.target.value })}
+          />
         </label>
         <label className="space-y-1 text-xs font-semibold text-ink-muted">
           Time limit
           <span className="flex items-center gap-2">
             <input type="checkbox" aria-label="Timed" checked={s.timed} onChange={(e) => set({ timed: e.target.checked })} />
-            <input className={`${input} w-full`} type="number" min={1} max={1440} aria-label="Minutes" disabled={!s.timed} value={s.minutes} onChange={(e) => set({ minutes: e.target.value })} />
+            <input
+              className={`${input} w-full`}
+              type="number"
+              min={1}
+              max={1440}
+              aria-label="Minutes"
+              disabled={!s.timed}
+              value={s.minutes}
+              onChange={(e) => set({ minutes: e.target.value })}
+            />
           </span>
         </label>
         <div className="space-y-1.5 pt-5 text-xs text-ink">
@@ -120,7 +162,10 @@ const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boole
                 Use the microphone (sustained sound)
               </label>
               {(s.camera || s.microphone) && (
-                <p className="pl-5 text-[10px] text-ink-subtle max-w-xs">Checked in the learner&apos;s browser; only events reach you, never images or sound. Learners without a working device cannot start.</p>
+                <p className="pl-5 text-[10px] text-ink-subtle max-w-xs">
+                  Checked in the learner&apos;s browser; only events reach you, never images or sound. Learners without a working device
+                  cannot start.
+                </p>
               )}
             </>
           )}
@@ -137,7 +182,7 @@ const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boole
         </label>
         <label className="space-y-1 text-xs font-semibold text-ink-muted">
           After submitting, learners see
-          <select className={`${input} w-full`} value={s.review} onChange={(e) => set({ review: e.target.value as Settings["review"] })}>
+          <select className={`${input} w-full`} value={s.review} onChange={(e) => set({ review: e.target.value as Settings['review'] })}>
             <option value="SCORE_ONLY">Their score only</option>
             <option value="RESPONSES">Which answers were right</option>
             <option value="ANSWERS">Correct answers, after their last attempt</option>
@@ -146,7 +191,7 @@ const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boole
       </div>
       <div className="flex items-center gap-3">
         <button className={primary} disabled={busy || !!problem}>
-          {busy ? "Saving…" : saveLabel}
+          {busy ? 'Saving…' : saveLabel}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
           Cancel
@@ -158,14 +203,19 @@ const SettingsForm: React.FC<{ initial: Settings; saveLabel: string; busy: boole
 };
 
 /** Loads a quiz's full settings (the list omits the shuffle option) before editing them. */
-const EditSettings: React.FC<{ quizId: string; busy: boolean; onSave: (s: Settings) => void; onCancel: () => void }> = ({ quizId, busy, onSave, onCancel }) => {
+const EditSettings: React.FC<{ quizId: string; busy: boolean; onSave: (s: Settings) => void; onCancel: () => void }> = ({
+  quizId,
+  busy,
+  onSave,
+  onCancel,
+}) => {
   const detail = useApiData<{ data: QuizDetail }>(`/api/v1/quizzes/${quizId}`);
   if (detail.error) return <Banner kind="error">{detail.error}</Banner>;
   if (!detail.data) return <p className="text-xs text-ink-subtle">Loading…</p>;
   return <SettingsForm initial={fromDetail(detail.data.data)} saveLabel="Save settings" busy={busy} onSave={onSave} onCancel={onCancel} />;
 };
 
-type Section = "questions" | "results" | "extensions" | "settings" | "delete";
+type Section = 'questions' | 'results' | 'extensions' | 'settings' | 'delete';
 
 export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ courseId, canEdit }) => {
   const list = useApiData<{ data: QuizRow[] }>(`/api/v1/courses/${courseId}/quizzes`);
@@ -183,7 +233,7 @@ export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ co
       const r = await api.post<{ data: { id: string } }>(`/api/v1/courses/${courseId}/quizzes`, toBody(s));
       setCreating(false);
       await list.reload();
-      setOpen({ id: r.data.id, section: "questions" });
+      setOpen({ id: r.data.id, section: 'questions' });
     });
 
   const update = (id: string, s: Settings) =>
@@ -206,7 +256,9 @@ export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ co
       {list.isLoading && !list.data && <p className="text-xs text-ink-subtle">Loading quizzes…</p>}
 
       {!list.isLoading && quizzes.length === 0 && !creating && (
-        <p className={`${card} text-center text-xs text-ink-muted`}>This course has no quizzes yet.{canEdit ? " Create the first one." : ""}</p>
+        <p className={`${card} text-center text-xs text-ink-muted`}>
+          This course has no quizzes yet.{canEdit ? ' Create the first one.' : ''}
+        </p>
       )}
 
       <ul className="space-y-3">
@@ -216,29 +268,45 @@ export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ co
               <div className="min-w-0">
                 <h4 className="text-sm font-bold text-ink">{q.title}</h4>
                 <p className="text-[11px] text-ink-muted">
-                  {q.questionCount} question{q.questionCount === 1 ? "" : "s"} · {q.submissionCount} attempt{q.submissionCount === 1 ? "" : "s"} · pass at {q.passingPercent}% · {q.maxAttempts} attempt
-                  {q.maxAttempts === 1 ? "" : "s"} allowed · {q.timeLimitMins ? `${q.timeLimitMins} min` : "untimed"}
-                  {q.requireProctoring ? " · proctored" : ""}
-                  {q.availableFrom ? ` · opens ${new Date(q.availableFrom).toLocaleString()}` : ""}
-                  {q.dueAt ? ` · closes ${new Date(q.dueAt).toLocaleString()}` : ""}
+                  {q.questionCount} question{q.questionCount === 1 ? '' : 's'} · {q.submissionCount} attempt
+                  {q.submissionCount === 1 ? '' : 's'} · pass at {q.passingPercent}% · {q.maxAttempts} attempt
+                  {q.maxAttempts === 1 ? '' : 's'} allowed · {q.timeLimitMins ? `${q.timeLimitMins} min` : 'untimed'}
+                  {q.requireProctoring ? ' · proctored' : ''}
+                  {q.availableFrom ? ` · opens ${new Date(q.availableFrom).toLocaleString()}` : ''}
+                  {q.dueAt ? ` · closes ${new Date(q.dueAt).toLocaleString()}` : ''}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button className={ghost} onClick={() => toggle(q.id, "questions")} aria-expanded={open?.id === q.id && open.section === "questions"} aria-label={`Questions of ${q.title}`}>
+                <button
+                  className={ghost}
+                  onClick={() => toggle(q.id, 'questions')}
+                  aria-expanded={open?.id === q.id && open.section === 'questions'}
+                  aria-label={`Questions of ${q.title}`}
+                >
                   Questions
                 </button>
-                <button className={ghost} onClick={() => toggle(q.id, "results")} aria-expanded={open?.id === q.id && open.section === "results"} aria-label={`Results of ${q.title}`}>
+                <button
+                  className={ghost}
+                  onClick={() => toggle(q.id, 'results')}
+                  aria-expanded={open?.id === q.id && open.section === 'results'}
+                  aria-label={`Results of ${q.title}`}
+                >
                   Results
                 </button>
-                <button className={ghost} onClick={() => toggle(q.id, "extensions")} aria-expanded={open?.id === q.id && open.section === "extensions"} aria-label={`Extensions on ${q.title}`}>
+                <button
+                  className={ghost}
+                  onClick={() => toggle(q.id, 'extensions')}
+                  aria-expanded={open?.id === q.id && open.section === 'extensions'}
+                  aria-label={`Extensions on ${q.title}`}
+                >
                   Extensions
                 </button>
                 {canEdit && (
                   <>
-                    <button className={ghost} onClick={() => toggle(q.id, "settings")} aria-label={`Settings of ${q.title}`}>
+                    <button className={ghost} onClick={() => toggle(q.id, 'settings')} aria-label={`Settings of ${q.title}`}>
                       Settings
                     </button>
-                    <button className={ghost} onClick={() => toggle(q.id, "delete")} aria-label={`Delete ${q.title}`}>
+                    <button className={ghost} onClick={() => toggle(q.id, 'delete')} aria-label={`Delete ${q.title}`}>
                       Delete
                     </button>
                   </>
@@ -246,13 +314,20 @@ export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ co
               </div>
             </div>
 
-            {open?.id === q.id && open.section === "questions" && <QuizQuestions quizId={q.id} canEdit={canEdit} onChanged={list.reload} />}
-            {open?.id === q.id && open.section === "results" && <QuizResults quizId={q.id} onChanged={list.reload} />}
-            {open?.id === q.id && open.section === "extensions" && <ExtensionsPanel courseId={courseId} itemType="QUIZ" itemId={q.id} courseDue={q.dueAt ?? null} />}
-            {open?.id === q.id && open.section === "settings" && <EditSettings quizId={q.id} busy={busy} onSave={(s) => update(q.id, s)} onCancel={() => setOpen(null)} />}
-            {open?.id === q.id && open.section === "delete" && (
+            {open?.id === q.id && open.section === 'questions' && <QuizQuestions quizId={q.id} canEdit={canEdit} onChanged={list.reload} />}
+            {open?.id === q.id && open.section === 'results' && <QuizResults quizId={q.id} onChanged={list.reload} />}
+            {open?.id === q.id && open.section === 'extensions' && (
+              <ExtensionsPanel courseId={courseId} itemType="QUIZ" itemId={q.id} courseDue={q.dueAt ?? null} />
+            )}
+            {open?.id === q.id && open.section === 'settings' && (
+              <EditSettings quizId={q.id} busy={busy} onSave={(s) => update(q.id, s)} onCancel={() => setOpen(null)} />
+            )}
+            {open?.id === q.id && open.section === 'delete' && (
               <div className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2.5 text-xs">
-                <span className="text-ink">Delete “{q.title}” and its {q.questionCount} question{q.questionCount === 1 ? "" : "s"}? A quiz that learners have already attempted cannot be deleted.</span>
+                <span className="text-ink">
+                  Delete “{q.title}” and its {q.questionCount} question{q.questionCount === 1 ? '' : 's'}? A quiz that learners have already
+                  attempted cannot be deleted.
+                </span>
                 <button className={danger} disabled={busy} onClick={() => remove(q.id)}>
                   Delete quiz
                 </button>
@@ -269,7 +344,13 @@ export const QuizPanel: React.FC<{ courseId: string; canEdit: boolean }> = ({ co
         (creating ? (
           <SettingsForm initial={defaults} saveLabel="Create quiz" busy={busy} onSave={create} onCancel={() => setCreating(false)} />
         ) : (
-          <button className={primary} onClick={() => { clearError(); setCreating(true); }}>
+          <button
+            className={primary}
+            onClick={() => {
+              clearError();
+              setCreating(true);
+            }}
+          >
             + New quiz
           </button>
         ))}

@@ -2,17 +2,17 @@
 
 The production stack is `docker-compose.prod.yml` at the repository root:
 
-| Service | What it does | Reachable from |
-|---|---|---|
-| `caddy` | TLS termination and routing (`deploy/Caddyfile`, image `deploy/caddy/Dockerfile`) | the internet: 80, 443, 443/udp |
-| `web` | Next.js pages (`deploy/Dockerfile.web`) | Caddy |
-| `api` | Express API (`deploy/Dockerfile.api`), connects as `lms_app` so row-level security applies | Caddy, web |
-| `migrate` | one-shot `prisma migrate deploy` as the database owner; `api` starts only after it exits 0 | - |
-| `postgres` | PostgreSQL 16, volume `pgdata`; `deploy/init-db-prod.sh` creates `lms_app` on first start | internal network only |
-| `redis` | shared rate-limit counters (no persistence) | internal network only |
-| `clamav` | optional virus scanning (`COMPOSE_PROFILES=scan`) | internal network only (+ egress for signature updates) |
-| `backup` | optional nightly database backups (`COMPOSE_PROFILES=backup`) | internal network only (+ egress for the S3 copy) |
-| `prometheus`, `alertmanager` | optional metrics and alerts (`COMPOSE_PROFILES=monitoring`) | Prometheus UI on 127.0.0.1 only; Alertmanager internal (+ egress for notifications) |
+| Service                      | What it does                                                                               | Reachable from                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `caddy`                      | TLS termination and routing (`deploy/Caddyfile`, image `deploy/caddy/Dockerfile`)          | the internet: 80, 443, 443/udp                                                      |
+| `web`                        | Next.js pages (`deploy/Dockerfile.web`)                                                    | Caddy                                                                               |
+| `api`                        | Express API (`deploy/Dockerfile.api`), connects as `lms_app` so row-level security applies | Caddy, web                                                                          |
+| `migrate`                    | one-shot `prisma migrate deploy` as the database owner; `api` starts only after it exits 0 | -                                                                                   |
+| `postgres`                   | PostgreSQL 16, volume `pgdata`; `deploy/init-db-prod.sh` creates `lms_app` on first start  | internal network only                                                               |
+| `redis`                      | shared rate-limit counters (no persistence)                                                | internal network only                                                               |
+| `clamav`                     | optional virus scanning (`COMPOSE_PROFILES=scan`)                                          | internal network only (+ egress for signature updates)                              |
+| `backup`                     | optional nightly database backups (`COMPOSE_PROFILES=backup`)                              | internal network only (+ egress for the S3 copy)                                    |
+| `prometheus`, `alertmanager` | optional metrics and alerts (`COMPOSE_PROFILES=monitoring`)                                | Prometheus UI on 127.0.0.1 only; Alertmanager internal (+ egress for notifications) |
 
 Configuration lives in one `.env` file next to the compose file, copied from `.env.production.example`.
 Compose hands each container only the variables it needs: the database superuser password and the Cloudflare
@@ -23,13 +23,13 @@ domain, which is not decided yet. Nothing in the repository hardcodes them; they
 
 ## Addresses
 
-| Name | Example | Serves |
-|---|---|---|
-| `TENANT_BASE_DOMAIN` | `lms.example.com` | the platform itself (registration, find my organisation, the default organisation) |
-| `<slug>.TENANT_BASE_DOMAIN` | `harvard.lms.example.com` | one organisation each |
-| `CUSTOM_DOMAIN_TARGET` | `tenants.lms.example.com` | nothing (redirects to the platform); customers CNAME their domains to it |
-| `SCORM_CONTENT_HOST` | `lms-content.example.net` | SCORM packages only, on a separate registrable domain |
-| customer domains | `learn.university.edu` | one organisation each, once verified |
+| Name                        | Example                   | Serves                                                                             |
+| --------------------------- | ------------------------- | ---------------------------------------------------------------------------------- |
+| `TENANT_BASE_DOMAIN`        | `lms.example.com`         | the platform itself (registration, find my organisation, the default organisation) |
+| `<slug>.TENANT_BASE_DOMAIN` | `harvard.lms.example.com` | one organisation each                                                              |
+| `CUSTOM_DOMAIN_TARGET`      | `tenants.lms.example.com` | nothing (redirects to the platform); customers CNAME their domains to it           |
+| `SCORM_CONTENT_HOST`        | `lms-content.example.net` | SCORM packages only, on a separate registrable domain                              |
+| customer domains            | `learn.university.edu`    | one organisation each, once verified                                               |
 
 On every host except the SCORM one, Caddy routes `/api/*` straight to the API (so the API is exactly one proxy hop
 away: `TRUST_PROXY=1`), answers `/internal/*` with 404, and sends everything else to Next.js. Caddy replaces any
@@ -41,20 +41,20 @@ production, which browsers accept only over HTTPS: every address above must be H
 
 In the zone of the base domain (Cloudflare, since Caddy's wildcard certificate uses Cloudflare's API):
 
-| Type | Name | Value | Proxy status |
-|---|---|---|---|
-| A | `lms.example.com` | server IPv4 | **DNS only** (grey cloud) |
-| AAAA | `lms.example.com` | server IPv6 (if it has one) | DNS only |
-| A / AAAA | `*.lms.example.com` | server IPv4 / IPv6 | DNS only |
-| (covered by the wildcard) | `tenants.lms.example.com` | - | - |
+| Type                      | Name                      | Value                       | Proxy status              |
+| ------------------------- | ------------------------- | --------------------------- | ------------------------- |
+| A                         | `lms.example.com`         | server IPv4                 | **DNS only** (grey cloud) |
+| AAAA                      | `lms.example.com`         | server IPv6 (if it has one) | DNS only                  |
+| A / AAAA                  | `*.lms.example.com`       | server IPv4 / IPv6          | DNS only                  |
+| (covered by the wildcard) | `tenants.lms.example.com` | -                           | -                         |
 
 `CUSTOM_DOMAIN_TARGET` is covered by the wildcard record if it sits under the base domain. If you choose a host
 elsewhere, add an A/AAAA (or CNAME) record for it pointing at the server.
 
 In the zone of the SCORM content domain (any DNS provider):
 
-| Type | Name | Value |
-|---|---|---|
+| Type     | Name                      | Value              |
+| -------- | ------------------------- | ------------------ |
 | A / AAAA | `lms-content.example.net` | server IPv4 / IPv6 |
 
 Keep the records **DNS only**. With Cloudflare's proxy (orange cloud) in front, Cloudflare terminates TLS, clients'
@@ -80,11 +80,11 @@ Put it in `.env` as `CLOUDFLARE_API_TOKEN`. Another DNS provider: build Caddy wi
 
 ## Certificates
 
-| Hosts | Certificate | Challenge |
-|---|---|---|
-| `lms.example.com`, `*.lms.example.com` (all organisations, `www`, `CUSTOM_DOMAIN_TARGET`) | two certificates: the apex and the wildcard | DNS-01 via Cloudflare |
-| `lms-content.example.net` | ordinary | HTTP-01 / TLS-ALPN-01 (ports 80/443 must be open) |
-| verified customer domains | one each, **on demand** at the first visit | HTTP-01 / TLS-ALPN-01 |
+| Hosts                                                                                     | Certificate                                 | Challenge                                         |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------- |
+| `lms.example.com`, `*.lms.example.com` (all organisations, `www`, `CUSTOM_DOMAIN_TARGET`) | two certificates: the apex and the wildcard | DNS-01 via Cloudflare                             |
+| `lms-content.example.net`                                                                 | ordinary                                    | HTTP-01 / TLS-ALPN-01 (ports 80/443 must be open) |
+| verified customer domains                                                                 | one each, **on demand** at the first visit  | HTTP-01 / TLS-ALPN-01                             |
 
 New organisations need no certificate work: the wildcard covers them. Certificates and the ACME account are kept in
 the `caddy-data` volume; Caddy renews them about 30 days before expiry.
@@ -94,10 +94,10 @@ the `caddy-data` volume; Caddy renews them about 30 days before expiry.
 The organisation's administrator (or the platform operator) enters the domain in the admin screens; the full
 flow is in `docs/custom-domains.md`. On the customer's side:
 
-| Type | Name | Value | Purpose |
-|---|---|---|---|
-| TXT | `_lms-verify.learn.university.edu` | `lms-verify=<token>` (shown in the admin screen) | proves control; the domain goes live once found |
-| CNAME | `learn.university.edu` | `tenants.lms.example.com` (`CUSTOM_DOMAIN_TARGET`) | sends visitors to this server |
+| Type  | Name                               | Value                                              | Purpose                                         |
+| ----- | ---------------------------------- | -------------------------------------------------- | ----------------------------------------------- |
+| TXT   | `_lms-verify.learn.university.edu` | `lms-verify=<token>` (shown in the admin screen)   | proves control; the domain goes live once found |
+| CNAME | `learn.university.edu`             | `tenants.lms.example.com` (`CUSTOM_DOMAIN_TARGET`) | sends visitors to this server                   |
 
 - A CNAME cannot be placed on a zone apex (`university.edu` itself). Customers who want an apex need their DNS
   provider's ALIAS/ANAME/CNAME flattening, or A/AAAA records with the server's addresses (which then break if the
@@ -177,12 +177,12 @@ back automatically: take a backup before upgrading).
 
 What must be backed up, and how:
 
-| What | Where | How |
-|---|---|---|
-| Database | volume `pgdata` | the `backup` service (`COMPOSE_PROFILES=backup`): nightly `pg_dump -Fc`, retention, optional encryption and a copy to S3-compatible storage; `restore.sh` and a monthly `restore-drill.sh`. Setup, restore steps and the drill: [operations.md](operations.md). For point-in-time recovery use a managed PostgreSQL or WAL archiving (e.g. pgBackRest/WAL-G) instead. |
-| Uploaded files | volume `uploads` (`STORAGE_DRIVER=local`) or the S3 bucket | copy the volume (`docker run --rm -v enterprise-lms_uploads:/d -v $PWD:/b alpine tar czf /b/uploads.tgz -C /d .`) or enable bucket versioning/replication |
-| `PII_ENCRYPTION_KEY`, `JWT_SECRET`, the rest of `.env` | the server | a password manager or secret store, **separately** from the database dumps: dumps are useless without the key, and dangerous next to it |
-| Certificates | volume `caddy-data` | optional; restoring it avoids re-issuing (rate limits) |
+| What                                                   | Where                                                      | How                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------ | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database                                               | volume `pgdata`                                            | the `backup` service (`COMPOSE_PROFILES=backup`): nightly `pg_dump -Fc`, retention, optional encryption and a copy to S3-compatible storage; `restore.sh` and a monthly `restore-drill.sh`. Setup, restore steps and the drill: [operations.md](operations.md). For point-in-time recovery use a managed PostgreSQL or WAL archiving (e.g. pgBackRest/WAL-G) instead. |
+| Uploaded files                                         | volume `uploads` (`STORAGE_DRIVER=local`) or the S3 bucket | copy the volume (`docker run --rm -v enterprise-lms_uploads:/d -v $PWD:/b alpine tar czf /b/uploads.tgz -C /d .`) or enable bucket versioning/replication                                                                                                                                                                                                             |
+| `PII_ENCRYPTION_KEY`, `JWT_SECRET`, the rest of `.env` | the server                                                 | a password manager or secret store, **separately** from the database dumps: dumps are useless without the key, and dangerous next to it                                                                                                                                                                                                                               |
+| Certificates                                           | volume `caddy-data`                                        | optional; restoring it avoids re-issuing (rate limits)                                                                                                                                                                                                                                                                                                                |
 
 Redis holds only rate-limit counters and needs no backup. The `lms_app` password lives in the database: after a
 restore into a fresh volume the init script recreates the role from `LMS_APP_DB_PASSWORD`.

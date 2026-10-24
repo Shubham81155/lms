@@ -6,14 +6,17 @@ import { ALLOWED_TYPES, contentDisposition, localDriver, newStorageKey } from '.
 
 describe('contentDisposition', () => {
   it('gives an ASCII fallback and the UTF-8 name', () => {
-    expect(contentDisposition('résumé "final".pdf', true)).toBe(`inline; filename="r_sum_ _final_.pdf"; filename*=UTF-8''${encodeURIComponent('résumé "final".pdf')}`);
+    expect(contentDisposition('résumé "final".pdf', true)).toBe(
+      `inline; filename="r_sum_ _final_.pdf"; filename*=UTF-8''${encodeURIComponent('résumé "final".pdf')}`
+    );
     expect(contentDisposition('notes.txt', false)).toMatch(/^attachment; filename="notes.txt"/);
   });
 });
 
 describe('allowed types', () => {
   it('never accepts types a browser would run', () => {
-    for (const t of ['text/html', 'image/svg+xml', 'application/xhtml+xml', 'application/javascript', 'text/xml']) expect(ALLOWED_TYPES[t]).toBeUndefined();
+    for (const t of ['text/html', 'image/svg+xml', 'application/xhtml+xml', 'application/javascript', 'text/xml'])
+      expect(ALLOWED_TYPES[t]).toBeUndefined();
   });
 });
 

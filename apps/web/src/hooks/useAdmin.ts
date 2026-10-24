@@ -1,13 +1,8 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { api, ApiError } from '@/lib/api';
-import {
-  DashboardStats,
-  AuditLog,
-  PaginatedResponse,
-  PaginationMeta,
-} from '@/lib/types';
+import { DashboardStats, AuditLog, PaginatedResponse, PaginationMeta } from '@/lib/types';
 
 export function useDashboardStats() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -24,7 +19,7 @@ export function useDashboardStats() {
       setStats(statsData);
       setData(statsData);
     } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to fetch dashboard stats');
+      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch dashboard stats';
       setError(message);
       setStats(null);
       setData(null);
@@ -121,7 +116,7 @@ export function useAuditLogs(page: number = 1, filters?: AuditLogFilters) {
         setPagination(null);
       }
     } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to fetch audit logs');
+      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch audit logs';
       setError(message);
       setLogs([]);
       setData(null);

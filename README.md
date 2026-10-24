@@ -110,14 +110,17 @@ LMS/
 ## Getting Started
 
 ### 1. Install dependencies
+
 ```bash
 npm install
 ```
 
 ### 2. Configure environment
+
 ```bash
 cp .env.example .env
 ```
+
 Replace every `CHANGE_ME` value. The API **refuses to start** with missing, short, placeholder, or publicly known secrets.
 
 ```bash
@@ -126,47 +129,56 @@ node -e "console.log('PII_ENCRYPTION_KEY=' + require('crypto').randomBytes(32).t
 ```
 
 ### 3. Database
+
 Needs PostgreSQL. Use two roles: an unprivileged `lms_app` for the API and a privileged one for migrations (see [multi-tenancy](docs/architecture/multi_tenancy.md#3-database-roles-important)).
+
 ```bash
 psql -f packages/database/sql/create_app_role.sql        # once, as a superuser
 npm run db:deploy -w @enterprise-lms/database           # migrations (uses DIRECT_URL)
 npm run db:seed   -w @enterprise-lms/database           # dev only; users get SEED_PASSWORD
 ```
+
 The `db:*` scripts load the root `.env` for you.
 
 ### 4. Run
+
 ```bash
 npm run dev   # API on :4000, web on :3000
 ```
 
 ### 5. Test
+
 ```bash
 npm test                                  # API, database, security and web packages (the API tests start their own PostgreSQL)
 npm run lint                              # no errors allowed
 npm run typecheck                         # root TypeScript check
 (cd apps/web && npx tsc --noEmit -p .)    # the root typecheck does not cover the web app
 ```
+
 CI (`.github/workflows/ci.yml`) runs the same checks on every push. After changing routes or response shapes, run
 `npm run api:sync` (see "API description").
 
 ### 6. Create the platform operator (once)
+
 Organisations are registered, approved and managed by a **platform operator**: a super administrator of a special
 operator organisation. Set `PLATFORM_OPERATOR_TENANT` (its address, e.g. `platform`) in `.env`, then:
+
 ```bash
 npm run platform:bootstrap -w @enterprise-lms/api -- --email you@example.com --first Ada --last Lovelace
 ```
+
 It creates the operator organisation and invites you (with `--password` it sets one directly). Sign in at that
 organisation's address and open `/platform`.
 
 ### File storage and SCORM
 
-| Setting | What it does |
-|---|---|
-| `STORAGE_DRIVER=local` (default), `STORAGE_LOCAL_DIR` | Uploads go to a folder on the API server (one server only; back it up). docker-compose keeps it in the `uploads` volume. |
-| `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | Any S3-compatible service (AWS S3, Cloudflare R2, MinIO, Backblaze B2). Downloads redirect to five-minute signed links. |
-| `UPLOAD_MAX_MB` (default 100) | Largest upload. The web proxy limit in `apps/web/next.config.ts` must be at least this. |
-| `CLAMAV_URL` (e.g. `tcp://clamav:3310`), `CLAMAV_TIMEOUT_MS`, `FILE_SCAN_SWEEP_INTERVAL_SECONDS` | Scan every upload with a ClamAV daemon before it is stored. Infected files are refused (422, audited); while the scanner cannot answer, uploads are refused (503). Files stored before it was set are scanned in the background, and any found infected are no longer served (410). Unset: uploads are stored unscanned, with a warning at startup in production. docker-compose: `CLAMAV_URL=tcp://clamav:3310 docker compose --profile scan up`. |
-| `SCORM_CONTENT_ORIGIN` | Where SCORM packages are served: a host name of its own pointing at the API (e.g. `https://content.example.org`), never the web app's origin, and not sharing a cookie domain with it. Without it SCORM is off in production; development uses `http://127.0.0.1:4000`. |
+| Setting                                                                                                                         | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `STORAGE_DRIVER=local` (default), `STORAGE_LOCAL_DIR`                                                                           | Uploads go to a folder on the API server (one server only; back it up). docker-compose keeps it in the `uploads` volume.                                                                                                                                                                                                                                                                                                                           |
+| `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE` | Any S3-compatible service (AWS S3, Cloudflare R2, MinIO, Backblaze B2). Downloads redirect to five-minute signed links.                                                                                                                                                                                                                                                                                                                            |
+| `UPLOAD_MAX_MB` (default 100)                                                                                                   | Largest upload. The web proxy limit in `apps/web/next.config.ts` must be at least this.                                                                                                                                                                                                                                                                                                                                                            |
+| `CLAMAV_URL` (e.g. `tcp://clamav:3310`), `CLAMAV_TIMEOUT_MS`, `FILE_SCAN_SWEEP_INTERVAL_SECONDS`                                | Scan every upload with a ClamAV daemon before it is stored. Infected files are refused (422, audited); while the scanner cannot answer, uploads are refused (503). Files stored before it was set are scanned in the background, and any found infected are no longer served (410). Unset: uploads are stored unscanned, with a warning at startup in production. docker-compose: `CLAMAV_URL=tcp://clamav:3310 docker compose --profile scan up`. |
+| `SCORM_CONTENT_ORIGIN`                                                                                                          | Where SCORM packages are served: a host name of its own pointing at the API (e.g. `https://content.example.org`), never the web app's origin, and not sharing a cookie domain with it. Without it SCORM is off in production; development uses `http://127.0.0.1:4000`.                                                                                                                                                                            |
 
 Uploads are refused when their type could run script in a browser (HTML, SVG) and are always served with `nosniff`.
 SCORM packages run their own scripts, which is why they live on their own origin: there is no session there, every
@@ -181,13 +193,13 @@ Everything here is for the **platform operator** (`/platform`) and for organisat
 
 ### Organisations, addresses and registration
 
-| Setting | What it does |
-|---|---|
+| Setting                                                                        | What it does                                                                                                                                                                                 |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TENANT_BASE_DOMAIN` (e.g. `lms.example.com`; `localhost:3000` in development) | Every organisation is served at `<slug>.<TENANT_BASE_DOMAIN>`. Names the platform itself uses (the web app, API, SCORM host, the operator's address, the custom-domain target) are reserved. |
-| `PLATFORM_OPERATOR_TENANT` | The operator organisation. Its super administrators approve registrations, create and suspend organisations, and set plans, seats and feature overrides. |
-| `ORG_REGISTRATION_ENABLED`, `ORG_REQUEST_RATE_LIMIT_MAX` | The public registration form (`/register`): address availability, institution details, e-mail confirmation of the contact, then operator approval. `false` closes the form. |
-| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile CAPTCHA on the public forms. Set both or neither; once set, a failed or unreachable check refuses the form. |
-| `TRUST_PROXY` | How many proxies stand in front of the API (1 behind Caddy or the Next.js proxy). The tenant is read from the host the proxy reports. |
+| `PLATFORM_OPERATOR_TENANT`                                                     | The operator organisation. Its super administrators approve registrations, create and suspend organisations, and set plans, seats and feature overrides.                                     |
+| `ORG_REGISTRATION_ENABLED`, `ORG_REQUEST_RATE_LIMIT_MAX`                       | The public registration form (`/register`): address availability, institution details, e-mail confirmation of the contact, then operator approval. `false` closes the form.                  |
+| `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`                                   | Cloudflare Turnstile CAPTCHA on the public forms. Set both or neither; once set, a failed or unreachable check refuses the form.                                                             |
+| `TRUST_PROXY`                                                                  | How many proxies stand in front of the API (1 behind Caddy or the Next.js proxy). The tenant is read from the host the proxy reports.                                                        |
 
 - **Find my organisation** (`/find-organisation`): a person enters their e-mail address and is sent, to that address
   only, the addresses of the organisations they belong to. The answer on screen is always the same.
@@ -223,8 +235,7 @@ Administrators (Administration › Plan & Integrations › Export and deletion) 
 Off by default: new organisations start active. Set `ORG_TRIAL_DAYS` to start approved and operator-created
 organisations on a trial (the operator can choose per organisation and start, extend, end or convert trials in the
 console). Administrators are e-mailed 7 days and 1 day before the end; then the organisation is **read-only** for
-`ORG_TRIAL_GRACE_DAYS` (14; people can still sign in, look and take their data out, and the API answers changes with
-402) and afterwards suspended. `TRIAL_JOB_INTERVAL_SECONDS` sets how often trials are checked.
+`ORG_TRIAL_GRACE_DAYS` (14; people can still sign in, look and take their data out, and the API answers changes with 402) and afterwards suspended. `TRIAL_JOB_INTERVAL_SECONDS` sets how often trials are checked.
 
 The trial, custom-domain re-check and offboarding jobs take a database advisory lock (`apps/api/src/lib/job-lock.ts`),
 so several API instances can run without doing the work twice. The older workers (webhook retries, e-mail dispatch,

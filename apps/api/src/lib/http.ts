@@ -59,17 +59,13 @@ export function handleError(req: Request, res: Response, err: unknown, fallbackM
     if (err.code === 'P2003') return sendError(req, res, 400, 'A referenced record does not exist');
   }
 
-  logger.error(
-    { err, requestId: req.id, method: req.method, path: req.originalUrl, userId: req.user?.id },
-    fallbackMessage
-  );
+  logger.error({ err, requestId: req.id, method: req.method, path: req.originalUrl, userId: req.user?.id }, fallbackMessage);
   return sendError(req, res, 500, fallbackMessage);
 }
 
 /** Wraps an async handler so any throw reaches handleError instead of crashing or hanging. */
 export const route =
-  (fallbackMessage: string, handler: (req: Request, res: Response) => Promise<unknown>) =>
-  async (req: Request, res: Response) => {
+  (fallbackMessage: string, handler: (req: Request, res: Response) => Promise<unknown>) => async (req: Request, res: Response) => {
     try {
       await handler(req, res);
     } catch (err) {

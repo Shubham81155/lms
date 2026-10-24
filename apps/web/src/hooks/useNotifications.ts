@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { api } from "@/lib/api";
-import { typedGet } from "@/lib/typed-api";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { api } from '@/lib/api';
+import { typedGet } from '@/lib/typed-api';
 
 export interface ServerNotification {
   id: string;
@@ -19,24 +19,24 @@ export interface NotificationItem {
   title: string;
   message: string;
   timestamp: string;
-  type: "ACADEMIC" | "EXAM" | "SECURITY" | "ANNOUNCEMENT";
+  type: 'ACADEMIC' | 'EXAM' | 'SECURITY' | 'ANNOUNCEMENT';
   isRead: boolean;
   actionUrl?: string;
   actionLabel?: string;
 }
 
-const TYPE_BY_CATEGORY: Record<string, NotificationItem["type"]> = {
-  GRADE: "ACADEMIC",
-  COURSE: "ACADEMIC",
-  FORUM: "ACADEMIC",
-  EXAM: "EXAM",
-  SYSTEM: "SECURITY",
-  LIVE: "ANNOUNCEMENT",
+const TYPE_BY_CATEGORY: Record<string, NotificationItem['type']> = {
+  GRADE: 'ACADEMIC',
+  COURSE: 'ACADEMIC',
+  FORUM: 'ACADEMIC',
+  EXAM: 'EXAM',
+  SYSTEM: 'SECURITY',
+  LIVE: 'ANNOUNCEMENT',
 };
 
 export function timeAgo(iso: string, now: number = Date.now()): string {
   const s = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 1000));
-  if (s < 60) return "just now";
+  if (s < 60) return 'just now';
   if (s < 3600) return `${Math.floor(s / 60)} min ago`;
   if (s < 86_400) return `${Math.floor(s / 3600)} h ago`;
   return `${Math.floor(s / 86_400)} d ago`;
@@ -46,12 +46,12 @@ export function toItem(n: ServerNotification): NotificationItem {
   return {
     id: n.id,
     title: n.title,
-    message: n.body ?? "",
+    message: n.body ?? '',
     timestamp: timeAgo(n.createdAt),
-    type: TYPE_BY_CATEGORY[n.category] ?? "ANNOUNCEMENT",
+    type: TYPE_BY_CATEGORY[n.category] ?? 'ANNOUNCEMENT',
     isRead: n.readAt !== null,
     actionUrl: n.link ?? undefined,
-    actionLabel: n.link ? "Open" : undefined,
+    actionLabel: n.link ? 'Open' : undefined,
   };
 }
 
@@ -70,13 +70,13 @@ export function useNotifications() {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await typedGet("/api/v1/notifications", { limit: 50 });
+      const res = await typedGet('/api/v1/notifications', { limit: 50 });
       if (!alive.current) return;
       setItems(res.data.map(toItem));
       setUnreadCount(res.unreadCount);
       setError(null);
     } catch (e: any) {
-      if (alive.current) setError(e?.message ?? "Could not load notifications");
+      if (alive.current) setError(e?.message ?? 'Could not load notifications');
     } finally {
       if (alive.current) setIsLoading(false);
     }
@@ -111,7 +111,7 @@ export function useNotifications() {
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
     try {
-      await api.post("/api/v1/notifications/read-all");
+      await api.post('/api/v1/notifications/read-all');
     } catch {
       refresh();
     }

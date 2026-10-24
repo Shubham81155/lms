@@ -19,7 +19,18 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   const user = (id: string, tenantId: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('operator', 't-op', 'SUPER_ADMIN');
   await user('op-admin', 't-op', 'TENANT_ADMIN');
   await user('h-admin', 't-h', 'TENANT_ADMIN');
@@ -41,13 +52,20 @@ beforeEach(async () => {
 
 async function as(who: string, tenant: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
 
 async function grant(scope: 'READ_ONLY' | 'FULL' = 'READ_ONLY', hours = 1) {
-  const res = await (await as('h-admin', 'harvard')).post('/api/v1/support/passes').send({ scope, hours, reason: 'Gradebook totals look wrong' });
+  const res = await (
+    await as('h-admin', 'harvard')
+  )
+    .post('/api/v1/support/passes')
+    .send({ scope, hours, reason: 'Gradebook totals look wrong' });
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body.data as { id: string; scope: string; status: string; expiresAt: string };
 }
@@ -80,7 +98,9 @@ describe('granting', () => {
 
     const list = await (await as('operator', 'ops')).get('/api/v1/operator/support-passes');
     expect(list.status).toBe(200);
-    expect(list.body.data).toEqual([expect.objectContaining({ id: pass.id, organization: expect.objectContaining({ slug: 'harvard' }), grantedByEmail: 'h-admin@x.edu' })]);
+    expect(list.body.data).toEqual([
+      expect.objectContaining({ id: pass.id, organization: expect.objectContaining({ slug: 'harvard' }), grantedByEmail: 'h-admin@x.edu' }),
+    ]);
 
     const own = await (await as('h-admin', 'harvard')).get('/api/v1/support/passes');
     expect(own.body.data[0]).toMatchObject({ id: pass.id, status: 'ACTIVE' });
@@ -157,7 +177,9 @@ describe('entering', () => {
     expect((await agent.get('/api/v1/auth/me')).status).toBe(401);
     // The support account takes no seat between sessions.
     expect(await admin.user.count({ where: { tenantId: 't-h', email: 'platform-support@support.invalid', status: 'ACTIVE' } })).toBe(0);
-    expect(await auditActions(pass.id)).toEqual(expect.arrayContaining(['SUPPORT_ACCESS_GRANTED', 'SUPPORT_SESSION_STARTED', 'SUPPORT_SESSION_ENDED']));
+    expect(await auditActions(pass.id)).toEqual(
+      expect.arrayContaining(['SUPPORT_ACCESS_GRANTED', 'SUPPORT_SESSION_STARTED', 'SUPPORT_SESSION_ENDED'])
+    );
   });
 
   it('allows and audits every change in a full session', async () => {
@@ -168,7 +190,12 @@ describe('entering', () => {
     await new Promise((r) => setTimeout(r, 200)); // the entry is written once the response has gone
     const writes = await admin.auditLog.findMany({ where: { tenantId: 't-h', action: 'SUPPORT_WRITE', resourceId: pass.id } });
     expect(writes).toHaveLength(1);
-    expect(writes[0].diffJson).toMatchObject({ operatorEmail: 'operator@x.edu', method: 'POST', path: '/api/v1/admin/scim-tokens', status: 201 });
+    expect(writes[0].diffJson).toMatchObject({
+      operatorEmail: 'operator@x.edu',
+      method: 'POST',
+      path: '/api/v1/admin/scim-tokens',
+      status: 201,
+    });
   });
 });
 
@@ -196,7 +223,10 @@ describe('ending', () => {
     expect((await agent.get('/api/v1/auth/me')).status).toBe(200);
     await admin.supportPass.update({ where: { id: pass.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
     expect((await agent.get('/api/v1/auth/me')).status).toBe(401);
-    expect((await (await as('h-admin', 'harvard')).get('/api/v1/support/passes')).body.data[0]).toMatchObject({ id: pass.id, status: 'EXPIRED' });
+    expect((await (await as('h-admin', 'harvard')).get('/api/v1/support/passes')).body.data[0]).toMatchObject({
+      id: pass.id,
+      status: 'EXPIRED',
+    });
   });
 
   it('ends the support session on an ordinary sign-out, as exit does', async () => {

@@ -50,7 +50,12 @@ export interface DispatchResult {
   dropped: number;
 }
 
-async function processTenant(tenant: { id: string; name: string; slug: string; customDomain: string | null }, now: Date, batch: number, totals: DispatchResult) {
+async function processTenant(
+  tenant: { id: string; name: string; slug: string; customDomain: string | null },
+  now: Date,
+  batch: number,
+  totals: DispatchResult
+) {
   const pending = await prisma.notification.findMany({
     where: { emailStatus: 'PENDING' },
     orderBy: { createdAt: 'asc' },
@@ -103,7 +108,10 @@ async function processTenant(tenant: { id: string; name: string; slug: string; c
 export async function dispatchPendingEmails(opts: { now?: Date; batch?: number } = {}): Promise<DispatchResult> {
   const now = opts.now ?? new Date();
   const totals: DispatchResult = { sent: 0, failed: 0, held: 0, dropped: 0 };
-  const tenants = await basePrisma.tenant.findMany({ where: { status: { in: ['ACTIVE', 'TRIAL'] } }, select: { id: true, name: true, slug: true, customDomain: true } });
+  const tenants = await basePrisma.tenant.findMany({
+    where: { status: { in: ['ACTIVE', 'TRIAL'] } },
+    select: { id: true, name: true, slug: true, customDomain: true },
+  });
   for (const tenant of tenants) {
     try {
       await runWithTenant(tenant.id, () => processTenant(tenant, now, opts.batch ?? DEFAULT_BATCH, totals));

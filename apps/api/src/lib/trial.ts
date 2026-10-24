@@ -61,19 +61,36 @@ const formatDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', 
 
 /** Writes the entry in the organisation's trail and in the operator's (the actor's, or the configured operator organisation). */
 async function auditTrial(tenantId: string, action: string, diffJson: Record<string, unknown>, actor?: Actor): Promise<void> {
-  const entry = { action, resourceType: 'TENANT', resourceId: tenantId, ipAddress: actor?.ipAddress, userAgent: actor?.userAgent, diffJson };
+  const entry = {
+    action,
+    resourceType: 'TENANT',
+    resourceId: tenantId,
+    ipAddress: actor?.ipAddress,
+    userAgent: actor?.userAgent,
+    diffJson,
+  };
   await runWithTenant(tenantId, () => logAuditEvent({ ...entry, tenantId, userId: undefined }));
   const operatorId =
     actor?.tenantId ??
-    (config.PLATFORM_OPERATOR_TENANT ? (await basePrisma.tenant.findUnique({ where: { slug: config.PLATFORM_OPERATOR_TENANT }, select: { id: true } }))?.id : undefined);
-  if (operatorId && operatorId !== tenantId) await runWithTenant(operatorId, () => logAuditEvent({ ...entry, tenantId: operatorId, userId: actor?.userId }));
+    (config.PLATFORM_OPERATOR_TENANT
+      ? (await basePrisma.tenant.findUnique({ where: { slug: config.PLATFORM_OPERATOR_TENANT }, select: { id: true } }))?.id
+      : undefined);
+  if (operatorId && operatorId !== tenantId)
+    await runWithTenant(operatorId, () => logAuditEvent({ ...entry, tenantId: operatorId, userId: actor?.userId }));
 }
 
 /** E-mails the organisation's administrators (active or still invited). Problems are logged, never thrown. */
-export async function mailAdmins(tenant: { id: string; name: string; slug: string; customDomain: string | null }, subject: string, body: string): Promise<number> {
+export async function mailAdmins(
+  tenant: { id: string; name: string; slug: string; customDomain: string | null },
+  subject: string,
+  body: string
+): Promise<number> {
   if (!mailDelivers()) return 0;
   const admins = await runWithTenant(tenant.id, () =>
-    prisma.user.findMany({ where: { tenantId: tenant.id, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: { in: ['ACTIVE', 'INVITED'] }, erasedAt: null }, select: { email: true, firstName: true } })
+    prisma.user.findMany({
+      where: { tenantId: tenant.id, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: { in: ['ACTIVE', 'INVITED'] }, erasedAt: null },
+      select: { email: true, firstName: true },
+    })
   );
   let sent = 0;
   for (const a of admins) {
@@ -103,9 +120,16 @@ const iso = (d: Date | null) => d?.toISOString() ?? null;
 /** Starts a trial of `days` for an active (paid) organisation. */
 export async function startTrial(id: string, days: number, actor: Actor, now = new Date()): Promise<void> {
   const t = await trialTenant(id, actor);
-  if (t.status !== 'ACTIVE') throw new HttpError(409, t.status === 'TRIAL' ? 'This organisation already has a trial: extend it instead' : 'Only an active organisation can start a trial');
+  if (t.status !== 'ACTIVE')
+    throw new HttpError(
+      409,
+      t.status === 'TRIAL' ? 'This organisation already has a trial: extend it instead' : 'Only an active organisation can start a trial'
+    );
   const trialEndsAt = new Date(now.getTime() + days * DAY_MS);
-  const done = await basePrisma.tenant.updateMany({ where: { id, status: 'ACTIVE' }, data: { status: 'TRIAL', trialEndsAt, trialExpiredAt: null, trialRemindersSent: 0 } });
+  const done = await basePrisma.tenant.updateMany({
+    where: { id, status: 'ACTIVE' },
+    data: { status: 'TRIAL', trialEndsAt, trialExpiredAt: null, trialRemindersSent: 0 },
+  });
   if (done.count !== 1) throw new HttpError(409, 'The organisation changed meanwhile; try again');
   invalidateTenantSessions(id);
   await auditTrial(id, 'TRIAL_STARTED', { tenant: t.slug, days, trialEndsAt: iso(trialEndsAt) }, actor);
@@ -127,17 +151,35 @@ export async function extendTrial(id: string, days: number, actor: Actor, now = 
   });
   if (done.count !== 1) throw new HttpError(409, 'The organisation changed meanwhile; try again');
   invalidateTenantSessions(id);
-  await auditTrial(id, 'TRIAL_EXTENDED', { tenant: t.slug, days, before: { status: t.status, trialEndsAt: iso(t.trialEndsAt), trialExpiredAt: iso(t.trialExpiredAt) }, trialEndsAt: iso(trialEndsAt) }, actor);
+  await auditTrial(
+    id,
+    'TRIAL_EXTENDED',
+    {
+      tenant: t.slug,
+      days,
+      before: { status: t.status, trialEndsAt: iso(t.trialEndsAt), trialExpiredAt: iso(t.trialExpiredAt) },
+      trialEndsAt: iso(trialEndsAt),
+    },
+    actor
+  );
 }
 
 /** Ends a running trial now: the organisation becomes read-only, as when a trial runs out. */
 export async function endTrial(id: string, actor: Actor, now = new Date()): Promise<void> {
   const t = await trialTenant(id, actor);
   if (t.status !== 'TRIAL' || t.trialExpiredAt) throw new HttpError(409, 'This organisation has no running trial');
-  const done = await basePrisma.tenant.updateMany({ where: { id, status: 'TRIAL', trialExpiredAt: null }, data: { trialEndsAt: now, trialExpiredAt: now } });
+  const done = await basePrisma.tenant.updateMany({
+    where: { id, status: 'TRIAL', trialExpiredAt: null },
+    data: { trialEndsAt: now, trialExpiredAt: now },
+  });
   if (done.count !== 1) throw new HttpError(409, 'The organisation changed meanwhile; try again');
   invalidateTenantSessions(id);
-  await auditTrial(id, 'TRIAL_ENDED', { tenant: t.slug, before: { trialEndsAt: iso(t.trialEndsAt) }, readOnlyUntil: iso(readOnlyUntil(now)), by: 'OPERATOR' }, actor);
+  await auditTrial(
+    id,
+    'TRIAL_ENDED',
+    { tenant: t.slug, before: { trialEndsAt: iso(t.trialEndsAt) }, readOnlyUntil: iso(readOnlyUntil(now)), by: 'OPERATOR' },
+    actor
+  );
 }
 
 /** Makes a trial organisation (running, ended, or suspended because its trial lapsed) an active, paid one. */
@@ -151,7 +193,16 @@ export async function convertTrial(id: string, actor: Actor): Promise<void> {
   });
   if (done.count !== 1) throw new HttpError(409, 'The organisation changed meanwhile; try again');
   invalidateTenantSessions(id);
-  await auditTrial(id, 'TRIAL_CONVERTED', { tenant: t.slug, before: { status: t.status, trialEndsAt: iso(t.trialEndsAt), trialExpiredAt: iso(t.trialExpiredAt) }, after: { status: 'ACTIVE' } }, actor);
+  await auditTrial(
+    id,
+    'TRIAL_CONVERTED',
+    {
+      tenant: t.slug,
+      before: { status: t.status, trialEndsAt: iso(t.trialEndsAt), trialExpiredAt: iso(t.trialExpiredAt) },
+      after: { status: 'ACTIVE' },
+    },
+    actor
+  );
 }
 
 // --------------------------------------------------------------------------- the background job
@@ -170,7 +221,15 @@ export interface TrialJobResult {
 export async function runTrialJob(now = new Date()): Promise<TrialJobResult> {
   const result: TrialJobResult = { reminded: 0, expired: 0, suspended: 0 };
   const notOperator = config.PLATFORM_OPERATOR_TENANT ? { NOT: { slug: config.PLATFORM_OPERATOR_TENANT } } : {};
-  const select = { id: true, slug: true, name: true, customDomain: true, trialEndsAt: true, trialExpiredAt: true, trialRemindersSent: true } as const;
+  const select = {
+    id: true,
+    slug: true,
+    name: true,
+    customDomain: true,
+    trialEndsAt: true,
+    trialExpiredAt: true,
+    trialRemindersSent: true,
+  } as const;
 
   // Reminders and expiry: running trials ending within a week.
   const running = await basePrisma.tenant.findMany({
@@ -181,7 +240,10 @@ export async function runTrialJob(now = new Date()): Promise<TrialJobResult> {
     try {
       const endsAt = t.trialEndsAt!;
       if (endsAt <= now) {
-        const done = await basePrisma.tenant.updateMany({ where: { id: t.id, status: 'TRIAL', trialExpiredAt: null, trialEndsAt: endsAt }, data: { trialExpiredAt: now } });
+        const done = await basePrisma.tenant.updateMany({
+          where: { id: t.id, status: 'TRIAL', trialExpiredAt: null, trialEndsAt: endsAt },
+          data: { trialExpiredAt: now },
+        });
         if (done.count !== 1) continue;
         invalidateTenantSessions(t.id);
         result.expired++;
@@ -197,9 +259,13 @@ export async function runTrialJob(now = new Date()): Promise<TrialJobResult> {
       const left = endsAt.getTime() - now.getTime();
       const sent = t.trialRemindersSent;
       // One day before (which also stands for the week's reminder when the trial was shorter), else seven.
-      const due = left <= DAY_MS ? (sent & REMINDER_1_DAY ? 0 : REMINDER_1_DAY | REMINDER_7_DAYS) : sent & REMINDER_7_DAYS ? 0 : REMINDER_7_DAYS;
+      const due =
+        left <= DAY_MS ? (sent & REMINDER_1_DAY ? 0 : REMINDER_1_DAY | REMINDER_7_DAYS) : sent & REMINDER_7_DAYS ? 0 : REMINDER_7_DAYS;
       if (!due) continue;
-      const claimed = await basePrisma.tenant.updateMany({ where: { id: t.id, status: 'TRIAL', trialExpiredAt: null, trialEndsAt: endsAt, trialRemindersSent: sent }, data: { trialRemindersSent: sent | due } });
+      const claimed = await basePrisma.tenant.updateMany({
+        where: { id: t.id, status: 'TRIAL', trialExpiredAt: null, trialEndsAt: endsAt, trialRemindersSent: sent },
+        data: { trialRemindersSent: sent | due },
+      });
       if (claimed.count !== 1) continue;
       const days = daysLeft(endsAt, now);
       const recipients = await mailAdmins(
@@ -216,15 +282,31 @@ export async function runTrialJob(now = new Date()): Promise<TrialJobResult> {
 
   // Read-only periods that are over.
   const cutoff = new Date(now.getTime() - config.ORG_TRIAL_GRACE_DAYS * DAY_MS);
-  const lapsed = await basePrisma.tenant.findMany({ where: { status: 'TRIAL', trialExpiredAt: { not: null, lte: cutoff }, ...notOperator }, select });
+  const lapsed = await basePrisma.tenant.findMany({
+    where: { status: 'TRIAL', trialExpiredAt: { not: null, lte: cutoff }, ...notOperator },
+    select,
+  });
   for (const t of lapsed) {
     try {
-      const done = await basePrisma.tenant.updateMany({ where: { id: t.id, status: 'TRIAL', trialExpiredAt: t.trialExpiredAt }, data: { status: 'SUSPENDED' } });
+      const done = await basePrisma.tenant.updateMany({
+        where: { id: t.id, status: 'TRIAL', trialExpiredAt: t.trialExpiredAt },
+        data: { status: 'SUSPENDED' },
+      });
       if (done.count !== 1) continue;
       invalidateTenantSessions(t.id);
       result.suspended++;
-      await auditTrial(t.id, 'TENANT_SUSPENDED', { tenant: t.slug, before: 'TRIAL', after: 'SUSPENDED', reason: 'TRIAL_LAPSED', trialExpiredAt: iso(t.trialExpiredAt) });
-      await mailAdmins(t, `${t.name} has been suspended`, `The trial of ${t.name} ended on ${formatDate(t.trialExpiredAt!)} and the organisation has now been suspended: nobody can sign in. Its data is kept. To continue, contact us.`);
+      await auditTrial(t.id, 'TENANT_SUSPENDED', {
+        tenant: t.slug,
+        before: 'TRIAL',
+        after: 'SUSPENDED',
+        reason: 'TRIAL_LAPSED',
+        trialExpiredAt: iso(t.trialExpiredAt),
+      });
+      await mailAdmins(
+        t,
+        `${t.name} has been suspended`,
+        `The trial of ${t.name} ended on ${formatDate(t.trialExpiredAt!)} and the organisation has now been suspended: nobody can sign in. Its data is kept. To continue, contact us.`
+      );
     } catch (err) {
       logger.error({ err, tenantId: t.id }, 'trial job failed for an organisation');
     }

@@ -9,14 +9,7 @@ import { isAdminRole, requireContentAccess, requireCourseEditor, requireCourseSt
 import { notify } from '../lib/notify';
 import { autoComplete } from '../lib/completion';
 import { csvRow } from '../lib/csv';
-import {
-  CurveMethod,
-  ItemScore,
-  applyCurve,
-  computeRawGrade,
-  letterFor,
-  weightsValid,
-} from '../lib/gradebook';
+import { CurveMethod, ItemScore, applyCurve, computeRawGrade, letterFor, weightsValid } from '../lib/gradebook';
 
 // Mounted at /api/v1. Grade flow: staff configure categories, items and a curve -> calculate
 // (DRAFT) -> an editor submits for review (SUBMITTED) -> an administrator who did not submit
@@ -47,8 +40,14 @@ export const rejectSchema = z.object({ note: z.string().trim().min(3).max(1000) 
 
 const audit = (req: Request, action: string, courseId: string, diffJson?: unknown) =>
   logAuditEvent({
-    tenantId: tenantIdOf(req), userId: req.user!.id, action, resourceType: 'GRADEBOOK', resourceId: courseId,
-    ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson,
+    tenantId: tenantIdOf(req),
+    userId: req.user!.id,
+    action,
+    resourceType: 'GRADEBOOK',
+    resourceId: courseId,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    diffJson,
   });
 
 /** GET /courses/:courseId/gradebook/config */
@@ -66,10 +65,7 @@ router.get(
       data: {
         curve: { method: course?.gradeCurveMethod, value: course?.gradeCurveValue },
         categories,
-        items: [
-          ...quizzes.map((q) => ({ type: 'QUIZ', ...q })),
-          ...assignments.map((a) => ({ type: 'ASSIGNMENT', ...a })),
-        ],
+        items: [...quizzes.map((q) => ({ type: 'QUIZ', ...q })), ...assignments.map((a) => ({ type: 'ASSIGNMENT', ...a }))],
       },
     });
   })
@@ -93,15 +89,22 @@ router.put(
       const match = existing.find((e) => e.name.toLowerCase() === c.name.toLowerCase());
       if (match) {
         keep.add(match.id);
-        await prisma.gradeCategory.update({ where: { id: match.id }, data: { name: c.name, weightPercent: c.weightPercent, orderIndex: i } });
+        await prisma.gradeCategory.update({
+          where: { id: match.id },
+          data: { name: c.name, weightPercent: c.weightPercent, orderIndex: i },
+        });
       } else {
-        await prisma.gradeCategory.create({ data: { tenantId, courseId: access.course.id, name: c.name, weightPercent: c.weightPercent, orderIndex: i } });
+        await prisma.gradeCategory.create({
+          data: { tenantId, courseId: access.course.id, name: c.name, weightPercent: c.weightPercent, orderIndex: i },
+        });
       }
     }
     const drop = existing.filter((e) => !keep.has(e.id)).map((e) => e.id);
     if (drop.length) await prisma.gradeCategory.deleteMany({ where: { id: { in: drop } } }); // items fall back to uncategorised
     await audit(req, 'GRADEBOOK_CATEGORIES_UPDATED', access.course.id, { categories });
-    return res.json({ data: await prisma.gradeCategory.findMany({ where: { courseId: access.course.id }, orderBy: { orderIndex: 'asc' } }) });
+    return res.json({
+      data: await prisma.gradeCategory.findMany({ where: { courseId: access.course.id }, orderBy: { orderIndex: 'asc' } }),
+    });
   })
 );
 
@@ -136,7 +139,10 @@ router.put(
   route('Failed to save curve', async (req, res) => {
     const access = await requireCourseEditor(req, idSchema.parse(req.params.courseId));
     const { method, value } = parseBody(req, curveSchema);
-    await prisma.course.update({ where: { id: access.course.id }, data: { gradeCurveMethod: method, gradeCurveValue: method === 'NONE' ? 0 : value } });
+    await prisma.course.update({
+      where: { id: access.course.id },
+      data: { gradeCurveMethod: method, gradeCurveValue: method === 'NONE' ? 0 : value },
+    });
     await audit(req, 'GRADEBOOK_CURVE_UPDATED', access.course.id, { method, value });
     return res.json({ data: { method, value: method === 'NONE' ? 0 : value } });
   })
@@ -151,12 +157,26 @@ async function scoreItems(courseId: string, learnerIds: string[], all = false) {
     prisma.quiz.findMany({
       where: { courseId, ...(all ? { questions: { some: {} } } : { gradeCategoryId: { not: null } }) },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, title: true, gradeCategoryId: true, submissions: { where: { submittedAt: { not: null }, userId: { in: learnerIds } }, select: { userId: true, score: true, maxScore: true, answersJson: true } } },
+      select: {
+        id: true,
+        title: true,
+        gradeCategoryId: true,
+        submissions: {
+          where: { submittedAt: { not: null }, userId: { in: learnerIds } },
+          select: { userId: true, score: true, maxScore: true, answersJson: true },
+        },
+      },
     }),
     prisma.assignment.findMany({
       where: { courseId, ...(all ? {} : { gradeCategoryId: { not: null } }) },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, title: true, maxPoints: true, gradeCategoryId: true, submissions: { where: { userId: { in: learnerIds } }, select: { userId: true, grade: true } } },
+      select: {
+        id: true,
+        title: true,
+        maxPoints: true,
+        gradeCategoryId: true,
+        submissions: { where: { userId: { in: learnerIds } }, select: { userId: true, grade: true } },
+      },
     }),
   ]);
 
@@ -164,10 +184,15 @@ async function scoreItems(courseId: string, learnerIds: string[], all = false) {
   for (const q of quizzes) {
     for (const userId of learnerIds) {
       const attempts = q.submissions.filter((s) => s.userId === userId);
-      const finished = attempts.filter((s) => ((s.answersJson as any)?.pendingManual ?? []).length === 0 && s.score !== null && s.maxScore > 0);
+      const finished = attempts.filter(
+        (s) => ((s.answersJson as any)?.pendingManual ?? []).length === 0 && s.score !== null && s.maxScore > 0
+      );
       const best = finished.length ? Math.max(...finished.map((s) => ((s.score as number) / s.maxScore) * 100)) : null;
       byUser.get(userId)!.push({
-        itemId: q.id, type: 'QUIZ', title: q.title, categoryId: q.gradeCategoryId,
+        itemId: q.id,
+        type: 'QUIZ',
+        title: q.title,
+        categoryId: q.gradeCategoryId,
         percent: best !== null ? best : attempts.length ? null : 0,
         pending: best === null && attempts.length > 0,
         missing: attempts.length === 0,
@@ -179,7 +204,10 @@ async function scoreItems(courseId: string, learnerIds: string[], all = false) {
       const sub = a.submissions.find((s) => s.userId === userId);
       const graded = sub && sub.grade !== null;
       byUser.get(userId)!.push({
-        itemId: a.id, type: 'ASSIGNMENT', title: a.title, categoryId: a.gradeCategoryId,
+        itemId: a.id,
+        type: 'ASSIGNMENT',
+        title: a.title,
+        categoryId: a.gradeCategoryId,
         percent: graded ? Math.min(100, ((sub!.grade as number) / a.maxPoints) * 100) : sub ? null : 0,
         pending: !!sub && !graded,
         missing: !sub,
@@ -199,14 +227,22 @@ async function gradeGrid(courseId: string) {
   const learnerIds = enrollments.map((e) => e.userId);
   const [scores, grades, categories] = await Promise.all([
     scoreItems(courseId, learnerIds, true),
-    prisma.courseGrade.findMany({ where: { courseId }, select: { userId: true, rawPercent: true, curvedPercent: true, letter: true, status: true } }),
+    prisma.courseGrade.findMany({
+      where: { courseId },
+      select: { userId: true, rawPercent: true, curvedPercent: true, letter: true, status: true },
+    }),
     prisma.gradeCategory.findMany({ where: { courseId }, select: { id: true, name: true } }),
   ]);
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
   const first = learnerIds.length ? scores.get(learnerIds[0])! : [];
   const gradeOf = new Map(grades.map((g) => [g.userId, g]));
   return {
-    items: first.map((i) => ({ id: i.itemId, type: i.type, title: i.title, category: i.categoryId ? categoryName.get(i.categoryId) ?? null : null })),
+    items: first.map((i) => ({
+      id: i.itemId,
+      type: i.type,
+      title: i.title,
+      category: i.categoryId ? (categoryName.get(i.categoryId) ?? null) : null,
+    })),
     learners: enrollments.map((e) => {
       const g = gradeOf.get(e.userId);
       return {
@@ -214,7 +250,12 @@ async function gradeGrid(courseId: string) {
         name: `${e.user.firstName} ${e.user.lastName}`,
         email: e.user.email,
         scores: Object.fromEntries(
-          scores.get(e.userId)!.map((i) => [i.itemId, { percent: i.percent === null ? null : Math.round(i.percent * 10) / 10, pending: i.pending, missing: i.missing }])
+          scores
+            .get(e.userId)!
+            .map((i) => [
+              i.itemId,
+              { percent: i.percent === null ? null : Math.round(i.percent * 10) / 10, pending: i.pending, missing: i.missing },
+            ])
         ),
         courseGrade: g ? { rawPercent: g.rawPercent, curvedPercent: g.curvedPercent, letter: g.letter, status: g.status } : null,
       };
@@ -245,7 +286,9 @@ router.get(
 
     const cell = (sc: { percent: number | null; pending: boolean; missing: boolean } | undefined) =>
       !sc ? '' : sc.pending ? 'pending' : sc.missing ? 'missing' : sc.percent;
-    let csv = '\uFEFF' + csvRow(['name', 'email', ...grid.items.map((i) => `${i.title} (%)`), 'course_raw_%', 'course_curved_%', 'letter', 'grade_status']);
+    let csv =
+      '\uFEFF' +
+      csvRow(['name', 'email', ...grid.items.map((i) => `${i.title} (%)`), 'course_raw_%', 'course_curved_%', 'letter', 'grade_status']);
     for (const l of grid.learners) {
       csv += csvRow([
         l.name,
@@ -281,12 +324,17 @@ router.post(
       prisma.enrollment.findMany({ where: { courseId, status: { in: [...ACTIVE] } }, select: { userId: true } }),
       prisma.courseGrade.findMany({ where: { courseId }, select: { userId: true, status: true } }),
     ]);
-    if (!weightsValid(categories.map((c) => c.weightPercent))) throw new HttpError(409, 'Configure grade categories (weights totalling 100) first');
+    if (!weightsValid(categories.map((c) => c.weightPercent)))
+      throw new HttpError(409, 'Configure grade categories (weights totalling 100) first');
 
     const learnerIds = enrollments.map((e) => e.userId);
     const scores = await scoreItems(courseId, learnerIds);
     const raws = learnerIds.map((id) => computeRawGrade(categories, scores.get(id)!));
-    const curved = applyCurve(raws.map((r) => r.rawPercent), (course?.gradeCurveMethod ?? 'NONE') as CurveMethod, course?.gradeCurveValue ?? 0);
+    const curved = applyCurve(
+      raws.map((r) => r.rawPercent),
+      (course?.gradeCurveMethod ?? 'NONE') as CurveMethod,
+      course?.gradeCurveValue ?? 0
+    );
     const locked = new Set(existing.filter((e) => e.status === 'APPROVED').map((e) => e.userId));
 
     let written = 0;
@@ -326,7 +374,13 @@ router.get(
       if (!mine || mine.status !== 'APPROVED') return res.json({ data: null, published: false });
       return res.json({
         published: true,
-        data: { rawPercent: mine.rawPercent, curvedPercent: mine.curvedPercent, letter: mine.letter, breakdown: mine.breakdownJson, approvedAt: mine.approvedAt },
+        data: {
+          rawPercent: mine.rawPercent,
+          curvedPercent: mine.curvedPercent,
+          letter: mine.letter,
+          breakdown: mine.breakdownJson,
+          approvedAt: mine.approvedAt,
+        },
       });
     }
 
@@ -338,12 +392,22 @@ router.get(
     const count = (s: string) => rows.filter((r) => r.status === s).length;
     return res.json({
       data: rows.map((r) => ({
-        userId: r.userId, name: `${r.user.firstName} ${r.user.lastName}`, email: r.user.email,
-        rawPercent: r.rawPercent, curvedPercent: r.curvedPercent, letter: r.letter, incomplete: r.incomplete,
-        status: r.status, breakdown: r.breakdownJson, decisionNote: r.decisionNote,
+        userId: r.userId,
+        name: `${r.user.firstName} ${r.user.lastName}`,
+        email: r.user.email,
+        rawPercent: r.rawPercent,
+        curvedPercent: r.curvedPercent,
+        letter: r.letter,
+        incomplete: r.incomplete,
+        status: r.status,
+        breakdown: r.breakdownJson,
+        decisionNote: r.decisionNote,
       })),
       summary: {
-        total: rows.length, draft: count('DRAFT'), submitted: count('SUBMITTED'), approved: count('APPROVED'),
+        total: rows.length,
+        draft: count('DRAFT'),
+        submitted: count('SUBMITTED'),
+        approved: count('APPROVED'),
         incomplete: rows.filter((r) => r.incomplete).length,
         average: rows.length ? Math.round((rows.reduce((s, r) => s + r.curvedPercent, 0) / rows.length) * 100) / 100 : null,
       },
@@ -357,16 +421,39 @@ router.post(
   route('Failed to submit grades', async (req, res) => {
     const access = await requireCourseEditor(req, idSchema.parse(req.params.courseId));
     const { allowIncomplete } = parseBody(req, submitSchema);
-    const drafts = await prisma.courseGrade.findMany({ where: { courseId: access.course.id, status: 'DRAFT' }, select: { id: true, incomplete: true } });
+    const drafts = await prisma.courseGrade.findMany({
+      where: { courseId: access.course.id, status: 'DRAFT' },
+      select: { id: true, incomplete: true },
+    });
     if (drafts.length === 0) throw new HttpError(409, 'There are no draft grades to submit; calculate first');
     const incomplete = drafts.filter((d) => d.incomplete).length;
     if (incomplete > 0 && !allowIncomplete) {
-      throw new HttpError(409, `${incomplete} grade(s) still have work waiting for a grader. Finish grading or submit with allowIncomplete.`);
+      throw new HttpError(
+        409,
+        `${incomplete} grade(s) still have work waiting for a grader. Finish grading or submit with allowIncomplete.`
+      );
     }
-    await prisma.courseGrade.updateMany({ where: { id: { in: drafts.map((d) => d.id) } }, data: { status: 'SUBMITTED', submittedById: req.user!.id, decisionNote: null } });
+    await prisma.courseGrade.updateMany({
+      where: { id: { in: drafts.map((d) => d.id) } },
+      data: { status: 'SUBMITTED', submittedById: req.user!.id, decisionNote: null },
+    });
 
-    const admins = await prisma.user.findMany({ where: { tenantId: tenantIdOf(req), role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: 'ACTIVE', NOT: { id: req.user!.id } }, select: { id: true } });
-    await Promise.all(admins.map((a) => notify({ tenantId: tenantIdOf(req), userId: a.id, category: 'GRADE', title: 'Final grades awaiting approval', body: `${drafts.length} grade(s) were submitted for review.`, link: `/courses/${access.course.id}/gradebook` })));
+    const admins = await prisma.user.findMany({
+      where: { tenantId: tenantIdOf(req), role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: 'ACTIVE', NOT: { id: req.user!.id } },
+      select: { id: true },
+    });
+    await Promise.all(
+      admins.map((a) =>
+        notify({
+          tenantId: tenantIdOf(req),
+          userId: a.id,
+          category: 'GRADE',
+          title: 'Final grades awaiting approval',
+          body: `${drafts.length} grade(s) were submitted for review.`,
+          link: `/courses/${access.course.id}/gradebook`,
+        })
+      )
+    );
     await audit(req, 'GRADEBOOK_SUBMITTED', access.course.id, { count: drafts.length, incomplete });
     return res.json({ data: { submitted: drafts.length, incomplete } });
   })
@@ -396,11 +483,21 @@ router.post(
     const now = new Date();
     for (const g of submitted) {
       await prisma.courseGrade.update({ where: { id: g.id }, data: { status: 'APPROVED', approvedById: req.user!.id, approvedAt: now } });
-      await prisma.enrollment.updateMany({ where: { courseId: access.course.id, userId: g.userId }, data: { finalGrade: g.curvedPercent } });
+      await prisma.enrollment.updateMany({
+        where: { courseId: access.course.id, userId: g.userId },
+        data: { finalGrade: g.curvedPercent },
+      });
     }
     await Promise.all(
       submitted.map((g) =>
-        notify({ tenantId, userId: g.userId, category: 'GRADE', title: 'Your final grade is available', body: `Final grade: ${g.curvedPercent}% (${g.letter})`, link: `/courses/${access.course.id}/gradebook` })
+        notify({
+          tenantId,
+          userId: g.userId,
+          category: 'GRADE',
+          title: 'Your final grade is available',
+          body: `Final grade: ${g.curvedPercent}% (${g.letter})`,
+          link: `/courses/${access.course.id}/gradebook`,
+        })
       )
     );
     // Learners who have also finished every lesson and pass complete the course now.
@@ -418,11 +515,28 @@ router.post(
     adminOnly(req);
     const access = await requireCourseStaff(req, idSchema.parse(req.params.courseId));
     const { note } = parseBody(req, rejectSchema);
-    const submitted = await prisma.courseGrade.findMany({ where: { courseId: access.course.id, status: 'SUBMITTED' }, select: { id: true, submittedById: true } });
+    const submitted = await prisma.courseGrade.findMany({
+      where: { courseId: access.course.id, status: 'SUBMITTED' },
+      select: { id: true, submittedById: true },
+    });
     if (submitted.length === 0) throw new HttpError(409, 'There are no submitted grades to reject');
-    await prisma.courseGrade.updateMany({ where: { id: { in: submitted.map((s) => s.id) } }, data: { status: 'DRAFT', decisionNote: note } });
+    await prisma.courseGrade.updateMany({
+      where: { id: { in: submitted.map((s) => s.id) } },
+      data: { status: 'DRAFT', decisionNote: note },
+    });
     const submitters = [...new Set(submitted.map((s) => s.submittedById).filter((x): x is string => !!x))];
-    await Promise.all(submitters.map((userId) => notify({ tenantId: tenantIdOf(req), userId, category: 'GRADE', title: 'Final grades were sent back', body: note, link: `/courses/${access.course.id}/gradebook` })));
+    await Promise.all(
+      submitters.map((userId) =>
+        notify({
+          tenantId: tenantIdOf(req),
+          userId,
+          category: 'GRADE',
+          title: 'Final grades were sent back',
+          body: note,
+          link: `/courses/${access.course.id}/gradebook`,
+        })
+      )
+    );
     await audit(req, 'GRADEBOOK_REJECTED', access.course.id, { count: submitted.length, note });
     return res.json({ data: { returned: submitted.length } });
   })
@@ -434,7 +548,10 @@ router.post(
   route('Failed to reopen grades', async (req, res) => {
     adminOnly(req);
     const access = await requireCourseStaff(req, idSchema.parse(req.params.courseId));
-    const r = await prisma.courseGrade.updateMany({ where: { courseId: access.course.id, status: 'APPROVED' }, data: { status: 'DRAFT', approvedById: null, approvedAt: null, submittedById: null } });
+    const r = await prisma.courseGrade.updateMany({
+      where: { courseId: access.course.id, status: 'APPROVED' },
+      data: { status: 'DRAFT', approvedById: null, approvedAt: null, submittedById: null },
+    });
     if (r.count === 0) throw new HttpError(409, 'There are no approved grades to reopen');
     await audit(req, 'GRADEBOOK_REOPENED', access.course.id, { count: r.count });
     return res.json({ data: { reopened: r.count } });

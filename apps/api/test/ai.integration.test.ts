@@ -32,16 +32,30 @@ function reply(provider: Provider): unknown {
   const finish = next.finish ?? 'stop';
   if (provider === 'claude') {
     return {
-      id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-test',
+      id: 'msg_1',
+      type: 'message',
+      role: 'assistant',
+      model: 'claude-test',
       content: [{ type: 'text', text }],
       stop_reason: finish === 'refusal' ? 'refusal' : finish === 'length' ? 'max_tokens' : 'end_turn',
-      stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5 },
+      stop_sequence: null,
+      usage: { input_tokens: 10, output_tokens: 5 },
     };
   }
   if (provider === 'gemini') {
-    return { candidates: [{ content: { parts: [{ text }] }, finishReason: finish === 'refusal' ? 'SAFETY' : finish === 'length' ? 'MAX_TOKENS' : 'STOP' }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } };
+    return {
+      candidates: [
+        { content: { parts: [{ text }] }, finishReason: finish === 'refusal' ? 'SAFETY' : finish === 'length' ? 'MAX_TOKENS' : 'STOP' },
+      ],
+      usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 },
+    };
   }
-  return { choices: [{ message: { content: text, refusal: finish === 'refusal' ? 'no' : null }, finish_reason: finish === 'length' ? 'length' : 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 5 } };
+  return {
+    choices: [
+      { message: { content: text, refusal: finish === 'refusal' ? 'no' : null }, finish_reason: finish === 'length' ? 'length' : 'stop' },
+    ],
+    usage: { prompt_tokens: 10, completion_tokens: 5 },
+  };
 }
 
 beforeAll(async () => {
@@ -71,14 +85,43 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-s', slug: 'small', name: 'small', tier: 'STARTER' } });
   const user = (id: string, tenantId: string, slug: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'Lovelace', role, passwordHash: bcrypt.hashSync(`${PASSWORD}-${slug}`, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'Lovelace',
+        role,
+        passwordHash: bcrypt.hashSync(`${PASSWORD}-${slug}`, 4),
+        emailVerified: true,
+      },
+    });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 's3']) await user(s, 't-h', 'harvard', 'STUDENT');
   await user('small-student', 't-s', 'small', 'STUDENT');
-  await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'BIO-101', title: 'Cell Biology', description: 'Cells and how they work.', status: 'PUBLISHED' } });
+  await admin.course.create({
+    data: {
+      id: 'c1',
+      tenantId: 't-h',
+      code: 'BIO-101',
+      title: 'Cell Biology',
+      description: 'Cells and how they work.',
+      status: 'PUBLISHED',
+    },
+  });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  await admin.module.create({ data: { id: 'm1', courseId: 'c1', title: 'Membranes', lessons: { create: [{ title: 'Osmosis', bodyContent: 'Water moves across a semi-permeable membrane toward higher solute concentration.' }] } } });
+  await admin.module.create({
+    data: {
+      id: 'm1',
+      courseId: 'c1',
+      title: 'Membranes',
+      lessons: {
+        create: [{ title: 'Osmosis', bodyContent: 'Water moves across a semi-permeable membrane toward higher solute concentration.' }],
+      },
+    },
+  });
   await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: 's1', status: 'IN_PROGRESS' } });
 
   process.env.DATABASE_URL = db.appUrl;
@@ -101,7 +144,10 @@ beforeEach(() => {
 
 async function as(who: string, tenant = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: `${PASSWORD}-${tenant}` });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: `${PASSWORD}-${tenant}` });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -115,15 +161,29 @@ const check = (key: string, res: { status: number; body: any }) => {
   return res.body.data;
 };
 
-const tutorReply = { reply: 'Osmosis is the movement of water (lesson "Osmosis").', practice: { question: 'Water moves toward…', options: ['lower solute', 'higher solute', 'neither'], correctIndex: 1, explanation: 'Toward higher solute concentration.' } };
+const tutorReply = {
+  reply: 'Osmosis is the movement of water (lesson "Osmosis").',
+  practice: {
+    question: 'Water moves toward…',
+    options: ['lower solute', 'higher solute', 'neither'],
+    correctIndex: 1,
+    explanation: 'Toward higher solute concentration.',
+  },
+};
 const ask = async (who = 's1', body: Record<string, unknown> = { message: 'hi' }) => (await as(who)).post('/api/v1/ai/tutor').send(body);
 
 describe('status', () => {
   it('says whether AI can be used, and why not', async () => {
     expect(check('GET /api/v1/ai/status', await (await as('s1')).get('/api/v1/ai/status'))).toEqual({ enabled: true, reason: null });
-    expect(check('GET /api/v1/ai/status', await (await as('small-student', 'small')).get('/api/v1/ai/status'))).toEqual({ enabled: false, reason: 'NOT_ON_PLAN' });
+    expect(check('GET /api/v1/ai/status', await (await as('small-student', 'small')).get('/api/v1/ai/status'))).toEqual({
+      enabled: false,
+      reason: 'NOT_ON_PLAN',
+    });
     config.AI_API_KEY = undefined;
-    expect(check('GET /api/v1/ai/status', await (await as('s1')).get('/api/v1/ai/status'))).toEqual({ enabled: false, reason: 'NOT_CONFIGURED' });
+    expect(check('GET /api/v1/ai/status', await (await as('s1')).get('/api/v1/ai/status'))).toEqual({
+      enabled: false,
+      reason: 'NOT_CONFIGURED',
+    });
     expect((await request(app).get('/api/v1/ai/status')).status).toBe(401);
   });
 });
@@ -235,14 +295,26 @@ describe("the organisation's own provider", () => {
     expect((await (await as('teacher')).get('/api/v1/ai/settings')).status).toBe(403);
     expect((await (await as('s1')).put('/api/v1/ai/settings').send({ provider: 'GEMINI' })).status).toBe(403);
     const view = check('GET /api/v1/ai/settings', await (await as('admin')).get('/api/v1/ai/settings'));
-    expect(view).toMatchObject({ provider: null, hasKey: false, onPlan: true, effectiveSource: 'PLATFORM', platformDefault: { provider: 'GEMINI', model: 'gemini-test' } });
+    expect(view).toMatchObject({
+      provider: null,
+      hasKey: false,
+      onPlan: true,
+      effectiveSource: 'PLATFORM',
+      platformDefault: { provider: 'GEMINI', model: 'gemini-test' },
+    });
     expect(view.providers.map((p: any) => p.id)).toEqual(['ANTHROPIC', 'GEMINI', 'XAI']);
   });
 
   it('saves a Claude key encrypted, never shows it again, and uses it', async () => {
     const a = await as('admin');
     const put = check('PUT /api/v1/ai/settings', await a.put('/api/v1/ai/settings').send({ provider: 'ANTHROPIC', apiKey: CLAUDE_KEY }));
-    expect(put).toMatchObject({ provider: 'ANTHROPIC', model: 'claude-opus-5-5', hasKey: true, keyHint: '…WXYZ', effectiveSource: 'TENANT' });
+    expect(put).toMatchObject({
+      provider: 'ANTHROPIC',
+      model: 'claude-opus-5-5',
+      hasKey: true,
+      keyHint: '…WXYZ',
+      effectiveSource: 'TENANT',
+    });
     expect(JSON.stringify(put)).not.toContain(CLAUDE_KEY);
     expect(JSON.stringify((await a.get('/api/v1/ai/settings')).body)).not.toContain(CLAUDE_KEY);
 
@@ -274,7 +346,10 @@ describe("the organisation's own provider", () => {
     expect((await a.put('/api/v1/ai/settings').send({ provider: 'XAI' })).status).toBe(400);
     expect((await a.put('/api/v1/ai/settings').send({ provider: 'XAI', model: 'grok 4; drop', apiKey: GROK_KEY })).status).toBe(400);
     expect((await a.put('/api/v1/ai/settings').send({ provider: 'XAI', apiKey: 'short' })).status).toBe(400);
-    const put = check('PUT /api/v1/ai/settings', await a.put('/api/v1/ai/settings').send({ provider: 'XAI', model: 'grok-4.7', apiKey: GROK_KEY }));
+    const put = check(
+      'PUT /api/v1/ai/settings',
+      await a.put('/api/v1/ai/settings').send({ provider: 'XAI', model: 'grok-4.7', apiKey: GROK_KEY })
+    );
     expect(put).toMatchObject({ provider: 'XAI', model: 'grok-4.7', effectiveSource: 'TENANT' });
 
     answer({ reply: 'ok', practice: null });
@@ -289,7 +364,12 @@ describe("the organisation's own provider", () => {
   it('tests the settings that apply', async () => {
     const a = await as('admin');
     answer({ ok: true });
-    expect(check('POST /api/v1/ai/settings/test', await a.post('/api/v1/ai/settings/test'))).toMatchObject({ ok: true, error: null, provider: 'XAI', model: 'grok-4.7' });
+    expect(check('POST /api/v1/ai/settings/test', await a.post('/api/v1/ai/settings/test'))).toMatchObject({
+      ok: true,
+      error: null,
+      provider: 'XAI',
+      model: 'grok-4.7',
+    });
     next = { status: 401 };
     const bad = check('POST /api/v1/ai/settings/test', await a.post('/api/v1/ai/settings/test'));
     expect(bad).toMatchObject({ ok: false, provider: 'XAI' });
@@ -299,16 +379,21 @@ describe("the organisation's own provider", () => {
   it('can be switched off, and removing the key falls back to the platform default', async () => {
     const a = await as('admin');
     check('PUT /api/v1/ai/settings', await a.put('/api/v1/ai/settings').send({ provider: 'XAI', enabled: false }));
-    expect(check('GET /api/v1/ai/status', await (await as('s1')).get('/api/v1/ai/status'))).toEqual({ enabled: false, reason: 'TURNED_OFF' });
+    expect(check('GET /api/v1/ai/status', await (await as('s1')).get('/api/v1/ai/status'))).toEqual({
+      enabled: false,
+      reason: 'TURNED_OFF',
+    });
     expect((await ask()).status).toBe(503);
 
-    const back = check('PUT /api/v1/ai/settings', await a.put('/api/v1/ai/settings').send({ provider: 'XAI', apiKey: null, enabled: true }));
+    const back = check(
+      'PUT /api/v1/ai/settings',
+      await a.put('/api/v1/ai/settings').send({ provider: 'XAI', apiKey: null, enabled: true })
+    );
     expect(back).toMatchObject({ hasKey: false, keyHint: null, effectiveSource: 'PLATFORM' });
     answer({ reply: 'ok', practice: null });
     check('POST /api/v1/ai/tutor', await ask());
     expect(calls[0].provider).toBe('gemini');
   });
-
 });
 
 describe('course outline', () => {
@@ -320,7 +405,11 @@ describe('course outline', () => {
 
   it('drafts an outline for instructors', async () => {
     answer(outline);
-    const res = await (await as('teacher')).post('/api/v1/ai/course-outline').send({ topic: 'Cell biology', audience: 'first-year undergraduates', moduleCount: 1 });
+    const res = await (
+      await as('teacher')
+    )
+      .post('/api/v1/ai/course-outline')
+      .send({ topic: 'Cell biology', audience: 'first-year undergraduates', moduleCount: 1 });
     expect(check('POST /api/v1/ai/course-outline', res)).toEqual(outline);
     const prompt = calls[0].body.contents[0].parts[0].text as string;
     expect(prompt).toContain('Topic: Cell biology');

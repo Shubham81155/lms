@@ -21,7 +21,7 @@ export function rubricDraft(criteria: Criterion[], values: Record<string, string
   let total = 0;
   for (const c of criteria) {
     const raw = values[c.id];
-    if (raw === undefined || raw.trim() === "") return { total: round2(total), problem: `Score "${c.name}".` };
+    if (raw === undefined || raw.trim() === '') return { total: round2(total), problem: `Score "${c.name}".` };
     const v = Number(raw);
     if (!Number.isFinite(v) || v < 0 || v > c.maxPoints) {
       return { total: round2(total), problem: `"${c.name}" must be between 0 and ${c.maxPoints}.` };
@@ -40,21 +40,21 @@ export function appealDaysLeft(gradedAt: string, now: number = Date.now()): numb
   return left > 0 ? Math.ceil(left) : 0;
 }
 
-export const CHOICE_TYPES = ["MULTIPLE_CHOICE", "MULTI_SELECT", "TRUE_FALSE"];
-export const KEYED_TYPES = ["SHORT_ANSWER", "FORMULA_CALCULATED"];
+export const CHOICE_TYPES = ['MULTIPLE_CHOICE', 'MULTI_SELECT', 'TRUE_FALSE'];
+export const KEYED_TYPES = ['SHORT_ANSWER', 'FORMULA_CALCULATED'];
 
 /** The first thing wrong with a question draft, or null when it can be saved. */
 export function draftProblem(d: { type: string; text: string; options: ChoiceOption[]; answer: string }): string | null {
-  if (!d.text.trim()) return "Write the question.";
+  if (!d.text.trim()) return 'Write the question.';
   if (CHOICE_TYPES.includes(d.type)) {
     const filled = d.options.filter((o) => o.text.trim());
     const correct = filled.filter((o) => o.isCorrect).length;
-    if (filled.length < 2) return "Add at least two options.";
-    if (d.type === "MULTI_SELECT" ? correct < 1 : correct !== 1) {
-      return d.type === "MULTI_SELECT" ? "Mark at least one correct option." : "Mark exactly one correct option.";
+    if (filled.length < 2) return 'Add at least two options.';
+    if (d.type === 'MULTI_SELECT' ? correct < 1 : correct !== 1) {
+      return d.type === 'MULTI_SELECT' ? 'Mark at least one correct option.' : 'Mark exactly one correct option.';
     }
   }
-  if (KEYED_TYPES.includes(d.type) && !d.answer.trim()) return "Enter the correct answer.";
+  if (KEYED_TYPES.includes(d.type) && !d.answer.trim()) return 'Enter the correct answer.';
   return null;
 }
 
@@ -67,7 +67,7 @@ export const isHttpUrlOrEmpty = (v: string) => {
   if (!t) return true;
   try {
     const u = new URL(t);
-    return u.protocol === "https:" || u.protocol === "http:";
+    return u.protocol === 'https:' || u.protocol === 'http:';
   } catch {
     return false;
   }

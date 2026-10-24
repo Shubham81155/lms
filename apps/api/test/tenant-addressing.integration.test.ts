@@ -31,7 +31,16 @@ beforeAll(async () => {
   // Saved before validation existed: a custom domain that is another organisation's subdomain.
   await admin.tenant.create({ data: { id: 't-evil', slug: 'evil-college', name: 'Evil', customDomain: 'harvard.lms.test' } });
   await admin.user.create({
-    data: { id: 'operator', tenantId: 't-op', email: 'operator@x.edu', firstName: 'Op', lastName: 'L', role: 'SUPER_ADMIN', passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true },
+    data: {
+      id: 'operator',
+      tenantId: 't-op',
+      email: 'operator@x.edu',
+      firstName: 'Op',
+      lastName: 'L',
+      role: 'SUPER_ADMIN',
+      passwordHash: bcrypt.hashSync(PASSWORD, 4),
+      emailVerified: true,
+    },
   });
   process.env.DATABASE_URL = db.appUrl;
   app = (await import('../src/server.js')).app;
@@ -44,11 +53,20 @@ afterAll(async () => {
   await db?.stop();
 }, 60_000);
 
-const availability = async (slug: string) => (await request(app).get(`/api/v1/organizations/availability?slug=${encodeURIComponent(slug)}`)).body.data;
+const availability = async (slug: string) =>
+  (await request(app).get(`/api/v1/organizations/availability?slug=${encodeURIComponent(slug)}`)).body.data;
 const ask = (slug: string) =>
-  request(app).post('/api/v1/organizations/requests').send({
-    organizationName: `College ${slug}`, slug, institutionType: 'COLLEGE', contactFirstName: 'Ann', contactLastName: 'Lee', contactEmail: `ann@${slug.replace(/[^a-z0-9]/g, '')}.edu`, acceptTerms: true,
-  });
+  request(app)
+    .post('/api/v1/organizations/requests')
+    .send({
+      organizationName: `College ${slug}`,
+      slug,
+      institutionType: 'COLLEGE',
+      contactFirstName: 'Ann',
+      contactLastName: 'Lee',
+      contactEmail: `ann@${slug.replace(/[^a-z0-9]/g, '')}.edu`,
+      acceptTerms: true,
+    });
 const orgAt = (host: string) => request(app).get('/api/v1/tenant/config').set('Host', host);
 
 describe('organisation addresses', () => {
@@ -81,11 +99,18 @@ describe('custom domains', () => {
     return agent;
   }
   const create = (op: request.Agent, slug: string, customDomain: string) =>
-    op.post('/api/v1/operator/tenants').send({ name: `Org ${slug}`, slug, customDomain, adminFirstName: 'Bo', adminLastName: 'Ray', adminEmail: `bo@${slug}.edu` });
+    op
+      .post('/api/v1/operator/tenants')
+      .send({ name: `Org ${slug}`, slug, customDomain, adminFirstName: 'Bo', adminLastName: 'Ray', adminEmail: `bo@${slug}.edu` });
 
   it('refuses the base domain, addresses under it and the platform hosts', async () => {
     const op = await operator();
-    for (const [slug, domain] of [['grab-one', 'harvard.lms.test'], ['grab-two', 'lms.test'], ['grab-three', 'deep.harvard.lms.test'], ['grab-four', 'api.platform-example.com']]) {
+    for (const [slug, domain] of [
+      ['grab-one', 'harvard.lms.test'],
+      ['grab-two', 'lms.test'],
+      ['grab-three', 'deep.harvard.lms.test'],
+      ['grab-four', 'api.platform-example.com'],
+    ]) {
       const res = await create(op, slug, domain);
       expect(res.status, domain).toBe(400);
     }
@@ -104,7 +129,10 @@ describe('resolving the host', () => {
   it('does not send an unknown subdomain to the default organisation', async () => {
     expect((await orgAt('nobody-here.lms.test')).status).toBe(404);
     expect((await orgAt('a.b.lms.test')).status).toBe(404);
-    const login = await request(app).post('/api/v1/auth/login').set('Host', 'nobody-here.lms.test').send({ email: 'operator@x.edu', password: PASSWORD });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .set('Host', 'nobody-here.lms.test')
+      .send({ email: 'operator@x.edu', password: PASSWORD });
     expect(login.status).toBe(401);
   });
 
@@ -119,7 +147,8 @@ describe('resolving the host', () => {
   });
 
   it('believes the rightmost X-Forwarded-Host value, the one the trusted proxy added', async () => {
-    const via = (forwarded: string) => request(app).get('/api/v1/tenant/config').set('Host', 'localhost:4000').set('x-forwarded-host', forwarded);
+    const via = (forwarded: string) =>
+      request(app).get('/api/v1/tenant/config').set('Host', 'localhost:4000').set('x-forwarded-host', forwarded);
     expect((await via('harvard.lms.test')).body.slug).toBe('harvard');
     expect((await via('harvard.lms.test, nobody-here.lms.test')).status).toBe(404);
     expect((await via('nobody-here.lms.test, harvard.lms.test')).body.slug).toBe('harvard');

@@ -37,7 +37,10 @@ export async function recordCourseResult(enrollmentId: string, finalGrade: numbe
     certificate = await issueCertificate(updated.id, tenant?.slug ?? tenantId);
 
     if (enrollment.status !== EnrollmentStatus.COMPLETED) {
-      const learner = await prisma.user.findFirst({ where: { id: updated.userId }, select: { id: true, email: true, firstName: true, lastName: true } });
+      const learner = await prisma.user.findFirst({
+        where: { id: updated.userId },
+        select: { id: true, email: true, firstName: true, lastName: true },
+      });
       await Promise.all([
         notify({
           tenantId,
@@ -52,14 +55,28 @@ export async function recordCourseResult(enrollmentId: string, finalGrade: numbe
               tenantId,
               user: learner,
               verb: VERBS.completed,
-              object: { id: `${config.APP_URL}/xapi/courses/${updated.courseId}`, name: updated.course.title, type: 'http://adlnet.gov/expapi/activities/course' },
+              object: {
+                id: `${config.APP_URL}/xapi/courses/${updated.courseId}`,
+                name: updated.course.title,
+                type: 'http://adlnet.gov/expapi/activities/course',
+              },
               result: { completion: true, ...(finalGrade !== null ? { score: { raw: finalGrade, min: 0, max: 100 } } : {}) },
             })
           : Promise.resolve(null),
       ]);
       // Not awaited: a slow receiver must not hold up the response.
-      void dispatchWebhook(tenantId, 'enrollment.completed', { enrollmentId: updated.id, courseId: updated.courseId, userId: updated.userId, finalGrade });
-      if (certificate) void dispatchWebhook(tenantId, 'certificate.issued', { certificateNumber: certificate.certificateNumber, userId: updated.userId, courseId: updated.courseId });
+      void dispatchWebhook(tenantId, 'enrollment.completed', {
+        enrollmentId: updated.id,
+        courseId: updated.courseId,
+        userId: updated.userId,
+        finalGrade,
+      });
+      if (certificate)
+        void dispatchWebhook(tenantId, 'certificate.issued', {
+          certificateNumber: certificate.certificateNumber,
+          userId: updated.userId,
+          courseId: updated.courseId,
+        });
     }
   }
   return { enrollment: updated, certificate };

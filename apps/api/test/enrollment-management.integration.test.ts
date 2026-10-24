@@ -15,9 +15,25 @@ let app: import('express').Express;
 beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
-  for (const [id, slug] of [['t-h', 'harvard'], ['t-m', 'mit']]) await admin.tenant.create({ data: { id, slug, name: slug } });
+  for (const [id, slug] of [
+    ['t-h', 'harvard'],
+    ['t-m', 'mit'],
+  ])
+    await admin.tenant.create({ data: { id, slug, name: slug } });
   const user = (id: string, tenantId: string, role: any, extra: object = {}) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'Lovelace', role, passwordHash: bcrypt.hashSync(`${PASSWORD}-${tenantId}`, 4), emailVerified: true, ...extra } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'Lovelace',
+        role,
+        passwordHash: bcrypt.hashSync(`${PASSWORD}-${tenantId}`, 4),
+        emailVerified: true,
+        ...extra,
+      },
+    });
   await user('admin', 't-h', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'INSTRUCTOR');
   await user('teacher2', 't-h', 'INSTRUCTOR');
@@ -28,7 +44,13 @@ beforeAll(async () => {
 
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course c1', status: 'PUBLISHED' } });
   await admin.course.create({ data: { id: 'c2', tenantId: 't-h', code: 'C2', title: 'Course c2', status: 'PUBLISHED' } });
-  await admin.courseInstructor.createMany({ data: [{ courseId: 'c1', userId: 'teacher', isPrimary: true }, { courseId: 'c1', userId: 'ta' }, { courseId: 'c2', userId: 'teacher2', isPrimary: true }] });
+  await admin.courseInstructor.createMany({
+    data: [
+      { courseId: 'c1', userId: 'teacher', isPrimary: true },
+      { courseId: 'c1', userId: 'ta' },
+      { courseId: 'c2', userId: 'teacher2', isPrimary: true },
+    ],
+  });
   await admin.module.create({ data: { id: 'mod1', courseId: 'c1', title: 'M1' } });
   await admin.lesson.create({ data: { id: 'les1', moduleId: 'mod1', title: 'L1' } });
   await admin.lesson.create({ data: { id: 'les2', moduleId: 'mod1', title: 'L2', orderIndex: 1 } });
@@ -49,7 +71,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: `${PASSWORD}-${tenant === 'harvard' ? 't-h' : 't-m'}` });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: `${PASSWORD}-${tenant === 'harvard' ? 't-h' : 't-m'}` });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -131,7 +156,10 @@ describe('enrolling again after withdrawing', () => {
     expect(again.status).toBe(201);
     expect(again.body.data).toMatchObject({ id: 'e-s1', status: 'IN_PROGRESS', progressPercent: 33 }); // 1 of 3 lessons
     expect(await admin.lessonProgress.count({ where: { userId: 's1', courseId: 'c1' } })).toBe(1);
-    expect((await (await as('s1')).get('/api/v1/courses/c1/progress')).body.data).toMatchObject({ completedLessonIds: ['les1'], progressPercent: 33 });
+    expect((await (await as('s1')).get('/api/v1/courses/c1/progress')).body.data).toMatchObject({
+      completedLessonIds: ['les1'],
+      progressPercent: 33,
+    });
   });
 
   it('puts someone who had not started back to enrolled, not in progress', async () => {

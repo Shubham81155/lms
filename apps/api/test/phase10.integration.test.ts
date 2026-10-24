@@ -25,7 +25,12 @@ let app: import('express').Express;
 let saml: typeof import('../src/lib/saml.js');
 
 // ---- the identity provider's keys ---------------------------------------------------------------
-const rsa = () => crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+const rsa = () =>
+  crypto.generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
 const idpKeys = rsa();
 const otherKeys = rsa();
 
@@ -51,19 +56,27 @@ interface Opts {
 }
 
 function assertion(o: Opts & { id?: string }) {
-  const attrs = Object.entries(o.attributes ?? {}).map(([k, v]) => `<saml:Attribute Name="${k}"><saml:AttributeValue>${xmlEscape(v)}</saml:AttributeValue></saml:Attribute>`).join('');
-  return `<saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="${o.id ?? '_a' + crypto.randomBytes(8).toString('hex')}" Version="2.0" IssueInstant="${iso(0)}">` +
+  const attrs = Object.entries(o.attributes ?? {})
+    .map(([k, v]) => `<saml:Attribute Name="${k}"><saml:AttributeValue>${xmlEscape(v)}</saml:AttributeValue></saml:Attribute>`)
+    .join('');
+  return (
+    `<saml:Assertion xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="${o.id ?? '_a' + crypto.randomBytes(8).toString('hex')}" Version="2.0" IssueInstant="${iso(0)}">` +
     `<saml:Issuer>${o.issuer ?? IDP}</saml:Issuer>` +
     `<saml:Subject><saml:NameID Format="${o.nameIdFormat ?? 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent'}">${xmlEscape(o.nameId ?? 'nid-1')}</saml:NameID>` +
     `<saml:SubjectConfirmation Method="urn:oasis:names:tc:SAML:2.0:cm:bearer"><saml:SubjectConfirmationData NotOnOrAfter="${iso(o.notOnOrAfter ?? 300_000)}" Recipient="${o.recipient ?? ACS}"${o.inResponseTo ? ` InResponseTo="${o.inResponseTo}"` : ''}/></saml:SubjectConfirmation></saml:Subject>` +
     `<saml:Conditions NotBefore="${iso(o.notBefore ?? -60_000)}" NotOnOrAfter="${iso(o.notOnOrAfter ?? 300_000)}"><saml:AudienceRestriction><saml:Audience>${o.audience ?? SP}</saml:Audience></saml:AudienceRestriction></saml:Conditions>` +
     `<saml:AuthnStatement AuthnInstant="${iso(-1000)}" SessionIndex="_s1"><saml:AuthnContext><saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:Password</saml:AuthnContextClassRef></saml:AuthnContext></saml:AuthnStatement>` +
     (attrs ? `<saml:AttributeStatement>${attrs}</saml:AttributeStatement>` : '') +
-    `</saml:Assertion>`;
+    `</saml:Assertion>`
+  );
 }
 
 function sign(xml: string, privateKey: string) {
-  const sig = new SignedXml({ privateKey, canonicalizationAlgorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#', signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256' });
+  const sig = new SignedXml({
+    privateKey,
+    canonicalizationAlgorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#',
+    signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256',
+  });
   sig.addReference({
     xpath: "//*[local-name(.)='Assertion']",
     digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256',
@@ -81,7 +94,9 @@ function samlResponse(o: Opts, extraBeforeAssertion = ''): string {
     `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_r${crypto.randomBytes(8).toString('hex')}" Version="2.0" IssueInstant="${iso(0)}" Destination="${o.destination ?? ACS}"${o.inResponseTo ? ` InResponseTo="${o.inResponseTo}"` : ''}>` +
     `<saml:Issuer>${o.responseIssuer ?? o.issuer ?? IDP}</saml:Issuer>` +
     `<samlp:Status><samlp:StatusCode Value="${o.statusCode ?? 'urn:oasis:names:tc:SAML:2.0:status:Success'}"/></samlp:Status>` +
-    extraBeforeAssertion + signed + `</samlp:Response>`;
+    extraBeforeAssertion +
+    signed +
+    `</samlp:Response>`;
   if (o.tamper) xml = o.tamper(xml);
   return Buffer.from(xml).toString('base64');
 }
@@ -90,7 +105,19 @@ async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', tier: 'STARTER' } });
   const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true, ...extra } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+        ...extra,
+      },
+    });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 's3', 's4', 's5', 's6', 's7']) await user(s, 't-h', 'harvard', 'STUDENT');
@@ -117,7 +144,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -129,14 +159,21 @@ function decodeRequest(location: string) {
   return { url: u, xml, id: /ID="([^"]+)"/.exec(xml)![1] };
 }
 
-interface Flow { host?: string; skipCookie?: boolean; mutate?: (o: Opts, requestId: string) => Opts; extra?: string; rawResponse?: string }
+interface Flow {
+  host?: string;
+  skipCookie?: boolean;
+  mutate?: (o: Opts, requestId: string) => Opts;
+  extra?: string;
+  rawResponse?: string;
+}
 
 /** Plays the browser: SP-initiated start, the IdP answers the request, the response is POSTed back. */
 async function signIn(attrs: Record<string, string>, o: Opts = {}, flow: Flow = {}) {
   const agent = request.agent(app);
   const withHost = (r: request.Test) => (flow.host ? r.set('Host', flow.host) : r.set('x-tenant-id', 'harvard'));
   const start = await withHost(agent.get('/api/v1/auth/saml/start'));
-  if (start.status !== 302 || !start.headers.location.startsWith(ENTRY)) return { agent, start, acs: start as request.Response, req: undefined as any };
+  if (start.status !== 302 || !start.headers.location.startsWith(ENTRY))
+    return { agent, start, acs: start as request.Response, req: undefined as any };
   const req = decodeRequest(start.headers.location);
   const built: Opts = { inResponseTo: req.id, attributes: attrs, ...o };
   const final = flow.mutate ? flow.mutate(built, req.id) : built;
@@ -160,7 +197,10 @@ const ok = (r: { acs: request.Response }) => {
 // ---------------------------------------------------------------------------
 describe('pure helpers', () => {
   it('recognises only a Success status', () => {
-    const resp = (code: string) => Buffer.from(`<samlp:Response xmlns:samlp="p"><samlp:Status><samlp:StatusCode Value="${code}"/></samlp:Status></samlp:Response>`).toString('base64');
+    const resp = (code: string) =>
+      Buffer.from(
+        `<samlp:Response xmlns:samlp="p"><samlp:Status><samlp:StatusCode Value="${code}"/></samlp:Status></samlp:Response>`
+      ).toString('base64');
     expect(saml.responseSucceeded(resp('urn:oasis:names:tc:SAML:2.0:status:Success'))).toBe(true);
     expect(saml.responseSucceeded(resp('urn:oasis:names:tc:SAML:2.0:status:Responder'))).toBe(false);
     expect(saml.responseSucceeded(Buffer.from('<nothing/>').toString('base64'))).toBe(false);
@@ -174,26 +214,42 @@ describe('pure helpers', () => {
     expect(pub).toMatchObject({ kind: 'PUBLIC KEY', notAfter: null });
     expect(pub.fingerprint).toMatch(/^[0-9a-f]{64}$/);
 
-    const good = await generateCert([{ name: 'commonName', value: 'idp' }], { keyPair: { privateKey: idpKeys.privateKey, publicKey: idpKeys.publicKey }, algorithm: 'sha256' });
+    const good = await generateCert([{ name: 'commonName', value: 'idp' }], {
+      keyPair: { privateKey: idpKeys.privateKey, publicKey: idpKeys.publicKey },
+      algorithm: 'sha256',
+    });
     const cert = saml.parseIdpKey(good.cert);
     expect(cert.kind).toBe('CERTIFICATE');
     expect(cert.notAfter!.getTime()).toBeGreaterThan(Date.now());
     const bare = good.cert.replace(/-----(BEGIN|END) CERTIFICATE-----/g, '').replace(/\s+/g, ''); // as found in IdP metadata
     expect(saml.parseIdpKey(bare).fingerprint).toBe(cert.fingerprint);
 
-    const expired = await generateCert([{ name: 'commonName', value: 'old' }], { keyPair: { privateKey: idpKeys.privateKey, publicKey: idpKeys.publicKey }, algorithm: 'sha256', notBeforeDate: new Date(Date.now() - 3 * 86_400_000), notAfterDate: new Date(Date.now() - 86_400_000) });
+    const expired = await generateCert([{ name: 'commonName', value: 'old' }], {
+      keyPair: { privateKey: idpKeys.privateKey, publicKey: idpKeys.publicKey },
+      algorithm: 'sha256',
+      notBeforeDate: new Date(Date.now() - 3 * 86_400_000),
+      notAfterDate: new Date(Date.now() - 86_400_000),
+    });
     expect(() => saml.parseIdpKey(expired.cert)).toThrow(/expired/);
   });
 
   it('finds the e-mail and a stable subject in a profile', () => {
-    const p = (o: object) => ({ issuer: IDP, nameID: 'n1', nameIDFormat: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent', ...o }) as any;
+    const p = (o: object) =>
+      ({ issuer: IDP, nameID: 'n1', nameIDFormat: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent', ...o }) as any;
     expect(saml.emailFromProfile(p({ email: ' A@x.edu ' }), 'email')).toBe('A@x.edu');
     expect(saml.emailFromProfile(p({ mail: 'm@x.edu' }), 'email')).toBe('m@x.edu');
     expect(saml.emailFromProfile(p({ 'urn:custom:mail': ['c@x.edu'] }), 'urn:custom:mail')).toBe('c@x.edu');
     // A named attribute is used exclusively: no fallback to other fields or the NameID.
     expect(saml.emailFromProfile(p({ email: 'e@x.edu', mail: 'm@x.edu' }), 'urn:custom:mail')).toBeNull();
-    expect(saml.emailFromProfile(p({ nameID: 'n@x.edu', nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' }), 'urn:custom:mail')).toBeNull();
-    expect(saml.emailFromProfile(p({ nameID: 'n@x.edu', nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' }), 'email')).toBe('n@x.edu');
+    expect(
+      saml.emailFromProfile(
+        p({ nameID: 'n@x.edu', nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' }),
+        'urn:custom:mail'
+      )
+    ).toBeNull();
+    expect(
+      saml.emailFromProfile(p({ nameID: 'n@x.edu', nameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' }), 'email')
+    ).toBe('n@x.edu');
     expect(saml.emailFromProfile(p({}), 'email')).toBeNull();
 
     expect(saml.subjectFromProfile(p({}), IDP)).toBe(`saml:${IDP}|n1`);
@@ -205,7 +261,15 @@ describe('pure helpers', () => {
 
 // ---------------------------------------------------------------------------
 describe('configuration (administrator)', () => {
-  const body = (over: object = {}) => ({ entryPoint: ENTRY, idpIssuer: IDP, idpCert: idpKeys.publicKey, emailAttribute: 'email', enabled: true, allowedDomains: [], ...over });
+  const body = (over: object = {}) => ({
+    entryPoint: ENTRY,
+    idpIssuer: IDP,
+    idpCert: idpKeys.publicKey,
+    emailAttribute: 'email',
+    enabled: true,
+    allowedDomains: [],
+    ...over,
+  });
 
   it('is administrator-only and plan-gated', async () => {
     expect((await (await as('teacher')).put('/api/v1/admin/saml').send(body())).status).toBe(403);
@@ -230,7 +294,12 @@ describe('configuration (administrator)', () => {
     expect((await a.put('/api/v1/admin/saml').send(body({ entryPoint: 'nope' }))).status).toBe(400);
     expect((await a.put('/api/v1/admin/saml').send(body({ idpIssuer: '' }))).status).toBe(400);
     expect((await a.put('/api/v1/admin/saml').send(body({ allowedDomains: ['bad domain'] }))).status).toBe(400);
-    const expired = await generateCert([{ name: 'commonName', value: 'old' }], { keyPair: { privateKey: idpKeys.privateKey, publicKey: idpKeys.publicKey }, algorithm: 'sha256', notBeforeDate: new Date(Date.now() - 3 * 86_400_000), notAfterDate: new Date(Date.now() - 86_400_000) });
+    const expired = await generateCert([{ name: 'commonName', value: 'old' }], {
+      keyPair: { privateKey: idpKeys.privateKey, publicKey: idpKeys.publicKey },
+      algorithm: 'sha256',
+      notBeforeDate: new Date(Date.now() - 3 * 86_400_000),
+      notAfterDate: new Date(Date.now() - 86_400_000),
+    });
     expect((await a.put('/api/v1/admin/saml').send(body({ idpCert: expired.cert }))).body.error).toMatch(/expired/);
     expect(await admin.samlConnection.count()).toBe(0);
   });
@@ -239,7 +308,13 @@ describe('configuration (administrator)', () => {
     const a = await as('admin');
     const res = await a.put('/api/v1/admin/saml').send(body({ allowedDomains: ['X.edu'] }));
     expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, keyKind: 'PUBLIC KEY', allowedDomains: ['x.edu'] });
+    expect(res.body.data).toMatchObject({
+      entryPoint: ENTRY,
+      idpIssuer: IDP,
+      enabled: true,
+      keyKind: 'PUBLIC KEY',
+      allowedDomains: ['x.edu'],
+    });
     expect(res.body.data.keyFingerprint).toBe(saml.parseIdpKey(idpKeys.publicKey).fingerprint);
     expect(JSON.stringify(res.body)).not.toContain('BEGIN PUBLIC KEY');
 
@@ -261,8 +336,15 @@ describe('configuration (administrator)', () => {
   });
 
   it('reports SAML as available on the status endpoint', async () => {
-    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard')).body).toMatchObject({ enabled: true, saml: true, oidc: false });
-    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'mit')).body).toMatchObject({ enabled: false, saml: false });
+    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard')).body).toMatchObject({
+      enabled: true,
+      saml: true,
+      oidc: false,
+    });
+    expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'mit')).body).toMatchObject({
+      enabled: false,
+      saml: false,
+    });
   });
 });
 
@@ -301,10 +383,18 @@ describe('SP-initiated sign-in', () => {
     ok(await signIn({}, { nameId: 's2@x.edu', nameIdFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' }));
     expect(await admin.user.findUnique({ where: { id: 's2' } })).toMatchObject({ idpProvider: 'SAML' });
     ok(await signIn({ mail: 's3@x.edu' }, { nameId: 'nid-s3' }));
-    await (await as('admin')).put('/api/v1/admin/saml').send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, allowedDomains: [], emailAttribute: 'urn:custom:work-email' });
+    await (
+      await as('admin')
+    )
+      .put('/api/v1/admin/saml')
+      .send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, allowedDomains: [], emailAttribute: 'urn:custom:work-email' });
     ok(await signIn({ 'urn:custom:work-email': 's4@x.edu' }, { nameId: 'nid-s4' }));
     refused(await signIn({ email: 's5@x.edu' }, { nameId: 'nid-s5' })); // the configured attribute is absent, so no e-mail
-    await (await as('admin')).put('/api/v1/admin/saml').send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, allowedDomains: [], emailAttribute: 'email' });
+    await (
+      await as('admin')
+    )
+      .put('/api/v1/admin/saml')
+      .send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, allowedDomains: [], emailAttribute: 'email' });
   });
 
   it('finds accounts by e-mail every time when the NameID is transient, without binding it', async () => {
@@ -327,7 +417,12 @@ describe('SP-initiated sign-in', () => {
     await a.put('/api/v1/admin/saml').send({ ...conf, allowedDomains: ['x.edu'], autoCreateAccounts: true });
     ok(await signIn({ email: 'newcomer@x.edu', 'urn:oid:2.5.4.42': 'Grace', 'urn:oid:2.5.4.4': 'Hopper' }, { nameId: 'nid-newcomer' }));
     expect(await admin.user.findFirst({ where: { tenantId: 't-h', email: 'newcomer@x.edu' } })).toMatchObject({
-      role: 'STUDENT', status: 'ACTIVE', firstName: 'Grace', lastName: 'Hopper', idpProvider: 'SAML', idpSubjectId: `saml:${IDP}|nid-newcomer`,
+      role: 'STUDENT',
+      status: 'ACTIVE',
+      firstName: 'Grace',
+      lastName: 'Hopper',
+      idpProvider: 'SAML',
+      idpSubjectId: `saml:${IDP}|nid-newcomer`,
     });
     refused(await signIn({ email: 'outsider@partner.org' }, { nameId: 'nid-outsider' }));
     await a.put('/api/v1/admin/saml').send({ ...conf, allowedDomains: [], autoCreateAccounts: false });
@@ -337,15 +432,26 @@ describe('SP-initiated sign-in', () => {
     refused(await signIn({ email: 'susp@x.edu' }, { nameId: 'nid-susp' }));
     refused(await signIn({ email: 'bound@x.edu' }, { nameId: 'attacker' }));
     expect((await admin.user.findUnique({ where: { id: 'bound' } }))?.idpSubjectId).toBe(`saml:${IDP}|original`);
-    await (await as('admin')).put('/api/v1/admin/saml').send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, allowedDomains: ['partner.org'], emailAttribute: 'email' });
+    await (
+      await as('admin')
+    )
+      .put('/api/v1/admin/saml')
+      .send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, allowedDomains: ['partner.org'], emailAttribute: 'email' });
     refused(await signIn({ email: 's7@x.edu' }, { nameId: 'nid-s7' }));
-    await (await as('admin')).put('/api/v1/admin/saml').send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, allowedDomains: [], emailAttribute: 'email' });
+    await (
+      await as('admin')
+    )
+      .put('/api/v1/admin/saml')
+      .send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: true, allowedDomains: [], emailAttribute: 'email' });
     ok(await signIn({ email: 's7@x.edu' }, { nameId: 'nid-s7' }));
   });
 
   it('binds a SCIM-provisioned account, and moves an account over from OIDC', async () => {
     ok(await signIn({ email: 'scim@x.edu' }, { nameId: 'scim-nid' }));
-    expect(await admin.user.findUnique({ where: { id: 'scim' } })).toMatchObject({ idpProvider: 'SAML', idpSubjectId: `saml:${IDP}|scim-nid` });
+    expect(await admin.user.findUnique({ where: { id: 'scim' } })).toMatchObject({
+      idpProvider: 'SAML',
+      idpSubjectId: `saml:${IDP}|scim-nid`,
+    });
     ok(await signIn({ email: 'oidcuser@x.edu' }, { nameId: 'moved' })); // the tenant switched identity provider
     expect(await admin.user.findUnique({ where: { id: 'oidcuser' } })).toMatchObject({ idpProvider: 'SAML' });
   });
@@ -410,7 +516,11 @@ describe('responses that must be refused', () => {
     const first = await signIn(email, { nameId: 'replay' });
     ok(first);
     const captured = Buffer.from(samlResponse({ inResponseTo: first.req.id, attributes: email, nameId: 'replay' })).toString();
-    const replay = await first.agent.post('/api/v1/auth/saml/acs').type('form').set('x-tenant-id', 'harvard').send({ SAMLResponse: captured });
+    const replay = await first.agent
+      .post('/api/v1/auth/saml/acs')
+      .type('form')
+      .set('x-tenant-id', 'harvard')
+      .send({ SAMLResponse: captured });
     expect(replay.headers.location).toBe(`${APP}/login?error=sso_failed`);
   });
 
@@ -431,7 +541,18 @@ describe('custom domains', () => {
 
   beforeAll(async () => {
     await admin.tenant.update({ where: { id: 't-h' }, data: { customDomain: 'learn.harvard.edu' } });
-    await admin.user.create({ data: { id: 'cdomain', tenantId: 't-h', email: 'cdomain@x.edu', firstName: 'c', lastName: 'L', role: 'STUDENT', passwordHash: null, emailVerified: true } });
+    await admin.user.create({
+      data: {
+        id: 'cdomain',
+        tenantId: 't-h',
+        email: 'cdomain@x.edu',
+        firstName: 'c',
+        lastName: 'L',
+        role: 'STUDENT',
+        passwordHash: null,
+        emailVerified: true,
+      },
+    });
   });
 
   it('lists both sets of identifiers for the administrator', async () => {
@@ -441,7 +562,11 @@ describe('custom domains', () => {
   });
 
   it('runs the whole flow on the domain it started on, addressed to that domain', async () => {
-    const r = await signIn({ email: 'cdomain@x.edu' }, { audience: CSP, recipient: CACS, destination: CACS }, { host: 'learn.harvard.edu' });
+    const r = await signIn(
+      { email: 'cdomain@x.edu' },
+      { audience: CSP, recipient: CACS, destination: CACS },
+      { host: 'learn.harvard.edu' }
+    );
     expect(r.req.xml).toContain(`AssertionConsumerServiceURL="${CACS}"`);
     expect(r.acs.status).toBe(303);
     expect(r.acs.headers.location).toBe(`${CUSTOM}/`);
@@ -466,10 +591,18 @@ describe('switching off and isolation', () => {
     const agent = request.agent(app);
     const start = await agent.get('/api/v1/auth/saml/start').set('x-tenant-id', 'harvard');
     const req = decodeRequest(start.headers.location);
-    await a.put('/api/v1/admin/saml').send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: false, allowedDomains: [], emailAttribute: 'email' });
-    const acs = await agent.post('/api/v1/auth/saml/acs').type('form').set('x-tenant-id', 'harvard').send({ SAMLResponse: samlResponse({ inResponseTo: req.id, attributes: { email: 'teacher@x.edu' } }) });
+    await a
+      .put('/api/v1/admin/saml')
+      .send({ entryPoint: ENTRY, idpIssuer: IDP, enabled: false, allowedDomains: [], emailAttribute: 'email' });
+    const acs = await agent
+      .post('/api/v1/auth/saml/acs')
+      .type('form')
+      .set('x-tenant-id', 'harvard')
+      .send({ SAMLResponse: samlResponse({ inResponseTo: req.id, attributes: { email: 'teacher@x.edu' } }) });
     expect(acs.headers.location).toBe(`${APP}/login?error=sso_failed`);
-    expect((await request(app).get('/api/v1/auth/saml/start').set('x-tenant-id', 'harvard')).headers.location).toBe(`${APP}/login?error=sso_unavailable`);
+    expect((await request(app).get('/api/v1/auth/saml/start').set('x-tenant-id', 'harvard')).headers.location).toBe(
+      `${APP}/login?error=sso_unavailable`
+    );
     expect((await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard')).body.saml).toBe(false);
   });
 

@@ -16,12 +16,31 @@ const router = Router();
 // Guards per route, not router.use: this router sits before operatorRoutes, whose own guard must not run twice.
 const guard = [authenticateJWT, requireRole('SUPER_ADMIN'), requireOperator];
 
-const actorOf = (req: Request): Actor => ({ tenantId: tenantIdOf(req), userId: req.user!.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+const actorOf = (req: Request): Actor => ({
+  tenantId: tenantIdOf(req),
+  userId: req.user!.id,
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
+});
 
-const operatorPlanView = (p: Awaited<ReturnType<typeof basePrisma.plan.findFirstOrThrow>>) => ({ ...planView(p), active: p.active, sortOrder: p.sortOrder, razorpayRegistered: !!(p.razorpayMonthlyPlanId || p.razorpayYearlyPlanId) });
+const operatorPlanView = (p: Awaited<ReturnType<typeof basePrisma.plan.findFirstOrThrow>>) => ({
+  ...planView(p),
+  active: p.active,
+  sortOrder: p.sortOrder,
+  razorpayRegistered: !!(p.razorpayMonthlyPlanId || p.razorpayYearlyPlanId),
+});
 
 async function audit(req: Request, action: string, id: string, diffJson: Record<string, unknown>) {
-  await logAuditEvent({ tenantId: tenantIdOf(req), userId: req.user!.id, action, resourceType: 'PLAN', resourceId: id, ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson });
+  await logAuditEvent({
+    tenantId: tenantIdOf(req),
+    userId: req.user!.id,
+    action,
+    resourceType: 'PLAN',
+    resourceId: id,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    diffJson,
+  });
 }
 
 /** GET /api/v1/operator/plans: every plan, inactive ones included. */
@@ -67,12 +86,17 @@ router.patch(
         ...(input.yearlyPaise !== undefined && input.yearlyPaise !== before.yearlyPaise ? { razorpayYearlyPlanId: null } : {}),
       },
     });
-    await audit(req, 'PLAN_UPDATED', id, { before: Object.fromEntries(Object.keys(input).map((k) => [k, (before as any)[k]])), after: input });
+    await audit(req, 'PLAN_UPDATED', id, {
+      before: Object.fromEntries(Object.keys(input).map((k) => [k, (before as any)[k]])),
+      after: input,
+    });
     return res.json({ data: operatorPlanView(plan) });
   })
 );
 
-export const assignPlanSchema = z.object({ planId: z.string().min(1).max(64).nullable(), seats: z.number().int().min(1).max(10_000_000).optional() }).strict();
+export const assignPlanSchema = z
+  .object({ planId: z.string().min(1).max(64).nullable(), seats: z.number().int().min(1).max(10_000_000).optional() })
+  .strict();
 
 /** POST /api/v1/operator/organizations/:id/plan: assigns a plan by hand (planId null removes a manual assignment). */
 router.post(

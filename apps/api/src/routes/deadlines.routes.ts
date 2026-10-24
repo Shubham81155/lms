@@ -19,14 +19,25 @@ async function loadItem(req: Request, type: z.infer<typeof itemType>, id: string
   const tenantId = tenantIdOf(req);
   const item =
     type === 'ASSIGNMENT'
-      ? await prisma.assignment.findFirst({ where: { id, tenantId }, select: { id: true, title: true, courseId: true, dueDate: true } }).then((a) => a && { ...a, due: a.dueDate })
-      : await prisma.quiz.findFirst({ where: { id, tenantId }, select: { id: true, title: true, courseId: true, dueAt: true } }).then((q) => q && { ...q, due: q.dueAt });
+      ? await prisma.assignment
+          .findFirst({ where: { id, tenantId }, select: { id: true, title: true, courseId: true, dueDate: true } })
+          .then((a) => a && { ...a, due: a.dueDate })
+      : await prisma.quiz
+          .findFirst({ where: { id, tenantId }, select: { id: true, title: true, courseId: true, dueAt: true } })
+          .then((q) => q && { ...q, due: q.dueAt });
   if (!item) throw new HttpError(404, type === 'ASSIGNMENT' ? 'Assignment not found' : 'Quiz not found');
   await requireCourseStaff(req, item.courseId);
   return item;
 }
 
-const view = (e: { id: string; userId: string; dueAt: Date; reason: string | null; createdAt: Date; user: { firstName: string; lastName: string; email: string } }) => ({
+const view = (e: {
+  id: string;
+  userId: string;
+  dueAt: Date;
+  reason: string | null;
+  createdAt: Date;
+  user: { firstName: string; lastName: string; email: string };
+}) => ({
   id: e.id,
   userId: e.userId,
   name: `${e.user.firstName} ${e.user.lastName}`,
@@ -83,7 +94,10 @@ router.put(
     });
     if (!enrolled) throw new HttpError(400, 'This person is not enrolled in the course');
 
-    const key = input.itemType === 'ASSIGNMENT' ? { assignmentId_userId: { assignmentId: item.id, userId: input.userId } } : { quizId_userId: { quizId: item.id, userId: input.userId } };
+    const key =
+      input.itemType === 'ASSIGNMENT'
+        ? { assignmentId_userId: { assignmentId: item.id, userId: input.userId } }
+        : { quizId_userId: { quizId: item.id, userId: input.userId } };
     const row = await prisma.deadlineExtension.upsert({
       where: key as any,
       create: {

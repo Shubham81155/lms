@@ -26,12 +26,41 @@ export interface PackageFile {
 }
 
 const TYPES: Record<string, string> = {
-  html: 'text/html; charset=utf-8', htm: 'text/html; charset=utf-8', xhtml: 'application/xhtml+xml', js: 'text/javascript; charset=utf-8',
-  mjs: 'text/javascript; charset=utf-8', css: 'text/css; charset=utf-8', json: 'application/json', xml: 'application/xml', xsd: 'application/xml',
-  txt: 'text/plain; charset=utf-8', vtt: 'text/vtt', csv: 'text/csv', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
-  webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon', bmp: 'image/bmp', mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg',
-  mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg', woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf',
-  eot: 'application/vnd.ms-fontobject', pdf: 'application/pdf', swf: 'application/x-shockwave-flash', wasm: 'application/wasm',
+  html: 'text/html; charset=utf-8',
+  htm: 'text/html; charset=utf-8',
+  xhtml: 'application/xhtml+xml',
+  js: 'text/javascript; charset=utf-8',
+  mjs: 'text/javascript; charset=utf-8',
+  css: 'text/css; charset=utf-8',
+  json: 'application/json',
+  xml: 'application/xml',
+  xsd: 'application/xml',
+  txt: 'text/plain; charset=utf-8',
+  vtt: 'text/vtt',
+  csv: 'text/csv',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  ico: 'image/x-icon',
+  bmp: 'image/bmp',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  woff: 'font/woff',
+  woff2: 'font/woff2',
+  ttf: 'font/ttf',
+  otf: 'font/otf',
+  eot: 'application/vnd.ms-fontobject',
+  pdf: 'application/pdf',
+  swf: 'application/x-shockwave-flash',
+  wasm: 'application/wasm',
 };
 export const typeOf = (p: string) => TYPES[p.split('.').pop()!.toLowerCase()] ?? 'application/octet-stream';
 
@@ -52,7 +81,8 @@ export interface ParsedManifest {
 }
 
 const text = (el: Element | null | undefined) => el?.textContent?.trim() || null;
-const children = (el: Element, local: string) => Array.from(el.childNodes).filter((n): n is Element => n.nodeType === 1 && (n as Element).localName === local);
+const children = (el: Element, local: string) =>
+  Array.from(el.childNodes).filter((n): n is Element => n.nodeType === 1 && (n as Element).localName === local);
 const first = (el: Element, local: string) => children(el, local)[0] ?? null;
 
 /** Reads imsmanifest.xml: the SCORM version, the title and the page the first launchable item opens. */
@@ -60,7 +90,10 @@ export function parseManifest(xml: string): ParsedManifest {
   let doc: Document;
   try {
     // xmldom never fetches external entities or DTDs; warnings and recoverable errors are ignored.
-    doc = new DOMParser({ errorHandler: { warning: () => undefined, error: () => undefined } }).parseFromString(xml, 'text/xml') as unknown as Document;
+    doc = new DOMParser({ errorHandler: { warning: () => undefined, error: () => undefined } }).parseFromString(
+      xml,
+      'text/xml'
+    ) as unknown as Document;
   } catch {
     throw new HttpError(400, 'imsmanifest.xml could not be read');
   }
@@ -69,7 +102,9 @@ export function parseManifest(xml: string): ParsedManifest {
 
   const metadata = first(root, 'metadata');
   const schemaVersion = (metadata ? text(first(metadata, 'schemaversion')) : null) ?? '';
-  const ns = Array.from(root.attributes).map((a) => a.value).join(' ');
+  const ns = Array.from(root.attributes)
+    .map((a) => a.value)
+    .join(' ');
   const version: '1.2' | '2004' = /2004|CAM 1\.3/i.test(schemaVersion) || /adlcp_v1p3|imsss/i.test(ns) ? '2004' : '1.2';
 
   const orgs = first(root, 'organizations');
@@ -92,7 +127,9 @@ export function parseManifest(xml: string): ParsedManifest {
     return null;
   };
   const item = org ? findItem(org) : null;
-  const resource = item ? all.find((r) => r.getAttribute('identifier') === item.getAttribute('identifierref')) : all.find((r) => r.getAttribute('href'));
+  const resource = item
+    ? all.find((r) => r.getAttribute('identifier') === item.getAttribute('identifierref'))
+    : all.find((r) => r.getAttribute('href'));
   const href = resource?.getAttribute('href');
   if (!resource || !href) throw new HttpError(400, 'imsmanifest.xml does not say which page to start');
   const joined = `${base}${resource.getAttribute('xml:base') ?? ''}${href}`;
@@ -104,7 +141,9 @@ export function parseManifest(xml: string): ParsedManifest {
 
 const openZip = (file: string) =>
   new Promise<yauzl.ZipFile>((resolve, reject) =>
-    yauzl.open(file, { lazyEntries: true, autoClose: true, validateEntrySizes: true, decodeStrings: true }, (err, zip) => (err || !zip ? reject(err) : resolve(zip)))
+    yauzl.open(file, { lazyEntries: true, autoClose: true, validateEntrySizes: true, decodeStrings: true }, (err, zip) =>
+      err || !zip ? reject(err) : resolve(zip)
+    )
   );
 
 /**
@@ -147,12 +186,15 @@ export async function unpackPackage(zipPath: string, tenantId: string) {
           const p = safeEntryPath(entry.fileName);
           if (!p) throw new HttpError(400, `The package contains an unsafe path: ${entry.fileName.slice(0, 120)}`);
           if (p.startsWith('__MACOSX/') || p.split('/').pop() === '.DS_Store') return;
-          if (Object.keys(files).length >= SCORM_LIMITS.maxFiles) throw new HttpError(400, `Packages can contain at most ${SCORM_LIMITS.maxFiles} files`);
+          if (Object.keys(files).length >= SCORM_LIMITS.maxFiles)
+            throw new HttpError(400, `Packages can contain at most ${SCORM_LIMITS.maxFiles} files`);
           if (entry.uncompressedSize > SCORM_LIMITS.maxFileBytes) throw new HttpError(400, `${p} is too large`);
           total += entry.uncompressedSize;
           if (total > SCORM_LIMITS.maxTotalBytes) throw new HttpError(400, 'The package unpacks to more than 1 GB');
 
-          const stream = await new Promise<NodeJS.ReadableStream>((res, rej) => zip.openReadStream(entry, (e, s) => (e || !s ? rej(e) : res(s))));
+          const stream = await new Promise<NodeJS.ReadableStream>((res, rej) =>
+            zip.openReadStream(entry, (e, s) => (e || !s ? rej(e) : res(s)))
+          );
           const temp = path.join(os.tmpdir(), `lms-scorm-${randomUUID()}`);
           let size = 0;
           const isManifest = p.split('/').pop()!.toLowerCase() === 'imsmanifest.xml';
@@ -252,7 +294,10 @@ export function verifyLaunch(token: string): LaunchClaims | null {
 // ---------------------------------------------------------------------------
 
 /** What the package reported, in one vocabulary for both SCORM versions. */
-export function summarise(version: string, cmi: Record<string, string>): { status: string; scorePercent: number | null; completed: boolean } {
+export function summarise(
+  version: string,
+  cmi: Record<string, string>
+): { status: string; scorePercent: number | null; completed: boolean } {
   const num = (v: string | undefined) => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
   if (version === '2004') {
     const success = cmi['cmi.success_status'];
@@ -260,15 +305,24 @@ export function summarise(version: string, cmi: Record<string, string>): { statu
     const scaled = num(cmi['cmi.score.scaled']);
     const raw = num(cmi['cmi.score.raw']);
     const max = num(cmi['cmi.score.max']);
-    const status = success === 'passed' || success === 'failed' ? success : completion && completion !== 'unknown' ? completion : 'not attempted';
+    const status =
+      success === 'passed' || success === 'failed' ? success : completion && completion !== 'unknown' ? completion : 'not attempted';
     const scorePercent = scaled !== null ? scaled * 100 : raw !== null ? (max ? (raw / max) * 100 : raw) : null;
-    return { status, scorePercent: scorePercent === null ? null : Math.round(scorePercent * 10) / 10, completed: completion === 'completed' || success === 'passed' };
+    return {
+      status,
+      scorePercent: scorePercent === null ? null : Math.round(scorePercent * 10) / 10,
+      completed: completion === 'completed' || success === 'passed',
+    };
   }
   const lesson = cmi['cmi.core.lesson_status'] || 'not attempted';
   const raw = num(cmi['cmi.core.score.raw']);
   const max = num(cmi['cmi.core.score.max']);
   const scorePercent = raw === null ? null : max ? (raw / max) * 100 : raw;
-  return { status: lesson, scorePercent: scorePercent === null ? null : Math.round(scorePercent * 10) / 10, completed: lesson === 'completed' || lesson === 'passed' };
+  return {
+    status: lesson,
+    scorePercent: scorePercent === null ? null : Math.round(scorePercent * 10) / 10,
+    completed: lesson === 'completed' || lesson === 'passed',
+  };
 }
 
 /** A package whose zip a virus scan found malware in is withdrawn: it is neither launched nor served. */

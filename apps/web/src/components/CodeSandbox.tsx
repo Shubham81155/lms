@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useEffect, useRef, useState } from "react";
-import { Code, X, Play, RotateCcw, Terminal, AlertCircle } from "lucide-react";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
+import React, { useEffect, useRef, useState } from 'react';
+import { Code, X, Play, RotateCcw, Terminal, AlertCircle } from 'lucide-react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface CodeSandboxProps {
   /** Shown in the header. */
@@ -29,12 +29,12 @@ self.onmessage = (e) => {
 };`;
 
 const starterFor = (instructions?: string) => {
-  const header = (instructions ?? "")
-    .split("\n")
+  const header = (instructions ?? '')
+    .split('\n')
     .filter((l) => l.trim())
     .map((l) => `// ${l}`)
-    .join("\n");
-  return `${header ? `${header}\n\n` : ""}// Write your code below, then press Run.\n`;
+    .join('\n');
+  return `${header ? `${header}\n\n` : ''}// Write your code below, then press Run.\n`;
 };
 
 export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, onClose }) => {
@@ -54,7 +54,7 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
     setOutput(null);
     setError(null);
 
-    const url = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: "text/javascript" }));
+    const url = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));
     const w = new Worker(url);
     worker.current = w;
 
@@ -69,12 +69,17 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
     const timer = setTimeout(() => finish([], `Stopped: the code ran for more than ${TIME_LIMIT_MS / 1000} seconds.`), TIME_LIMIT_MS);
 
     w.onmessage = (e: MessageEvent<{ lines: string[]; error?: string }>) => finish(e.data.lines, e.data.error ?? null);
-    w.onerror = (e) => finish([], e.message || "The code could not be run.");
+    w.onerror = (e) => finish([], e.message || 'The code could not be run.');
     w.postMessage(code);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Code sandbox">
+    <div
+      className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Code sandbox"
+    >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -86,7 +91,11 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
               <p className="text-[11px] text-ink-muted">Practice sandbox · JavaScript · runs in your browser, nothing is graded or saved</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink transition-colors">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink transition-colors"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -96,7 +105,12 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
             <div className="px-4 py-2.5 bg-surface/60 border-b border-line/80 flex items-center justify-between text-xs text-ink-muted">
               <span className="font-mono text-[11px] text-ink">solution.js</span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setCode(starter)} className="p-1 hover:text-ink text-ink-muted transition-colors" title="Reset code" aria-label="Reset code">
+                <button
+                  onClick={() => setCode(starter)}
+                  className="p-1 hover:text-ink text-ink-muted transition-colors"
+                  title="Reset code"
+                  aria-label="Reset code"
+                >
                   <RotateCcw className="h-3.5 w-3.5" />
                 </button>
                 <button
@@ -105,7 +119,7 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({ title, instructions, o
                   className="px-3 py-1 bg-brand hover:bg-brand-hover disabled:opacity-60 text-on-brand rounded-lg text-xs font-bold flex items-center gap-1 shadow-md transition-all"
                 >
                   <Play className="h-3 w-3 fill-current" />
-                  <span>{isRunning ? "Running…" : "Run"}</span>
+                  <span>{isRunning ? 'Running…' : 'Run'}</span>
                 </button>
               </div>
             </div>

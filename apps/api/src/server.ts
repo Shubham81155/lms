@@ -116,7 +116,7 @@ const tenantResolver = (req: Request, _res: Response, next: NextFunction) => {
   // values the rightmost is the one the nearest proxy added; anything to its left came from the client.
   // (Next.js rewrites send a single value, the Host header of the request they received.)
   const forwarded = config.TRUST_PROXY > 0 ? req.headers['x-forwarded-host'] : undefined;
-  const forwardedHost = (Array.isArray(forwarded) ? forwarded.join(',') : forwarded ?? '')
+  const forwardedHost = (Array.isArray(forwarded) ? forwarded.join(',') : (forwarded ?? ''))
     .split(',')
     .map((h) => h.trim())
     .filter(Boolean)
@@ -161,7 +161,13 @@ if (config.SCORM_CONTENT_ORIGIN) {
 const apiLimiterOptions = { windowMs: 60_000, standardHeaders: 'draft-7', legacyHeaders: false } as const;
 app.use(
   '/api/v1',
-  rateLimit({ ...apiLimiterOptions, limit: config.API_RATE_LIMIT_MAX, store: rateLimitStore('api'), passOnStoreError: true, message: { error: 'Too many requests. Slow down and try again shortly.' } })
+  rateLimit({
+    ...apiLimiterOptions,
+    limit: config.API_RATE_LIMIT_MAX,
+    store: rateLimitStore('api'),
+    passOnStoreError: true,
+    message: { error: 'Too many requests. Slow down and try again shortly.' },
+  })
 );
 app.use(
   '/api/v1',
@@ -304,7 +310,10 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   if (err?.type === 'entity.parse.failed') return sendError(req, res, 400, 'Request body is not valid JSON');
   if (err?.type === 'entity.too.large') return sendError(req, res, 413, 'Request body is too large');
 
-  logger.error({ err, requestId: req.id, method: req.method, path: req.originalUrl.replace(/^\/scorm-content\/[^/?]+/, '/scorm-content/<token>') }, 'unhandled error');
+  logger.error(
+    { err, requestId: req.id, method: req.method, path: req.originalUrl.replace(/^\/scorm-content\/[^/?]+/, '/scorm-content/<token>') },
+    'unhandled error'
+  );
   const body: Record<string, unknown> = { error: 'Internal Server Error', requestId: req.id };
   if (config.NODE_ENV === 'development') body.detail = err?.message;
   res.status(500).json(body);

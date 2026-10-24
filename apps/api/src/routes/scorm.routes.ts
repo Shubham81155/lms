@@ -13,7 +13,15 @@ import { ACTIVE_ENROLLMENT, requireContentAccess, requireCourseEditor, requireCo
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { storage } from '../lib/storage';
-import { isWithdrawn, removeStored, scormContentOrigin, signLaunch, unpackPackage, WITHDRAWN_MESSAGE, type PackageFile } from '../lib/scorm';
+import {
+  isWithdrawn,
+  removeStored,
+  scormContentOrigin,
+  signLaunch,
+  unpackPackage,
+  WITHDRAWN_MESSAGE,
+  type PackageFile,
+} from '../lib/scorm';
 
 // Mounted at /api/v1. SCORM packages: course editors upload the zip (POST /files, purpose SCORM_PACKAGE) and
 // turn it into a package here; lessons of type SCORM_PACKAGE play it. Playing happens on the content origin
@@ -28,11 +36,27 @@ export const createPackageSchema = z.object({
   title: z.string().trim().min(1).max(255).optional(),
 });
 
-const view = (p: { id: string; courseId: string; title: string; version: string; launchPath: string; fileCount: number; sizeBytes: number; createdAt: Date; sourceFile?: { scanStatus: string } | null }) => ({
-  id: p.id, courseId: p.courseId, title: p.title, version: p.version, launchPath: p.launchPath, fileCount: p.fileCount, sizeBytes: p.sizeBytes, createdAt: p.createdAt,
+const view = (p: {
+  id: string;
+  courseId: string;
+  title: string;
+  version: string;
+  launchPath: string;
+  fileCount: number;
+  sizeBytes: number;
+  createdAt: Date;
+  sourceFile?: { scanStatus: string } | null;
+}) => ({
+  id: p.id,
+  courseId: p.courseId,
+  title: p.title,
+  version: p.version,
+  launchPath: p.launchPath,
+  fileCount: p.fileCount,
+  sizeBytes: p.sizeBytes,
+  createdAt: p.createdAt,
   withdrawn: isWithdrawn(p),
 });
-
 
 /** Unpacking writes up to 1 GB of files: at most two at a time per server. */
 let unpacking = 0;
@@ -52,7 +76,9 @@ router.post(
     const tenantId = tenantIdOf(req);
     const access = await requireCourseEditor(req, idSchema.parse(req.params.id));
     const { fileId, title } = parseBody(req, createPackageSchema);
-    const upload = await prisma.storedFile.findFirst({ where: { id: fileId, tenantId, courseId: access.course.id, purpose: 'SCORM_PACKAGE' } });
+    const upload = await prisma.storedFile.findFirst({
+      where: { id: fileId, tenantId, courseId: access.course.id, purpose: 'SCORM_PACKAGE' },
+    });
     if (!upload) throw new HttpError(400, 'Upload the package zip for this course first');
     if (upload.scanStatus === 'INFECTED') throw new HttpError(410, 'This package was withdrawn because a virus scan found malware in it.');
 
@@ -83,8 +109,14 @@ router.post(
         throw e;
       }
       await logAuditEvent({
-        tenantId, userId: req.user!.id, action: 'SCORM_PACKAGE_ADDED', resourceType: 'SCORM_PACKAGE', resourceId: pkg.id,
-        ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { courseId: access.course.id, version: pkg.version, fileCount: pkg.fileCount, sizeBytes: pkg.sizeBytes },
+        tenantId,
+        userId: req.user!.id,
+        action: 'SCORM_PACKAGE_ADDED',
+        resourceType: 'SCORM_PACKAGE',
+        resourceId: pkg.id,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        diffJson: { courseId: access.course.id, version: pkg.version, fileCount: pkg.fileCount, sizeBytes: pkg.sizeBytes },
       });
       return res.status(201).json({ data: view(pkg) });
     } finally {
@@ -158,11 +190,25 @@ router.get(
     return res.json({
       data: [
         ...attempts.map((a) => ({
-          userId: a.userId, name: `${a.user.firstName} ${a.user.lastName}`, email: a.user.email, status: a.status, scorePercent: a.scorePercent, completedAt: a.completedAt, updatedAt: a.updatedAt,
+          userId: a.userId,
+          name: `${a.user.firstName} ${a.user.lastName}`,
+          email: a.user.email,
+          status: a.status,
+          scorePercent: a.scorePercent,
+          completedAt: a.completedAt,
+          updatedAt: a.updatedAt,
         })),
-        ...enrolled.filter((e) => !started.has(e.userId)).map((e) => ({
-          userId: e.userId, name: `${e.user.firstName} ${e.user.lastName}`, email: e.user.email, status: 'not attempted', scorePercent: null, completedAt: null, updatedAt: null,
-        })),
+        ...enrolled
+          .filter((e) => !started.has(e.userId))
+          .map((e) => ({
+            userId: e.userId,
+            name: `${e.user.firstName} ${e.user.lastName}`,
+            email: e.user.email,
+            status: 'not attempted',
+            scorePercent: null,
+            completedAt: null,
+            updatedAt: null,
+          })),
       ],
     });
   })

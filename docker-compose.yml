@@ -12,7 +12,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/init-db.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d enterprise_lms"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d enterprise_lms']
       interval: 5s
       retries: 10
 
@@ -21,7 +21,7 @@ services:
     depends_on: { db: { condition: service_healthy } }
     user: node
     working_dir: /app
-    command: ["npm", "run", "db:deploy", "-w", "@enterprise-lms/database"]
+    command: ['npm', 'run', 'db:deploy', '-w', '@enterprise-lms/database']
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/enterprise_lms?schema=public
       DIRECT_URL: postgresql://postgres:postgres@db:5432/enterprise_lms?schema=public
@@ -47,7 +47,7 @@ services:
       CLAMAV_URL: ${CLAMAV_URL:-}
     volumes:
       - uploads:/app/storage
-    ports: ["4000:4000"]
+    ports: ['4000:4000']
 
   # ClamAV daemon for scanning uploads (opt-in: --profile scan). It needs about 2 GB of memory and a few minutes
   # to load its signatures on first start; freshclam inside keeps them up to date. Its StreamMaxLength must be at
@@ -64,7 +64,7 @@ services:
     depends_on: [api]
     environment:
       API_URL: http://api:4000
-    ports: ["3000:3000"]
+    ports: ['3000:3000']
 
 volumes:
   pgdata:

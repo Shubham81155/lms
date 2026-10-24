@@ -40,8 +40,16 @@ export const operatorSupportRouter = Router();
 const ADMIN_ROLES = ['SUPER_ADMIN', 'TENANT_ADMIN'] as const;
 
 const passSelect = {
-  id: true, scope: true, reason: true, grantedByEmail: true, createdAt: true, expiresAt: true,
-  revokedAt: true, revokedByEmail: true, lastEnteredAt: true, lastEnteredByEmail: true,
+  id: true,
+  scope: true,
+  reason: true,
+  grantedByEmail: true,
+  createdAt: true,
+  expiresAt: true,
+  revokedAt: true,
+  revokedByEmail: true,
+  lastEnteredAt: true,
+  lastEnteredByEmail: true,
 } as const;
 
 const passView = <T extends { revokedAt: Date | null; expiresAt: Date }>(p: T) => ({ ...p, status: passStatus(p) });
@@ -59,7 +67,9 @@ export const grantSchema = z
   .object({
     scope: z.enum(SUPPORT_SCOPES).default('READ_ONLY'),
     /** How long the pass lasts: 1, 4, 24 or 72 hours. */
-    hours: z.union(SUPPORT_DURATIONS_HOURS.map((h) => z.literal(h)) as unknown as [z.ZodLiteral<1>, z.ZodLiteral<4>, z.ZodLiteral<24>, z.ZodLiteral<72>]),
+    hours: z.union(
+      SUPPORT_DURATIONS_HOURS.map((h) => z.literal(h)) as unknown as [z.ZodLiteral<1>, z.ZodLiteral<4>, z.ZodLiteral<24>, z.ZodLiteral<72>]
+    ),
     /** Why support is needed; the operator sees it. */
     reason: z.string().trim().min(5).max(500),
   })
@@ -90,7 +100,8 @@ router.post(
     refuseSupportSession(req);
     const tenantId = tenantIdOf(req);
     const input = parseBody(req, grantSchema);
-    if (await isOperatorTenant(tenantId)) throw new HttpError(409, 'The platform operator organisation cannot grant support access to itself');
+    if (await isOperatorTenant(tenantId))
+      throw new HttpError(409, 'The platform operator organisation cannot grant support access to itself');
     const me = await prisma.user.findFirst({ where: { id: req.user!.id }, select: { email: true } });
 
     const pass = await runInTenantTransaction(tenantId, async (tx) => {
@@ -100,14 +111,23 @@ router.post(
       if (active > 0) throw new HttpError(409, 'Support access is already granted; revoke it first to grant it again');
       return tx.supportPass.create({
         data: {
-          tenantId, scope: input.scope, reason: input.reason, grantedById: req.user!.id, grantedByEmail: me?.email ?? req.user!.email,
+          tenantId,
+          scope: input.scope,
+          reason: input.reason,
+          grantedById: req.user!.id,
+          grantedByEmail: me?.email ?? req.user!.email,
           expiresAt: new Date(Date.now() + input.hours * 3600_000),
         },
         select: passSelect,
       });
     });
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: 'SUPPORT_ACCESS_GRANTED', resourceType: 'SUPPORT_PASS', resourceId: pass.id, ...actor(req),
+      tenantId,
+      userId: req.user!.id,
+      action: 'SUPPORT_ACCESS_GRANTED',
+      resourceType: 'SUPPORT_PASS',
+      resourceId: pass.id,
+      ...actor(req),
       diffJson: { scope: pass.scope, hours: input.hours, expiresAt: pass.expiresAt.toISOString(), reason: pass.reason },
     });
     return res.status(201).json({ data: passView(pass) });
@@ -135,7 +155,12 @@ router.post(
     // The pass check alone already refuses the session; this also signs the support account out and frees it.
     await endSupportSessions(tenantId);
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: 'SUPPORT_ACCESS_REVOKED', resourceType: 'SUPPORT_PASS', resourceId: id, ...actor(req),
+      tenantId,
+      userId: req.user!.id,
+      action: 'SUPPORT_ACCESS_REVOKED',
+      resourceType: 'SUPPORT_PASS',
+      resourceId: id,
+      ...actor(req),
       diffJson: { scope: pass.scope, expiresAt: pass.expiresAt.toISOString() },
     });
     const saved = await prisma.supportPass.findFirstOrThrow({ where: { id }, select: passSelect });
@@ -193,7 +218,10 @@ router.post(
     if (tenantIsBlocked(tenant.status)) throw new HttpError(403, TENANT_SUSPENDED_MESSAGE);
 
     const { pass, user } = await runInTenantTransaction(tenantId, async (tx) => {
-      const pass = await tx.supportPass.findFirst({ where: { id: handoff.passId }, select: { id: true, scope: true, expiresAt: true, revokedAt: true } });
+      const pass = await tx.supportPass.findFirst({
+        where: { id: handoff.passId },
+        select: { id: true, scope: true, expiresAt: true, revokedAt: true },
+      });
       if (!pass || passStatus(pass) !== 'ACTIVE') throw new HttpError(410, 'This support pass is no longer in force');
       const user = await activateSupportAccount(tx as any, tenantId);
       await tx.supportPass.update({ where: { id: pass.id }, data: { lastEnteredAt: now, lastEnteredByEmail: handoff.operatorEmail } });
@@ -203,7 +231,12 @@ router.post(
     setAuthCookie(res, generateSupportToken({ id: user.id, tenantId, tokenVersion: user.tokenVersion }, session));
     await runWithTenant(tenantId, () =>
       logAuditEvent({
-        tenantId, userId: user.id, action: 'SUPPORT_SESSION_STARTED', resourceType: 'SUPPORT_PASS', resourceId: pass.id, ...actor(req),
+        tenantId,
+        userId: user.id,
+        action: 'SUPPORT_SESSION_STARTED',
+        resourceType: 'SUPPORT_PASS',
+        resourceId: pass.id,
+        ...actor(req),
         diffJson: { operatorEmail: handoff.operatorEmail, scope: pass.scope, expiresAt: pass.expiresAt.toISOString() },
       })
     );
@@ -241,8 +274,18 @@ router.post(
 operatorSupportRouter.use('/support-passes', authenticateJWT, requireRole('SUPER_ADMIN'), requireOperator);
 
 interface ActivePassRow {
-  id: string; tenant_id: string; tenant_slug: string; tenant_name: string; tenant_status: string; scope: string; reason: string;
-  granted_by_email: string; created_at: Date; expires_at: Date; last_entered_at: Date | null; last_entered_by_email: string | null;
+  id: string;
+  tenant_id: string;
+  tenant_slug: string;
+  tenant_name: string;
+  tenant_status: string;
+  scope: string;
+  reason: string;
+  granted_by_email: string;
+  created_at: Date;
+  expires_at: Date;
+  last_entered_at: Date | null;
+  last_entered_by_email: string | null;
 }
 
 /** Passes in force across organisations (the database function sees past row-level security; see the migration). */
@@ -278,17 +321,28 @@ operatorSupportRouter.post(
     const id = idSchema.parse(req.params.id);
     const pass = (await activePasses()).find((p) => p.id === id);
     if (!pass) throw new HttpError(404, 'Support pass not found, or no longer in force');
-    if (pass.organization.id === tenantIdOf(req)) throw new HttpError(409, 'The platform operator organisation cannot be entered with a support pass');
+    if (pass.organization.id === tenantIdOf(req))
+      throw new HttpError(409, 'The platform operator organisation cannot be entered with a support pass');
     if (tenantIsBlocked(pass.organization.status)) throw new HttpError(409, 'This organisation is suspended');
-    const tenant = await basePrisma.tenant.findUniqueOrThrow({ where: { id: pass.organization.id }, select: { slug: true, customDomain: true } });
+    const tenant = await basePrisma.tenant.findUniqueOrThrow({
+      where: { id: pass.organization.id },
+      select: { slug: true, customDomain: true },
+    });
     const me = await prisma.user.findFirst({ where: { id: req.user!.id }, select: { email: true } });
     const operatorEmail = me?.email ?? req.user!.email;
 
     const { token, tokenHash } = generateOneTimeToken();
     const expiresAt = new Date(Date.now() + HANDOFF_TTL_MS);
-    await basePrisma.supportHandoff.create({ data: { tenantId: pass.organization.id, passId: id, tokenHash, operatorUserId: req.user!.id, operatorEmail, expiresAt } });
+    await basePrisma.supportHandoff.create({
+      data: { tenantId: pass.organization.id, passId: id, tokenHash, operatorUserId: req.user!.id, operatorEmail, expiresAt },
+    });
     await logAuditEvent({
-      tenantId: tenantIdOf(req), userId: req.user!.id, action: 'SUPPORT_HANDOFF_ISSUED', resourceType: 'SUPPORT_PASS', resourceId: id, ...actor(req),
+      tenantId: tenantIdOf(req),
+      userId: req.user!.id,
+      action: 'SUPPORT_HANDOFF_ISSUED',
+      resourceType: 'SUPPORT_PASS',
+      resourceId: id,
+      ...actor(req),
       diffJson: { tenant: pass.organization.slug, scope: pass.scope },
     });
     return res.json({ data: { url: `${tenantUrl(tenant)}/support/enter?token=${token}`, expiresAt } });

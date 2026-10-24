@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { X, Settings2 } from "lucide-react";
-import { api } from "@/lib/api";
-import { useAction, useApiData } from "@/hooks/useApiData";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { Banner } from "@/components/admin/IdentityPanels";
+import React, { useEffect, useState } from 'react';
+import { X, Settings2 } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAction, useApiData } from '@/hooks/useApiData';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { Banner } from '@/components/admin/IdentityPanels';
 
 interface CourseDetail {
   id: string;
@@ -19,7 +19,10 @@ interface CourseDetail {
   termId: string | null;
 }
 
-interface Term { id: string; name: string }
+interface Term {
+  id: string;
+  name: string;
+}
 
 interface Department {
   id: string;
@@ -28,15 +31,20 @@ interface Department {
   campus: string;
 }
 
-const field = "w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
-const label = "text-xs font-semibold text-ink-muted";
+const field =
+  'w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
+const label = 'text-xs font-semibold text-ink-muted';
 
 /** Edit a course's catalogue details and rules after it was created (PUT /courses/:id). */
-export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; onSaved?: () => void }> = ({ courseId, onClose, onSaved }) => {
+export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; onSaved?: () => void }> = ({
+  courseId,
+  onClose,
+  onSaved,
+}) => {
   useEscapeKey(onClose);
   const course = useApiData<{ data: CourseDetail }>(`/api/v1/courses/${courseId}`);
-  const departments = useApiData<{ data: Department[] }>("/api/v1/courses/departments");
-  const terms = useApiData<{ data: Term[] }>("/api/v1/terms");
+  const departments = useApiData<{ data: Department[] }>('/api/v1/courses/departments');
+  const terms = useApiData<{ data: Term[] }>('/api/v1/terms');
   const { busy, error, run } = useAction();
   const [draft, setDraft] = useState<CourseDetail | null>(null);
   const [saved, setSaved] = useState(false);
@@ -57,8 +65,8 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
       await api.put(`/api/v1/courses/${courseId}`, {
         title: draft.title.trim(),
         code: draft.code.trim(),
-        description: draft.description ?? "",
-        syllabus: draft.syllabus ?? "",
+        description: draft.description ?? '',
+        syllabus: draft.syllabus ?? '',
         passingGradePercent: draft.passingGradePercent,
         allowSelfEnroll: draft.allowSelfEnroll,
         departmentId: draft.departmentId,
@@ -73,16 +81,29 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
   const invalid = !draft || draft.title.trim().length < 3 || draft.code.trim().length < 2;
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="course-settings-h">
-      <form onSubmit={save} className="bg-surface border border-line rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+    <div
+      className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="course-settings-h"
+    >
+      <form
+        onSubmit={save}
+        className="bg-surface border border-line rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+      >
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Settings2 className="h-5 w-5 text-brand-fg" />
             <h3 id="course-settings-h" className="font-bold text-sm text-ink">
-              Course settings{draft ? `: ${draft.code}` : ""}
+              Course settings{draft ? `: ${draft.code}` : ''}
             </h3>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -101,12 +122,23 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                 </label>
                 <label className="space-y-1.5">
                   <span className={label}>Code</span>
-                  <input className={`${field} font-mono`} value={draft.code} maxLength={50} onChange={(e) => set({ code: e.target.value })} />
+                  <input
+                    className={`${field} font-mono`}
+                    value={draft.code}
+                    maxLength={50}
+                    onChange={(e) => set({ code: e.target.value })}
+                  />
                 </label>
               </div>
               <label className="block space-y-1.5">
                 <span className={label}>Description (shown in the catalogue)</span>
-                <textarea className={field} rows={3} maxLength={20000} value={draft.description ?? ""} onChange={(e) => set({ description: e.target.value })} />
+                <textarea
+                  className={field}
+                  rows={3}
+                  maxLength={20000}
+                  value={draft.description ?? ''}
+                  onChange={(e) => set({ description: e.target.value })}
+                />
               </label>
               <label className="block space-y-1.5">
                 <span className={label}>Syllabus</span>
@@ -114,7 +146,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                   className={field}
                   rows={8}
                   maxLength={50000}
-                  value={draft.syllabus ?? ""}
+                  value={draft.syllabus ?? ''}
                   onChange={(e) => set({ syllabus: e.target.value })}
                   placeholder="Learning outcomes, weekly schedule, assessment and grading policy, required reading, office hours…"
                 />
@@ -122,7 +154,7 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <label className="space-y-1.5">
                   <span className={label}>Term</span>
-                  <select className={field} value={draft.termId ?? ""} onChange={(e) => set({ termId: e.target.value || null })}>
+                  <select className={field} value={draft.termId ?? ''} onChange={(e) => set({ termId: e.target.value || null })}>
                     <option value="">No term</option>
                     {(terms.data?.data ?? []).map((t) => (
                       <option key={t.id} value={t.id}>
@@ -133,7 +165,11 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                 </label>
                 <label className="space-y-1.5">
                   <span className={label}>Department</span>
-                  <select className={field} value={draft.departmentId ?? ""} onChange={(e) => set({ departmentId: e.target.value || null })}>
+                  <select
+                    className={field}
+                    value={draft.departmentId ?? ''}
+                    onChange={(e) => set({ departmentId: e.target.value || null })}
+                  >
                     <option value="">None</option>
                     {(departments.data?.data ?? []).map((d) => (
                       <option key={d.id} value={d.id}>
@@ -154,7 +190,12 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
                   />
                 </label>
                 <label className="flex items-center gap-2 text-xs text-ink pt-6 cursor-pointer">
-                  <input type="checkbox" checked={draft.allowSelfEnroll} onChange={(e) => set({ allowSelfEnroll: e.target.checked })} className="rounded border-line" />
+                  <input
+                    type="checkbox"
+                    checked={draft.allowSelfEnroll}
+                    onChange={(e) => set({ allowSelfEnroll: e.target.checked })}
+                    className="rounded border-line"
+                  />
                   Learners can enrol themselves
                 </label>
               </div>
@@ -163,11 +204,18 @@ export const CourseSettings: React.FC<{ courseId: string; onClose: () => void; o
         </div>
 
         <div className="bg-canvas border-t border-line px-6 py-3.5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-line bg-surface hover:bg-raised text-xs font-semibold text-ink">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-line bg-surface hover:bg-raised text-xs font-semibold text-ink"
+          >
             Close
           </button>
-          <button disabled={busy || invalid} className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand text-xs font-bold">
-            {busy ? "Saving…" : "Save settings"}
+          <button
+            disabled={busy || invalid}
+            className="px-4 py-2 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand text-xs font-bold"
+          >
+            {busy ? 'Saving…' : 'Save settings'}
           </button>
         </div>
       </form>

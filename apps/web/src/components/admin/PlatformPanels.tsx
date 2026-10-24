@@ -1,37 +1,41 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Download, Send, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
-import { downloadFile, useAction, useApiData } from "@/hooks/useApiData";
-import { Banner, OnceSecret } from "./IdentityPanels";
+import React, { useState } from 'react';
+import { Download, Send, Trash2 } from 'lucide-react';
+import { api } from '@/lib/api';
+import { downloadFile, useAction, useApiData } from '@/hooks/useApiData';
+import { Banner, OnceSecret } from './IdentityPanels';
 
 const input =
-  "w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
-const primaryBtn =
-  "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all";
+  'w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
+const primaryBtn = 'px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all';
 const ghostBtn =
-  "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
+  'px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
 
 // ---------------------------------------------------------------------------
 // Feature flags
 // ---------------------------------------------------------------------------
 
 export const FEATURE_LABELS: Record<string, { label: string; hint: string }> = {
-  lti13: { label: "LTI 1.3 launches", hint: "Let external tools sign learners in." },
-  sso: { label: "Single sign-on (OIDC / SAML)", hint: "Sign in with your identity provider." },
-  webhooks: { label: "Webhooks", hint: "Send signed events to your systems." },
-  scim: { label: "SCIM provisioning", hint: "Sync accounts from your directory." },
-  aiAssistant: { label: "AI assistance", hint: "Study tutor for learners and course-outline drafts for instructors. Questions and course content are sent to Google Gemini." },
+  lti13: { label: 'LTI 1.3 launches', hint: 'Let external tools sign learners in.' },
+  sso: { label: 'Single sign-on (OIDC / SAML)', hint: 'Sign in with your identity provider.' },
+  webhooks: { label: 'Webhooks', hint: 'Send signed events to your systems.' },
+  scim: { label: 'SCIM provisioning', hint: 'Sync accounts from your directory.' },
+  aiAssistant: {
+    label: 'AI assistance',
+    hint: 'Study tutor for learners and course-outline drafts for instructors. Questions and course content are sent to Google Gemini.',
+  },
 };
 
 export const FeaturesPanel: React.FC = () => {
-  const { data, error } = useApiData<{ data: Record<string, boolean> }>("/api/v1/admin/features");
+  const { data, error } = useApiData<{ data: Record<string, boolean> }>('/api/v1/admin/features');
 
   return (
     <section className="space-y-4" aria-labelledby="features-heading">
       <div>
-        <h3 id="features-heading" className="font-bold text-base text-ink">Included in your plan</h3>
+        <h3 id="features-heading" className="font-bold text-base text-ink">
+          Included in your plan
+        </h3>
         <p className="text-xs text-ink-muted">To change your plan, contact your platform provider.</p>
       </div>
       {error && <Banner kind="error">{error}</Banner>}
@@ -44,8 +48,10 @@ export const FeaturesPanel: React.FC = () => {
                 <div className="text-sm font-semibold text-ink">{meta.label}</div>
                 <div className="text-[11px] text-ink-subtle">{meta.hint}</div>
               </div>
-              <span className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${on ? "bg-success/10 text-success border-success/30" : "bg-canvas text-ink-subtle border-line"}`}>
-                {on ? "Included" : "Not included"}
+              <span
+                className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${on ? 'bg-success/10 text-success border-success/30' : 'bg-canvas text-ink-subtle border-line'}`}
+              >
+                {on ? 'Included' : 'Not included'}
               </span>
             </li>
           );
@@ -67,14 +73,14 @@ export interface Usage {
 }
 
 export const UsagePanel: React.FC = () => {
-  const { data, error, reload } = useApiData<{ data: Usage }>("/api/v1/admin/usage");
+  const { data, error, reload } = useApiData<{ data: Usage }>('/api/v1/admin/usage');
   const { busy, error: actionError, run } = useAction();
   const [exporting, setExporting] = useState(false);
   const u = data?.data;
 
   const exportData = async () => {
     setExporting(true);
-    await run(() => downloadFile("/api/v1/admin/export", "tenant-export.json"));
+    await run(() => downloadFile('/api/v1/admin/export', 'tenant-export.json'));
     setExporting(false);
   };
 
@@ -84,12 +90,16 @@ export const UsagePanel: React.FC = () => {
     <section className="space-y-4" aria-labelledby="usage-heading">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 id="usage-heading" className="font-bold text-base text-ink">Usage and seats</h3>
-          <p className="text-xs text-ink-muted">Plan: {u?.tier ?? "…"}. Seats count active and invited accounts{u?.seats.quota ? `; your plan allows ${u.seats.quota}` : ""}.</p>
+          <h3 id="usage-heading" className="font-bold text-base text-ink">
+            Usage and seats
+          </h3>
+          <p className="text-xs text-ink-muted">
+            Plan: {u?.tier ?? '…'}. Seats count active and invited accounts{u?.seats.quota ? `; your plan allows ${u.seats.quota}` : ''}.
+          </p>
         </div>
         <button className={ghostBtn} onClick={exportData} disabled={exporting}>
           <Download className="h-3.5 w-3.5 inline mr-1" />
-          {exporting ? "Preparing…" : "Export all data (JSON)"}
+          {exporting ? 'Preparing…' : 'Export all data (JSON)'}
         </button>
       </div>
 
@@ -99,10 +109,10 @@ export const UsagePanel: React.FC = () => {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              ["Seats in use", u.seats.quota ? `${u.seats.used} / ${u.seats.quota}` : String(u.seats.used)],
-              ["Active users (30 days)", String(u.last30Days.activeUsers)],
-              ["Courses", String(u.totals.courses)],
-              ["Certificates issued", String(u.totals.certificates)],
+              ['Seats in use', u.seats.quota ? `${u.seats.used} / ${u.seats.quota}` : String(u.seats.used)],
+              ['Active users (30 days)', String(u.last30Days.activeUsers)],
+              ['Courses', String(u.totals.courses)],
+              ['Certificates issued', String(u.totals.certificates)],
             ].map(([label, value]) => (
               <div key={label} className="bg-canvas border border-line rounded-2xl p-4">
                 <div className="text-[11px] text-ink-subtle">{label}</div>
@@ -113,8 +123,15 @@ export const UsagePanel: React.FC = () => {
 
           {pct !== null && (
             <div>
-              <div className="h-2 rounded-full bg-raised overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Seat usage">
-                <div className={`h-2 ${pct >= 90 ? "bg-rose-500" : "bg-brand-hover"}`} style={{ width: `${pct}%` }} />
+              <div
+                className="h-2 rounded-full bg-raised overflow-hidden"
+                role="progressbar"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Seat usage"
+              >
+                <div className={`h-2 ${pct >= 90 ? 'bg-rose-500' : 'bg-brand-hover'}`} style={{ width: `${pct}%` }} />
               </div>
               <div className="text-[11px] text-ink-subtle mt-1">{u.seats.remaining} seats remaining</div>
             </div>
@@ -123,13 +140,12 @@ export const UsagePanel: React.FC = () => {
           <div className="flex flex-wrap gap-2 text-[11px]">
             {Object.entries(u.seats.byRole).map(([role, n]) => (
               <span key={role} className="px-2.5 py-1 rounded-full bg-canvas border border-line text-ink">
-                {role.replace(/_/g, " ").toLowerCase()}: <strong className="text-ink">{n}</strong>
+                {role.replace(/_/g, ' ').toLowerCase()}: <strong className="text-ink">{n}</strong>
               </span>
             ))}
           </div>
         </>
       )}
-
     </section>
   );
 };
@@ -138,7 +154,7 @@ export const UsagePanel: React.FC = () => {
 // Webhooks
 // ---------------------------------------------------------------------------
 
-const EVENTS = ["enrollment.completed", "certificate.issued", "quiz.submitted", "user.provisioned"] as const;
+const EVENTS = ['enrollment.completed', 'certificate.issued', 'quiz.submitted', 'user.provisioned'] as const;
 
 interface Endpoint {
   id: string;
@@ -164,10 +180,13 @@ const Deliveries: React.FC<{ id: string }> = ({ id }) => {
     <ul className="space-y-1">
       {rows.map((d) => (
         <li key={d.id} className="flex items-center justify-between text-[11px] font-mono">
-          <span className={d.success ? "text-success" : "text-danger"}>
-            {d.success ? "OK" : "FAIL"} {d.statusCode ?? "-"} {d.event}
+          <span className={d.success ? 'text-success' : 'text-danger'}>
+            {d.success ? 'OK' : 'FAIL'} {d.statusCode ?? '-'} {d.event}
           </span>
-          <span className="text-ink-subtle">{new Date(d.createdAt).toLocaleString()}{d.error ? ` · ${d.error}` : ""}</span>
+          <span className="text-ink-subtle">
+            {new Date(d.createdAt).toLocaleString()}
+            {d.error ? ` · ${d.error}` : ''}
+          </span>
         </li>
       ))}
     </ul>
@@ -175,9 +194,9 @@ const Deliveries: React.FC<{ id: string }> = ({ id }) => {
 };
 
 export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) => {
-  const { data, error, reload } = useApiData<{ data: Endpoint[] }>("/api/v1/admin/webhooks");
+  const { data, error, reload } = useApiData<{ data: Endpoint[] }>('/api/v1/admin/webhooks');
   const { busy, error: actionError, run } = useAction();
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState('');
   const [events, setEvents] = useState<string[]>([...EVENTS]);
   const [secret, setSecret] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -187,17 +206,22 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
   const create = (e: React.FormEvent) => {
     e.preventDefault();
     run(async () => {
-      const r = await api.post<{ data: { secret: string } }>("/api/v1/admin/webhooks", { url: url.trim(), events });
+      const r = await api.post<{ data: { secret: string } }>('/api/v1/admin/webhooks', { url: url.trim(), events });
       setSecret(r.data.secret);
-      setUrl("");
+      setUrl('');
       await reload();
     });
   };
 
   const test = (ep: Endpoint) =>
     run(async () => {
-      const r = await api.post<{ data: { success: boolean; statusCode: number | null; error: string | null } }>(`/api/v1/admin/webhooks/${ep.id}/test`);
-      setTestResult((p) => ({ ...p, [ep.id]: r.data.success ? `Delivered (HTTP ${r.data.statusCode})` : `Failed: ${r.data.error ?? "unknown error"}` }));
+      const r = await api.post<{ data: { success: boolean; statusCode: number | null; error: string | null } }>(
+        `/api/v1/admin/webhooks/${ep.id}/test`
+      );
+      setTestResult((p) => ({
+        ...p,
+        [ep.id]: r.data.success ? `Delivered (HTTP ${r.data.statusCode})` : `Failed: ${r.data.error ?? 'unknown error'}`,
+      }));
       setTick((t) => t + 1);
     });
 
@@ -218,10 +242,12 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
   return (
     <section className="space-y-4" aria-labelledby="webhooks-heading">
       <div>
-        <h3 id="webhooks-heading" className="font-bold text-base text-ink">Webhooks</h3>
+        <h3 id="webhooks-heading" className="font-bold text-base text-ink">
+          Webhooks
+        </h3>
         <p className="text-xs text-ink-muted">
-          Receive signed HTTPS events. Verify the <code className="text-brand-fg">x-lms-signature</code> header
-          (HMAC-SHA256 of timestamp + "." + body) with your endpoint's secret.
+          Receive signed HTTPS events. Verify the <code className="text-brand-fg">x-lms-signature</code> header (HMAC-SHA256 of timestamp +
+          "." + body) with your endpoint's secret.
         </p>
       </div>
 
@@ -232,7 +258,15 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
       <form onSubmit={create} className="space-y-3 bg-canvas border border-line rounded-2xl p-4">
         <label className="block space-y-1 text-xs text-ink-muted font-semibold">
           Endpoint URL
-          <input className={input} type="url" required placeholder="https://example.com/hooks/lms" value={url} onChange={(e) => setUrl(e.target.value)} disabled={!available} />
+          <input
+            className={input}
+            type="url"
+            required
+            placeholder="https://example.com/hooks/lms"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            disabled={!available}
+          />
         </label>
         <fieldset className="flex flex-wrap gap-4 text-xs text-ink">
           <legend className="text-xs text-ink-muted font-semibold mb-1">Events</legend>
@@ -249,7 +283,9 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
             </label>
           ))}
         </fieldset>
-        <button className={primaryBtn} disabled={busy || !available || events.length === 0 || !url.trim()}>Add webhook</button>
+        <button className={primaryBtn} disabled={busy || !available || events.length === 0 || !url.trim()}>
+          Add webhook
+        </button>
       </form>
 
       <ul className="space-y-2">
@@ -259,14 +295,19 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="text-xs font-semibold text-ink break-all">{ep.url}</div>
-                <div className="text-[11px] text-ink-subtle">{ep.events.join(", ")}</div>
+                <div className="text-[11px] text-ink-subtle">{ep.events.join(', ')}</div>
               </div>
               <div className="flex items-center gap-2">
                 <button className={ghostBtn} onClick={() => test(ep)} disabled={busy}>
-                  <Send className="h-3 w-3 inline mr-1" />Send test
+                  <Send className="h-3 w-3 inline mr-1" />
+                  Send test
                 </button>
-                <button className={ghostBtn} onClick={() => toggleActive(ep)} disabled={busy}>{ep.isActive ? "Pause" : "Resume"}</button>
-                <button className={ghostBtn} onClick={() => setOpen(open === ep.id ? null : ep.id)}>{open === ep.id ? "Hide log" : "Deliveries"}</button>
+                <button className={ghostBtn} onClick={() => toggleActive(ep)} disabled={busy}>
+                  {ep.isActive ? 'Pause' : 'Resume'}
+                </button>
+                <button className={ghostBtn} onClick={() => setOpen(open === ep.id ? null : ep.id)}>
+                  {open === ep.id ? 'Hide log' : 'Deliveries'}
+                </button>
                 <button className={ghostBtn} onClick={() => remove(ep)} disabled={busy} aria-label={`Delete ${ep.url}`}>
                   <Trash2 className="h-3 w-3" />
                 </button>

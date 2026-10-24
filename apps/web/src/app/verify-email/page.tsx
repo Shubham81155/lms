@@ -1,29 +1,29 @@
-"use client";
+'use client';
 
-import React, { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
-import { AuthCard } from "@/components/AuthCard";
+import React, { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { api, ApiError } from '@/lib/api';
+import { AuthCard } from '@/components/AuthCard';
 
 function VerifyEmail() {
-  const token = useSearchParams().get("token") ?? "";
-  const [state, setState] = useState<{ status: "working" | "ok" | "error"; message?: string }>({
-    status: "working",
+  const token = useSearchParams().get('token') ?? '';
+  const [state, setState] = useState<{ status: 'working' | 'ok' | 'error'; message?: string }>({
+    status: 'working',
   });
 
   useEffect(() => {
     if (!token) {
-      setState({ status: "error", message: "This verification link is incomplete." });
+      setState({ status: 'error', message: 'This verification link is incomplete.' });
       return;
     }
     api
-      .post("/api/v1/auth/verify-email", { token })
-      .then(() => setState({ status: "ok" }))
+      .post('/api/v1/auth/verify-email', { token })
+      .then(() => setState({ status: 'ok' }))
       .catch((err) =>
         setState({
-          status: "error",
-          message: err instanceof ApiError ? err.message : "Verification failed.",
+          status: 'error',
+          message: err instanceof ApiError ? err.message : 'Verification failed.',
         })
       );
   }, [token]);
@@ -31,9 +31,9 @@ function VerifyEmail() {
   return (
     <AuthCard title="Email verification">
       <p className="text-xs text-center text-ink">
-        {state.status === "working" && "Verifying..."}
-        {state.status === "ok" && "Your email address is verified."}
-        {state.status === "error" && state.message}
+        {state.status === 'working' && 'Verifying...'}
+        {state.status === 'ok' && 'Your email address is verified.'}
+        {state.status === 'error' && state.message}
       </p>
       <p className="text-center text-[11px]">
         <Link href="/login" className="text-brand-fg hover:underline underline-offset-2">

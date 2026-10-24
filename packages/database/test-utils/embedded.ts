@@ -49,9 +49,7 @@ export async function startTestDatabase(): Promise<TestDatabase> {
 
   const client = new Client({ connectionString: adminUrl });
   await client.connect();
-  await client.query(
-    `CREATE ROLE lms_app LOGIN PASSWORD 'app_pw' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE`
-  );
+  await client.query(`CREATE ROLE lms_app LOGIN PASSWORD 'app_pw' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE`);
   await client.end();
 
   const migrate = spawnSync('node', ['scripts/prisma.js', 'migrate', 'deploy'], {

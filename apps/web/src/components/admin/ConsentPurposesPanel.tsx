@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
-import { api } from "@/lib/api";
-import { useAction, useApiData } from "@/hooks/useApiData";
-import { Banner } from "@/components/admin/IdentityPanels";
+import React, { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAction, useApiData } from '@/hooks/useApiData';
+import { Banner } from '@/components/admin/IdentityPanels';
 
 const input =
-  "w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
+  'w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
 const ghostBtn =
-  "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50 inline-flex items-center gap-1.5";
-const primaryBtn = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all";
+  'px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50 inline-flex items-center gap-1.5';
+const primaryBtn = 'px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all';
 
 interface Purpose {
   key: string;
@@ -39,10 +39,10 @@ interface ReportRow {
 const KEY_RE = /^[a-z][a-z0-9_-]{1,39}$/;
 
 const problem = (d: Draft, all: Draft[]): string | null => {
-  if (!KEY_RE.test(d.key)) return "Key: 2-40 lower-case letters, digits, - or _, starting with a letter.";
-  if (all.filter((x) => x.key === d.key).length > 1) return "Each key may appear once.";
-  if (d.title.trim().length < 2) return "Give it a title.";
-  if (d.description.trim().length < 10) return "Describe the purpose in at least 10 characters.";
+  if (!KEY_RE.test(d.key)) return 'Key: 2-40 lower-case letters, digits, - or _, starting with a letter.';
+  if (all.filter((x) => x.key === d.key).length > 1) return 'Each key may appear once.';
+  if (d.title.trim().length < 2) return 'Give it a title.';
+  if (d.description.trim().length < 10) return 'Describe the purpose in at least 10 characters.';
   return null;
 };
 
@@ -57,11 +57,21 @@ const ConsentReport: React.FC<{ rows: ReportRow[] }> = ({ rows }) => (
           <caption className="sr-only">People&apos;s latest answer per consent purpose and version</caption>
           <thead className="bg-raised text-ink-muted text-[11px]">
             <tr>
-              <th scope="col" className="text-left font-semibold px-3 py-2">Purpose</th>
-              <th scope="col" className="text-left font-semibold px-3 py-2">Version</th>
-              <th scope="col" className="text-right font-semibold px-3 py-2">Granted</th>
-              <th scope="col" className="text-right font-semibold px-3 py-2">Withdrawn</th>
-              <th scope="col" className="text-right font-semibold px-3 py-2">No answer</th>
+              <th scope="col" className="text-left font-semibold px-3 py-2">
+                Purpose
+              </th>
+              <th scope="col" className="text-left font-semibold px-3 py-2">
+                Version
+              </th>
+              <th scope="col" className="text-right font-semibold px-3 py-2">
+                Granted
+              </th>
+              <th scope="col" className="text-right font-semibold px-3 py-2">
+                Withdrawn
+              </th>
+              <th scope="col" className="text-right font-semibold px-3 py-2">
+                No answer
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -74,9 +84,10 @@ const ConsentReport: React.FC<{ rows: ReportRow[] }> = ({ rows }) => (
                       <>
                         <span className="font-semibold">{r.title}</span>
                         <span className="text-ink-subtle">
-                          {" "}· {r.key}
-                          {r.required ? " · required" : ""}
-                          {r.active ? "" : " · inactive"}
+                          {' '}
+                          · {r.key}
+                          {r.required ? ' · required' : ''}
+                          {r.active ? '' : ' · inactive'}
                         </span>
                       </>
                     ) : (
@@ -85,11 +96,11 @@ const ConsentReport: React.FC<{ rows: ReportRow[] }> = ({ rows }) => (
                   </th>
                   <td className="px-3 py-2 text-ink-muted">
                     v{v.version}
-                    {v.version === r.currentVersion ? " (current)" : ""}
+                    {v.version === r.currentVersion ? ' (current)' : ''}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-success">{v.granted}</td>
                   <td className="px-3 py-2 text-right font-mono text-ink">{v.withdrawn}</td>
-                  <td className="px-3 py-2 text-right font-mono text-ink-muted">{i === 0 ? r.noAnswer : ""}</td>
+                  <td className="px-3 py-2 text-right font-mono text-ink-muted">{i === 0 ? r.noAnswer : ''}</td>
                 </tr>
               ));
             })}
@@ -98,7 +109,8 @@ const ConsentReport: React.FC<{ rows: ReportRow[] }> = ({ rows }) => (
       </div>
     )}
     <p className="text-[11px] text-ink-subtle">
-      Each person counts once, under the version of their latest answer. &ldquo;No answer&rdquo; counts active and invited people who have not answered at all.
+      Each person counts once, under the version of their latest answer. &ldquo;No answer&rdquo; counts active and invited people who have
+      not answered at all.
     </p>
   </div>
 );
@@ -109,8 +121,8 @@ const ConsentReport: React.FC<{ rows: ReportRow[] }> = ({ rows }) => (
  * wording or "required" raises the purpose's version, so earlier answers stay tied to what was shown.
  */
 export const ConsentPurposesPanel: React.FC = () => {
-  const list = useApiData<{ data: Purpose[] }>("/api/v1/privacy/consent-purposes");
-  const report = useApiData<{ data: ReportRow[] }>("/api/v1/privacy/consents/report");
+  const list = useApiData<{ data: Purpose[] }>('/api/v1/privacy/consent-purposes');
+  const report = useApiData<{ data: ReportRow[] }>('/api/v1/privacy/consents/report');
   const { busy, error, run, clearError } = useAction();
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -130,7 +142,7 @@ export const ConsentPurposesPanel: React.FC = () => {
     clearError();
   };
   const add = () => {
-    setDrafts((ds) => [...ds, { key: "", title: "", description: "", required: false, active: true, lawfulBasis: null, isNew: true }]);
+    setDrafts((ds) => [...ds, { key: '', title: '', description: '', required: false, active: true, lawfulBasis: null, isNew: true }]);
     setDirty(true);
   };
   const problems = drafts.map((d) => problem(d, drafts));
@@ -139,7 +151,7 @@ export const ConsentPurposesPanel: React.FC = () => {
   const save = () =>
     run(async () => {
       setDone(null);
-      await api.put("/api/v1/privacy/consent-purposes", {
+      await api.put('/api/v1/privacy/consent-purposes', {
         purposes: drafts.map((d) => ({
           key: d.key,
           title: d.title.trim(),
@@ -149,14 +161,16 @@ export const ConsentPurposesPanel: React.FC = () => {
           active: d.active,
         })),
       });
-      setDone("Purposes saved. Changed wording starts a new version, so people are asked again.");
+      setDone('Purposes saved. Changed wording starts a new version, so people are asked again.');
       await Promise.all([list.reload(), report.reload()]);
     });
 
   return (
     <section className="space-y-5" aria-labelledby="consent-h">
       <div>
-        <h3 id="consent-h" className="font-bold text-base text-ink">Consent purposes</h3>
+        <h3 id="consent-h" className="font-bold text-base text-ink">
+          Consent purposes
+        </h3>
         <p className="text-xs text-ink-muted">
           What you ask people to agree to, in words they understand. Switch a purpose off instead of deleting it; the history is kept.
         </p>
@@ -173,8 +187,15 @@ export const ConsentPurposesPanel: React.FC = () => {
             <li key={d.isNew ? `new-${i}` : d.key} className="p-3 rounded-2xl border border-line bg-canvas space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="space-y-1 text-[11px] text-ink-muted">
-                  Key{d.isNew ? "" : " (fixed)"}
-                  <input className={input} value={d.key} maxLength={40} readOnly={!d.isNew} onChange={(e) => edit(i, { key: e.target.value.toLowerCase() })} placeholder="e.g. marketing" />
+                  Key{d.isNew ? '' : ' (fixed)'}
+                  <input
+                    className={input}
+                    value={d.key}
+                    maxLength={40}
+                    readOnly={!d.isNew}
+                    onChange={(e) => edit(i, { key: e.target.value.toLowerCase() })}
+                    placeholder="e.g. marketing"
+                  />
                 </label>
                 <label className="space-y-1 text-[11px] text-ink-muted">
                   Title
@@ -182,16 +203,29 @@ export const ConsentPurposesPanel: React.FC = () => {
                 </label>
                 <label className="space-y-1 text-[11px] text-ink-muted md:col-span-2">
                   What the data is used for (shown to people)
-                  <textarea className={input} rows={2} maxLength={2000} value={d.description} onChange={(e) => edit(i, { description: e.target.value })} />
+                  <textarea
+                    className={input}
+                    rows={2}
+                    maxLength={2000}
+                    value={d.description}
+                    onChange={(e) => edit(i, { description: e.target.value })}
+                  />
                 </label>
                 <label className="space-y-1 text-[11px] text-ink-muted md:col-span-2">
                   Lawful-basis note (internal, never shown)
-                  <textarea className={input} rows={2} maxLength={1000} value={d.lawfulBasis ?? ""} onChange={(e) => edit(i, { lawfulBasis: e.target.value })} />
+                  <textarea
+                    className={input}
+                    rows={2}
+                    maxLength={1000}
+                    value={d.lawfulBasis ?? ''}
+                    onChange={(e) => edit(i, { lawfulBasis: e.target.value })}
+                  />
                 </label>
               </div>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <label className="flex items-center gap-2 text-xs text-ink">
-                  <input type="checkbox" checked={d.required} onChange={(e) => edit(i, { required: e.target.checked })} /> Required to use the platform
+                  <input type="checkbox" checked={d.required} onChange={(e) => edit(i, { required: e.target.checked })} /> Required to use
+                  the platform
                 </label>
                 <label className="flex items-center gap-2 text-xs text-ink">
                   <input type="checkbox" checked={d.active} onChange={(e) => edit(i, { active: e.target.checked })} /> Active
@@ -209,7 +243,11 @@ export const ConsentPurposesPanel: React.FC = () => {
                   </button>
                 )}
               </div>
-              {problems[i] && dirty && <p className="text-[11px] text-accent" role="status">{problems[i]}</p>}
+              {problems[i] && dirty && (
+                <p className="text-[11px] text-accent" role="status">
+                  {problems[i]}
+                </p>
+              )}
             </li>
           ))}
         </ul>
@@ -220,7 +258,7 @@ export const ConsentPurposesPanel: React.FC = () => {
           <Plus className="h-3.5 w-3.5" /> Add purpose
         </button>
         <button className={primaryBtn} disabled={busy || !dirty || invalid || drafts.length === 0} onClick={save}>
-          {busy ? "Saving…" : "Save purposes"}
+          {busy ? 'Saving…' : 'Save purposes'}
         </button>
       </div>
 

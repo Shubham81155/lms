@@ -9,7 +9,16 @@ import { decryptSecret } from '../lib/mfa';
 import { startSession } from '../middleware/auth';
 import { cookieName, cookiePath } from '../lib/cookie-name';
 import {
-  authorizationUrl, discover, exchangeCode, newPkce, randomToken, readFlow, safeEqual, signFlow, verifyIdToken, IdClaims,
+  authorizationUrl,
+  discover,
+  exchangeCode,
+  newPkce,
+  randomToken,
+  readFlow,
+  safeEqual,
+  signFlow,
+  verifyIdToken,
+  IdClaims,
 } from '../lib/oidc';
 import { logger } from '../lib/logger';
 import { resolveSsoUser, splitName } from '../lib/sso-user';
@@ -23,7 +32,12 @@ const router = Router();
 
 const FLOW_COOKIE = cookieName('lms_sso');
 const loginUrl = (origin: string, error?: string) => `${origin}/login${error ? `?error=${error}` : ''}`;
-const cookieOpts = () => ({ httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax' as const, path: cookiePath('/api/v1/auth/sso') });
+const cookieOpts = () => ({
+  httpOnly: true,
+  secure: config.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: cookiePath('/api/v1/auth/sso'),
+});
 
 /** The tenant's connection when SSO is both switched on for the plan and enabled by the admin. */
 async function activeConnection(tenantId: string) {
@@ -63,9 +77,24 @@ router.get('/start', async (req: Request, res: Response) => {
 
       const d = await discover(conn.issuer);
       const pkce = newPkce();
-      const flow = { state: randomToken(), nonce: randomToken(), verifier: pkce.verifier, tenantId: tenant.id, redirectUri: callbackUri(origin) };
+      const flow = {
+        state: randomToken(),
+        nonce: randomToken(),
+        verifier: pkce.verifier,
+        tenantId: tenant.id,
+        redirectUri: callbackUri(origin),
+      };
       res.cookie(FLOW_COOKIE, signFlow(flow), { ...cookieOpts(), maxAge: 10 * 60 * 1000 });
-      return res.redirect(302, authorizationUrl(d, { clientId: conn.clientId, redirectUri: flow.redirectUri, state: flow.state, nonce: flow.nonce, challenge: pkce.challenge }));
+      return res.redirect(
+        302,
+        authorizationUrl(d, {
+          clientId: conn.clientId,
+          redirectUri: flow.redirectUri,
+          state: flow.state,
+          nonce: flow.nonce,
+          challenge: pkce.challenge,
+        })
+      );
     });
   } catch (err) {
     logger.warn({ err, requestId: req.id }, 'sso start failed');
@@ -83,7 +112,14 @@ router.get('/callback', async (req: Request, res: Response) => {
     logger.info({ reason, requestId: req.id }, 'sso sign-in refused');
     if (tenantId) {
       void runWithTenant(tenantId, () =>
-        logAuditEvent({ tenantId, action: 'SSO_LOGIN_FAILED', resourceType: 'USER', ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { reason } })
+        logAuditEvent({
+          tenantId,
+          action: 'SSO_LOGIN_FAILED',
+          resourceType: 'USER',
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          diffJson: { reason },
+        })
       );
     }
     return res.redirect(302, loginUrl(origin, 'sso_failed'));
@@ -93,7 +129,8 @@ router.get('/callback', async (req: Request, res: Response) => {
     const { code, state, error } = req.query as Record<string, string | undefined>;
     if (!flow) return fail('missing or expired flow cookie');
     if (error) return fail(`provider returned ${String(error).slice(0, 40)}`, flow.tenantId);
-    if (typeof code !== 'string' || typeof state !== 'string' || !safeEqual(state, flow.state)) return fail('state mismatch', flow.tenantId);
+    if (typeof code !== 'string' || typeof state !== 'string' || !safeEqual(state, flow.state))
+      return fail('state mismatch', flow.tenantId);
 
     return await runWithTenant(flow.tenantId, async () => {
       const conn = await activeConnection(flow.tenantId);
@@ -101,7 +138,11 @@ router.get('/callback', async (req: Request, res: Response) => {
 
       const d = await discover(conn.issuer);
       const idToken = await exchangeCode(d, {
-        clientId: conn.clientId, clientSecret: decryptSecret(conn.clientSecretEnc), redirectUri: flow.redirectUri, code, verifier: flow.verifier,
+        clientId: conn.clientId,
+        clientSecret: decryptSecret(conn.clientSecretEnc),
+        redirectUri: flow.redirectUri,
+        code,
+        verifier: flow.verifier,
       });
       const claims = await verifyIdToken(idToken, d, { clientId: conn.clientId, nonce: flow.nonce });
 
@@ -121,8 +162,14 @@ router.get('/callback', async (req: Request, res: Response) => {
 
       await startSession(res, { id: result.user.id, role: result.user.role, email: result.user.email, tenantId: result.user.tenantId });
       await logAuditEvent({
-        tenantId: flow.tenantId, userId: result.user.id, action: 'USER_LOGIN', resourceType: 'USER', resourceId: result.user.id,
-        ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { method: 'OIDC' },
+        tenantId: flow.tenantId,
+        userId: result.user.id,
+        action: 'USER_LOGIN',
+        resourceType: 'USER',
+        resourceId: result.user.id,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        diffJson: { method: 'OIDC' },
       });
       // The home page forwards a signed-in user to their own portal.
       return res.redirect(302, `${origin}/`);

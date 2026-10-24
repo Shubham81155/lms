@@ -9,14 +9,14 @@ export const isOrgSlug = (value: string | null | undefined): value is string => 
 /** Lowercase, hyphenated and trimmed to a valid length: "St. Mary's College" -> "st-marys-college". */
 export function suggestSlug(name: string): string {
   return name
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 40)
-    .replace(/-+$/g, "");
+    .replace(/-+$/g, '');
 }
 
 /**
@@ -35,13 +35,13 @@ export function guessOrgUrl(slug: string, origin: string): string | null {
 
 /** The sign-in page of an organisation's address; only http(s) addresses are followed, anything else stays here. */
 export function orgLoginUrl(url: string | null | undefined): string {
-  if (!url) return "/login";
+  if (!url) return '/login';
   try {
     const u = new URL(url);
-    if (u.protocol !== "https:" && u.protocol !== "http:") return "/login";
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return '/login';
     return `${u.origin}/login`;
   } catch {
-    return "/login";
+    return '/login';
   }
 }
 
@@ -60,6 +60,6 @@ export function displayAddress(url: string): string {
  * address (localhost, lms.example.com) is not, and neither, as far as the browser can tell, is a custom domain.
  */
 export function isOwnSubdomain(hostname: string, slug: string | null | undefined): boolean {
-  const labels = hostname.toLowerCase().split(".");
+  const labels = hostname.toLowerCase().split('.');
   return !!slug && labels.length > 1 && labels[0] === slug.toLowerCase();
 }

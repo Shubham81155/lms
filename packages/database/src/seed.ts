@@ -160,7 +160,9 @@ async function main() {
       emailVerified: true,
     },
   });
-  console.log(`✓ Users created: Student (${student.email}), Instructor (${instructor.email}), Assistant (${assistant.email}), Admin (${admin.email})`);
+  console.log(
+    `✓ Users created: Student (${student.email}), Instructor (${instructor.email}), Assistant (${assistant.email}), Admin (${admin.email})`
+  );
 
   // 5. Create Courses
   const course1 = await prisma.course.upsert({
@@ -239,24 +241,60 @@ async function main() {
       id: 'mod_cs101_1',
       title: 'Module 1: Foundations of Distributed Consensus',
       lessons: [
-        { id: 'les_cs101_1_1', title: '1.1 The Byzantine Generals Problem & Fault Tolerance', contentType: 'VIDEO', minutes: 18, body: 'In distributed computing, achieving consensus among independent nodes in the presence of arbitrary failures (Byzantine faults) requires at least 3f + 1 nodes to tolerate f faulty or malicious actors.' },
-        { id: 'les_cs101_1_2', title: '1.2 Safety vs. Liveness Properties in Asynchronous Networks', contentType: 'RICHTEXT', minutes: 25, body: 'The FLP Impossibility Theorem (Fischer, Lynch, Paterson, 1985) establishes that no deterministic asynchronous algorithm can guarantee consensus if even a single node is subject to unannounced crash failure.\n\nIt does not mean distributed algorithms cannot make progress in practice: partial synchrony assumptions or randomized consensus (as in Paxos and Raft) are what make termination possible.' },
+        {
+          id: 'les_cs101_1_1',
+          title: '1.1 The Byzantine Generals Problem & Fault Tolerance',
+          contentType: 'VIDEO',
+          minutes: 18,
+          body: 'In distributed computing, achieving consensus among independent nodes in the presence of arbitrary failures (Byzantine faults) requires at least 3f + 1 nodes to tolerate f faulty or malicious actors.',
+        },
+        {
+          id: 'les_cs101_1_2',
+          title: '1.2 Safety vs. Liveness Properties in Asynchronous Networks',
+          contentType: 'RICHTEXT',
+          minutes: 25,
+          body: 'The FLP Impossibility Theorem (Fischer, Lynch, Paterson, 1985) establishes that no deterministic asynchronous algorithm can guarantee consensus if even a single node is subject to unannounced crash failure.\n\nIt does not mean distributed algorithms cannot make progress in practice: partial synchrony assumptions or randomized consensus (as in Paxos and Raft) are what make termination possible.',
+        },
       ],
     },
     {
       id: 'mod_cs101_2',
       title: 'Module 2: Raft Consensus Protocol in Production',
       lessons: [
-        { id: 'les_cs101_2_1', title: '2.1 Leader Election, Randomized Timers & Heartbeats', contentType: 'VIDEO', minutes: 30, body: 'Raft structures consensus around an elected leader. Nodes move between Follower, Candidate and Leader states, and randomized election timeouts (150-300ms) prevent split votes.' },
-        { id: 'les_cs101_2_2', title: '2.2 Log Replication & Quorum Commitment', contentType: 'INTERACTIVE_CODE', minutes: 40, body: 'A log entry is committed once it is replicated across a strict majority (quorum) of nodes. The leader tracks matchIndex and nextIndex for every follower.\n\nExercise: write a function hasMajorityQuorum(clusterSize, respondingNodes) that returns true when a majority of the cluster has responded.' },
+        {
+          id: 'les_cs101_2_1',
+          title: '2.1 Leader Election, Randomized Timers & Heartbeats',
+          contentType: 'VIDEO',
+          minutes: 30,
+          body: 'Raft structures consensus around an elected leader. Nodes move between Follower, Candidate and Leader states, and randomized election timeouts (150-300ms) prevent split votes.',
+        },
+        {
+          id: 'les_cs101_2_2',
+          title: '2.2 Log Replication & Quorum Commitment',
+          contentType: 'INTERACTIVE_CODE',
+          minutes: 40,
+          body: 'A log entry is committed once it is replicated across a strict majority (quorum) of nodes. The leader tracks matchIndex and nextIndex for every follower.\n\nExercise: write a function hasMajorityQuorum(clusterSize, respondingNodes) that returns true when a majority of the cluster has responded.',
+        },
       ],
     },
     {
       id: 'mod_cs101_3',
       title: 'Module 3: Zero-Trust Network Policies & Data Security',
       lessons: [
-        { id: 'les_cs101_3_1', title: '3.1 Field-Level Encryption & Mutual TLS Handshakes', contentType: 'RICHTEXT', minutes: 35, body: 'Enterprise architectures enforce mTLS using ephemeral elliptic-curve Diffie-Hellman keys and AES-256-GCM authenticated encryption for student personal data held under FERPA.' },
-        { id: 'les_cs101_3_2', title: '3.2 Dynamic Forensic Watermarking & Screen Capture Protection', contentType: 'RICHTEXT', minutes: 20, body: 'To deter lecture sharing, videos can embed a floating forensic watermark containing the identity of the viewer and a timestamp.' },
+        {
+          id: 'les_cs101_3_1',
+          title: '3.1 Field-Level Encryption & Mutual TLS Handshakes',
+          contentType: 'RICHTEXT',
+          minutes: 35,
+          body: 'Enterprise architectures enforce mTLS using ephemeral elliptic-curve Diffie-Hellman keys and AES-256-GCM authenticated encryption for student personal data held under FERPA.',
+        },
+        {
+          id: 'les_cs101_3_2',
+          title: '3.2 Dynamic Forensic Watermarking & Screen Capture Protection',
+          contentType: 'RICHTEXT',
+          minutes: 20,
+          body: 'To deter lecture sharing, videos can embed a floating forensic watermark containing the identity of the viewer and a timestamp.',
+        },
       ],
     },
   ] as const;
@@ -271,7 +309,15 @@ async function main() {
       await prisma.lesson.upsert({
         where: { id: les.id },
         update: {},
-        create: { id: les.id, moduleId: mod.id, title: les.title, orderIndex: li, contentType: les.contentType, bodyContent: les.body, estimatedMinutes: les.minutes },
+        create: {
+          id: les.id,
+          moduleId: mod.id,
+          title: les.title,
+          orderIndex: li,
+          contentType: les.contentType,
+          bodyContent: les.body,
+          estimatedMinutes: les.minutes,
+        },
       });
     }
   }

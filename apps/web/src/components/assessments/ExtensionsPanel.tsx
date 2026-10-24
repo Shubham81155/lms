@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { api } from "@/lib/api";
-import { useAction, useApiData } from "@/hooks/useApiData";
-import { Banner } from "@/components/admin/IdentityPanels";
-import { card, ghost, input, primary } from "./ui";
+import React, { useState } from 'react';
+import { api } from '@/lib/api';
+import { useAction, useApiData } from '@/hooks/useApiData';
+import { Banner } from '@/components/admin/IdentityPanels';
+import { card, ghost, input, primary } from './ui';
 
 interface Extension {
   id: string;
@@ -20,26 +20,37 @@ interface RosterRow {
   user?: { id: string; firstName: string; lastName: string; email: string };
 }
 
-const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 /** Per-learner extensions on one assignment or quiz: who has one, until when, and why. */
-export const ExtensionsPanel: React.FC<{ courseId: string; itemType: "ASSIGNMENT" | "QUIZ"; itemId: string; courseDue: string | null }> = ({ courseId, itemType, itemId, courseDue }) => {
-  const list = useApiData<{ data: Extension[] }>("/api/v1/extensions", { itemType, itemId });
-  const roster = useApiData<{ data: RosterRow[] }>("/api/v1/enrollments", { courseId, limit: 100 });
+export const ExtensionsPanel: React.FC<{ courseId: string; itemType: 'ASSIGNMENT' | 'QUIZ'; itemId: string; courseDue: string | null }> = ({
+  courseId,
+  itemType,
+  itemId,
+  courseDue,
+}) => {
+  const list = useApiData<{ data: Extension[] }>('/api/v1/extensions', { itemType, itemId });
+  const roster = useApiData<{ data: RosterRow[] }>('/api/v1/enrollments', { courseId, limit: 100 });
   const { busy, error, run } = useAction();
-  const [userId, setUserId] = useState("");
-  const [dueAt, setDueAt] = useState("");
-  const [reason, setReason] = useState("");
+  const [userId, setUserId] = useState('');
+  const [dueAt, setDueAt] = useState('');
+  const [reason, setReason] = useState('');
 
-  const learners = (roster.data?.data ?? []).filter((r) => r.user && r.status !== "DROPPED").map((r) => r.user!);
+  const learners = (roster.data?.data ?? []).filter((r) => r.user && r.status !== 'DROPPED').map((r) => r.user!);
 
   const grant = (e: React.FormEvent) => {
     e.preventDefault();
     run(async () => {
-      await api.put("/api/v1/extensions", { itemType, itemId, userId, dueAt: new Date(dueAt).toISOString(), reason: reason.trim() || undefined });
-      setUserId("");
-      setDueAt("");
-      setReason("");
+      await api.put('/api/v1/extensions', {
+        itemType,
+        itemId,
+        userId,
+        dueAt: new Date(dueAt).toISOString(),
+        reason: reason.trim() || undefined,
+      });
+      setUserId('');
+      setDueAt('');
+      setReason('');
       await list.reload();
     });
   };
@@ -53,7 +64,8 @@ export const ExtensionsPanel: React.FC<{ courseId: string; itemType: "ASSIGNMENT
   return (
     <div className={`${card} space-y-3`}>
       <p className="text-xs text-ink-muted">
-        {courseDue ? `Due for everyone on ${when(courseDue)}.` : "No course-wide due date is set."} An extension gives one learner a later date; they are notified.
+        {courseDue ? `Due for everyone on ${when(courseDue)}.` : 'No course-wide due date is set.'} An extension gives one learner a later
+        date; they are notified.
       </p>
       {(error || list.error) && <Banner kind="error">{error || list.error}</Banner>}
       {(list.data?.data ?? []).length > 0 && (
@@ -64,7 +76,7 @@ export const ExtensionsPanel: React.FC<{ courseId: string; itemType: "ASSIGNMENT
                 <span className="font-semibold text-ink">{x.name}</span> <span className="text-ink-subtle">{x.email}</span>
                 <div className="text-[11px] text-ink-muted">
                   Until {when(x.dueAt)}
-                  {x.reason ? ` · ${x.reason}` : ""}
+                  {x.reason ? ` · ${x.reason}` : ''}
                 </div>
               </div>
               <button className={ghost} disabled={busy} onClick={() => remove(x.id)} aria-label={`Remove the extension for ${x.name}`}>
@@ -92,7 +104,13 @@ export const ExtensionsPanel: React.FC<{ courseId: string; itemType: "ASSIGNMENT
         </label>
         <label className="space-y-1 text-[11px] font-semibold text-ink-muted flex-1 min-w-[10rem]">
           <span className="block">Reason (optional)</span>
-          <input className={`${input} w-full`} value={reason} maxLength={1000} onChange={(e) => setReason(e.target.value)} placeholder="e.g. medical certificate" />
+          <input
+            className={`${input} w-full`}
+            value={reason}
+            maxLength={1000}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. medical certificate"
+          />
         </label>
         <button className={primary} disabled={busy || !userId || !dueAt}>
           Grant extension

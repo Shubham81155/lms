@@ -1,7 +1,7 @@
 // Billing as the API returns it (GET /api/v1/billing and friends). Prices are in paise.
 
-export type BillingStatus = "NONE" | "ACTIVE" | "PAST_DUE" | "CANCELLED";
-export type BillingInterval = "MONTH" | "YEAR";
+export type BillingStatus = 'NONE' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED';
+export type BillingInterval = 'MONTH' | 'YEAR';
 
 export interface Plan {
   id: string;
@@ -58,14 +58,21 @@ export interface Invoice {
 /** Paise as rupees with Indian digit grouping: 1234567 paise -> "₹12,345.67" (whole rupees drop the decimals). */
 export function formatInr(paise: number): string {
   const rupees = paise / 100;
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: Number.isInteger(rupees) ? 0 : 2, maximumFractionDigits: 2 }).format(rupees);
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: Number.isInteger(rupees) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(rupees);
 }
 
 /** What `seats` seats of `plan` cost for one interval, in paise (prices are per seat). */
-export const planTotalPaise = (plan: Plan, interval: BillingInterval, seats: number) => (interval === "YEAR" ? plan.yearlyPaise : plan.monthlyPaise) * seats;
+export const planTotalPaise = (plan: Plan, interval: BillingInterval, seats: number) =>
+  (interval === 'YEAR' ? plan.yearlyPaise : plan.monthlyPaise) * seats;
 
 /** Share of a limit used, 0-100; null when there is no limit. */
-export const usagePercent = (used: number, limit: number | null): number | null => (limit === null || limit <= 0 ? null : Math.min(100, Math.round((used / limit) * 100)));
+export const usagePercent = (used: number, limit: number | null): number | null =>
+  limit === null || limit <= 0 ? null : Math.min(100, Math.round((used / limit) * 100));
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;

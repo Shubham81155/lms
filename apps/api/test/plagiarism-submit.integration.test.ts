@@ -34,9 +34,22 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  await admin.user.create({ data: { id: 's1', tenantId: 't-h', email: 's1@x.edu', firstName: 'S', lastName: 'L', role: 'STUDENT', passwordHash: 'x', emailVerified: true } });
+  await admin.user.create({
+    data: {
+      id: 's1',
+      tenantId: 't-h',
+      email: 's1@x.edu',
+      firstName: 'S',
+      lastName: 'L',
+      role: 'STUDENT',
+      passwordHash: 'x',
+      emailVerified: true,
+    },
+  });
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'C1', status: 'PUBLISHED' } });
-  await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 } });
+  await admin.assignment.create({
+    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 },
+  });
   process.env.DATABASE_URL = db.appUrl;
   lib = await import('../src/lib/plagiarism-submit.js');
   ({ signCallback } = await import('../src/routes/integrations.routes.js'));
@@ -51,7 +64,15 @@ afterAll(async () => {
 const queue = (data: Record<string, unknown> = {}) =>
   admin.assignmentSubmission.upsert({
     where: { assignmentId_userId: { assignmentId: 'a1', userId: 's1' } },
-    create: { assignmentId: 'a1', userId: 's1', submissionText: TEXT, plagiarismStatus: 'PENDING', plagiarismAttempts: 0, plagiarismNextAttemptAt: new Date(), ...data },
+    create: {
+      assignmentId: 'a1',
+      userId: 's1',
+      submissionText: TEXT,
+      plagiarismStatus: 'PENDING',
+      plagiarismAttempts: 0,
+      plagiarismNextAttemptAt: new Date(),
+      ...data,
+    },
     update: { submissionText: TEXT, plagiarismStatus: 'PENDING', plagiarismAttempts: 0, plagiarismNextAttemptAt: new Date(), ...data },
   });
 const row = () => admin.assignmentSubmission.findFirstOrThrow({ where: { assignmentId: 'a1', userId: 's1' } });
@@ -71,7 +92,11 @@ describe('outbound plagiarism submission', () => {
     expect(received).toHaveLength(1);
     const { headers, body } = received[0];
     expect(headers['x-lms-signature']).toBe(`sha256=${signCallback(SECRET, String(headers['x-lms-timestamp']), body.raw)}`);
-    expect(body).toMatchObject({ text: TEXT, authorId: 's1', callbackUrl: 'https://api.example.com/api/v1/integrations/plagiarism/harvard' });
+    expect(body).toMatchObject({
+      text: TEXT,
+      authorId: 's1',
+      callbackUrl: 'https://api.example.com/api/v1/integrations/plagiarism/harvard',
+    });
     expect(await row()).toMatchObject({ plagiarismStatus: 'SUBMITTED', plagiarismAttempts: 1, plagiarismNextAttemptAt: null });
     expect((await lib.submitDuePlagiarismChecks()).submitted).toBe(0); // nothing left to send
   });

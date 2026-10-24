@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { api, ApiError } from "@/lib/api";
+import { useState, useEffect, useCallback } from 'react';
+import { api, ApiError } from '@/lib/api';
 
 export interface AtRiskLearner {
   id: string;
@@ -9,7 +9,7 @@ export interface AtRiskLearner {
   email: string;
   course: string;
   courseId?: string;
-  riskFactor: "HIGH" | "MEDIUM" | "LOW";
+  riskFactor: 'HIGH' | 'MEDIUM' | 'LOW';
   reasons: string[];
   suggestedAction: string;
   streakDays?: number;
@@ -62,10 +62,10 @@ export function useCohortAnalytics() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get<CohortAnalyticsResponse>("/api/v1/analytics/cohort");
+      const response = await api.get<CohortAnalyticsResponse>('/api/v1/analytics/cohort');
       setData(response);
     } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || "Failed to fetch cohort analytics");
+      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch cohort analytics';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -95,13 +95,11 @@ export function useXApiStream(limit: number = 20) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get<{ total: number; statements: XApiStatementItem[] }>(
-        `/api/v1/analytics/xapi/stream?limit=${limit}`
-      );
+      const response = await api.get<{ total: number; statements: XApiStatementItem[] }>(`/api/v1/analytics/xapi/stream?limit=${limit}`);
       setStatements(response.statements || []);
       setTotal(response.total || 0);
     } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || "Failed to fetch xAPI stream");
+      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch xAPI stream';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -120,4 +118,3 @@ export function useXApiStream(limit: number = 20) {
     refetch: fetchStream,
   };
 }
-

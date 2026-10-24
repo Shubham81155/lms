@@ -18,9 +18,7 @@ import { canSeeAllCourses, isAdminRole, requireContentAccess, requireCourseAcces
 
 const router = Router();
 
-const COURSE_AUDIT_FIELDS = [
-  'code', 'title', 'status', 'departmentId', 'termId', 'passingGradePercent', 'allowSelfEnroll',
-] as const;
+const COURSE_AUDIT_FIELDS = ['code', 'title', 'status', 'departmentId', 'termId', 'passingGradePercent', 'allowSelfEnroll'] as const;
 
 const emptyToNull = (v: string | undefined | null) => (v === '' ? null : v);
 
@@ -274,8 +272,7 @@ router.post(
         allowSelfEnroll: input.allowSelfEnroll ?? false,
         status: input.status ?? CourseStatus.DRAFT,
         // An instructor who creates a course becomes its primary instructor.
-        instructors:
-          req.user!.role === 'INSTRUCTOR' ? { create: { userId: req.user!.id, isPrimary: true } } : undefined,
+        instructors: req.user!.role === 'INSTRUCTOR' ? { create: { userId: req.user!.id, isPrimary: true } } : undefined,
       },
       include: { instructors: { include: { user: { select: { id: true, firstName: true, lastName: true } } } } },
     });
@@ -423,7 +420,10 @@ router.put(
     const tenantId = tenantIdOf(req);
     const id = String(req.params.id);
     const { instructors } = parseBody(req, courseInstructorsSchema);
-    const course = await prisma.course.findFirst({ where: { id, tenantId }, select: { id: true, title: true, instructors: { select: { userId: true, isPrimary: true } } } });
+    const course = await prisma.course.findFirst({
+      where: { id, tenantId },
+      select: { id: true, title: true, instructors: { select: { userId: true, isPrimary: true } } },
+    });
     if (!course) throw new HttpError(404, 'Course not found');
 
     const people = await prisma.user.findMany({
@@ -434,14 +434,20 @@ router.put(
     for (const i of instructors) {
       const p = byId.get(i.userId);
       if (!p) throw new HttpError(400, 'A chosen teacher is not in this organisation');
-      if (!['INSTRUCTOR', 'TEACHING_ASSISTANT'].includes(p.role)) throw new HttpError(400, `${p.firstName} ${p.lastName} is not an instructor or teaching assistant`);
-      if (!['ACTIVE', 'INVITED'].includes(p.status)) throw new HttpError(400, `${p.firstName} ${p.lastName}'s account is ${p.status.toLowerCase()}`);
-      if (i.isPrimary && p.role !== 'INSTRUCTOR') throw new HttpError(400, 'The main teacher must be an instructor, not a teaching assistant');
+      if (!['INSTRUCTOR', 'TEACHING_ASSISTANT'].includes(p.role))
+        throw new HttpError(400, `${p.firstName} ${p.lastName} is not an instructor or teaching assistant`);
+      if (!['ACTIVE', 'INVITED'].includes(p.status))
+        throw new HttpError(400, `${p.firstName} ${p.lastName}'s account is ${p.status.toLowerCase()}`);
+      if (i.isPrimary && p.role !== 'INSTRUCTOR')
+        throw new HttpError(400, 'The main teacher must be an instructor, not a teaching assistant');
     }
 
     await runInTenantTransaction(tenantId, async (tx) => {
       await tx.courseInstructor.deleteMany({ where: { courseId: id } });
-      if (instructors.length) await tx.courseInstructor.createMany({ data: instructors.map((i) => ({ courseId: id, userId: i.userId, isPrimary: i.isPrimary })) });
+      if (instructors.length)
+        await tx.courseInstructor.createMany({
+          data: instructors.map((i) => ({ courseId: id, userId: i.userId, isPrimary: i.isPrimary })),
+        });
     });
 
     const before = new Set(course.instructors.map((i) => i.userId));
@@ -449,12 +455,24 @@ router.put(
     const removed = course.instructors.filter((i) => !instructors.some((n) => n.userId === i.userId)).map((i) => i.userId);
     await Promise.all(
       added.map((userId) =>
-        notify({ tenantId, userId, category: 'COURSE', title: `You now teach "${course.title}"`, body: 'An administrator added you to this course.', link: `/courses/${id}` })
+        notify({
+          tenantId,
+          userId,
+          category: 'COURSE',
+          title: `You now teach "${course.title}"`,
+          body: 'An administrator added you to this course.',
+          link: `/courses/${id}`,
+        })
       )
     );
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: 'COURSE_INSTRUCTORS_CHANGED', resourceType: 'COURSE', resourceId: id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'],
+      tenantId,
+      userId: req.user!.id,
+      action: 'COURSE_INSTRUCTORS_CHANGED',
+      resourceType: 'COURSE',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
       diffJson: { before: course.instructors, after: instructors, added, removed },
     });
 
@@ -533,7 +551,10 @@ router.post(
       throw new HttpError(403, 'Forbidden: only enrolled learners can complete lessons');
     }
 
-    const lesson = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } }, select: { id: true } });
+    const lesson = await prisma.lesson.findFirst({
+      where: { id: String(req.params.lessonId), module: { courseId: id } },
+      select: { id: true },
+    });
     if (!lesson) throw new HttpError(404, 'Lesson not found');
 
     const r = await recordLessonsDone(tenantId, id, userId, [lesson.id]);
@@ -670,7 +691,8 @@ router.post(
     const input = parseBody(req, createLessonSchema);
     await assertAttachable(input.mediaUrl, { tenantId: tenantIdOf(req), courseId: id, purpose: 'LESSON_MEDIA' });
     await assertScormPackageOfCourse(input.scormPackageId, id);
-    if (input.contentType === ContentType.SCORM_PACKAGE && !input.scormPackageId) throw new HttpError(400, 'A SCORM lesson needs scormPackageId');
+    if (input.contentType === ContentType.SCORM_PACKAGE && !input.scormPackageId)
+      throw new HttpError(400, 'A SCORM lesson needs scormPackageId');
 
     const moduleRecord = await prisma.module.findFirst({ where: { id: String(req.params.moduleId), courseId: id } });
     if (!moduleRecord) throw new HttpError(404, 'Module not found');
@@ -709,7 +731,10 @@ router.patch(
     await assertAttachable(input.mediaUrl, { tenantId: tenantIdOf(req), courseId: id, purpose: 'LESSON_MEDIA' });
     await assertScormPackageOfCourse(input.scormPackageId, id);
     if (input.contentType === ContentType.SCORM_PACKAGE && !input.scormPackageId) {
-      const current = await prisma.lesson.findFirst({ where: { id: String(req.params.lessonId), module: { courseId: id } }, select: { scormPackageId: true } });
+      const current = await prisma.lesson.findFirst({
+        where: { id: String(req.params.lessonId), module: { courseId: id } },
+        select: { scormPackageId: true },
+      });
       if (current && !current.scormPackageId) throw new HttpError(400, 'A SCORM lesson needs scormPackageId');
     }
 

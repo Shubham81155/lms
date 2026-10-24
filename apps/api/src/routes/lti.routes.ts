@@ -50,7 +50,13 @@ router.post(
       await requireFeature(tenant.id, 'lti13');
       const clientId = Array.isArray(claims.aud) ? claims.aud[0] : claims.aud;
       const deployment = await prisma.ltiDeployment.findFirst({
-        where: { tenantId: tenant.id, issuer: String(claims.iss), clientId: String(clientId), deploymentId: String(claims[`${CLAIM}/deployment_id`]), isActive: true },
+        where: {
+          tenantId: tenant.id,
+          issuer: String(claims.iss),
+          clientId: String(clientId),
+          deploymentId: String(claims[`${CLAIM}/deployment_id`]),
+          isActive: true,
+        },
       });
       if (!deployment) throw new HttpError(401, 'Unknown LTI deployment');
 
@@ -64,13 +70,20 @@ router.post(
       if (!verified.nonce) throw new HttpError(401, 'LTI token has no nonce');
       // A launch token is good for minutes, not forever: without exp and a recent iat a captured one could be replayed.
       const nowSec = Math.floor(Date.now() / 1000);
-      if (typeof verified.exp !== 'number' || typeof verified.iat !== 'number' || verified.iat < nowSec - LAUNCH_MAX_AGE_SECONDS || verified.iat > nowSec + 60) {
+      if (
+        typeof verified.exp !== 'number' ||
+        typeof verified.iat !== 'number' ||
+        verified.iat < nowSec - LAUNCH_MAX_AGE_SECONDS ||
+        verified.iat > nowSec + 60
+      ) {
         throw new HttpError(401, 'LTI token is expired or has no issue time');
       }
       // One launch, one use: the nonce is remembered until the token would have expired (and expired ones are swept).
       await prisma.ltiNonce.deleteMany({ where: { tenantId: tenant.id, expiresAt: { lt: new Date() } } });
       try {
-        await prisma.ltiNonce.create({ data: { tenantId: tenant.id, issuer: deployment.issuer, nonce: String(verified.nonce), expiresAt: new Date(verified.exp * 1000) } });
+        await prisma.ltiNonce.create({
+          data: { tenantId: tenant.id, issuer: deployment.issuer, nonce: String(verified.nonce), expiresAt: new Date(verified.exp * 1000) },
+        });
       } catch (err: any) {
         if (err?.code === 'P2002') throw new HttpError(401, 'This LTI launch was already used');
         throw err;
@@ -82,8 +95,13 @@ router.post(
 
       await startSession(res, { id: user.id, role: user.role, email: user.email, tenantId: user.tenantId });
       await logAuditEvent({
-        tenantId: tenant.id, userId: user.id, action: 'LTI_LAUNCH', resourceType: 'LTI_DEPLOYMENT', resourceId: deployment.id,
-        ipAddress: req.ip, userAgent: req.headers['user-agent'],
+        tenantId: tenant.id,
+        userId: user.id,
+        action: 'LTI_LAUNCH',
+        resourceType: 'LTI_DEPLOYMENT',
+        resourceId: deployment.id,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
       });
       return res.json({
         status: 'authenticated',

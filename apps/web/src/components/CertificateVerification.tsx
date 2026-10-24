@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { X, Award, ShieldCheck, Printer, Link2, ExternalLink, AlertTriangle } from "lucide-react";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { useApiData } from "@/hooks/useApiData";
-import { useAuth } from "@/context/AuthContext";
+import React, { useState } from 'react';
+import { X, Award, ShieldCheck, Printer, Link2, ExternalLink, AlertTriangle } from 'lucide-react';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useApiData } from '@/hooks/useApiData';
+import { useAuth } from '@/context/AuthContext';
 
 interface CertificateVerificationProps {
   certificateNumber: string;
@@ -21,7 +21,7 @@ interface Verified {
   institution: string;
 }
 
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 
 /**
  * A learner's certificate, read from the same public endpoint anyone uses to verify it, so what is shown is
@@ -30,12 +30,17 @@ const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year:
 export const CertificateVerification: React.FC<CertificateVerificationProps> = ({ certificateNumber, onClose }) => {
   useEscapeKey(onClose);
   const { user } = useAuth();
-  const tenant = user?.tenantSlug ?? "";
-  const { data, isLoading, error } = useApiData<Verified>(`/api/v1/certificates/verify/${encodeURIComponent(certificateNumber)}`, tenant ? { tenant } : undefined);
+  const tenant = user?.tenantSlug ?? '';
+  const { data, isLoading, error } = useApiData<Verified>(
+    `/api/v1/certificates/verify/${encodeURIComponent(certificateNumber)}`,
+    tenant ? { tenant } : undefined
+  );
   const [copied, setCopied] = useState(false);
 
   const verifyUrl =
-    typeof window === "undefined" ? "" : `${window.location.origin}/verify?number=${encodeURIComponent(certificateNumber)}${tenant ? `&tenant=${encodeURIComponent(tenant)}` : ""}`;
+    typeof window === 'undefined'
+      ? ''
+      : `${window.location.origin}/verify?number=${encodeURIComponent(certificateNumber)}${tenant ? `&tenant=${encodeURIComponent(tenant)}` : ''}`;
 
   const copy = async () => {
     try {
@@ -43,19 +48,26 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      window.prompt("Copy this verification link:", verifyUrl);
+      window.prompt('Copy this verification link:', verifyUrl);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4 print:static print:bg-white print:p-0" role="dialog" aria-modal="true" aria-labelledby="cert-h">
+    <div
+      className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4 print:static print:bg-white print:p-0"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cert-h"
+    >
       <div className="bg-surface border border-line rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col print:border-0 print:shadow-none">
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between print:hidden">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
               <Award className="h-5 w-5" />
             </div>
-            <h3 id="cert-h" className="font-bold text-sm text-ink">Certificate of completion</h3>
+            <h3 id="cert-h" className="font-bold text-sm text-ink">
+              Certificate of completion
+            </h3>
           </div>
           <button onClick={onClose} aria-label="Close" className="p-1 rounded-lg hover:bg-raised text-ink-muted hover:text-ink">
             <X className="h-5 w-5" />
@@ -84,8 +96,8 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
                   <div className="font-semibold text-ink print:text-black">{day(data.issuedAt)}</div>
                 </div>
                 <div>
-                  <div className="text-ink-subtle">{data.expiresAt ? "Valid until" : "Expiry"}</div>
-                  <div className="font-semibold text-ink print:text-black">{data.expiresAt ? day(data.expiresAt) : "Does not expire"}</div>
+                  <div className="text-ink-subtle">{data.expiresAt ? 'Valid until' : 'Expiry'}</div>
+                  <div className="font-semibold text-ink print:text-black">{data.expiresAt ? day(data.expiresAt) : 'Does not expire'}</div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-ink-subtle">Certificate number</div>
@@ -96,9 +108,11 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
                   <div className="font-mono text-ink print:text-black">{verifyUrl}</div>
                 </div>
               </div>
-              <div className={`flex items-center justify-center gap-1.5 text-xs font-semibold print:hidden ${data.valid ? "text-success" : "text-danger"}`}>
+              <div
+                className={`flex items-center justify-center gap-1.5 text-xs font-semibold print:hidden ${data.valid ? 'text-success' : 'text-danger'}`}
+              >
                 {data.valid ? <ShieldCheck className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                <span>{data.valid ? "Verified by the institution's records" : "This certificate has expired"}</span>
+                <span>{data.valid ? "Verified by the institution's records" : 'This certificate has expired'}</span>
               </div>
             </div>
           )}
@@ -106,9 +120,12 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
 
         {data && (
           <div className="bg-canvas border-t border-line px-6 py-3.5 flex flex-wrap items-center justify-end gap-2 print:hidden">
-            <button onClick={copy} className="px-3.5 py-2 rounded-xl border border-line bg-surface hover:bg-raised text-xs font-semibold text-ink flex items-center gap-1.5">
+            <button
+              onClick={copy}
+              className="px-3.5 py-2 rounded-xl border border-line bg-surface hover:bg-raised text-xs font-semibold text-ink flex items-center gap-1.5"
+            >
               <Link2 className="h-3.5 w-3.5" />
-              {copied ? "Link copied" : "Copy verification link"}
+              {copied ? 'Link copied' : 'Copy verification link'}
             </button>
             <a
               href={verifyUrl}
@@ -119,7 +136,10 @@ export const CertificateVerification: React.FC<CertificateVerificationProps> = (
               <ExternalLink className="h-3.5 w-3.5" />
               Open verification page
             </a>
-            <button onClick={() => window.print()} className="px-3.5 py-2 rounded-xl bg-brand hover:bg-brand-hover text-on-brand text-xs font-bold flex items-center gap-1.5">
+            <button
+              onClick={() => window.print()}
+              className="px-3.5 py-2 rounded-xl bg-brand hover:bg-brand-hover text-on-brand text-xs font-bold flex items-center gap-1.5"
+            >
               <Printer className="h-3.5 w-3.5" />
               Print or save as PDF
             </button>

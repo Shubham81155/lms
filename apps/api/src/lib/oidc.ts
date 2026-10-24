@@ -68,7 +68,9 @@ export function readFlow(token: string | undefined): FlowState | null {
   if (!token) return null;
   try {
     const d = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'], audience: FLOW_AUDIENCE }) as any;
-    return d.state && d.nonce && d.verifier && d.tenantId && d.redirectUri ? { state: d.state, nonce: d.nonce, verifier: d.verifier, tenantId: d.tenantId, redirectUri: d.redirectUri } : null;
+    return d.state && d.nonce && d.verifier && d.tenantId && d.redirectUri
+      ? { state: d.state, nonce: d.nonce, verifier: d.verifier, tenantId: d.tenantId, redirectUri: d.redirectUri }
+      : null;
   } catch {
     return null;
   }
@@ -80,7 +82,10 @@ export const safeEqual = (a: string, b: string) => {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 };
 
-export function authorizationUrl(d: Discovery, p: { clientId: string; redirectUri: string; state: string; nonce: string; challenge: string }) {
+export function authorizationUrl(
+  d: Discovery,
+  p: { clientId: string; redirectUri: string; state: string; nonce: string; challenge: string }
+) {
   const u = new URL(d.authorization_endpoint);
   u.searchParams.set('response_type', 'code');
   u.searchParams.set('client_id', p.clientId);

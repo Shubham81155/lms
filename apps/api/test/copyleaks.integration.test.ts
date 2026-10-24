@@ -35,7 +35,15 @@ beforeAll(async () => {
         logins++;
         const ok = JSON.parse(raw).key === 'test-api-key-0123';
         res.statusCode = ok ? 200 : 400;
-        return res.end(ok ? JSON.stringify({ access_token: `tok-${logins}`, '.issued': new Date().toISOString(), '.expires': new Date(Date.now() + 48 * 3600_000).toISOString() }) : '{}');
+        return res.end(
+          ok
+            ? JSON.stringify({
+                access_token: `tok-${logins}`,
+                '.issued': new Date().toISOString(),
+                '.expires': new Date(Date.now() + 48 * 3600_000).toISOString(),
+              })
+            : '{}'
+        );
       }
       const answer = () => {
         res.statusCode = req.headers.authorization?.startsWith('Bearer tok-') ? submitStatus : 401;
@@ -60,12 +68,40 @@ beforeAll(async () => {
 
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
-  for (const [id, slug] of [['t-h', 'harvard'], ['t-m', 'mit']]) await admin.tenant.create({ data: { id, slug, name: slug } });
-  await admin.user.create({ data: { id: 's1', tenantId: 't-h', email: 's1@x.edu', firstName: 'S', lastName: 'L', role: 'STUDENT', passwordHash: 'x', emailVerified: true } });
-  await admin.user.create({ data: { id: 'teacher', tenantId: 't-h', email: 't@x.edu', firstName: 'T', lastName: 'L', role: 'INSTRUCTOR', passwordHash: 'x', emailVerified: true } });
+  for (const [id, slug] of [
+    ['t-h', 'harvard'],
+    ['t-m', 'mit'],
+  ])
+    await admin.tenant.create({ data: { id, slug, name: slug } });
+  await admin.user.create({
+    data: {
+      id: 's1',
+      tenantId: 't-h',
+      email: 's1@x.edu',
+      firstName: 'S',
+      lastName: 'L',
+      role: 'STUDENT',
+      passwordHash: 'x',
+      emailVerified: true,
+    },
+  });
+  await admin.user.create({
+    data: {
+      id: 'teacher',
+      tenantId: 't-h',
+      email: 't@x.edu',
+      firstName: 'T',
+      lastName: 'L',
+      role: 'INSTRUCTOR',
+      passwordHash: 'x',
+      emailVerified: true,
+    },
+  });
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'C1', status: 'PUBLISHED' } });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 } });
+  await admin.assignment.create({
+    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 },
+  });
   process.env.DATABASE_URL = db.appUrl;
   app = (await import('../src/server.js')).app;
   lib = await import('../src/lib/plagiarism-submit.js');
@@ -81,8 +117,26 @@ afterAll(async () => {
 const queue = (data: Record<string, unknown> = {}) =>
   admin.assignmentSubmission.upsert({
     where: { assignmentId_userId: { assignmentId: 'a1', userId: 's1' } },
-    create: { id: 'sub1', assignmentId: 'a1', userId: 's1', submissionText: TEXT, plagiarismStatus: 'PENDING', plagiarismAttempts: 0, plagiarismNextAttemptAt: new Date(), plagiarismScanId: null, ...data },
-    update: { submissionText: TEXT, plagiarismStatus: 'PENDING', plagiarismAttempts: 0, plagiarismNextAttemptAt: new Date(), plagiarismScanId: null, plagiarismScore: null, ...data },
+    create: {
+      id: 'sub1',
+      assignmentId: 'a1',
+      userId: 's1',
+      submissionText: TEXT,
+      plagiarismStatus: 'PENDING',
+      plagiarismAttempts: 0,
+      plagiarismNextAttemptAt: new Date(),
+      plagiarismScanId: null,
+      ...data,
+    },
+    update: {
+      submissionText: TEXT,
+      plagiarismStatus: 'PENDING',
+      plagiarismAttempts: 0,
+      plagiarismNextAttemptAt: new Date(),
+      plagiarismScanId: null,
+      plagiarismScore: null,
+      ...data,
+    },
   });
 const row = () => admin.assignmentSubmission.findUniqueOrThrow({ where: { id: 'sub1' } });
 const scans = () => received.filter((r) => r.method === 'PUT');
@@ -101,7 +155,13 @@ const webhook = (status: string, body: unknown, opts: { token?: string; path?: s
 const completed = (scanId: string, aggregatedScore: number) => ({
   status: 0,
   scannedDocument: { scanId, totalWords: 14, credits: 0 },
-  results: { score: { identicalWords: 5, minorChangedWords: 0, relatedMeaningWords: 0, aggregatedScore }, internet: [], database: [], batch: [], repositories: [] },
+  results: {
+    score: { identicalWords: 5, minorChangedWords: 0, relatedMeaningWords: 0, aggregatedScore },
+    internet: [],
+    database: [],
+    batch: [],
+    repositories: [],
+  },
 });
 
 describe('Copyleaks submission', () => {
@@ -122,7 +182,10 @@ describe('Copyleaks submission', () => {
       sandbox: true,
       webhooks: { status: 'https://api.example.com/api/v1/integrations/copyleaks/harvard/sub1/{STATUS}' },
     });
-    expect(scan.body.properties.webhooks.statusHeaders[0]).toEqual(['x-lms-token', copyleaks.copyleaksWebhookToken('harvard', 'sub1', r.plagiarismScanId!)]);
+    expect(scan.body.properties.webhooks.statusHeaders[0]).toEqual([
+      'x-lms-token',
+      copyleaks.copyleaksWebhookToken('harvard', 'sub1', r.plagiarismScanId!),
+    ]);
 
     // The access token is reused.
     await queue();
@@ -139,7 +202,11 @@ describe('Copyleaks submission', () => {
     submitStatus = 409;
     expect((await lib.submitDuePlagiarismChecks({ now: new Date(Date.now() + 120_000) })).submitted).toBe(1);
     expect((await row()).plagiarismScanId).toBe(first);
-    expect(scans().slice(-2).map((s) => s.url)).toEqual([`/v3/scans/submit/file/${first}`, `/v3/scans/submit/file/${first}`]);
+    expect(
+      scans()
+        .slice(-2)
+        .map((s) => s.url)
+    ).toEqual([`/v3/scans/submit/file/${first}`, `/v3/scans/submit/file/${first}`]);
     submitStatus = 201;
   });
 
@@ -192,13 +259,19 @@ describe('Copyleaks webhooks', () => {
 
     // Only the first outcome counts: a repeat with another score, or a late error, changes nothing.
     expect((await webhook('completed', completed(scanId, 0))).body).toEqual({ status: 'ignored', reason: 'already settled' });
-    expect((await webhook('error', { scannedDocument: { scanId }, error: { code: 1 } })).body).toEqual({ status: 'ignored', reason: 'already settled' });
+    expect((await webhook('error', { scannedDocument: { scanId }, error: { code: 1 } })).body).toEqual({
+      status: 'ignored',
+      reason: 'already settled',
+    });
     expect(await row()).toMatchObject({ plagiarismStatus: 'COMPLETE', plagiarismScore: 47.5 });
   });
 
   it('acknowledges other statuses and marks an error as FAILED', async () => {
     const scanId = await sendScan();
-    expect((await webhook('creditsChecked', { scannedDocument: { scanId }, credits: 1 })).body).toEqual({ status: 'ignored', reason: 'creditsChecked' });
+    expect((await webhook('creditsChecked', { scannedDocument: { scanId }, credits: 1 })).body).toEqual({
+      status: 'ignored',
+      reason: 'creditsChecked',
+    });
     expect((await row()).plagiarismStatus).toBe('SUBMITTED');
     const res = await webhook('error', { scannedDocument: { scanId }, error: { code: 13, message: 'Not enough credits' } });
     expect(res.body).toEqual({ status: 'failed' });
@@ -225,7 +298,9 @@ describe('Copyleaks webhooks', () => {
     expect((await webhook('completed', body, { path: '/api/v1/integrations/copyleaks/mit/sub1/completed' })).status).toBe(401);
     // A valid token for a tenant that does not hold the submission still finds nothing.
     const mitToken = copyleaks.copyleaksWebhookToken('mit', 'sub1', scanId);
-    expect((await webhook('completed', body, { token: mitToken, path: '/api/v1/integrations/copyleaks/mit/sub1/completed' })).status).toBe(404);
+    expect((await webhook('completed', body, { token: mitToken, path: '/api/v1/integrations/copyleaks/mit/sub1/completed' })).status).toBe(
+      404
+    );
     expect((await row()).plagiarismScore).toBeNull();
   });
 });

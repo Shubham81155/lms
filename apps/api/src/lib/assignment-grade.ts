@@ -31,7 +31,8 @@ export const rubricOf = (a: { rubricJson: unknown }): Criterion[] | null =>
 export function resolveGradeInput(assignment: AssignmentLike, input: GradeInput) {
   const rubric = rubricOf(assignment);
   if (rubric) {
-    if (!input.criteria || input.grade !== undefined) throw new HttpError(400, 'This assignment uses a rubric: score each criterion instead of giving a total');
+    if (!input.criteria || input.grade !== undefined)
+      throw new HttpError(400, 'This assignment uses a rubric: score each criterion instead of giving a total');
     try {
       const r = scoreFromCriteria(rubric, input.criteria);
       return { grade: r.total, rubricScores: r.scores };
@@ -41,7 +42,8 @@ export function resolveGradeInput(assignment: AssignmentLike, input: GradeInput)
     }
   }
   if (input.criteria || input.grade === undefined) throw new HttpError(400, 'Provide a grade');
-  if (input.grade > assignment.maxPoints) throw new HttpError(400, `Grade (${input.grade}) cannot exceed max points (${assignment.maxPoints})`);
+  if (input.grade > assignment.maxPoints)
+    throw new HttpError(400, `Grade (${input.grade}) cannot exceed max points (${assignment.maxPoints})`);
   return { grade: input.grade, rubricScores: null as Record<string, number> | null };
 }
 
@@ -63,7 +65,12 @@ export async function commitGrade(opts: {
   const { req, tenantId, assignment, submission, resolved } = opts;
   const updated = await prisma.assignmentSubmission.update({
     where: { id: submission.id },
-    data: { grade: resolved.grade, rubricScoresJson: (resolved.rubricScores as any) ?? undefined, feedback: opts.feedback || null, gradedAt: new Date() },
+    data: {
+      grade: resolved.grade,
+      rubricScoresJson: (resolved.rubricScores as any) ?? undefined,
+      feedback: opts.feedback || null,
+      gradedAt: new Date(),
+    },
   });
 
   let courseGradeReopened = false;

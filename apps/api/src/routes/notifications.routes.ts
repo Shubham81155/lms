@@ -13,18 +13,24 @@ router.use(authenticateJWT);
 export const listQuery = z.object({
   ...paginationShape,
   category: z.string().trim().min(1).max(40).optional(),
-  unreadOnly: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+  unreadOnly: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 const hour = z.number().int().min(0).max(23);
-const timeZone = z.string().max(64).refine((tz) => {
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
-}, 'Unknown time zone');
+const timeZone = z
+  .string()
+  .max(64)
+  .refine((tz) => {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: tz });
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Unknown time zone');
 
 export const prefsSchema = z
   .object({
@@ -43,9 +49,12 @@ export const prefsSchema = z
     digestSections: z.array(z.enum(DIGEST_SECTIONS)).max(DIGEST_SECTIONS.length),
   })
   .partial()
-  .refine((p) => (p.quietStartHour == null) === (p.quietEndHour == null) || p.quietStartHour === undefined || p.quietEndHour === undefined, {
-    message: 'quietStartHour and quietEndHour must be set together',
-  });
+  .refine(
+    (p) => (p.quietStartHour == null) === (p.quietEndHour == null) || p.quietStartHour === undefined || p.quietEndHour === undefined,
+    {
+      message: 'quietStartHour and quietEndHour must be set together',
+    }
+  );
 
 const prefsView = (p: any) => ({
   inAppEnabled: p?.inAppEnabled ?? true,

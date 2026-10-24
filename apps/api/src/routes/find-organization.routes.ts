@@ -80,7 +80,9 @@ async function organisationsFor(email: string) {
 const mailText = (orgs: { name: string; slug: string; customDomain: string | null }[]) =>
   `Hello,\n\nSomeone, hopefully you, asked which organisations on the learning platform this e-mail address can sign in to. It has an account with:\n\n${orgs
     .map((o) => `${o.name}\n${tenantUrl(o)}/login`)
-    .join('\n\n')}\n\nEach organisation has its own web address: bookmark yours to sign in directly next time.\n\nIf you did not ask for this, you can ignore this e-mail.`;
+    .join(
+      '\n\n'
+    )}\n\nEach organisation has its own web address: bookmark yours to sign in directly next time.\n\nIf you did not ask for this, you can ignore this e-mail.`;
 
 /**
  * POST /api/v1/organizations/find: e-mails the address the sign-in links of its organisations. Always 202

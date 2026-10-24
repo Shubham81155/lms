@@ -41,7 +41,8 @@ afterAll(async () => {
 }, 60_000);
 
 /** siteverify's answer for the next calls. */
-const answer = (body: object, status = 200) => fetchMock.mockImplementation(async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
+const answer = (body: object, status = 200) =>
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
 
 beforeEach(() => {
   outbox.length = 0;
@@ -147,7 +148,10 @@ describe('CAPTCHA on organisation requests', () => {
 
   it('also takes the token from the cf-turnstile-response header', async () => {
     answer({ success: true, action: 'org-request' });
-    const res = await request(app).post('/api/v1/organizations/requests').set('cf-turnstile-response', 'header-token').send(ask('header-token'));
+    const res = await request(app)
+      .post('/api/v1/organizations/requests')
+      .set('cf-turnstile-response', 'header-token')
+      .send(ask('header-token'));
     expect(res.status).toBe(201);
     expect((fetchMock.mock.calls[0][1].body as URLSearchParams).get('response')).toBe('header-token');
   });
@@ -155,12 +159,17 @@ describe('CAPTCHA on organisation requests', () => {
   it("skips the action check with Cloudflare's dummy secrets, which answer without one", async () => {
     config.TURNSTILE_SECRET_KEY = '1x0000000000000000000000000000000AA';
     answer({ success: true, action: '', hostname: 'example.com' });
-    expect(await captcha.verifyCaptcha('XXXX.DUMMY.TOKEN.XXXX', '127.0.0.1', { action: 'org-request', hostnames: ['lms.test'] })).toEqual({ ok: true });
+    expect(await captcha.verifyCaptcha('XXXX.DUMMY.TOKEN.XXXX', '127.0.0.1', { action: 'org-request', hostnames: ['lms.test'] })).toEqual({
+      ok: true,
+    });
   });
 
   it('checks the host name when asked to', async () => {
     answer({ success: true, action: 'org-request', hostname: 'evil.example' });
-    expect(await captcha.verifyCaptcha('tok', null, { action: 'org-request', hostnames: ['lms.test'] })).toMatchObject({ ok: false, reason: 'rejected' });
+    expect(await captcha.verifyCaptcha('tok', null, { action: 'org-request', hostnames: ['lms.test'] })).toMatchObject({
+      ok: false,
+      reason: 'rejected',
+    });
     answer({ success: true, action: 'org-request', hostname: 'lms.test' });
     expect(await captcha.verifyCaptcha('tok', null, { action: 'org-request', hostnames: ['lms.test'] })).toEqual({ ok: true });
   });

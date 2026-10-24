@@ -14,14 +14,24 @@ let app: import('express').Express;
 const pw = (slug: string) => `${PASSWORD}-${slug}`;
 
 async function seed() {
-  for (const [id, slug] of [['t-h', 'harvard'], ['t-m', 'mit']]) {
+  for (const [id, slug] of [
+    ['t-h', 'harvard'],
+    ['t-m', 'mit'],
+  ]) {
     await admin.tenant.create({ data: { id, slug, name: `${slug} University` } });
   }
   const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
     admin.user.create({
       data: {
-        id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: slug, role,
-        passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true, ...extra,
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: slug,
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+        ...extra,
       },
     });
 
@@ -40,7 +50,9 @@ async function seed() {
   await admin.department.create({ data: { id: 'dept-m', campusId: campus.id, name: 'CS', code: 'CS' } });
 
   const course = (id: string, tenantId: string, over: object = {}) =>
-    admin.course.create({ data: { id, tenantId, code: id.toUpperCase(), title: `Course ${id}`, status: 'PUBLISHED', allowSelfEnroll: true, ...over } });
+    admin.course.create({
+      data: { id, tenantId, code: id.toUpperCase(), title: `Course ${id}`, status: 'PUBLISHED', allowSelfEnroll: true, ...over },
+    });
   await course('c1', 't-h');
   await course('c2', 't-h', { allowSelfEnroll: false });
   await course('d1', 't-h', { status: 'DRAFT' });
@@ -52,7 +64,9 @@ async function seed() {
       { courseId: 'd1', userId: 'teacher', isPrimary: true },
     ],
   });
-  await admin.enrollment.create({ data: { id: 'e-s1', tenantId: 't-h', courseId: 'c1', userId: 's1', status: 'IN_PROGRESS', progressPercent: 10 } });
+  await admin.enrollment.create({
+    data: { id: 'e-s1', tenantId: 't-h', courseId: 'c1', userId: 's1', status: 'IN_PROGRESS', progressPercent: 10 },
+  });
   await admin.enrollment.create({ data: { id: 'e-s4', tenantId: 't-h', courseId: 'c1', userId: 's4' } });
   await admin.module.create({ data: { id: 'mod-1', courseId: 'c1', title: 'Intro' } });
   await admin.lesson.create({ data: { id: 'les-1', moduleId: 'mod-1', title: 'First', bodyContent: 'secret lesson body' } });
@@ -73,7 +87,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -162,9 +179,13 @@ describe('modules and lessons', () => {
     const m2 = (await t.post('/api/v1/courses/c1/modules').send({ title: 'Second' })).body.data;
     expect(m2.orderIndex).toBe(1);
 
-    const lesson = await t.post(`/api/v1/courses/c1/modules/${m2.id}/lessons`).send({ title: 'L1', contentType: 'VIDEO', mediaUrl: 'https://cdn.example.com/v.mp4' });
+    const lesson = await t
+      .post(`/api/v1/courses/c1/modules/${m2.id}/lessons`)
+      .send({ title: 'L1', contentType: 'VIDEO', mediaUrl: 'https://cdn.example.com/v.mp4' });
     expect(lesson.status).toBe(201);
-    expect((await t.patch(`/api/v1/courses/c1/lessons/${lesson.body.data.id}`).send({ title: 'L1 renamed' })).body.data.title).toBe('L1 renamed');
+    expect((await t.patch(`/api/v1/courses/c1/lessons/${lesson.body.data.id}`).send({ title: 'L1 renamed' })).body.data.title).toBe(
+      'L1 renamed'
+    );
 
     const order = await t.put('/api/v1/courses/c1/modules-order').send({ moduleIds: [m2.id, 'mod-1'] });
     expect(order.body.data.map((m: any) => m.id)).toEqual([m2.id, 'mod-1']);
@@ -175,7 +196,9 @@ describe('modules and lessons', () => {
 
   it('rejects unsafe link schemes and an incomplete reorder list', async () => {
     const t = await as('teacher');
-    expect((await t.post('/api/v1/courses/c1/modules/mod-1/lessons').send({ title: 'x', mediaUrl: 'javascript:alert(1)' })).status).toBe(400);
+    expect((await t.post('/api/v1/courses/c1/modules/mod-1/lessons').send({ title: 'x', mediaUrl: 'javascript:alert(1)' })).status).toBe(
+      400
+    );
     expect((await t.put('/api/v1/courses/c1/modules-order').send({ moduleIds: [] })).status).toBe(400);
     expect((await t.put('/api/v1/courses/c1/modules-order').send({ moduleIds: ['mod-1', 'mod-1'] })).status).toBe(400);
   });
@@ -337,13 +360,24 @@ describe('quizzes', () => {
 
   async function addQuestions(t: request.Agent, quiz: string) {
     const mc = await t.post(`/api/v1/quizzes/${quiz}/questions`).send({
-      questionText: 'Capital of France?', questionType: 'MULTIPLE_CHOICE', points: 1,
-      optionsJson: [{ id: 'a', text: 'Paris', isCorrect: true }, { id: 'b', text: 'Rome', isCorrect: false }],
+      questionText: 'Capital of France?',
+      questionType: 'MULTIPLE_CHOICE',
+      points: 1,
+      optionsJson: [
+        { id: 'a', text: 'Paris', isCorrect: true },
+        { id: 'b', text: 'Rome', isCorrect: false },
+      ],
       explanation: 'It is Paris',
     });
     const ms = await t.post(`/api/v1/quizzes/${quiz}/questions`).send({
-      questionText: 'Pick the primes', questionType: 'MULTI_SELECT', points: 2,
-      optionsJson: [{ id: 'a', text: '2', isCorrect: true }, { id: 'b', text: '4', isCorrect: false }, { id: 'c', text: '5', isCorrect: true }],
+      questionText: 'Pick the primes',
+      questionType: 'MULTI_SELECT',
+      points: 2,
+      optionsJson: [
+        { id: 'a', text: '2', isCorrect: true },
+        { id: 'b', text: '4', isCorrect: false },
+        { id: 'c', text: '5', isCorrect: true },
+      ],
     });
     const essay = await t.post(`/api/v1/quizzes/${quiz}/questions`).send({ questionText: 'Discuss', questionType: 'ESSAY', points: 3 });
     expect([mc.status, ms.status, essay.status]).toEqual([201, 201, 201]);
@@ -368,9 +402,29 @@ describe('quizzes', () => {
     const t = await as('teacher');
     const scratch = (await t.post('/api/v1/courses/c1/quizzes').send({ title: 'Scratch' })).body.data.id; // keep the shared quiz untouched
     const bad = (body: object) => t.post(`/api/v1/quizzes/${scratch}/questions`).send({ questionText: 'q', ...body });
-    expect((await bad({ questionType: 'MULTIPLE_CHOICE', optionsJson: [{ text: 'a', isCorrect: false }, { text: 'b', isCorrect: false }] })).status).toBe(400);
+    expect(
+      (
+        await bad({
+          questionType: 'MULTIPLE_CHOICE',
+          optionsJson: [
+            { text: 'a', isCorrect: false },
+            { text: 'b', isCorrect: false },
+          ],
+        })
+      ).status
+    ).toBe(400);
     expect((await bad({ questionType: 'MULTIPLE_CHOICE', optionsJson: [{ text: 'a', isCorrect: true }] })).status).toBe(400);
-    expect((await bad({ questionType: 'MULTI_SELECT', optionsJson: [{ text: 'a', isCorrect: false }, { text: 'b', isCorrect: false }] })).status).toBe(400);
+    expect(
+      (
+        await bad({
+          questionType: 'MULTI_SELECT',
+          optionsJson: [
+            { text: 'a', isCorrect: false },
+            { text: 'b', isCorrect: false },
+          ],
+        })
+      ).status
+    ).toBe(400);
     expect((await bad({ questionType: 'SHORT_ANSWER' })).status).toBe(400);
     expect((await bad({ questionType: 'ESSAY' })).status).toBe(201);
   });
@@ -401,7 +455,14 @@ describe('quizzes', () => {
       ],
     });
     expect(res.status).toBe(201);
-    expect(res.body.data).toMatchObject({ score: 3, maxScore: 6, passed: false, pendingManualGrading: true, attemptNumber: 1, attemptsRemaining: 1 });
+    expect(res.body.data).toMatchObject({
+      score: 3,
+      maxScore: 6,
+      passed: false,
+      pendingManualGrading: true,
+      attemptNumber: 1,
+      attemptsRemaining: 1,
+    });
     ids.submission = res.body.data.submissionId;
   });
 
@@ -416,13 +477,22 @@ describe('quizzes', () => {
   });
 
   it('lets only staff of that course award manual points, then computes the verdict', async () => {
-    const grade = (who: string) => as(who).then((a) => a.patch(`/api/v1/quizzes/${quizId}/submissions/${ids.submission}/grade`).send({ grades: { [ids.essay]: 3 } }));
+    const grade = (who: string) =>
+      as(who).then((a) => a.patch(`/api/v1/quizzes/${quizId}/submissions/${ids.submission}/grade`).send({ grades: { [ids.essay]: 3 } }));
     expect((await grade('s1')).status).toBe(403);
     expect((await grade('teacher2')).status).toBe(403);
 
-    const bad = await (await as('ta')).patch(`/api/v1/quizzes/${quizId}/submissions/${ids.submission}/grade`).send({ grades: { [ids.essay]: 99 } });
+    const bad = await (
+      await as('ta')
+    )
+      .patch(`/api/v1/quizzes/${quizId}/submissions/${ids.submission}/grade`)
+      .send({ grades: { [ids.essay]: 99 } });
     expect(bad.status).toBe(400);
-    const notManual = await (await as('ta')).patch(`/api/v1/quizzes/${quizId}/submissions/${ids.submission}/grade`).send({ grades: { [ids.mc]: 1 } });
+    const notManual = await (
+      await as('ta')
+    )
+      .patch(`/api/v1/quizzes/${quizId}/submissions/${ids.submission}/grade`)
+      .send({ grades: { [ids.mc]: 1 } });
     expect(notManual.status).toBe(400);
 
     const ok = await grade('ta');
@@ -465,7 +535,10 @@ describe('quizzes', () => {
     const resumed = await s4.post(`/api/v1/quizzes/${q}/start`);
     expect(resumed.body.data).toMatchObject({ resumed: true, submissionId: started.body.data.submissionId });
 
-    await admin.quizSubmission.update({ where: { id: started.body.data.submissionId }, data: { startedAt: new Date(Date.now() - 10 * 60_000) } });
+    await admin.quizSubmission.update({
+      where: { id: started.body.data.submissionId },
+      data: { startedAt: new Date(Date.now() - 10 * 60_000) },
+    });
     const late = await s4.post(`/api/v1/quizzes/${q}/submit`).send({ answers: { [mc]: 'a' } });
     expect(late.status).toBe(400);
     expect(late.body.error).toMatch(/time limit/);
@@ -516,7 +589,11 @@ describe('assignments', () => {
   let submissionId: string;
 
   beforeAll(async () => {
-    const res = await (await as('teacher')).post('/api/v1/courses/c1/assignments').send({ title: 'Lab 1', instructions: 'Do it', maxPoints: 50 });
+    const res = await (
+      await as('teacher')
+    )
+      .post('/api/v1/courses/c1/assignments')
+      .send({ title: 'Lab 1', instructions: 'Do it', maxPoints: 50 });
     expect(res.status).toBe(201);
     assignmentId = res.body.data.id;
   });
@@ -550,7 +627,9 @@ describe('assignments', () => {
 
   it('only lets staff of this course grade', async () => {
     const grade = (who: string, g: number) =>
-      as(who).then((a) => a.patch(`/api/v1/assignments/${assignmentId}/submissions/${submissionId}/grade`).send({ grade: g, feedback: 'ok' }));
+      as(who).then((a) =>
+        a.patch(`/api/v1/assignments/${assignmentId}/submissions/${submissionId}/grade`).send({ grade: g, feedback: 'ok' })
+      );
     expect((await grade('teacher2', 40)).status).toBe(403);
     expect((await grade('s1', 40)).status).toBe(403);
     expect((await grade('ta', 51)).status).toBe(400);
@@ -644,8 +723,13 @@ describe('quiz responses match the API description', () => {
     const t = await as('teacher');
     const q = (await t.post('/api/v1/courses/c1/quizzes').send({ title: 'Contract', maxAttempts: 3 })).body.data.id;
     const question = await t.post(`/api/v1/quizzes/${q}/questions`).send({
-      questionText: 'Capital of France?', questionType: 'MULTIPLE_CHOICE', points: 1,
-      optionsJson: [{ id: 'a', text: 'Paris', isCorrect: true }, { id: 'b', text: 'Rome', isCorrect: false }],
+      questionText: 'Capital of France?',
+      questionType: 'MULTIPLE_CHOICE',
+      points: 1,
+      optionsJson: [
+        { id: 'a', text: 'Paris', isCorrect: true },
+        { id: 'b', text: 'Rome', isCorrect: false },
+      ],
     });
     expect(question.status).toBe(201);
     const mc = question.body.data.id;

@@ -5,13 +5,13 @@
 > These are **targets** for a production deployment, not measured results. The repository does not contain
 > Kubernetes manifests, a Kafka queue or multi-region infrastructure yet (see `docs/ROADMAP.md`).
 
-| Metric | Target SLA | Architecture Strategy |
-| :--- | :--- | :--- |
-| **Simultaneous Exam Takers** | 50,000 active concurrent users | Redis state caching, batch submission queue (Kafka), read-replicas. |
-| **API Response Time ($p95$)** | $< 100\text{ ms}$ globally | Cloudflare Edge caching, CDN media distribution, database indexing. |
-| **Availability SLA** | $99.95\%$ Uptime | Multi-region Kubernetes deployment with automated cluster health checks. |
-| **Recovery Point Objective (RPO)** | $\le 5\text{ minutes}$ | Continuous PostgreSQL WAL streaming and S3 cross-region replication. |
-| **Recovery Time Objective (RTO)** | $\le 15\text{ minutes}$ | Automated DNS failover via Route 53 health checks & active-standby clusters. |
+| Metric                             | Target SLA                     | Architecture Strategy                                                        |
+| :--------------------------------- | :----------------------------- | :--------------------------------------------------------------------------- |
+| **Simultaneous Exam Takers**       | 50,000 active concurrent users | Redis state caching, batch submission queue (Kafka), read-replicas.          |
+| **API Response Time ($p95$)**      | $< 100\text{ ms}$ globally     | Cloudflare Edge caching, CDN media distribution, database indexing.          |
+| **Availability SLA**               | $99.95\%$ Uptime               | Multi-region Kubernetes deployment with automated cluster health checks.     |
+| **Recovery Point Objective (RPO)** | $\le 5\text{ minutes}$         | Continuous PostgreSQL WAL streaming and S3 cross-region replication.         |
+| **Recovery Time Objective (RTO)**  | $\le 15\text{ minutes}$        | Automated DNS failover via Route 53 health checks & active-standby clusters. |
 
 ---
 
@@ -23,9 +23,9 @@ import { check, sleep } from 'k6';
 
 export const options = {
   stages: [
-    { duration: '2m', target: 5000 },  // Ramp-up
+    { duration: '2m', target: 5000 }, // Ramp-up
     { duration: '10m', target: 50000 }, // Sustained heavy exam traffic
-    { duration: '2m', target: 0 },     // Ramp-down
+    { duration: '2m', target: 0 }, // Ramp-down
   ],
   thresholds: {
     http_req_duration: ['p(95)<100'],
@@ -37,7 +37,7 @@ export default function () {
   const headers = {
     'Content-Type': 'application/json',
     'X-Tenant-ID': 'harvard',
-    'Authorization': 'Bearer <MOCK_OIDC_TOKEN>',
+    Authorization: 'Bearer <MOCK_OIDC_TOKEN>',
   };
 
   // 1. Fetch Exam State

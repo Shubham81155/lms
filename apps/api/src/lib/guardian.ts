@@ -33,8 +33,24 @@ export const setMinorSchema = z.object({
 export const guardianRequestSchema = z.object({ guardianEmail: z.string().trim().toLowerCase().email().max(320) });
 export const guardianTokenSchema = z.object({ token: z.string().min(20).max(400) });
 
-const audit = (tenantId: string, userId: string | null, action: string, targetId: string, diffJson: Record<string, unknown>, ctx: GuardianContext = {}) =>
-  logAuditEvent({ tenantId, userId, action, resourceType: 'USER', resourceId: targetId, ipAddress: ctx.ipAddress, userAgent: ctx.userAgent, diffJson });
+const audit = (
+  tenantId: string,
+  userId: string | null,
+  action: string,
+  targetId: string,
+  diffJson: Record<string, unknown>,
+  ctx: GuardianContext = {}
+) =>
+  logAuditEvent({
+    tenantId,
+    userId,
+    action,
+    resourceType: 'USER',
+    resourceId: targetId,
+    ipAddress: ctx.ipAddress,
+    userAgent: ctx.userAgent,
+    diffJson,
+  });
 
 const NOT_VALID = 'This link is not valid or has expired.';
 
@@ -47,9 +63,19 @@ function splitToken(raw: string): { tenantId: string; token: string } {
 }
 
 export async function minorStatus(tenantId: string, userId: string, now = new Date()) {
-  const u = await prisma.user.findFirst({ where: { id: userId, tenantId }, select: { isMinor: true, guardianEmail: true, guardianConsentAt: true } });
+  const u = await prisma.user.findFirst({
+    where: { id: userId, tenantId },
+    select: { isMinor: true, guardianEmail: true, guardianConsentAt: true },
+  });
   if (!u) throw new HttpError(404, 'User not found');
-  const pending = u.isMinor && !u.guardianConsentAt ? await prisma.guardianConsentRequest.findFirst({ where: { tenantId, userId, usedAt: null, expiresAt: { gt: now } }, orderBy: { createdAt: 'desc' }, select: { expiresAt: true } }) : null;
+  const pending =
+    u.isMinor && !u.guardianConsentAt
+      ? await prisma.guardianConsentRequest.findFirst({
+          where: { tenantId, userId, usedAt: null, expiresAt: { gt: now } },
+          orderBy: { createdAt: 'desc' },
+          select: { expiresAt: true },
+        })
+      : null;
   return {
     isMinor: u.isMinor,
     /** Masked (a***@example.com) so a shared screen does not give the address away. */
@@ -63,11 +89,21 @@ export async function minorStatus(tenantId: string, userId: string, now = new Da
  * Marks a person as a minor, or (administrators only) clears it. A person can declare themselves a minor but not
  * undo it. Clearing also forgets the guardian's address and consent.
  */
-export async function setMinor(tenantId: string, targetId: string, actor: { id: string; admin: boolean }, input: z.infer<typeof setMinorSchema>, ctx: GuardianContext) {
-  const u = await prisma.user.findFirst({ where: { id: targetId, tenantId, erasedAt: null }, select: { id: true, email: true, isMinor: true } });
+export async function setMinor(
+  tenantId: string,
+  targetId: string,
+  actor: { id: string; admin: boolean },
+  input: z.infer<typeof setMinorSchema>,
+  ctx: GuardianContext
+) {
+  const u = await prisma.user.findFirst({
+    where: { id: targetId, tenantId, erasedAt: null },
+    select: { id: true, email: true, isMinor: true },
+  });
   if (!u) throw new HttpError(404, 'User not found');
   if (!input.isMinor && !actor.admin) throw new HttpError(403, 'Only an administrator can clear the under-18 mark');
-  if (input.guardianEmail && input.guardianEmail === u.email.toLowerCase()) throw new HttpError(400, 'The guardian needs a different e-mail address');
+  if (input.guardianEmail && input.guardianEmail === u.email.toLowerCase())
+    throw new HttpError(400, 'The guardian needs a different e-mail address');
   await prisma.user.update({
     where: { id: targetId },
     data: input.isMinor
@@ -75,28 +111,52 @@ export async function setMinor(tenantId: string, targetId: string, actor: { id: 
       : { isMinor: false, guardianEmail: null, guardianConsentAt: null },
   });
   if (!input.isMinor) await prisma.guardianConsentRequest.deleteMany({ where: { tenantId, userId: targetId } });
-  await audit(tenantId, actor.id, input.isMinor ? 'MINOR_MARKED' : 'MINOR_CLEARED', targetId, { before: u.isMinor, after: input.isMinor, byAdmin: actor.admin }, ctx);
+  await audit(
+    tenantId,
+    actor.id,
+    input.isMinor ? 'MINOR_MARKED' : 'MINOR_CLEARED',
+    targetId,
+    { before: u.isMinor, after: input.isMinor, byAdmin: actor.admin },
+    ctx
+  );
   return minorStatus(tenantId, targetId);
 }
 
 /** Sends the guardian the consent link. Earlier unused links stop working. */
-export async function requestGuardianConsent(tenantId: string, userId: string, guardianEmail: string, actor: { id: string }, ctx: GuardianContext, now = new Date()) {
-  const u = await prisma.user.findFirst({ where: { id: userId, tenantId, erasedAt: null }, select: { id: true, email: true, firstName: true, isMinor: true, guardianConsentAt: true } });
+export async function requestGuardianConsent(
+  tenantId: string,
+  userId: string,
+  guardianEmail: string,
+  actor: { id: string },
+  ctx: GuardianContext,
+  now = new Date()
+) {
+  const u = await prisma.user.findFirst({
+    where: { id: userId, tenantId, erasedAt: null },
+    select: { id: true, email: true, firstName: true, isMinor: true, guardianConsentAt: true },
+  });
   if (!u) throw new HttpError(404, 'User not found');
   if (!u.isMinor) throw new HttpError(409, 'This person is not marked as under 18');
   if (u.guardianConsentAt) throw new HttpError(409, 'A guardian has already given consent');
   if (guardianEmail === u.email.toLowerCase()) throw new HttpError(400, 'The guardian needs a different e-mail address');
-  const today = await prisma.guardianConsentRequest.count({ where: { tenantId, userId, createdAt: { gt: new Date(now.getTime() - DAY_MS) } } });
+  const today = await prisma.guardianConsentRequest.count({
+    where: { tenantId, userId, createdAt: { gt: new Date(now.getTime() - DAY_MS) } },
+  });
   if (today >= GUARDIAN_REQUESTS_PER_DAY) throw new HttpError(429, 'Too many requests today; try again tomorrow');
   if (!mailDelivers()) throw new HttpError(503, 'This platform cannot send e-mail, so a guardian cannot be asked');
 
   const { token, tokenHash } = generateOneTimeToken();
   // Earlier unused links stop working; the rows stay, so the daily limit still counts them.
   await prisma.guardianConsentRequest.updateMany({ where: { tenantId, userId, usedAt: null }, data: { usedAt: now } });
-  await prisma.guardianConsentRequest.create({ data: { tenantId, userId, guardianEmail, tokenHash, expiresAt: new Date(now.getTime() + GUARDIAN_LINK_DAYS * DAY_MS) } });
+  await prisma.guardianConsentRequest.create({
+    data: { tenantId, userId, guardianEmail, tokenHash, expiresAt: new Date(now.getTime() + GUARDIAN_LINK_DAYS * DAY_MS) },
+  });
   await prisma.user.update({ where: { id: userId }, data: { guardianEmail } });
 
-  const t = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true, slug: true, customDomain: true } });
+  const t = await basePrisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, name: true, slug: true, customDomain: true },
+  });
   if (!t) throw new HttpError(404, 'Organisation not found');
   const link = `${tenantUrl(t)}/guardian-consent?token=${encodeURIComponent(linkToken(tenantId, token))}`;
   await sendMail({
@@ -111,7 +171,9 @@ export async function requestGuardianConsent(tenantId: string, userId: string, g
 async function openRequest(raw: string, now: Date) {
   const { tenantId, token } = splitToken(raw);
   const request = await runWithTenant(tenantId, () =>
-    prisma.guardianConsentRequest.findFirst({ where: { tenantId, tokenHash: hashOneTimeToken(token), usedAt: null, expiresAt: { gt: now } } })
+    prisma.guardianConsentRequest.findFirst({
+      where: { tenantId, tokenHash: hashOneTimeToken(token), usedAt: null, expiresAt: { gt: now } },
+    })
   );
   if (!request) throw new HttpError(400, NOT_VALID);
   return { tenantId, request };
@@ -133,9 +195,15 @@ export async function guardianConsentInfo(raw: string, now = new Date()) {
 export async function confirmGuardianConsent(raw: string, ctx: GuardianContext, now = new Date()) {
   const { tenantId, request } = await openRequest(raw, now);
   return runWithTenant(tenantId, async () => {
-    const claimed = await prisma.guardianConsentRequest.updateMany({ where: { id: request.id, tenantId, usedAt: null, expiresAt: { gt: now } }, data: { usedAt: now } });
+    const claimed = await prisma.guardianConsentRequest.updateMany({
+      where: { id: request.id, tenantId, usedAt: null, expiresAt: { gt: now } },
+      data: { usedAt: now },
+    });
     if (claimed.count !== 1) throw new HttpError(400, NOT_VALID);
-    const done = await prisma.user.updateMany({ where: { id: request.userId, tenantId, isMinor: true, erasedAt: null }, data: { guardianConsentAt: now, guardianEmail: request.guardianEmail } });
+    const done = await prisma.user.updateMany({
+      where: { id: request.userId, tenantId, isMinor: true, erasedAt: null },
+      data: { guardianConsentAt: now, guardianEmail: request.guardianEmail },
+    });
     if (done.count !== 1) throw new HttpError(400, NOT_VALID);
     await audit(tenantId, null, 'GUARDIAN_CONSENT_GIVEN', request.userId, { guardianEmail: request.guardianEmail }, ctx);
     return { confirmedAt: now.toISOString() };
@@ -161,9 +229,13 @@ async function openWithdrawal(raw: string) {
   const consentAtMs = Number(ms);
   const expected = Buffer.from(withdrawSignature(tenantId, userId, consentAtMs));
   const given = Buffer.from(sig);
-  if (!Number.isFinite(consentAtMs) || given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) throw new HttpError(400, NOT_VALID);
+  if (!Number.isFinite(consentAtMs) || given.length !== expected.length || !crypto.timingSafeEqual(given, expected))
+    throw new HttpError(400, NOT_VALID);
   const user = await runWithTenant(tenantId, () =>
-    prisma.user.findFirst({ where: { id: userId, tenantId, isMinor: true, erasedAt: null }, select: { firstName: true, guardianConsentAt: true } })
+    prisma.user.findFirst({
+      where: { id: userId, tenantId, isMinor: true, erasedAt: null },
+      select: { firstName: true, guardianConsentAt: true },
+    })
   );
   if (!user?.guardianConsentAt || user.guardianConsentAt.getTime() !== consentAtMs) throw new HttpError(400, NOT_VALID);
   return { tenantId, userId, user };
@@ -171,7 +243,10 @@ async function openWithdrawal(raw: string) {
 
 async function mailWithdrawalLink(tenantId: string, userId: string, guardianEmail: string, consentAt: Date) {
   try {
-    const t = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true, slug: true, customDomain: true } });
+    const t = await basePrisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, name: true, slug: true, customDomain: true },
+    });
     const u = await runWithTenant(tenantId, () => prisma.user.findFirst({ where: { id: userId, tenantId }, select: { firstName: true } }));
     if (!t || !u) return;
     const link = `${tenantUrl(t)}/guardian-consent/withdraw?token=${encodeURIComponent(guardianWithdrawalToken(tenantId, userId, consentAt))}`;
@@ -200,14 +275,28 @@ export async function guardianWithdrawalInfo(raw: string) {
 export async function withdrawGuardianConsent(raw: string, ctx: GuardianContext, now = new Date()) {
   const { tenantId, userId, user } = await openWithdrawal(raw);
   return runWithTenant(tenantId, async () => {
-    const claimed = await prisma.user.updateMany({ where: { id: userId, tenantId, isMinor: true, guardianConsentAt: user.guardianConsentAt }, data: { guardianConsentAt: null } });
+    const claimed = await prisma.user.updateMany({
+      where: { id: userId, tenantId, isMinor: true, guardianConsentAt: user.guardianConsentAt },
+      data: { guardianConsentAt: null },
+    });
     if (claimed.count !== 1) throw new HttpError(400, NOT_VALID);
     const records = await prisma.consentRecord.findMany({ where: { tenantId, userId }, orderBy: { createdAt: 'desc' } });
     const latest = new Map<string, (typeof records)[number]>();
     for (const r of records) if (!latest.has(r.purposeKey)) latest.set(r.purposeKey, r);
     const granted = [...latest.values()].filter((r) => r.granted);
     for (const r of granted) {
-      await prisma.consentRecord.create({ data: { tenantId, userId, purposeId: r.purposeId, purposeKey: r.purposeKey, version: r.version, granted: false, textSnapshot: r.textSnapshot, source: 'GUARDIAN' } });
+      await prisma.consentRecord.create({
+        data: {
+          tenantId,
+          userId,
+          purposeId: r.purposeId,
+          purposeKey: r.purposeKey,
+          version: r.version,
+          granted: false,
+          textSnapshot: r.textSnapshot,
+          source: 'GUARDIAN',
+        },
+      });
     }
     await audit(tenantId, null, 'GUARDIAN_CONSENT_WITHDRAWN', userId, { withdrawnPurposes: granted.map((r) => r.purposeKey) }, ctx);
     return { withdrawnAt: now.toISOString(), purposesWithdrawn: granted.length };

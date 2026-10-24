@@ -36,7 +36,17 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   const live = (id: string, slug: string, name: string, domain: string | null, token: string | null, extra: object = {}) =>
-    admin.tenant.create({ data: { id, slug, name, customDomain: domain, customDomainLiveToken: token, customDomainVerifiedAt: domain ? new Date() : null, ...extra } });
+    admin.tenant.create({
+      data: {
+        id,
+        slug,
+        name,
+        customDomain: domain,
+        customDomainLiveToken: token,
+        customDomainVerifiedAt: domain ? new Date() : null,
+        ...extra,
+      },
+    });
   await live('t-def', 'default-tenant', 'Default', null, null);
   await live('t-ok', 'okay', 'Okay College', 'learn.okay.edu', 'tok-ok');
   await live('t-a', 'alpha', 'Alpha', 'learn.alpha.edu', 'tok-a');
@@ -103,7 +113,12 @@ describe('re-checking live custom domains', () => {
       // learn.alpha.edu: no record at all.
     };
     const res = await run(at(0));
-    expect(looked.sort()).toEqual([record('learn.alpha.edu'), record('learn.flaky.edu'), record('learn.okay.edu'), record('learn.wrong.edu')]);
+    expect(looked.sort()).toEqual([
+      record('learn.alpha.edu'),
+      record('learn.flaky.edu'),
+      record('learn.okay.edu'),
+      record('learn.wrong.edu'),
+    ]);
     expect(res).toMatchObject({ checked: 4, ok: 3, failing: 1, transient: 0, warned: 1, removed: 0 });
     const ok = await tenant('t-ok');
     expect(ok.customDomainRecheckedAt?.getTime()).toBe(at(0).getTime());
@@ -179,7 +194,12 @@ describe('re-checking live custom domains', () => {
   it('a success ends the failure, and a later failure warns again', async () => {
     // Run at(30) found learn.wrong.edu correct again.
     const w = await tenant('t-w');
-    expect(w).toMatchObject({ customDomain: 'learn.wrong.edu', customDomainFailingSince: null, customDomainWarnedAt: null, customDomainRecheckError: null });
+    expect(w).toMatchObject({
+      customDomain: 'learn.wrong.edu',
+      customDomainFailingSince: null,
+      customDomainWarnedAt: null,
+      customDomainRecheckError: null,
+    });
     expect(await audits('t-w', 'CUSTOM_DOMAIN_RECHECK_RECOVERED')).toHaveLength(1);
 
     delete txt[record('learn.wrong.edu')];
@@ -197,8 +217,14 @@ describe('re-checking live custom domains', () => {
     expect(res.removed).toBe(1);
     const a = await tenant('t-a');
     expect(a).toMatchObject({
-      slug: 'alpha', customDomain: null, customDomainVerifiedAt: null, customDomainLiveToken: null,
-      customDomainFailingSince: null, customDomainWarnedAt: null, customDomainRecheckedAt: null, customDomainRecheckError: null,
+      slug: 'alpha',
+      customDomain: null,
+      customDomainVerifiedAt: null,
+      customDomainLiveToken: null,
+      customDomainFailingSince: null,
+      customDomainWarnedAt: null,
+      customDomainRecheckedAt: null,
+      customDomainRecheckError: null,
     });
     expect((await tenant('t-w')).customDomain).toBe('learn.wrong.edu');
 

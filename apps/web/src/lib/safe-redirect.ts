@@ -4,12 +4,12 @@
  * and must come back to it.
  */
 export function safeNextPath(next: string | null | undefined): string | null {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null;
+  if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return null;
   for (const ch of next) {
     const code = ch.charCodeAt(0);
-    if (code <= 0x1f || code === 0x7f || ch === "\\") return null; // control characters, tabs and newlines included
+    if (code <= 0x1f || code === 0x7f || ch === '\\') return null; // control characters, tabs and newlines included
   }
-  const base = "https://app.invalid";
+  const base = 'https://app.invalid';
   try {
     const url = new URL(next, base);
     return url.origin === base ? url.pathname + url.search + url.hash : null;

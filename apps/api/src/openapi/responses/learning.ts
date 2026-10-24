@@ -61,7 +61,9 @@ const ModuleWithLessons = ModuleRecord.extend({ lessons: z.array(LessonRecord) }
 const CourseDetailInstructor = CourseListItem.shape.instructors.element;
 
 const CourseDetail = CourseRecord.extend({
-  department: z.object({ id: z.string(), campusId: z.string(), name: z.string(), code: z.string(), createdAt: z.string(), updatedAt: z.string() }).nullable(),
+  department: z
+    .object({ id: z.string(), campusId: z.string(), name: z.string(), code: z.string(), createdAt: z.string(), updatedAt: z.string() })
+    .nullable(),
   instructors: z.array(CourseDetailInstructor),
   /** Empty while `contentLocked`. */
   modules: z.array(ModuleWithLessons),
@@ -216,10 +218,15 @@ const CertificateVerification = z.object({
 });
 
 export const ScormPackageView = z.object({
-  id: z.string(), courseId: z.string(), title: z.string(), version: z.enum(['1.2', '2004']),
+  id: z.string(),
+  courseId: z.string(),
+  title: z.string(),
+  version: z.enum(['1.2', '2004']),
   /** The start page, relative to the package root. */
   launchPath: z.string(),
-  fileCount: z.number(), sizeBytes: z.number(), createdAt: z.string(),
+  fileCount: z.number(),
+  sizeBytes: z.number(),
+  createdAt: z.string(),
   /** A virus scan found malware in the package's zip: it is no longer launched or served. */
   withdrawn: z.boolean(),
 });
@@ -275,7 +282,6 @@ const ForumFlagView = ForumFlagRecord.extend({
   target: z.object({ threadId: z.string(), threadTitle: z.string(), excerpt: z.string(), hidden: z.boolean() }).nullable(),
 });
 
-
 export const RESPONSES: ResponseTable = {
   // ---- courses
   'POST /api/v1/courses': { response: data(CreatedCourse, 201), errors: [400, 409] },
@@ -284,7 +290,10 @@ export const RESPONSES: ResponseTable = {
     errors: [403],
   },
   'GET /api/v1/courses/:id': {
-    response: { ...data(CourseDetail), description: 'Metadata for anyone who can see the course; modules only when content is not locked.' },
+    response: {
+      ...data(CourseDetail),
+      description: 'Metadata for anyone who can see the course; modules only when content is not locked.',
+    },
     errors: [404],
   },
   'PUT /api/v1/courses/:id': { response: data(CourseRecord), errors: [400, 404] },
@@ -293,10 +302,14 @@ export const RESPONSES: ResponseTable = {
     errors: [404],
   },
   'PUT /api/v1/courses/:id/instructors': {
-    response: data(z.array(z.object({
-      isPrimary: z.boolean(),
-      user: z.object({ id: z.string(), firstName: z.string(), lastName: z.string(), email: z.string(), role: z.string() }),
-    }))),
+    response: data(
+      z.array(
+        z.object({
+          isPrimary: z.boolean(),
+          user: z.object({ id: z.string(), firstName: z.string(), lastName: z.string(), email: z.string(), role: z.string() }),
+        })
+      )
+    ),
     errors: [400, 403, 404],
   },
   'GET /api/v1/courses/:id/modules': { response: data(z.array(ModuleWithLessons)), errors: [403, 404] },
@@ -334,7 +347,10 @@ export const RESPONSES: ResponseTable = {
   'DELETE /api/v1/enrollments/:id': { response: data(z.object({ id: z.string(), status: z.literal('DROPPED') })), errors: [404, 409] },
   'PATCH /api/v1/enrollments/:id/progress': { response: data(ProgressResult), errors: [400, 403, 404, 409] },
   'GET /api/v1/enrollments/stats': { response: data(EnrollmentStats), errors: [400, 403] },
-  'GET /api/v1/courses/:courseId/announcements': { response: body(z.object({ data: z.array(AnnouncementView), pagination: Pagination })), errors: [400, 403, 404] },
+  'GET /api/v1/courses/:courseId/announcements': {
+    response: body(z.object({ data: z.array(AnnouncementView), pagination: Pagination })),
+    errors: [400, 403, 404],
+  },
   'GET /scorm-content/:token/__launch': {
     response: { status: 200, contentType: 'text/html', schema: z.string(), description: 'The player page.' },
     errors: [403, 404],
@@ -345,7 +361,12 @@ export const RESPONSES: ResponseTable = {
     errors: [400, 403, 404],
   },
   'GET /scorm-content/:token/*': {
-    response: { status: 200, contentType: 'application/octet-stream', schema: z.string(), description: 'The file, with its own Content-Type.' },
+    response: {
+      status: 200,
+      contentType: 'application/octet-stream',
+      schema: z.string(),
+      description: 'The file, with its own Content-Type.',
+    },
     errors: [403, 404],
   },
   'POST /api/v1/courses/:id/scorm-packages': { response: data(ScormPackageView, 201), errors: [400, 403, 404, 409, 410] },
@@ -358,10 +379,13 @@ export const RESPONSES: ResponseTable = {
     response: data(
       z.array(
         z.object({
-          userId: z.string(), name: z.string(), email: z.string(),
+          userId: z.string(),
+          name: z.string(),
+          email: z.string(),
           /** not attempted | incomplete | completed | passed | failed | unknown */
           status: z.string(),
-          scorePercent: z.number().nullable(), completedAt: z.string().nullable(),
+          scorePercent: z.number().nullable(),
+          completedAt: z.string().nullable(),
           /** Null for an enrolled learner who has not opened the package. */
           updatedAt: z.string().nullable(),
         })
@@ -375,17 +399,27 @@ export const RESPONSES: ResponseTable = {
     response: data(
       z.array(
         z.object({
-          id: z.string(), code: z.string(), title: z.string(), term: z.string().nullable(),
+          id: z.string(),
+          code: z.string(),
+          title: z.string(),
+          term: z.string().nullable(),
           /** The submitter's message, if any. */
           message: z.string().nullable(),
-          submittedAt: z.string().nullable(), submittedBy: z.string().nullable(),
+          submittedAt: z.string().nullable(),
+          submittedBy: z.string().nullable(),
           counts: z.object({ modules: z.number(), quizzes: z.number(), assignments: z.number() }),
         })
       )
     ),
   },
-  'POST /api/v1/courses/:id/review/submit': { response: data(z.object({ id: z.string(), reviewStatus: z.literal('PENDING'), submittedAt: z.string() })), errors: [400, 403, 404, 409] },
-  'POST /api/v1/courses/:id/review/approve': { response: data(z.object({ id: z.string(), status: z.literal('PUBLISHED'), reviewedAt: z.string() })), errors: [400, 404, 409] },
+  'POST /api/v1/courses/:id/review/submit': {
+    response: data(z.object({ id: z.string(), reviewStatus: z.literal('PENDING'), submittedAt: z.string() })),
+    errors: [400, 403, 404, 409],
+  },
+  'POST /api/v1/courses/:id/review/approve': {
+    response: data(z.object({ id: z.string(), status: z.literal('PUBLISHED'), reviewedAt: z.string() })),
+    errors: [400, 404, 409],
+  },
   'POST /api/v1/courses/:id/review/request-changes': {
     response: data(z.object({ id: z.string(), reviewStatus: z.literal('CHANGES_REQUESTED'), note: z.string(), reviewedAt: z.string() })),
     errors: [400, 404, 409],
@@ -397,12 +431,24 @@ export const RESPONSES: ResponseTable = {
   'POST /api/v1/courses/:id/copy': {
     response: data(
       z.object({
-        course: z.object({ id: z.string(), code: z.string(), title: z.string(), status: z.literal('DRAFT'), termId: z.string().nullable() }),
+        course: z.object({
+          id: z.string(),
+          code: z.string(),
+          title: z.string(),
+          status: z.literal('DRAFT'),
+          termId: z.string().nullable(),
+        }),
         /** How many days due dates and quiz windows moved. */
         shiftDays: z.number(),
         copied: z.object({
-          modules: z.number(), lessons: z.number(), quizzes: z.number(), questions: z.number(), assignments: z.number(),
-          gradeCategories: z.number(), questionBankItems: z.number(), files: z.number(),
+          modules: z.number(),
+          lessons: z.number(),
+          quizzes: z.number(),
+          questions: z.number(),
+          assignments: z.number(),
+          gradeCategories: z.number(),
+          questionBankItems: z.number(),
+          files: z.number(),
         }),
       }),
       201
@@ -412,7 +458,12 @@ export const RESPONSES: ResponseTable = {
   'POST /api/v1/files': {
     response: data(
       z.object({
-        id: z.string(), url: z.string(), filename: z.string(), contentType: z.string(), sizeBytes: z.number(), sha256: z.string(),
+        id: z.string(),
+        url: z.string(),
+        filename: z.string(),
+        contentType: z.string(),
+        sizeBytes: z.number(),
+        sha256: z.string(),
         /** CLEAN when a virus scanner checked it, NOT_SCANNED when none is set up. */
         scanStatus: z.enum(['CLEAN', 'NOT_SCANNED']),
         createdAt: z.string(),
@@ -422,7 +473,12 @@ export const RESPONSES: ResponseTable = {
     errors: [400, 403, 404, 413, 415, 422, 503],
   },
   'GET /api/v1/files/:id': {
-    response: { status: 200, contentType: 'application/octet-stream', schema: z.string(), description: 'The file, with its own Content-Type (local storage).' },
+    response: {
+      status: 200,
+      contentType: 'application/octet-stream',
+      schema: z.string(),
+      description: 'The file, with its own Content-Type (local storage).',
+    },
     otherResponses: [{ status: 302, description: 'Redirect to a signed link valid for five minutes (S3 storage).' }],
     errors: [400, 403, 404, 410],
   },
@@ -444,7 +500,9 @@ export const RESPONSES: ResponseTable = {
           status: EnrollmentStatus,
           progressPercent: z.number(),
           /** Only once the course grade is approved. */
-          courseGrade: z.object({ letter: z.string().nullable(), percent: z.number().nullable(), approvedAt: z.string().nullable() }).nullable(),
+          courseGrade: z
+            .object({ letter: z.string().nullable(), percent: z.number().nullable(), approvedAt: z.string().nullable() })
+            .nullable(),
           assignments: z.array(
             z.object({
               id: z.string(),
@@ -486,7 +544,14 @@ export const RESPONSES: ResponseTable = {
     response: data(
       z.object({
         dryRun: z.boolean(),
-        summary: z.object({ rows: z.number(), toCreate: z.number(), created: z.number(), existing: z.number(), enrolled: z.number(), errors: z.number() }),
+        summary: z.object({
+          rows: z.number(),
+          toCreate: z.number(),
+          created: z.number(),
+          existing: z.number(),
+          enrolled: z.number(),
+          errors: z.number(),
+        }),
         rows: z.array(
           z.object({
             /** Line in the file (the header is line 1). */
@@ -501,8 +566,14 @@ export const RESPONSES: ResponseTable = {
     ),
     errors: [400, 403, 409],
   },
-  'POST /api/v1/users': { response: body(z.object({ data: UserAccount, invitationSent: z.boolean(), emailConfigured: z.boolean() }), 201), errors: [400, 403, 409] },
-  'POST /api/v1/users/:id/invite': { response: data(z.object({ id: z.string(), invitationSent: z.boolean(), emailConfigured: z.boolean() })), errors: [403, 404, 409] },
+  'POST /api/v1/users': {
+    response: body(z.object({ data: UserAccount, invitationSent: z.boolean(), emailConfigured: z.boolean() }), 201),
+    errors: [400, 403, 409],
+  },
+  'POST /api/v1/users/:id/invite': {
+    response: data(z.object({ id: z.string(), invitationSent: z.boolean(), emailConfigured: z.boolean() })),
+    errors: [403, 404, 409],
+  },
   'GET /api/v1/users/:id': { response: data(UserDetail), errors: [403, 404] },
   'PATCH /api/v1/users/:id': { response: data(UserAccount), errors: [400, 403, 404] },
   'GET /api/v1/users/:id/enrollments': {
@@ -517,7 +588,10 @@ export const RESPONSES: ResponseTable = {
 
   // ---- certificates
   'GET /api/v1/certificates/verify/:number': {
-    response: { ...body(CertificateVerification), description: 'Public. Answers 404 for an unknown number or tenant, and 429 when rate limited.' },
+    response: {
+      ...body(CertificateVerification),
+      description: 'Public. Answers 404 for an unknown number or tenant, and 429 when rate limited.',
+    },
     errors: [400, 404, 429],
   },
 
@@ -536,14 +610,21 @@ export const RESPONSES: ResponseTable = {
   'PATCH /api/v1/calendar/events/:id': { response: data(CalendarEvent), errors: [400, 403, 404] },
   'DELETE /api/v1/calendar/events/:id': { response: { status: 204, description: 'Deleted' }, errors: [400, 403, 404] },
   'GET /api/v1/calendar/export.ics': {
-    response: { status: 200, contentType: 'text/calendar', schema: z.string(), description: 'iCalendar feed of the same events as GET /calendar/events (sent as an attachment).' },
+    response: {
+      status: 200,
+      contentType: 'text/calendar',
+      schema: z.string(),
+      description: 'iCalendar feed of the same events as GET /calendar/events (sent as an attachment).',
+    },
     errors: [400],
   },
 
   // ---- learning analytics
   'GET /api/v1/analytics/mastery': {
     response: {
-      ...data(z.array(z.object({ level: z.enum(['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE']), score: z.number() }))),
+      ...data(
+        z.array(z.object({ level: z.enum(['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE']), score: z.number() }))
+      ),
       description: "Average score (percent) per Bloom's level; levels without graded answers are omitted.",
     },
   },
@@ -555,4 +636,3 @@ export const RESPONSES: ResponseTable = {
   'PATCH /api/v1/posts/:id/moderate': { response: data(ForumPostRecord), errors: [400, 403, 404] },
   'PATCH /api/v1/threads/:id/moderate': { response: data(ForumThreadRecord), errors: [400, 403, 404] },
 };
-

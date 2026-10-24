@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React from "react";
-import { ExternalLink } from "lucide-react";
-import { videoSource } from "@/lib/video";
+import React from 'react';
+import { ExternalLink } from 'lucide-react';
+import { videoSource } from '@/lib/video';
 
 interface VideoPlayerProps {
   url: string;
@@ -15,7 +15,7 @@ interface VideoPlayerProps {
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, title, watermark }) => {
   const source = videoSource(url);
 
-  if (!source || source.kind === "link") {
+  if (!source || source.kind === 'link') {
     return (
       <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-2xl border border-line bg-canvas p-6 text-center">
         <p className="text-xs text-ink-muted">This video is hosted on a site that cannot be shown here.</p>
@@ -36,8 +36,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, title, watermark 
 
   return (
     <div className="relative aspect-video overflow-hidden rounded-2xl border border-line bg-black">
-      {source.kind === "file" ? (
-        <video src={source.src} controls preload="metadata" playsInline controlsList="nodownload" className="h-full w-full" aria-label={title}>
+      {source.kind === 'file' ? (
+        <video
+          src={source.src}
+          controls
+          preload="metadata"
+          playsInline
+          controlsList="nodownload"
+          className="h-full w-full"
+          aria-label={title}
+        >
           <a href={source.src}>Download the video</a>
         </video>
       ) : (

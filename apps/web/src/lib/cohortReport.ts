@@ -1,7 +1,7 @@
-import type { CohortAnalyticsResponse } from "@/hooks/useAnalytics";
-import { toCsv } from "@/lib/csv";
+import type { CohortAnalyticsResponse } from '@/hooks/useAnalytics';
+import { toCsv } from '@/lib/csv';
 
-type Metrics = CohortAnalyticsResponse["metrics"];
+type Metrics = CohortAnalyticsResponse['metrics'];
 
 /** Share of enrolled learners active this week, 0-100, or null when nobody is enrolled. */
 export function activeShare(m: Metrics): number | null {
@@ -22,27 +22,34 @@ export function cohortReportFilename(now: Date = new Date()): string {
 export function cohortReportCsv(a: CohortAnalyticsResponse, now: Date = new Date()): string {
   const m = a.metrics;
   return toCsv([
-    ["Cohort analytics report"],
-    ["Generated", now.toISOString()],
+    ['Cohort analytics report'],
+    ['Generated', now.toISOString()],
     [],
-    ["Summary"],
-    ["Metric", "Value"],
-    ["Learners enrolled", m.totalEnrolled],
-    ["Active this week", m.activeThisWeek],
-    ["Average progress (%)", m.averageProgress],
-    ["Completion rate (%)", m.completionRate],
-    ["Average GPA (4.0 scale)", hasGpa(m) ? m.averageGpa : ""],
+    ['Summary'],
+    ['Metric', 'Value'],
+    ['Learners enrolled', m.totalEnrolled],
+    ['Active this week', m.activeThisWeek],
+    ['Average progress (%)', m.averageProgress],
+    ['Completion rate (%)', m.completionRate],
+    ['Average GPA (4.0 scale)', hasGpa(m) ? m.averageGpa : ''],
     [],
-    ["At-risk learners"],
-    ["Name", "E-mail", "Course", "Risk", "Reasons", "Suggested action"],
-    ...a.atRiskLearners.map((s) => [s.name, s.email, s.course, s.riskFactor, s.reasons.join("; "), s.suggestedAction]),
+    ['At-risk learners'],
+    ['Name', 'E-mail', 'Course', 'Risk', 'Reasons', 'Suggested action'],
+    ...a.atRiskLearners.map((s) => [s.name, s.email, s.course, s.riskFactor, s.reasons.join('; '), s.suggestedAction]),
     [],
-    ["Assessment items"],
-    ["Concept", "Bloom level / type", "Attempts", "Average score (%)", "Status", "Recommendation"],
-    ...a.itemAnalysis.map((i) => [i.concept, i.taxonomyLevel ?? i.questionType ?? "", i.attempts ?? "", i.averageScorePercent, i.status, i.recommendation]),
+    ['Assessment items'],
+    ['Concept', 'Bloom level / type', 'Attempts', 'Average score (%)', 'Status', 'Recommendation'],
+    ...a.itemAnalysis.map((i) => [
+      i.concept,
+      i.taxonomyLevel ?? i.questionType ?? '',
+      i.attempts ?? '',
+      i.averageScorePercent,
+      i.status,
+      i.recommendation,
+    ]),
     [],
     ["Bloom's taxonomy mastery"],
-    ["Level", "Cohort mastery (%)"],
+    ['Level', 'Cohort mastery (%)'],
     ...a.bloomsMastery.map((b) => [b.level, b.score]),
   ]);
 }

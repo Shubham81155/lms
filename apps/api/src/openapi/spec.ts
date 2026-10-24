@@ -24,10 +24,22 @@ const SERVER_OPERATIONS: Operation[] = [
 
 const EXTRA_DOCS: Record<string, { summary: string; tag: string }> = {
   'GET /health': { summary: 'Liveness probe: the process is up. Makes no compliance claims.', tag: 'system' },
-  'GET /ready': { summary: 'Readiness probe: 200 only when the database answers (and Redis, when REDIS_URL is set), otherwise 503; `checks` names each dependency as ok, failed or skipped.', tag: 'system' },
-  'GET /metrics': { summary: 'Prometheus metrics (text exposition format) for the monitoring system: process metrics, request durations by route pattern, background job runs and last success, queue depths, database up. Authorization: Bearer METRICS_TOKEN (401 otherwise); 404 while METRICS_TOKEN is unset. Not for browsers; keep it off the public proxy.', tag: 'system' },
+  'GET /ready': {
+    summary:
+      'Readiness probe: 200 only when the database answers (and Redis, when REDIS_URL is set), otherwise 503; `checks` names each dependency as ok, failed or skipped.',
+    tag: 'system',
+  },
+  'GET /metrics': {
+    summary:
+      'Prometheus metrics (text exposition format) for the monitoring system: process metrics, request durations by route pattern, background job runs and last success, queue depths, database up. Authorization: Bearer METRICS_TOKEN (401 otherwise); 404 while METRICS_TOKEN is unset. Not for browsers; keep it off the public proxy.',
+    tag: 'system',
+  },
   'GET /api/v1/openapi.json': { summary: 'This description of the API.', tag: 'system' },
-  'GET /api/v1/tenant/config': { summary: 'Branding and feature flags of the tenant resolved from the host or x-tenant-id (used by the login page). 404 when no organisation uses the address; 403 with code TENANT_SUSPENDED when it is suspended.', tag: 'tenant' },
+  'GET /api/v1/tenant/config': {
+    summary:
+      'Branding and feature flags of the tenant resolved from the host or x-tenant-id (used by the login page). 404 when no organisation uses the address; 403 with code TENANT_SUSPENDED when it is suspended.',
+    tag: 'tenant',
+  },
 };
 
 /** How callers prove who they are, per route kind. Signed provider callbacks are described in their summaries. */
@@ -42,7 +54,10 @@ const toOpenApiPath = (path: string) => path.replace(/:([A-Za-z0-9_]+)/g, '{$1}'
 const pathParams = (path: string) => [...path.matchAll(/:([A-Za-z0-9_]+)/g)].map((m) => m[1]);
 
 const tagOf = (path: string) => {
-  const parts = path.replace(/^\/api\/v1\/?/, '').split('/').filter(Boolean);
+  const parts = path
+    .replace(/^\/api\/v1\/?/, '')
+    .split('/')
+    .filter(Boolean);
   return parts[0] ?? 'system';
 };
 
@@ -70,7 +85,12 @@ export const UNDESCRIBABLE: string[] = [];
 function describable(schema: z.ZodTypeAny): boolean {
   try {
     const probe = new OpenAPIRegistry();
-    probe.registerPath({ method: 'post', path: '/probe', request: { body: { content: { 'application/json': { schema } } } }, responses: {} });
+    probe.registerPath({
+      method: 'post',
+      path: '/probe',
+      request: { body: { content: { 'application/json': { schema } } } },
+      responses: {},
+    });
     new OpenApiGeneratorV3(probe.definitions).generateDocument({ openapi: '3.0.3', info: { title: 'probe', version: '0' } });
     return true;
   } catch {
@@ -84,13 +104,29 @@ export function allOperations(): Operation[] {
 
 export function buildOpenApi() {
   const registry = new OpenAPIRegistry();
-  registry.registerComponent('securitySchemes', 'cookieAuth', { type: 'apiKey', in: 'cookie', name: 'lms_token', description: 'httpOnly session cookie set by POST /api/v1/auth/login. In production it is named `__Host-lms_token`.' });
-  registry.registerComponent('securitySchemes', 'bearerAuth', { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', description: 'The same session token, for API clients.' });
-  registry.registerComponent('securitySchemes', 'scimToken', { type: 'http', scheme: 'bearer', description: 'SCIM bearer token created by a tenant administrator.' });
+  registry.registerComponent('securitySchemes', 'cookieAuth', {
+    type: 'apiKey',
+    in: 'cookie',
+    name: 'lms_token',
+    description: 'httpOnly session cookie set by POST /api/v1/auth/login. In production it is named `__Host-lms_token`.',
+  });
+  registry.registerComponent('securitySchemes', 'bearerAuth', {
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT',
+    description: 'The same session token, for API clients.',
+  });
+  registry.registerComponent('securitySchemes', 'scimToken', {
+    type: 'http',
+    scheme: 'bearer',
+    description: 'SCIM bearer token created by a tenant administrator.',
+  });
   const errorSchema = registry.register('ErrorResponse', ErrorResponse);
 
   const ops = allOperations();
-  const unknownKeys = [...Object.keys(DOCS), ...Object.keys(AUTO_DOCS), ...Object.keys(RESPONSE_DOCS)].filter((k) => !ops.some((o) => `${o.method.toUpperCase()} ${o.path}` === k));
+  const unknownKeys = [...Object.keys(DOCS), ...Object.keys(AUTO_DOCS), ...Object.keys(RESPONSE_DOCS)].filter(
+    (k) => !ops.some((o) => `${o.method.toUpperCase()} ${o.path}` === k)
+  );
   if (unknownKeys.length) throw new Error(`openapi/docs.ts documents routes that do not exist: ${unknownKeys.join(', ')}`);
 
   for (const op of ops) {
@@ -101,7 +137,12 @@ export function buildOpenApi() {
     const described = RESPONSE_DOCS[key];
     const doc: OperationDoc | undefined =
       auto || hand || described
-        ? ({ ...auto, ...described, ...hand, errors: [...new Set([...(described?.errors ?? []), ...(hand?.errors ?? [])])] } as OperationDoc)
+        ? ({
+            ...auto,
+            ...described,
+            ...hand,
+            errors: [...new Set([...(described?.errors ?? []), ...(hand?.errors ?? [])])],
+          } as OperationDoc)
         : undefined;
     const extra = EXTRA_DOCS[key];
     const params = pathParams(op.path);

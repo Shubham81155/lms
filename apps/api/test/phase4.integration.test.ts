@@ -30,7 +30,17 @@ async function seed() {
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', tier: 'STARTER' } });
   const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
     admin.user.create({
-      data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: `Last${id}`, role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true, ...extra },
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: `Last${id}`,
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+        ...extra,
+      },
     });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('auditor', 't-h', 'harvard', 'AUDITOR');
@@ -40,24 +50,91 @@ async function seed() {
   await user('m-admin', 't-m', 'mit', 'TENANT_ADMIN');
   await user('m-student', 't-m', 'mit', 'STUDENT');
 
-  await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course c1', status: 'PUBLISHED', allowSelfEnroll: true, passingGradePercent: 50 } });
+  await admin.course.create({
+    data: {
+      id: 'c1',
+      tenantId: 't-h',
+      code: 'C1',
+      title: 'Course c1',
+      status: 'PUBLISHED',
+      allowSelfEnroll: true,
+      passingGradePercent: 50,
+    },
+  });
   await admin.course.create({ data: { id: 'm1', tenantId: 't-m', code: 'M1', title: 'MIT course', status: 'PUBLISHED' } });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  for (const [id, u] of [['e-s1', 's1'], ['e-s3', 's3'], ['e-s4', 's4']]) {
+  for (const [id, u] of [
+    ['e-s1', 's1'],
+    ['e-s3', 's3'],
+    ['e-s4', 's4'],
+  ]) {
     await admin.enrollment.create({ data: { id, tenantId: 't-h', courseId: 'c1', userId: u, status: 'IN_PROGRESS', progressPercent: 10 } });
   }
   await admin.enrollment.create({ data: { id: 'e-m', tenantId: 't-m', courseId: 'm1', userId: 'm-student' } });
 
   await admin.quiz.create({
     data: {
-      id: 'q-proc', tenantId: 't-h', courseId: 'c1', title: 'Proctored', requireProctoring: true, proctorCamera: true, maxAttempts: 2, passingPercent: 50,
-      questions: { create: [{ id: 'qq1', questionText: '2+2?', questionType: 'MULTIPLE_CHOICE', points: 1, optionsJson: [{ id: 'a', text: '4', isCorrect: true }, { id: 'b', text: '5', isCorrect: false }] }] },
+      id: 'q-proc',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Proctored',
+      requireProctoring: true,
+      proctorCamera: true,
+      maxAttempts: 2,
+      passingPercent: 50,
+      questions: {
+        create: [
+          {
+            id: 'qq1',
+            questionText: '2+2?',
+            questionType: 'MULTIPLE_CHOICE',
+            points: 1,
+            optionsJson: [
+              { id: 'a', text: '4', isCorrect: true },
+              { id: 'b', text: '5', isCorrect: false },
+            ],
+          },
+        ],
+      },
     },
   });
-  await admin.quiz.create({ data: { id: 'q-plain', tenantId: 't-h', courseId: 'c1', title: 'Plain', maxAttempts: 3, passingPercent: 50,
-    questions: { create: [{ id: 'qq2', questionText: '1+1?', questionType: 'MULTIPLE_CHOICE', points: 1, optionsJson: [{ id: 'a', text: '2', isCorrect: true }, { id: 'b', text: '3', isCorrect: false }] }] } } });
+  await admin.quiz.create({
+    data: {
+      id: 'q-plain',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Plain',
+      maxAttempts: 3,
+      passingPercent: 50,
+      questions: {
+        create: [
+          {
+            id: 'qq2',
+            questionText: '1+1?',
+            questionType: 'MULTIPLE_CHOICE',
+            points: 1,
+            optionsJson: [
+              { id: 'a', text: '2', isCorrect: true },
+              { id: 'b', text: '3', isCorrect: false },
+            ],
+          },
+        ],
+      },
+    },
+  });
   await admin.quizSubmission.create({ data: { id: 'sub-open', quizId: 'q-proc', userId: 's1', maxScore: 1, answersJson: {} } });
-  await admin.quizSubmission.create({ data: { id: 'sub-done', quizId: 'q-proc', userId: 's3', maxScore: 1, score: 0, submittedAt: new Date(), attemptNumber: 1, answersJson: {} } });
+  await admin.quizSubmission.create({
+    data: {
+      id: 'sub-done',
+      quizId: 'q-proc',
+      userId: 's3',
+      maxScore: 1,
+      score: 0,
+      submittedAt: new Date(),
+      attemptNumber: 1,
+      answersJson: {},
+    },
+  });
 }
 
 beforeAll(async () => {
@@ -80,7 +157,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -113,8 +193,14 @@ describe('pure helpers', () => {
   });
 
   it('scores risk and flags proctoring', () => {
-    expect(scoreRisk({ progressPercent: 90, failedQuizzes: 0, avgQuizPercent: 90, daysInactive: 1, proctoringFlags: 0, plagiarismMax: null }).level).toBe('LOW');
-    expect(scoreRisk({ progressPercent: 10, failedQuizzes: 2, avgQuizPercent: 40, daysInactive: 9, proctoringFlags: 0, plagiarismMax: null }).level).toBe('HIGH');
+    expect(
+      scoreRisk({ progressPercent: 90, failedQuizzes: 0, avgQuizPercent: 90, daysInactive: 1, proctoringFlags: 0, plagiarismMax: null })
+        .level
+    ).toBe('LOW');
+    expect(
+      scoreRisk({ progressPercent: 10, failedQuizzes: 2, avgQuizPercent: 40, daysInactive: 9, proctoringFlags: 0, plagiarismMax: null })
+        .level
+    ).toBe('HIGH');
     expect(assessProctoring([{ severity: 'HIGH' }, { severity: 'HIGH' }]).flagged).toBe(false);
     expect(assessProctoring([{ severity: 'HIGH' }, { severity: 'HIGH' }, { severity: 'HIGH' }]).flagged).toBe(true);
     expect(assessProctoring(Array(12).fill({ severity: 'LOW' })).flagged).toBe(true);
@@ -132,7 +218,9 @@ describe('pure helpers', () => {
 describe('notifications', () => {
   it('delivers, lists, counts and marks read, only for the owner', async () => {
     const teacher = await as('teacher');
-    expect((await teacher.post('/api/v1/analytics/at-risk/nudge').send({ courseId: 'c1', userId: 's1', message: 'Catch up!' })).status).toBe(201);
+    expect(
+      (await teacher.post('/api/v1/analytics/at-risk/nudge').send({ courseId: 'c1', userId: 's1', message: 'Catch up!' })).status
+    ).toBe(201);
 
     const s1 = await as('s1');
     const list = await s1.get('/api/v1/notifications');
@@ -158,7 +246,9 @@ describe('notifications', () => {
 
   it('honours muted categories and validates preferences', async () => {
     const s3 = await as('s3');
-    const put = await s3.put('/api/v1/notifications/preferences').send({ mutedCategories: ['COURSE'], quietStartHour: 22, quietEndHour: 7, timezone: 'Asia/Kolkata' });
+    const put = await s3
+      .put('/api/v1/notifications/preferences')
+      .send({ mutedCategories: ['COURSE'], quietStartHour: 22, quietEndHour: 7, timezone: 'Asia/Kolkata' });
     expect(put.status).toBe(200);
     expect(put.body.data.mutedCategories).toEqual(['COURSE']);
     expect((await s3.get('/api/v1/notifications/preferences')).body.data.timezone).toBe('Asia/Kolkata');
@@ -182,7 +272,9 @@ describe('discussion forums', () => {
 
   it('lets enrolled learners post and keeps outsiders out', async () => {
     const s1 = await as('s1');
-    const created = await s1.post('/api/v1/courses/c1/threads').send({ title: 'How does Raft elect a leader?', body: 'I am confused', category: 'Consensus' });
+    const created = await s1
+      .post('/api/v1/courses/c1/threads')
+      .send({ title: 'How does Raft elect a leader?', body: 'I am confused', category: 'Consensus' });
     expect(created.status).toBe(201);
     threadId = created.body.data.id;
 
@@ -292,7 +384,9 @@ describe('calendar', () => {
 
   it('lets course editors schedule and enrolled learners see it', async () => {
     const teacher = await as('teacher');
-    const res = await teacher.post('/api/v1/calendar/events').send({ title: 'Midterm', category: 'EXAM', courseId: 'c1', startsAt: start, endsAt: end, timezone: 'Europe/London' });
+    const res = await teacher
+      .post('/api/v1/calendar/events')
+      .send({ title: 'Midterm', category: 'EXAM', courseId: 'c1', startsAt: start, endsAt: end, timezone: 'Europe/London' });
     expect(res.status).toBe(201);
     eventId = res.body.data.id;
 
@@ -308,17 +402,23 @@ describe('calendar', () => {
     expect((await (await as('s1')).post('/api/v1/calendar/events').send(body)).status).toBe(403);
     expect((await (await as('teacher2')).post('/api/v1/calendar/events').send(body)).status).toBe(403);
     expect((await (await as('teacher')).post('/api/v1/calendar/events').send({ ...body, courseId: undefined })).status).toBe(403); // tenant-wide: admin only
-    expect((await (await as('teacher')).post('/api/v1/calendar/events').send({ ...body, endsAt: new Date(start.getTime() - 1000) })).status).toBe(400);
+    expect(
+      (await (await as('teacher')).post('/api/v1/calendar/events').send({ ...body, endsAt: new Date(start.getTime() - 1000) })).status
+    ).toBe(400);
     expect((await (await as('teacher')).post('/api/v1/calendar/events').send({ ...body, timezone: 'Nowhere/City' })).status).toBe(400);
 
     expect((await (await as('teacher2')).patch(`/api/v1/calendar/events/${eventId}`).send({ title: 'hijack' })).status).toBe(403);
     expect((await (await as('teacher')).patch(`/api/v1/calendar/events/${eventId}`).send({ title: 'Midterm (moved)' })).status).toBe(200);
-    expect((await (await as('teacher')).patch(`/api/v1/calendar/events/${eventId}`).send({ endsAt: new Date(start.getTime() - 1000) })).status).toBe(400);
+    expect(
+      (await (await as('teacher')).patch(`/api/v1/calendar/events/${eventId}`).send({ endsAt: new Date(start.getTime() - 1000) })).status
+    ).toBe(400);
   });
 
   it('shows tenant-wide events to everyone and exports valid iCalendar', async () => {
     const admin1 = await as('admin');
-    const all = await admin1.post('/api/v1/calendar/events').send({ title: 'Campus closed, holiday', category: 'DEADLINE', startsAt: start, endsAt: end });
+    const all = await admin1
+      .post('/api/v1/calendar/events')
+      .send({ title: 'Campus closed, holiday', category: 'DEADLINE', startsAt: start, endsAt: end });
     expect(all.status).toBe(201);
     expect((await (await as('s2')).get('/api/v1/calendar/events')).body.data.map((e: any) => e.id)).toContain(all.body.data.id);
 
@@ -349,7 +449,9 @@ describe('quiz learning records', () => {
     const r2 = await s1.post('/api/v1/quizzes/q-plain/submit').send({ answers: { qq2: 'a' } });
     expect(r2.status).toBe(201);
 
-    const stmts = await (await as('teacher')).get('/api/v1/analytics/xapi/stream?actorEmail=s1@x.edu&verb=http://adlnet.gov/expapi/verbs/passed');
+    const stmts = await (
+      await as('teacher')
+    ).get('/api/v1/analytics/xapi/stream?actorEmail=s1@x.edu&verb=http://adlnet.gov/expapi/verbs/passed');
     expect(stmts.body.total).toBeGreaterThanOrEqual(2);
     expect(stmts.body.statements[0].verb.display['en-US']).toBe('passed');
   });
@@ -404,7 +506,7 @@ describe('xAPI learning record store', () => {
     expect((await (await as('m-admin', 'mit')).get('/api/v1/analytics/xapi/stream')).body.total).toBe(0);
   });
 
-  it("limits instructors to the learners of courses they teach", async () => {
+  it('limits instructors to the learners of courses they teach', async () => {
     // teacher2 teaches nothing: no learner's records, even when asked by e-mail.
     const t2 = await as('teacher2');
     const none = await t2.get('/api/v1/analytics/xapi/stream?limit=100');
@@ -436,7 +538,15 @@ describe('proctoring telemetry', () => {
     const mic = await s1.post('/api/v1/proctoring/events').send(ev('LOW', 'AUDIO_SPIKE'));
     expect(mic.status).toBe(400);
     expect(mic.body.error).toMatch(/microphone/);
-    expect((await (await as('s3')).post('/api/v1/proctoring/events').send({ submissionId: 'sub-done', eventType: 'TAB_SWITCH', severity: 'HIGH' })).status).toBe(409);
+    expect(
+      (
+        await (
+          await as('s3')
+        )
+          .post('/api/v1/proctoring/events')
+          .send({ submissionId: 'sub-done', eventType: 'TAB_SWITCH', severity: 'HIGH' })
+      ).status
+    ).toBe(409);
   });
 
   it('flags after repeated HIGH events and alerts the course staff once', async () => {
@@ -448,7 +558,9 @@ describe('proctoring telemetry', () => {
     await s1.post('/api/v1/proctoring/events').send(ev('HIGH'));
 
     const teacher = await as('teacher');
-    const alerts = (await teacher.get('/api/v1/notifications?category=EXAM')).body.data.filter((n: any) => n.title.includes('Proctoring flag'));
+    const alerts = (await teacher.get('/api/v1/notifications?category=EXAM')).body.data.filter((n: any) =>
+      n.title.includes('Proctoring flag')
+    );
     expect(alerts).toHaveLength(1); // not re-sent for events after the flag
 
     const report = await teacher.get('/api/v1/quizzes/q-proc/proctoring');
@@ -459,7 +571,15 @@ describe('proctoring telemetry', () => {
 
   it('rejects events for quizzes without proctoring', async () => {
     await admin.quizSubmission.create({ data: { id: 'sub-plain', quizId: 'q-plain', userId: 's4', maxScore: 1, answersJson: {} } });
-    expect((await (await as('s4')).post('/api/v1/proctoring/events').send({ submissionId: 'sub-plain', eventType: 'TAB_SWITCH', severity: 'LOW' })).status).toBe(400);
+    expect(
+      (
+        await (
+          await as('s4')
+        )
+          .post('/api/v1/proctoring/events')
+          .send({ submissionId: 'sub-plain', eventType: 'TAB_SWITCH', severity: 'LOW' })
+      ).status
+    ).toBe(400);
   });
 
   it('shows course staff a feed of recent events and open attempts, scoped to their courses', async () => {
@@ -539,7 +659,11 @@ describe('multi-factor authentication', () => {
 
     // Password alone is no longer enough.
     const fresh = request.agent(app);
-    const login = (extra: object = {}) => fresh.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 's2@x.edu', password: pw('harvard'), ...extra });
+    const login = (extra: object = {}) =>
+      fresh
+        .post('/api/v1/auth/login')
+        .set('x-tenant-id', 'harvard')
+        .send({ email: 's2@x.edu', password: pw('harvard'), ...extra });
     const noCode = await login();
     expect(noCode.status).toBe(401);
     expect(noCode.body.mfaRequired).toBe(true);
@@ -555,7 +679,10 @@ describe('multi-factor authentication', () => {
     const authed = await as('s2').catch(() => null);
     expect(authed).toBeNull(); // plain login helper now fails: MFA is enforced everywhere
     const session = request.agent(app);
-    await session.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 's2@x.edu', password: pw('harvard'), mfaCode: totp(secret) });
+    await session
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 's2@x.edu', password: pw('harvard'), mfaCode: totp(secret) });
     expect((await session.post('/api/v1/auth/mfa/disable').send({ password: 'wrong-password', code: totp(secret) })).status).toBe(401);
     expect((await session.post('/api/v1/auth/mfa/disable').send({ password: pw('harvard'), code: recovery[1] })).status).toBe(200);
     expect((await admin.user.findUnique({ where: { id: 's2' } }))?.mfaSecret).toBeNull();
@@ -566,7 +693,11 @@ describe('multi-factor authentication', () => {
     const secret = 'JBSWY3DPEHPK3PXP';
     await admin.user.update({ where: { id: 's3' }, data: { mfaEnabled: true, mfaSecret: encryptSecret(secret) } });
     const agent = request.agent(app);
-    const attempt = () => agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 's3@x.edu', password: pw('harvard'), mfaCode: '000000' });
+    const attempt = () =>
+      agent
+        .post('/api/v1/auth/login')
+        .set('x-tenant-id', 'harvard')
+        .send({ email: 's3@x.edu', password: pw('harvard'), mfaCode: '000000' });
     expect((await attempt()).status).toBe(401);
     expect((await attempt()).status).toBe(401);
     expect((await attempt()).status).toBe(401); // MAX_FAILED_LOGINS = 3
@@ -655,7 +786,13 @@ describe('SCIM 2.0 provisioning', () => {
   });
 
   it('creates, finds and rejects duplicate users (scim+json bodies)', async () => {
-    const body = { schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'], userName: 'New.Person@x.edu', externalId: 'okta-123', name: { givenName: 'New', familyName: 'Person' }, active: true };
+    const body = {
+      schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+      userName: 'New.Person@x.edu',
+      externalId: 'okta-123',
+      name: { givenName: 'New', familyName: 'Person' },
+      active: true,
+    };
     const created = await scim('post', '/Users').send(JSON.stringify(body));
     expect(created.status).toBe(201);
     scimId = created.body.id;
@@ -677,20 +814,37 @@ describe('SCIM 2.0 provisioning', () => {
   });
 
   it('deactivates via both Okta and Entra PATCH shapes and blocks sign-in', async () => {
-    const okta = await scim('patch', `/Users/${scimId}`).send(JSON.stringify({ schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'], Operations: [{ op: 'replace', path: 'active', value: false }] }));
+    const okta = await scim('patch', `/Users/${scimId}`).send(
+      JSON.stringify({
+        schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+        Operations: [{ op: 'replace', path: 'active', value: false }],
+      })
+    );
     expect(okta.status).toBe(200);
     expect(okta.body.active).toBe(false);
     expect((await admin.user.findUnique({ where: { id: scimId } }))?.status).toBe('SUSPENDED');
 
-    const entra = await scim('patch', `/Users/${scimId}`).send(JSON.stringify({ Operations: [{ op: 'Replace', value: { active: 'True' } }] }));
+    const entra = await scim('patch', `/Users/${scimId}`).send(
+      JSON.stringify({ Operations: [{ op: 'Replace', value: { active: 'True' } }] })
+    );
     expect(entra.body.active).toBe(true);
-    expect((await scim('patch', `/Users/${scimId}`).send(JSON.stringify({ Operations: [{ op: 'replace', path: 'role', value: 'SUPER_ADMIN' }] }))).status).toBe(400);
-    expect((await scim('patch', `/Users/${scimId}`).send(JSON.stringify({ Operations: [{ op: 'remove', path: 'active' }] }))).status).toBe(400);
+    expect(
+      (
+        await scim('patch', `/Users/${scimId}`).send(
+          JSON.stringify({ Operations: [{ op: 'replace', path: 'role', value: 'SUPER_ADMIN' }] })
+        )
+      ).status
+    ).toBe(400);
+    expect((await scim('patch', `/Users/${scimId}`).send(JSON.stringify({ Operations: [{ op: 'remove', path: 'active' }] }))).status).toBe(
+      400
+    );
     expect((await scim('put', `/Users/${scimId}`).send(JSON.stringify({ userName: 'someone.else@x.edu' }))).status).toBe(400);
   });
 
   it('never lets SCIM touch administrators or other tenants', async () => {
-    expect((await scim('patch', '/Users/admin').send(JSON.stringify({ Operations: [{ op: 'replace', path: 'active', value: false }] }))).status).toBe(403);
+    expect(
+      (await scim('patch', '/Users/admin').send(JSON.stringify({ Operations: [{ op: 'replace', path: 'active', value: false }] }))).status
+    ).toBe(403);
     expect((await scim('delete', '/Users/admin')).status).toBe(403);
     expect((await scim('get', '/Users/m-student')).status).toBe(404);
     const list = await scim('get', '/Users?count=100');
@@ -700,7 +854,10 @@ describe('SCIM 2.0 provisioning', () => {
   it('deprovisions by suspending (history kept) and respects the seat quota', async () => {
     expect((await scim('delete', `/Users/${scimId}`)).status).toBe(204);
     expect((await admin.user.findUnique({ where: { id: scimId } }))?.status).toBe('SUSPENDED');
-    const login = await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'new.person@x.edu', password: 'whatever-123' });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 'new.person@x.edu', password: 'whatever-123' });
     expect(login.status).toBe(401);
 
     await admin.tenant.update({ where: { id: 't-h' }, data: { seatQuota: 8 } });
@@ -745,18 +902,24 @@ describe('webhooks', () => {
 
   it('creates endpoints, shows the secret once, and validates input', async () => {
     const harvard = await as('admin');
-    const res = await harvard.post('/api/v1/admin/webhooks').send({ url: `${url}/hook`, events: ['enrollment.completed', 'quiz.submitted', 'webhook.test'] });
+    const res = await harvard
+      .post('/api/v1/admin/webhooks')
+      .send({ url: `${url}/hook`, events: ['enrollment.completed', 'quiz.submitted', 'webhook.test'] });
     expect(res.status).toBe(201);
     endpointId = res.body.data.id;
     secret = res.body.data.secret;
     expect(secret).toMatch(/^whsec_/);
     expect(JSON.stringify((await harvard.get('/api/v1/admin/webhooks')).body)).not.toContain(secret);
 
-    expect((await harvard.post('/api/v1/admin/webhooks').send({ url: 'ftp://x.example/hook', events: ['quiz.submitted'] })).status).toBe(400);
+    expect((await harvard.post('/api/v1/admin/webhooks').send({ url: 'ftp://x.example/hook', events: ['quiz.submitted'] })).status).toBe(
+      400
+    );
     expect((await harvard.post('/api/v1/admin/webhooks').send({ url: `${url}/h`, events: ['nope'] })).status).toBe(400);
     expect((await harvard.post('/api/v1/admin/webhooks').send({ url: `${url}/h`, events: [] })).status).toBe(400);
     expect((await (await as('teacher')).get('/api/v1/admin/webhooks')).status).toBe(403);
-    expect((await (await as('m-admin', 'mit')).post('/api/v1/admin/webhooks').send({ url: `${url}/h`, events: ['quiz.submitted'] })).status).toBe(403); // plan gate
+    expect(
+      (await (await as('m-admin', 'mit')).post('/api/v1/admin/webhooks').send({ url: `${url}/h`, events: ['quiz.submitted'] })).status
+    ).toBe(403); // plan gate
   });
 
   it('delivers a correctly signed test event and records it', async () => {
@@ -790,7 +953,9 @@ describe('webhooks', () => {
 
     // Re-sending progress does not re-notify.
     await (await as('teacher')).patch('/api/v1/enrollments/e-s4/progress').send({ progressPercent: 100 });
-    expect((await s4.get('/api/v1/notifications?category=COURSE')).body.data.filter((n: any) => n.title.includes('completed'))).toHaveLength(1);
+    expect(
+      (await s4.get('/api/v1/notifications?category=COURSE')).body.data.filter((n: any) => n.title.includes('completed'))
+    ).toHaveLength(1);
   });
 
   it('records failures and survives an unreachable receiver', async () => {
@@ -816,7 +981,8 @@ describe('webhooks', () => {
 
   describe('retries', () => {
     const create = async (path: string) =>
-      (await (await as('admin')).post('/api/v1/admin/webhooks').send({ url: `${url}${path}`, events: ['user.provisioned'] })).body.data.id as string;
+      (await (await as('admin')).post('/api/v1/admin/webhooks').send({ url: `${url}${path}`, events: ['user.provisioned'] })).body.data
+        .id as string;
     const rows = (id: string) => admin.webhookDelivery.findMany({ where: { endpointId: id }, orderBy: { attempt: 'asc' } });
 
     it('retries a failed delivery later, records each attempt, and clears the queued payload', async () => {
@@ -836,7 +1002,10 @@ describe('webhooks', () => {
       // Due: the retry succeeds and carries the attempt number.
       expect(await retryDueWebhooks({ now: new Date(Date.now() + 60_000) })).toMatchObject({ retried: 1 });
       r = await rows(id);
-      expect(r.map((x) => [x.attempt, x.success])).toEqual([[1, false], [2, true]]);
+      expect(r.map((x) => [x.attempt, x.success])).toEqual([
+        [1, false],
+        [2, true],
+      ]);
       expect(r[0]).toMatchObject({ payload: null, nextAttemptAt: null });
       expect(received.filter((x) => x.headers['x-lms-attempt'] === '2')).toHaveLength(1);
       // Nothing is retried twice.
@@ -891,14 +1060,32 @@ describe('LTI 1.3 launch', () => {
     await new Promise<void>((r) => jwksServer.listen(0, '127.0.0.1', r));
     jwksUrl = `http://127.0.0.1:${(jwksServer.address() as any).port}/jwks`;
     await admin.ltiDeployment.create({
-      data: { tenantId: 't-h', clientId: 'client-1', deploymentId: 'dep-1', issuer: 'https://platform.example.edu', authLoginUrl: 'https://p/login', authTokensUrl: 'https://p/token', keySetUrl: jwksUrl },
+      data: {
+        tenantId: 't-h',
+        clientId: 'client-1',
+        deploymentId: 'dep-1',
+        issuer: 'https://platform.example.edu',
+        authLoginUrl: 'https://p/login',
+        authTokensUrl: 'https://p/token',
+        keySetUrl: jwksUrl,
+      },
     });
   });
   afterAll(() => new Promise<void>((r) => jwksServer.close(() => r())));
 
   const token = (over: Record<string, unknown> = {}, key: crypto.KeyObject = privateKey) =>
     jwt.sign(
-      { iss: 'https://platform.example.edu', aud: 'client-1', sub: 'u1', email: 's4@x.edu', nonce: `n-${crypto.randomUUID()}`, [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1', [`${CLAIM}/target_link_uri`]: 'https://lms/courses/c1', ...over },
+      {
+        iss: 'https://platform.example.edu',
+        aud: 'client-1',
+        sub: 'u1',
+        email: 's4@x.edu',
+        nonce: `n-${crypto.randomUUID()}`,
+        [`${CLAIM}/version`]: '1.3.0',
+        [`${CLAIM}/deployment_id`]: 'dep-1',
+        [`${CLAIM}/target_link_uri`]: 'https://lms/courses/c1',
+        ...over,
+      },
       key,
       { algorithm: 'RS256', keyid: 'k1', expiresIn: '5m' }
     );
@@ -921,7 +1108,18 @@ describe('LTI 1.3 launch', () => {
     expect((await launch(token({ email: undefined }))).status).toBe(403);
     expect((await launch('a.b.c')).status).toBe(400);
     expect((await launch(jwt.sign({ iss: 'x' }, 'secret'))).status).toBe(401); // HS256 not accepted
-    const expired = jwt.sign({ iss: 'https://platform.example.edu', aud: 'client-1', nonce: 'n', email: 's4@x.edu', [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1' }, privateKey, { algorithm: 'RS256', keyid: 'k1', expiresIn: -60 });
+    const expired = jwt.sign(
+      {
+        iss: 'https://platform.example.edu',
+        aud: 'client-1',
+        nonce: 'n',
+        email: 's4@x.edu',
+        [`${CLAIM}/version`]: '1.3.0',
+        [`${CLAIM}/deployment_id`]: 'dep-1',
+      },
+      privateKey,
+      { algorithm: 'RS256', keyid: 'k1', expiresIn: -60 }
+    );
     expect((await launch(expired)).status).toBe(401);
   });
 
@@ -934,8 +1132,15 @@ describe('LTI 1.3 launch', () => {
   });
 
   it('refuses a token without an expiry or issued long ago', async () => {
-    const claims = { iss: 'https://platform.example.edu', aud: 'client-1', email: 's4@x.edu', [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1' };
-    const sign = (extra: Record<string, unknown>, opts: jwt.SignOptions) => jwt.sign({ ...claims, nonce: `n-${crypto.randomUUID()}`, ...extra }, privateKey, { algorithm: 'RS256', keyid: 'k1', ...opts });
+    const claims = {
+      iss: 'https://platform.example.edu',
+      aud: 'client-1',
+      email: 's4@x.edu',
+      [`${CLAIM}/version`]: '1.3.0',
+      [`${CLAIM}/deployment_id`]: 'dep-1',
+    };
+    const sign = (extra: Record<string, unknown>, opts: jwt.SignOptions) =>
+      jwt.sign({ ...claims, nonce: `n-${crypto.randomUUID()}`, ...extra }, privateKey, { algorithm: 'RS256', keyid: 'k1', ...opts });
     expect((await launch(sign({}, {}))).status).toBe(401); // no exp
     const old = Math.floor(Date.now() / 1000) - 3600;
     expect((await launch(sign({ iat: old }, { expiresIn: '2h' }))).status).toBe(401); // issued an hour ago
@@ -953,7 +1158,18 @@ describe('row-level security on the new tables', () => {
     const mit = new PrismaClient({ datasourceUrl: db.appUrl });
     try {
       // No tenant context set: the unprivileged role sees nothing, even though rows exist.
-      for (const table of ['notification', 'forumThread', 'forumPost', 'forumVote', 'forumFlag', 'calendarEvent', 'xapiStatement', 'webhookEndpoint', 'webhookDelivery', 'notificationPreference'] as const) {
+      for (const table of [
+        'notification',
+        'forumThread',
+        'forumPost',
+        'forumVote',
+        'forumFlag',
+        'calendarEvent',
+        'xapiStatement',
+        'webhookEndpoint',
+        'webhookDelivery',
+        'notificationPreference',
+      ] as const) {
         const adminCount = await (admin as any)[table].count();
         const appCount = await (mit as any)[table].count();
         expect(appCount, `${table} (admin sees ${adminCount})`).toBe(0);
@@ -1046,7 +1262,14 @@ describe('forum responses match the API description', () => {
     expect(detail.body.data.posts).toHaveLength(1);
 
     const vote = await s1.post('/api/v1/votes').send({ targetType: 'THREAD', targetId: id });
-    expect(z.object({ data: z.object({ targetType: z.enum(['THREAD', 'POST']), targetId: z.string(), voted: z.boolean(), upvotes: z.number() }) }).safeParse(vote.body).success, JSON.stringify(vote.body)).toBe(true);
+    expect(
+      z
+        .object({
+          data: z.object({ targetType: z.enum(['THREAD', 'POST']), targetId: z.string(), voted: z.boolean(), upvotes: z.number() }),
+        })
+        .safeParse(vote.body).success,
+      JSON.stringify(vote.body)
+    ).toBe(true);
     const flag = await (await as('s2')).post('/api/v1/flags').send({ targetType: 'THREAD', targetId: id, reason: 'testing' });
     expect(flag.status === 201 || flag.status === 403, JSON.stringify(flag.body)).toBe(true);
   });

@@ -40,8 +40,12 @@ router.get(
   '/',
   route('Failed to check the link', async (req, res) => {
     const { tenantId, userId } = recipient(req);
-    const pref = await runWithTenant(tenantId, () => prisma.notificationPreference.findUnique({ where: { userId }, select: { digestFrequency: true } }));
-    const user = await runWithTenant(tenantId, () => prisma.user.findFirst({ where: { id: userId }, select: { id: true, tenant: { select: { name: true } } } }));
+    const pref = await runWithTenant(tenantId, () =>
+      prisma.notificationPreference.findUnique({ where: { userId }, select: { digestFrequency: true } })
+    );
+    const user = await runWithTenant(tenantId, () =>
+      prisma.user.findFirst({ where: { id: userId }, select: { id: true, tenant: { select: { name: true } } } })
+    );
     if (!user) throw new HttpError(400, NOT_VALID);
     return res.json({ data: { organisation: user.tenant.name, digestFrequency: pref?.digestFrequency ?? 'WEEKLY' } });
   })
@@ -55,7 +59,11 @@ router.post(
     const done = await runWithTenant(tenantId, async () => {
       const user = await prisma.user.findFirst({ where: { id: userId }, select: { id: true } });
       if (!user) return false;
-      await prisma.notificationPreference.upsert({ where: { userId }, create: { tenantId, userId, digestFrequency: 'OFF' }, update: { digestFrequency: 'OFF' } });
+      await prisma.notificationPreference.upsert({
+        where: { userId },
+        create: { tenantId, userId, digestFrequency: 'OFF' },
+        update: { digestFrequency: 'OFF' },
+      });
       return true;
     });
     if (!done) throw new HttpError(400, NOT_VALID);

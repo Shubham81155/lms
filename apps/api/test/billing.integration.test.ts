@@ -31,7 +31,18 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-b', slug: 'beta', name: 'Beta', tier: 'STARTER', ...trial } });
   await admin.tenant.create({ data: { id: 't-c', slug: 'gamma', name: 'Gamma', tier: 'STARTER' } });
   const user = (id: string, tenantId: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('operator', 't-op', 'SUPER_ADMIN');
   await user('a-admin', 't-a', 'TENANT_ADMIN');
   await user('a-student', 't-a', 'STUDENT');
@@ -69,17 +80,31 @@ afterAll(async () => {
 
 async function as(who: string, tenant: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
 
 let eventSeq = 0;
-function webhook(event: string, tenantId: string, extra: { payment?: { id: string; amount: number }; quantity?: number; eventId?: string; sign?: boolean } = {}) {
+function webhook(
+  event: string,
+  tenantId: string,
+  extra: { payment?: { id: string; amount: number }; quantity?: number; eventId?: string; sign?: boolean } = {}
+) {
   const body = JSON.stringify({
     event,
     payload: {
-      subscription: { entity: { id: `sub_${tenantId}`, quantity: extra.quantity ?? 5, current_end: Math.floor(Date.now() / 1000) + 30 * 86_400, notes: { tenantId } } },
+      subscription: {
+        entity: {
+          id: `sub_${tenantId}`,
+          quantity: extra.quantity ?? 5,
+          current_end: Math.floor(Date.now() / 1000) + 30 * 86_400,
+          notes: { tenantId },
+        },
+      },
       ...(extra.payment ? { payment: { entity: extra.payment } } : {}),
     },
   });
@@ -94,8 +119,20 @@ function webhook(event: string, tenantId: string, extra: { payment?: { id: strin
 
 describe('GST and numbering', () => {
   it('splits an inclusive amount: CGST+SGST in the seller state, IGST elsewhere', () => {
-    expect(invoiceLib.computeGst(118_000, '27', '27')).toEqual({ taxablePaise: 100_000, cgstPaise: 9_000, sgstPaise: 9_000, igstPaise: 0, totalPaise: 118_000 });
-    expect(invoiceLib.computeGst(118_000, '07', '27')).toEqual({ taxablePaise: 100_000, cgstPaise: 0, sgstPaise: 0, igstPaise: 18_000, totalPaise: 118_000 });
+    expect(invoiceLib.computeGst(118_000, '27', '27')).toEqual({
+      taxablePaise: 100_000,
+      cgstPaise: 9_000,
+      sgstPaise: 9_000,
+      igstPaise: 0,
+      totalPaise: 118_000,
+    });
+    expect(invoiceLib.computeGst(118_000, '07', '27')).toEqual({
+      taxablePaise: 100_000,
+      cgstPaise: 0,
+      sgstPaise: 0,
+      igstPaise: 18_000,
+      totalPaise: 118_000,
+    });
     const odd = invoiceLib.computeGst(99_901, '27', '27');
     expect(odd.taxablePaise + odd.cgstPaise + odd.sgstPaise).toBe(99_901);
     expect(invoiceLib.computeGst(118_000, null, '27').igstPaise).toBe(0);
@@ -111,7 +148,9 @@ describe('GST and numbering', () => {
   it('allocates distinct, gapless numbers under concurrency', async () => {
     const { basePrisma } = await import('../src/lib/prisma.js');
     const date = new Date('2031-05-05T00:00:00Z');
-    const numbers = await Promise.all(Array.from({ length: 8 }, () => basePrisma.$transaction((tx) => invoiceLib.nextInvoiceNumber(tx as any, date))));
+    const numbers = await Promise.all(
+      Array.from({ length: 8 }, () => basePrisma.$transaction((tx) => invoiceLib.nextInvoiceNumber(tx as any, date)))
+    );
     const seqs = numbers.map((n) => Number(n.number.slice(-6))).sort((a, b) => a - b);
     expect(seqs).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
@@ -136,9 +175,27 @@ describe('subscribing, paying, invoices', () => {
     const early = await a.post('/api/v1/billing/subscribe').send({ planId: growth.id, interval: 'MONTH', seats: 5 });
     expect(early.status).toBe(409);
 
-    expect((await a.put('/api/v1/billing/profile').send({ legalName: 'Acme Ltd', gstin: 'NOT-A-GSTIN', address: '1 Main Road, Mumbai', stateCode: '27' })).status).toBe(400);
-    expect((await a.put('/api/v1/billing/profile').send({ legalName: 'Acme Ltd', gstin: '07AAAAA0000A1Z5', address: '1 Main Road, Mumbai', stateCode: '27' })).status).toBe(400); // state mismatch
-    expect((await a.put('/api/v1/billing/profile').send({ legalName: 'Acme Ltd', gstin: '27AAAAA0000A1Z5', address: '1 Main Road, Mumbai', stateCode: '27' })).status).toBe(200);
+    expect(
+      (
+        await a
+          .put('/api/v1/billing/profile')
+          .send({ legalName: 'Acme Ltd', gstin: 'NOT-A-GSTIN', address: '1 Main Road, Mumbai', stateCode: '27' })
+      ).status
+    ).toBe(400);
+    expect(
+      (
+        await a
+          .put('/api/v1/billing/profile')
+          .send({ legalName: 'Acme Ltd', gstin: '07AAAAA0000A1Z5', address: '1 Main Road, Mumbai', stateCode: '27' })
+      ).status
+    ).toBe(400); // state mismatch
+    expect(
+      (
+        await a
+          .put('/api/v1/billing/profile')
+          .send({ legalName: 'Acme Ltd', gstin: '27AAAAA0000A1Z5', address: '1 Main Road, Mumbai', stateCode: '27' })
+      ).status
+    ).toBe(200);
 
     expect((await a.post('/api/v1/billing/subscribe').send({ planId: growth.id, interval: 'MONTH', seats: 5000 })).status).toBe(400);
     const ok = await a.post('/api/v1/billing/subscribe').send({ planId: growth.id, interval: 'MONTH', seats: 5 });
@@ -173,24 +230,35 @@ describe('subscribing, paying, invoices', () => {
     expect(inv.taxablePaise + inv.cgstPaise + inv.sgstPaise).toBe(1_499_500);
 
     await webhook('subscription.charged', 't-a', { payment: { id: 'pay_2', amount: 1_499_500 } });
-    const numbers = (await admin.invoice.findMany({ where: { tenantId: 't-a' }, orderBy: { number: 'asc' } })).map((i) => i.number.slice(-6));
+    const numbers = (await admin.invoice.findMany({ where: { tenantId: 't-a' }, orderBy: { number: 'asc' } })).map((i) =>
+      i.number.slice(-6)
+    );
     expect(numbers).toEqual(['000001', '000002']);
 
     const a = await as('a-admin', 'acme');
     const list = await a.get('/api/v1/billing/invoices');
     expect(list.body.data).toHaveLength(2);
     expect(list.body.data[0]).toMatchObject({ amountPaise: 1_499_500, status: 'PAID' });
-    const pdf = await a.get(`/api/v1/billing/invoices/${list.body.data[0].id}/pdf`).buffer(true).parse((res, cb) => {
-      const chunks: Buffer[] = [];
-      res.on('data', (c: Buffer) => chunks.push(c));
-      res.on('end', () => cb(null, Buffer.concat(chunks)));
-    });
+    const pdf = await a
+      .get(`/api/v1/billing/invoices/${list.body.data[0].id}/pdf`)
+      .buffer(true)
+      .parse((res, cb) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => cb(null, Buffer.concat(chunks)));
+      });
     expect(pdf.status).toBe(200);
     expect(pdf.headers['content-type']).toContain('application/pdf');
     expect((pdf.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
 
     const state = await a.get('/api/v1/billing');
-    expect(state.body.data).toMatchObject({ status: 'ACTIVE', interval: 'MONTH', seats: 5, plan: { code: 'growth' }, usage: { seatLimit: 5, courseLimit: 250 } });
+    expect(state.body.data).toMatchObject({
+      status: 'ACTIVE',
+      interval: 'MONTH',
+      seats: 5,
+      plan: { code: 'growth' },
+      usage: { seatLimit: 5, courseLimit: 250 },
+    });
   });
 
   it('uses IGST for a buyer in another state', async () => {
@@ -235,7 +303,9 @@ describe('payment failure and cancellation', () => {
     expect(refused.body.code).toBe('PAYMENT_LAPSED'); // not the trial's message
     expect((await a.get('/api/v1/trial')).body.data).toMatchObject({ state: 'READ_ONLY', paymentLapsed: true });
     expect((await a.get('/api/v1/billing')).status).toBe(200);
-    expect((await a.put('/api/v1/billing/profile').send({ legalName: 'Acme Ltd', address: '1 Main Road, Mumbai', stateCode: '27' })).status).toBe(200);
+    expect(
+      (await a.put('/api/v1/billing/profile').send({ legalName: 'Acme Ltd', address: '1 Main Road, Mumbai', stateCode: '27' })).status
+    ).toBe(200);
 
     // Paying again reopens the organisation.
     await webhook('subscription.charged', 't-a', { payment: { id: 'pay_3', amount: 1_499_500 } });
@@ -245,8 +315,15 @@ describe('payment failure and cancellation', () => {
   });
 
   it('a cancelled subscription makes the organisation read-only at once; an event for a stale subscription changes nothing', async () => {
-    const stale = JSON.stringify({ event: 'subscription.cancelled', payload: { subscription: { entity: { id: 'sub_old', notes: { tenantId: 't-b' } } } } });
-    const res = await request(app).post('/api/v1/billing/webhook').set('content-type', 'application/json').set('x-razorpay-signature', rzp.signWebhook(WEBHOOK_SECRET, stale)).send(stale);
+    const stale = JSON.stringify({
+      event: 'subscription.cancelled',
+      payload: { subscription: { entity: { id: 'sub_old', notes: { tenantId: 't-b' } } } },
+    });
+    const res = await request(app)
+      .post('/api/v1/billing/webhook')
+      .set('content-type', 'application/json')
+      .set('x-razorpay-signature', rzp.signWebhook(WEBHOOK_SECRET, stale))
+      .send(stale);
     expect(res.body.data.status).toBe('ignored');
     expect((await admin.tenant.findUniqueOrThrow({ where: { id: 't-b' } })).status).toBe('ACTIVE');
 
@@ -263,9 +340,24 @@ describe('operator plans and limits', () => {
     const a = await as('a-admin', 'acme');
     expect((await a.get('/api/v1/operator/plans')).status).toBe(403);
     const op = await as('operator', 'ops');
-    const created = await op.post('/api/v1/operator/plans').send({ code: 'tiny', name: 'Tiny', tier: 'STARTER', seatLimit: 10, courseLimit: 1, storageGb: 1, monthlyPaise: 50_000, yearlyPaise: 500_000 });
+    const created = await op.post('/api/v1/operator/plans').send({
+      code: 'tiny',
+      name: 'Tiny',
+      tier: 'STARTER',
+      seatLimit: 10,
+      courseLimit: 1,
+      storageGb: 1,
+      monthlyPaise: 50_000,
+      yearlyPaise: 500_000,
+    });
     expect(created.status).toBe(201);
-    expect((await op.post('/api/v1/operator/plans').send({ code: 'tiny', name: 'Tiny', tier: 'STARTER', seatLimit: 10, monthlyPaise: 50_000, yearlyPaise: 500_000 })).status).toBe(409);
+    expect(
+      (
+        await op
+          .post('/api/v1/operator/plans')
+          .send({ code: 'tiny', name: 'Tiny', tier: 'STARTER', seatLimit: 10, monthlyPaise: 50_000, yearlyPaise: 500_000 })
+      ).status
+    ).toBe(409);
     const list = await op.get('/api/v1/operator/plans');
     const growth = list.body.data.find((p: any) => p.code === 'growth');
     expect(growth.razorpayRegistered).toBe(true);
@@ -292,7 +384,10 @@ describe('operator plans and limits', () => {
     await expect(billing.assertStorageAllowed('t-c', 2 * 1024 ** 3)).rejects.toMatchObject({ status: 402 });
 
     const c = await as('c-admin', 'gamma');
-    expect((await c.get('/api/v1/billing')).body.data).toMatchObject({ status: 'ACTIVE', usage: { seatLimit: 3, courseLimit: 1, courses: 1 } });
+    expect((await c.get('/api/v1/billing')).body.data).toMatchObject({
+      status: 'ACTIVE',
+      usage: { seatLimit: 3, courseLimit: 1, courses: 1 },
+    });
     // A manual plan is changed by the operator, not through Razorpay.
     expect((await c.post('/api/v1/billing/cancel')).status).toBe(409);
 

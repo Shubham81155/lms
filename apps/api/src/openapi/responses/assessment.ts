@@ -5,12 +5,24 @@ import type { ResponseTable } from './types';
 // Response shapes for quizzes, assignments, grading/appeals, the question bank and the
 // intelligence/analytics endpoints. Verified against real responses in test/contract-assessment.test.ts.
 
-const QuestionType = z.enum(['MULTIPLE_CHOICE', 'MULTI_SELECT', 'TRUE_FALSE', 'SHORT_ANSWER', 'ESSAY', 'CODE_SANDBOX', 'FORMULA_CALCULATED']);
+const QuestionType = z.enum([
+  'MULTIPLE_CHOICE',
+  'MULTI_SELECT',
+  'TRUE_FALSE',
+  'SHORT_ANSWER',
+  'ESSAY',
+  'CODE_SANDBOX',
+  'FORMULA_CALCULATED',
+]);
 const Bloom = z.enum(['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE']);
 
 const wrap = (schema: z.ZodTypeAny, status = 200) => ({ status, schema: z.object({ data: schema }) });
 const page = (schema: z.ZodTypeAny) => ({ status: 200, schema: z.object({ data: z.array(schema), pagination: Pagination }) });
-const deleted = (what: string) => ({ status: 200, schema: z.object({ message: z.string(), id: z.string() }), description: `${what} deleted` });
+const deleted = (what: string) => ({
+  status: 200,
+  schema: z.object({ message: z.string(), id: z.string() }),
+  description: `${what} deleted`,
+});
 
 // ---- quizzes ---------------------------------------------------------------
 
@@ -370,7 +382,8 @@ export const RESPONSES: ResponseTable = {
     response: {
       status: 200,
       schema: z.object({ data: z.union([QuizStaffView, QuizLearnerView]) }),
-      description: 'Staff, administrators and auditors get every question with its answer key; learners get questions without correct answers (options carry only id and text).',
+      description:
+        'Staff, administrators and auditors get every question with its answer key; learners get questions without correct answers (options carry only id and text).',
     },
     errors: [403, 404],
   },
@@ -382,12 +395,15 @@ export const RESPONSES: ResponseTable = {
   'GET /api/v1/quizzes/:id/submissions': {
     response: {
       ...page(QuizSubmissionItem),
-      description: 'Staff and auditors: every attempt, with stored answers and the learner. Learners: their own attempts only, without stored answers.',
+      description:
+        'Staff and auditors: every attempt, with stored answers and the learner. Learners: their own attempts only, without stored answers.',
     },
     errors: [400, 403, 404],
   },
   'PATCH /api/v1/quizzes/:id/submissions/:subId/grade': {
-    response: wrap(z.object({ id: z.string(), score: z.number(), maxScore: z.number(), passed: z.boolean(), pendingManualGrading: z.boolean() })),
+    response: wrap(
+      z.object({ id: z.string(), score: z.number(), maxScore: z.number(), passed: z.boolean(), pendingManualGrading: z.boolean() })
+    ),
     errors: [400, 403, 404],
   },
 
@@ -405,11 +421,17 @@ export const RESPONSES: ResponseTable = {
     errors: [400, 403, 404, 409],
   },
   'GET /api/v1/assignments/:id/submissions/:subId/versions': {
-    response: { ...wrap(z.array(SubmissionVersion)), description: 'Newest first. Course staff and auditors, or the learner who handed it in.' },
+    response: {
+      ...wrap(z.array(SubmissionVersion)),
+      description: 'Newest first. Course staff and auditors, or the learner who handed it in.',
+    },
     errors: [400, 403, 404],
   },
   'GET /api/v1/assignments/:id/submissions': {
-    response: { ...page(AssignmentSubmissionItem), description: 'Staff and auditors: all submissions (with the learner). Learners: their own.' },
+    response: {
+      ...page(AssignmentSubmissionItem),
+      description: 'Staff and auditors: all submissions (with the learner). Learners: their own.',
+    },
     errors: [400, 403, 404],
   },
   'PATCH /api/v1/assignments/:id/submissions/:subId/grade': {
@@ -431,7 +453,11 @@ export const RESPONSES: ResponseTable = {
   },
   'POST /api/v1/assignments/:id/submissions/:subId/appeal': { response: wrap(GradeAppealRecord, 201), errors: [400, 403, 404, 409] },
   'GET /api/v1/courses/:courseId/appeals': {
-    response: { status: 200, schema: z.object({ data: z.array(AppealListItem) }), description: 'Staff, auditors and administrators: every appeal in the course. Learners: their own.' },
+    response: {
+      status: 200,
+      schema: z.object({ data: z.array(AppealListItem) }),
+      description: 'Staff, auditors and administrators: every appeal in the course. Learners: their own.',
+    },
     errors: [400, 403, 404],
   },
   'POST /api/v1/appeals/:id/resolve': {
@@ -460,14 +486,21 @@ export const RESPONSES: ResponseTable = {
     response: {
       status: 200,
       schema: z.object({ total: z.number(), statements: z.array(z.unknown()), pagination: Pagination }),
-      description: 'xAPI statements, newest first (each is the stored statement JSON). Staff, administrators and auditors see the tenant; others only their own.',
+      description:
+        'xAPI statements, newest first (each is the stored statement JSON). Staff, administrators and auditors see the tenant; others only their own.',
     },
     errors: [400],
   },
   'POST /api/v1/proctoring/events': {
     response: {
       status: 201,
-      schema: z.object({ status: z.literal('recorded'), flagged: z.boolean(), riskScore: z.number(), eventType: z.string(), timestamp: z.string() }),
+      schema: z.object({
+        status: z.literal('recorded'),
+        flagged: z.boolean(),
+        riskScore: z.number(),
+        eventType: z.string(),
+        timestamp: z.string(),
+      }),
     },
     errors: [400, 404, 409],
   },
@@ -477,7 +510,17 @@ export const RESPONSES: ResponseTable = {
       schema: z.object({
         /** Proctored attempts that are open right now. */
         openAttempts: z.number(),
-        data: z.array(z.object({ id: z.string(), submissionId: z.string(), student: z.string(), quiz: z.string(), eventType: z.string(), severity: z.string(), timestamp: z.string() })),
+        data: z.array(
+          z.object({
+            id: z.string(),
+            submissionId: z.string(),
+            student: z.string(),
+            quiz: z.string(),
+            eventType: z.string(),
+            severity: z.string(),
+            timestamp: z.string(),
+          })
+        ),
       }),
     },
     errors: [403],

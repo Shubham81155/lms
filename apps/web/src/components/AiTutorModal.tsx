@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { X, Sparkles, Send, CheckCircle2, XCircle, Loader2, ListChecks } from "lucide-react";
-import { api } from "@/lib/api";
-import { errorMessage } from "@/hooks/useApiData";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { X, Sparkles, Send, CheckCircle2, XCircle, Loader2, ListChecks } from 'lucide-react';
+import { api } from '@/lib/api';
+import { errorMessage } from '@/hooks/useApiData';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 
 interface TutorCourse {
   id: string;
@@ -21,7 +21,7 @@ interface Practice {
 
 interface Turn {
   id: number;
-  role: "user" | "tutor";
+  role: 'user' | 'tutor';
   text: string;
   practice?: Practice | null;
   grounded?: boolean;
@@ -34,7 +34,7 @@ interface AiTutorModalProps {
   onClose: () => void;
 }
 
-const SUGGESTIONS = ["Explain the main idea of the last lesson", "Quiz me on this course", "What should I review before the exam?"];
+const SUGGESTIONS = ['Explain the main idea of the last lesson', 'Quiz me on this course', 'What should I review before the exam?'];
 
 /**
  * Study tutor. Each question goes to POST /ai/tutor with the conversation so far; the answer is grounded in
@@ -42,9 +42,9 @@ const SUGGESTIONS = ["Explain the main idea of the last lesson", "Quiz me on thi
  */
 export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCourseId, onClose }) => {
   useEscapeKey(onClose);
-  const [courseId, setCourseId] = useState(initialCourseId ?? courses[0]?.id ?? "");
+  const [courseId, setCourseId] = useState(initialCourseId ?? courses[0]?.id ?? '');
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const [wantPractice, setWantPractice] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
   const nextId = useRef(1);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [turns, busy]);
 
   const switchCourse = (id: string) => {
@@ -68,20 +68,23 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
       const message = text.trim();
       if (!message || busy) return;
       const history = turns.slice(-20).map((t) => ({ role: t.role, text: t.text.slice(0, 4000) }));
-      setTurns((prev) => [...prev, { id: nextId.current++, role: "user", text: message }]);
-      setInput("");
+      setTurns((prev) => [...prev, { id: nextId.current++, role: 'user', text: message }]);
+      setInput('');
       setBusy(true);
       setError(null);
       try {
-        const res = await api.post<{ data: { reply: string; practice: Practice | null; groundedInCourse: boolean } }>("/api/v1/ai/tutor", {
+        const res = await api.post<{ data: { reply: string; practice: Practice | null; groundedInCourse: boolean } }>('/api/v1/ai/tutor', {
           courseId: courseId || undefined,
           message,
           history,
           wantPractice: practice,
         });
-        setTurns((prev) => [...prev, { id: nextId.current++, role: "tutor", text: res.data.reply, practice: res.data.practice, grounded: res.data.groundedInCourse }]);
+        setTurns((prev) => [
+          ...prev,
+          { id: nextId.current++, role: 'tutor', text: res.data.reply, practice: res.data.practice, grounded: res.data.groundedInCourse },
+        ]);
       } catch (e) {
-        setError(errorMessage(e, "The tutor could not answer. Try again."));
+        setError(errorMessage(e, 'The tutor could not answer. Try again.'));
       } finally {
         setBusy(false);
       }
@@ -92,7 +95,12 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
   const course = courses.find((c) => c.id === courseId);
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="tutor-h">
+    <div
+      className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tutor-h"
+    >
       <div className="bg-surface border border-line rounded-3xl w-full max-w-3xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         <div className="bg-canvas border-b border-line px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -100,7 +108,9 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h3 id="tutor-h" className="font-bold text-sm text-ink">Study tutor</h3>
+              <h3 id="tutor-h" className="font-bold text-sm text-ink">
+                Study tutor
+              </h3>
               <p className="text-[11px] text-ink-muted">Explains topics from your course. It will not do graded work for you.</p>
             </div>
           </div>
@@ -122,7 +132,11 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
                 </select>
               </label>
             )}
-            <button onClick={onClose} aria-label="Close" className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors">
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -132,12 +146,16 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
           {turns.length === 0 && (
             <div className="text-center text-xs text-ink-muted py-10 space-y-4">
               <p>
-                Ask about anything in {course ? <strong className="text-ink">{course.title}</strong> : "your studies"}. Answers can be wrong; check them against your
-                lessons.
+                Ask about anything in {course ? <strong className="text-ink">{course.title}</strong> : 'your studies'}. Answers can be
+                wrong; check them against your lessons.
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {SUGGESTIONS.map((s) => (
-                  <button key={s} onClick={() => send(s, s.startsWith("Quiz"))} className="px-3 py-1.5 rounded-xl border border-line bg-canvas hover:border-brand/50 text-ink text-[11px] font-semibold">
+                  <button
+                    key={s}
+                    onClick={() => send(s, s.startsWith('Quiz'))}
+                    className="px-3 py-1.5 rounded-xl border border-line bg-canvas hover:border-brand/50 text-ink text-[11px] font-semibold"
+                  >
                     {s}
                   </button>
                 ))}
@@ -146,15 +164,21 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
           )}
 
           {turns.map((t) =>
-            t.role === "user" ? (
+            t.role === 'user' ? (
               <div key={t.id} className="flex justify-end">
-                <div className="max-w-[80%] rounded-2xl rounded-br-md bg-brand text-on-brand px-3.5 py-2 text-xs whitespace-pre-wrap">{t.text}</div>
+                <div className="max-w-[80%] rounded-2xl rounded-br-md bg-brand text-on-brand px-3.5 py-2 text-xs whitespace-pre-wrap">
+                  {t.text}
+                </div>
               </div>
             ) : (
               <div key={t.id} className="space-y-2 max-w-[90%]">
-                <div className="rounded-2xl rounded-bl-md bg-canvas border border-line px-3.5 py-2.5 text-xs text-ink whitespace-pre-wrap leading-relaxed">{t.text}</div>
+                <div className="rounded-2xl rounded-bl-md bg-canvas border border-line px-3.5 py-2.5 text-xs text-ink whitespace-pre-wrap leading-relaxed">
+                  {t.text}
+                </div>
                 {t.grounded === false && courseId && <p className="text-[10px] text-ink-subtle">Not based on course material.</p>}
-                {t.practice && <PracticeCard practice={t.practice} chosen={answers[t.id]} onChoose={(i) => setAnswers((a) => ({ ...a, [t.id]: i }))} />}
+                {t.practice && (
+                  <PracticeCard practice={t.practice} chosen={answers[t.id]} onChoose={(i) => setAnswers((a) => ({ ...a, [t.id]: i }))} />
+                )}
               </div>
             )
           )}
@@ -185,7 +209,7 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   send(input);
                 }
@@ -206,7 +230,12 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
             </button>
           </div>
           <label className="flex items-center gap-2 text-[11px] text-ink-muted cursor-pointer w-fit">
-            <input type="checkbox" checked={wantPractice} onChange={(e) => setWantPractice(e.target.checked)} className="rounded border-line" />
+            <input
+              type="checkbox"
+              checked={wantPractice}
+              onChange={(e) => setWantPractice(e.target.checked)}
+              className="rounded border-line"
+            />
             <ListChecks className="h-3.5 w-3.5" />
             <span>Add a practice question to the answer</span>
           </label>
@@ -216,7 +245,11 @@ export const AiTutorModal: React.FC<AiTutorModalProps> = ({ courses, initialCour
   );
 };
 
-const PracticeCard: React.FC<{ practice: Practice; chosen: number | undefined; onChoose: (i: number) => void }> = ({ practice, chosen, onChoose }) => {
+const PracticeCard: React.FC<{ practice: Practice; chosen: number | undefined; onChoose: (i: number) => void }> = ({
+  practice,
+  chosen,
+  onChoose,
+}) => {
   const answered = chosen !== undefined;
   return (
     <div className="rounded-2xl border border-brand/30 bg-brand/5 p-3.5 space-y-2.5 text-xs">
@@ -225,12 +258,12 @@ const PracticeCard: React.FC<{ practice: Practice; chosen: number | undefined; o
         {practice.options.map((opt, i) => {
           const isRight = i === practice.correctIndex;
           const tone = !answered
-            ? "border-line bg-surface hover:border-brand/50"
+            ? 'border-line bg-surface hover:border-brand/50'
             : isRight
-              ? "border-success/50 bg-success/10"
+              ? 'border-success/50 bg-success/10'
               : i === chosen
-                ? "border-danger/50 bg-danger/10"
-                : "border-line bg-surface opacity-70";
+                ? 'border-danger/50 bg-danger/10'
+                : 'border-line bg-surface opacity-70';
           return (
             <button
               key={i}
@@ -249,7 +282,9 @@ const PracticeCard: React.FC<{ practice: Practice; chosen: number | undefined; o
       </div>
       {answered && (
         <p className="text-ink-muted">
-          <strong className={chosen === practice.correctIndex ? "text-success" : "text-danger"}>{chosen === practice.correctIndex ? "Correct. " : "Not quite. "}</strong>
+          <strong className={chosen === practice.correctIndex ? 'text-success' : 'text-danger'}>
+            {chosen === practice.correctIndex ? 'Correct. ' : 'Not quite. '}
+          </strong>
           {practice.explanation}
         </p>
       )}

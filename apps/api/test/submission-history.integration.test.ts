@@ -18,14 +18,28 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('teacher', 'INSTRUCTOR');
   await user('other-teacher', 'INSTRUCTOR');
   for (const s of ['s1', 's2']) await user(s, 'STUDENT');
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course', status: 'PUBLISHED' } });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  for (const s of ['s1', 's2']) await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
-  await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 10 } });
+  for (const s of ['s1', 's2'])
+    await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
+  await admin.assignment.create({
+    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 10 },
+  });
 
   process.env.DATABASE_URL = db.appUrl;
   app = (await import('../src/server.js')).app;
@@ -38,7 +52,10 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -53,7 +70,9 @@ describe('submission history', () => {
     expect(first.status).toBe(201);
     expect(first.body.data.version).toBe(1);
     subId = first.body.data.id;
-    const second = await s1.post('/api/v1/assignments/a1/submit').send({ submissionText: 'Second draft', fileUrl: 'https://files.example/essay.pdf' });
+    const second = await s1
+      .post('/api/v1/assignments/a1/submit')
+      .send({ submissionText: 'Second draft', fileUrl: 'https://files.example/essay.pdf' });
     expect(second.body.data).toMatchObject({ id: subId, version: 2, submissionText: 'Second draft' });
 
     const res = await versions('s1');

@@ -15,9 +15,24 @@ let R: typeof import('../src/openapi/responses/identity.js');
 const pw = (slug: string) => `${PASSWORD}-${slug}`;
 
 async function seed() {
-  for (const [id, slug] of [['t-h', 'harvard'], ['t-m', 'mit']]) await admin.tenant.create({ data: { id, slug, name: slug } });
+  for (const [id, slug] of [
+    ['t-h', 'harvard'],
+    ['t-m', 'mit'],
+  ])
+    await admin.tenant.create({ data: { id, slug, name: slug } });
   const user = (id: string, tenantId: string, slug: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'Lovelace', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'Lovelace',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+      },
+    });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('admin2', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
@@ -28,16 +43,53 @@ async function seed() {
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course c1', status: 'PUBLISHED' } });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
   for (const s of ['s1', 's2', 's3']) {
-    await admin.enrollment.create({ data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS', progressPercent: 50 } });
+    await admin.enrollment.create({
+      data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS', progressPercent: 50 },
+    });
   }
-  await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 } });
-  await admin.assignmentSubmission.create({ data: { id: 'as-1', assignmentId: 'a1', userId: 's1', submissionText: 'my private essay', fileUrl: 'https://files.example/s1.pdf', grade: 88, gradedAt: new Date() } });
+  await admin.assignment.create({
+    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 },
+  });
+  await admin.assignmentSubmission.create({
+    data: {
+      id: 'as-1',
+      assignmentId: 'a1',
+      userId: 's1',
+      submissionText: 'my private essay',
+      fileUrl: 'https://files.example/s1.pdf',
+      grade: 88,
+      gradedAt: new Date(),
+    },
+  });
   await admin.notification.create({ data: { tenantId: 't-h', userId: 's1', category: 'GRADE', title: 'Graded', body: 'You got 88' } });
   await admin.xapiStatement.create({
-    data: { id: 'x-1', tenantId: 't-h', actorUserId: 's1', verbId: 'http://adlnet.gov/expapi/verbs/completed', objectId: 'urn:course:c1', timestamp: new Date(), statementJson: { actor: { name: 's1 Lovelace', mbox: 'mailto:s1@x.edu' }, verb: { id: 'completed' }, object: { id: 'urn:course:c1' } } },
+    data: {
+      id: 'x-1',
+      tenantId: 't-h',
+      actorUserId: 's1',
+      verbId: 'http://adlnet.gov/expapi/verbs/completed',
+      objectId: 'urn:course:c1',
+      timestamp: new Date(),
+      statementJson: {
+        actor: { name: 's1 Lovelace', mbox: 'mailto:s1@x.edu' },
+        verb: { id: 'completed' },
+        object: { id: 'urn:course:c1' },
+      },
+    },
   });
-  await admin.forumThread.create({ data: { id: 'ft-1', tenantId: 't-h', courseId: 'c1', authorId: 's1', title: 'Help with my address 12 Elm St', body: 'Call me on 555-0100' } });
-  await admin.forumThread.create({ data: { id: 'ft-2', tenantId: 't-h', courseId: 'c1', authorId: 's2', title: 'Week 2 question', body: 'How does it work?' } });
+  await admin.forumThread.create({
+    data: {
+      id: 'ft-1',
+      tenantId: 't-h',
+      courseId: 'c1',
+      authorId: 's1',
+      title: 'Help with my address 12 Elm St',
+      body: 'Call me on 555-0100',
+    },
+  });
+  await admin.forumThread.create({
+    data: { id: 'ft-2', tenantId: 't-h', courseId: 'c1', authorId: 's2', title: 'Week 2 question', body: 'How does it work?' },
+  });
 }
 
 beforeAll(async () => {
@@ -56,7 +108,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -151,7 +206,10 @@ describe('erasure', () => {
 
     // The existing token and a fresh login both stop working.
     expect((await s1.get('/api/v1/auth/me')).status).toBe(401);
-    const login = await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 's1@x.edu', password: pw('harvard') });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 's1@x.edu', password: pw('harvard') });
     expect(login.status).toBe(401);
 
     const audit = await admin.auditLog.findFirst({ where: { action: 'USER_ERASED', resourceId: 's1' } });
@@ -176,7 +234,11 @@ describe('erasure', () => {
   });
 
   it('refuses to erase the only active administrator', async () => {
-    const res = await (await as('m-admin', 'mit')).post('/api/v1/privacy/me/erase').send({ confirmEmail: 'm-admin@x.edu', password: pw('mit') });
+    const res = await (
+      await as('m-admin', 'mit')
+    )
+      .post('/api/v1/privacy/me/erase')
+      .send({ confirmEmail: 'm-admin@x.edu', password: pw('mit') });
     expect(res.status).toBe(409);
     expect((await admin.user.findUniqueOrThrow({ where: { id: 'm-admin' } })).erasedAt).toBeNull();
   });

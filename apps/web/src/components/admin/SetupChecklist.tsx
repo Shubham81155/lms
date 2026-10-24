@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { CheckCircle2, Circle, X } from "lucide-react";
-import { useApiData } from "@/hooks/useApiData";
-import { setupComplete, setupSteps, type SetupStepKey } from "@/lib/setup-checklist";
+import React, { useEffect, useState } from 'react';
+import { CheckCircle2, Circle, X } from 'lucide-react';
+import { useApiData } from '@/hooks/useApiData';
+import { setupComplete, setupSteps, type SetupStepKey } from '@/lib/setup-checklist';
 
-const DISMISS_KEY = "lms_setup_checklist_dismissed";
+const DISMISS_KEY = 'lms_setup_checklist_dismissed';
 
 /**
  * "Get your organisation ready": what a new organisation's administrator still has to do, ticked off from
@@ -22,16 +22,18 @@ export const SetupChecklist: React.FC<{
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
     try {
-      setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
+      setDismissed(localStorage.getItem(DISMISS_KEY) === '1');
     } catch {
       setDismissed(false);
     }
   }, []);
 
-  const tenant = useApiData<{ data: { name: string; slug: string; logoUrl: string | null; setupChecklist?: boolean } }>(dismissed ? null : "/api/v1/admin/tenant");
-  const terms = useApiData<{ data: unknown[] }>(dismissed ? null : "/api/v1/terms");
-  const sso = useApiData<{ data: { enabled: boolean } | null }>(dismissed || !ssoAvailable ? null : "/api/v1/admin/sso");
-  const saml = useApiData<{ data: { enabled: boolean } | null }>(dismissed || !ssoAvailable ? null : "/api/v1/admin/saml");
+  const tenant = useApiData<{ data: { name: string; slug: string; logoUrl: string | null; setupChecklist?: boolean } }>(
+    dismissed ? null : '/api/v1/admin/tenant'
+  );
+  const terms = useApiData<{ data: unknown[] }>(dismissed ? null : '/api/v1/terms');
+  const sso = useApiData<{ data: { enabled: boolean } | null }>(dismissed || !ssoAvailable ? null : '/api/v1/admin/sso');
+  const saml = useApiData<{ data: { enabled: boolean } | null }>(dismissed || !ssoAvailable ? null : '/api/v1/admin/saml');
 
   // Organisations that were running before onboarding existed are not walked through it.
   if (dismissed || !tenant.data || !tenant.data.data.setupChecklist) return null;
@@ -50,7 +52,7 @@ export const SetupChecklist: React.FC<{
   const dismiss = () => {
     setDismissed(true);
     try {
-      localStorage.setItem(DISMISS_KEY, "1");
+      localStorage.setItem(DISMISS_KEY, '1');
     } catch {
       /* not remembered; it shows again next time */
     }
@@ -60,12 +62,20 @@ export const SetupChecklist: React.FC<{
     <section className="rounded-3xl border border-brand/40 bg-surface p-6 shadow-xl space-y-4" aria-labelledby="setup-h">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 id="setup-h" className="font-bold text-base text-ink">Get your organisation ready</h2>
+          <h2 id="setup-h" className="font-bold text-base text-ink">
+            Get your organisation ready
+          </h2>
           <p className="text-xs text-ink-muted">
             {done} of {steps.length} done. Each step ticks itself off once it is in place.
           </p>
         </div>
-        <button type="button" onClick={dismiss} aria-label="Hide the setup checklist" title="Hide" className="rounded-xl p-1 text-ink-muted hover:bg-raised hover:text-ink">
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label="Hide the setup checklist"
+          title="Hide"
+          className="rounded-xl p-1 text-ink-muted hover:bg-raised hover:text-ink"
+        >
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -75,16 +85,24 @@ export const SetupChecklist: React.FC<{
       <ol className="space-y-2">
         {steps.map((s) => (
           <li key={s.key} className="flex items-start gap-3 rounded-2xl border border-line bg-canvas/40 p-3">
-            {s.done ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" /> : <Circle className="mt-0.5 h-4 w-4 shrink-0 text-ink-subtle" aria-hidden="true" />}
+            {s.done ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden="true" />
+            ) : (
+              <Circle className="mt-0.5 h-4 w-4 shrink-0 text-ink-subtle" aria-hidden="true" />
+            )}
             <div className="min-w-0 flex-1">
-              <div className={`text-xs font-semibold ${s.done ? "text-ink-muted line-through" : "text-ink"}`}>
+              <div className={`text-xs font-semibold ${s.done ? 'text-ink-muted line-through' : 'text-ink'}`}>
                 {s.title}
-                <span className="sr-only">{s.done ? " (done)" : " (to do)"}</span>
+                <span className="sr-only">{s.done ? ' (done)' : ' (to do)'}</span>
               </div>
               <div className="text-[11px] text-ink-subtle">{s.hint}</div>
             </div>
             {!s.done && (
-              <button type="button" onClick={() => onGo(s.key)} className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-raised">
+              <button
+                type="button"
+                onClick={() => onGo(s.key)}
+                className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-raised"
+              >
                 Open
               </button>
             )}

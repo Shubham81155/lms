@@ -23,23 +23,95 @@ import { initialTrial } from './trial';
  */
 export const ORG_SLUG = /^(?![a-z0-9]{2}--)[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
-export const orgSlugSchema = z.string().trim().toLowerCase().regex(ORG_SLUG, 'Use 3-40 lowercase letters, digits and hyphens, starting and ending with a letter or digit (and not "--" as the third and fourth characters)');
+export const orgSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(
+    ORG_SLUG,
+    'Use 3-40 lowercase letters, digits and hyphens, starting and ending with a letter or digit (and not "--" as the third and fourth characters)'
+  );
 
 /** Addresses no organisation may have: service, mail and infrastructure names, and the platform's own pages. */
 const RESERVED = [
-  'www', 'api', 'app', 'admin', 'platform', 'operator', 'register', 'default-tenant',
-  'auth', 'sso', 'id', 'login', 'logout', 'signup', 'account', 'accounts', 'oauth', 'saml', 'scim', 'lti',
-  'cdn', 'static', 'assets', 'files', 'media', 'content', 'scorm', 'uploads', 'storage', 'livekit',
-  'dev', 'staging', 'test', 'demo', 'beta', 'preview', 'sandbox', 'localhost', 'm', 'mobile',
-  'mail', 'email', 'smtp', 'imap', 'pop', 'pop3', 'webmail', 'mx', 'autodiscover', 'autoconfig', 'ns', 'ns1', 'ns2', 'ns3', 'ns4', 'dns',
-  'billing', 'security', 'status', 'help', 'support', 'docs', 'blog', 'abuse', 'postmaster', 'hostmaster', 'webmaster', 'root',
+  'www',
+  'api',
+  'app',
+  'admin',
+  'platform',
+  'operator',
+  'register',
+  'default-tenant',
+  'auth',
+  'sso',
+  'id',
+  'login',
+  'logout',
+  'signup',
+  'account',
+  'accounts',
+  'oauth',
+  'saml',
+  'scim',
+  'lti',
+  'cdn',
+  'static',
+  'assets',
+  'files',
+  'media',
+  'content',
+  'scorm',
+  'uploads',
+  'storage',
+  'livekit',
+  'dev',
+  'staging',
+  'test',
+  'demo',
+  'beta',
+  'preview',
+  'sandbox',
+  'localhost',
+  'm',
+  'mobile',
+  'mail',
+  'email',
+  'smtp',
+  'imap',
+  'pop',
+  'pop3',
+  'webmail',
+  'mx',
+  'autodiscover',
+  'autoconfig',
+  'ns',
+  'ns1',
+  'ns2',
+  'ns3',
+  'ns4',
+  'dns',
+  'billing',
+  'security',
+  'status',
+  'help',
+  'support',
+  'docs',
+  'blog',
+  'abuse',
+  'postmaster',
+  'hostmaster',
+  'webmaster',
+  'root',
 ];
 
 /** The configured service hosts under TENANT_BASE_DOMAIN (e.g. the SCORM content or API host), fixed at startup. */
 const RESERVED_HOST_LABELS = platformSubdomainLabels();
 
 export const isReservedSlug = (slug: string) =>
-  RESERVED.includes(slug) || RESERVED_HOST_LABELS.includes(slug) || slug === config.PLATFORM_OPERATOR_TENANT || slug === config.DEFAULT_TENANT_SLUG;
+  RESERVED.includes(slug) ||
+  RESERVED_HOST_LABELS.includes(slug) ||
+  slug === config.PLATFORM_OPERATOR_TENANT ||
+  slug === config.DEFAULT_TENANT_SLUG;
 
 export type SlugProblem = 'invalid' | 'reserved' | 'taken' | 'pending';
 
@@ -57,12 +129,16 @@ export const holdingNow = () => ({ holdsSlug: true, holdExpiresAt: { gt: new Dat
  * Why a slug cannot be used for a new organisation, or null when it is free. `allowPending` (the operator
  * creating an organisation directly) may take a slug that only a request holds.
  */
-export async function slugProblem(slug: string, opts: { ignoreRequestId?: string; allowPending?: boolean } = {}): Promise<SlugProblem | null> {
+export async function slugProblem(
+  slug: string,
+  opts: { ignoreRequestId?: string; allowPending?: boolean } = {}
+): Promise<SlugProblem | null> {
   if (!ORG_SLUG.test(slug)) return 'invalid';
   if (isReservedSlug(slug)) return 'reserved';
   if (await basePrisma.tenant.findUnique({ where: { slug }, select: { id: true } })) return 'taken';
   // A deleted organisation's address stays reserved for ORG_DELETED_SLUG_HOLD_DAYS (lib/offboarding.ts), for everyone.
-  if (await basePrisma.tenantDeletion.findFirst({ where: { slug, slugHeldUntil: { gt: new Date() } }, select: { id: true } })) return 'taken';
+  if (await basePrisma.tenantDeletion.findFirst({ where: { slug, slugHeldUntil: { gt: new Date() } }, select: { id: true } }))
+    return 'taken';
   if (opts.allowPending) return null;
   const pending = await basePrisma.organizationRequest.findFirst({
     where: { slug, ...holdingNow(), ...(opts.ignoreRequestId ? { NOT: { id: opts.ignoreRequestId } } : {}) },
@@ -73,7 +149,10 @@ export async function slugProblem(slug: string, opts: { ignoreRequestId?: string
 
 /** Lets go of holds that have lapsed on this slug, so a new request can take it (the unique index allows one holder). */
 export const releaseLapsedHolds = (slug: string) =>
-  basePrisma.organizationRequest.updateMany({ where: { slug, holdsSlug: true, holdExpiresAt: { lte: new Date() } }, data: { holdsSlug: false } });
+  basePrisma.organizationRequest.updateMany({
+    where: { slug, holdsSlug: true, holdExpiresAt: { lte: new Date() } },
+    data: { holdsSlug: false },
+  });
 
 /** Requests this e-mail address has open: unconfirmed with a live link, or waiting for a decision and not expired. */
 export const openRequestsFor = (contactEmail: string) => {
@@ -156,7 +235,13 @@ export interface Actor {
 export async function createOrganization(input: NewOrganization, actor: Actor, opts: { requestId?: string; via: 'REQUEST' | 'OPERATOR' }) {
   const problem = await slugProblem(input.slug, { ignoreRequestId: opts.requestId, allowPending: opts.via === 'OPERATOR' });
   if (problem) throw new HttpError(problem === 'invalid' ? 400 : 409, SLUG_PROBLEM_MESSAGE[problem]);
-  if (input.customDomain && (await basePrisma.tenant.findFirst({ where: { OR: [{ customDomain: input.customDomain }, { pendingCustomDomain: input.customDomain }] }, select: { id: true } }))) {
+  if (
+    input.customDomain &&
+    (await basePrisma.tenant.findFirst({
+      where: { OR: [{ customDomain: input.customDomain }, { pendingCustomDomain: input.customDomain }] },
+      select: { id: true },
+    }))
+  ) {
     throw new HttpError(409, 'That domain is already used by another organisation');
   }
 
@@ -167,16 +252,43 @@ export async function createOrganization(input: NewOrganization, actor: Actor, o
     created = await runInTenantTransaction(id, async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
-          id, slug: input.slug, name: input.name, tier: input.tier, ...initialTrial(input.trialDays ?? 0), seatQuota: input.seatQuota, setupChecklist: true,
-          ...(input.customDomain ? { pendingCustomDomain: input.customDomain, customDomainToken: newDomainToken(), customDomainRequestedAt: new Date() } : {}),
+          id,
+          slug: input.slug,
+          name: input.name,
+          tier: input.tier,
+          ...initialTrial(input.trialDays ?? 0),
+          seatQuota: input.seatQuota,
+          setupChecklist: true,
+          ...(input.customDomain
+            ? { pendingCustomDomain: input.customDomain, customDomainToken: newDomainToken(), customDomainRequestedAt: new Date() }
+            : {}),
         },
         select: {
-          id: true, slug: true, name: true, tier: true, status: true, seatQuota: true, featureFlags: true, customDomain: true, pendingCustomDomain: true,
-          customDomainFailingSince: true, trialEndsAt: true, trialExpiredAt: true,
+          id: true,
+          slug: true,
+          name: true,
+          tier: true,
+          status: true,
+          seatQuota: true,
+          featureFlags: true,
+          customDomain: true,
+          pendingCustomDomain: true,
+          customDomainFailingSince: true,
+          trialEndsAt: true,
+          trialExpiredAt: true,
         },
       });
       const admin = await tx.user.create({
-        data: { tenantId: id, email, firstName: input.admin.firstName, lastName: input.admin.lastName, role: 'TENANT_ADMIN', status: 'INVITED', passwordHash: null, emailVerified: false },
+        data: {
+          tenantId: id,
+          email,
+          firstName: input.admin.firstName,
+          lastName: input.admin.lastName,
+          role: 'TENANT_ADMIN',
+          status: 'INVITED',
+          passwordHash: null,
+          emailVerified: false,
+        },
         select: { id: true, email: true, firstName: true, tenantId: true },
       });
       if (opts.requestId) {
@@ -202,10 +314,12 @@ export async function createOrganization(input: NewOrganization, actor: Actor, o
       logger.error({ err, tenantId: id }, `organisation created, but ${what} failed`);
     }
   };
-  const invitation: InvitationResult = await runWithTenant(id, () => sendInvitation(created.admin, { newOrganization: input.name })).catch((err) => {
-    logger.error({ err, tenantId: id }, 'organisation created, but the invitation failed');
-    return 'failed' as const;
-  });
+  const invitation: InvitationResult = await runWithTenant(id, () => sendInvitation(created.admin, { newOrganization: input.name })).catch(
+    (err) => {
+      logger.error({ err, tenantId: id }, 'organisation created, but the invitation failed');
+      return 'failed' as const;
+    }
+  );
   await afterCommit('closing other requests for its address', () => supersedeRequests(input.slug, opts.requestId));
   const entry = {
     action: 'ORGANIZATION_CREATED',
@@ -213,9 +327,21 @@ export async function createOrganization(input: NewOrganization, actor: Actor, o
     resourceId: id,
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
-    diffJson: { slug: input.slug, name: input.name, tier: input.tier, seatQuota: input.seatQuota, pendingCustomDomain: input.customDomain ?? null, adminEmail: email, via: opts.via, invitation, trialEndsAt: created.tenant.trialEndsAt?.toISOString() ?? null },
+    diffJson: {
+      slug: input.slug,
+      name: input.name,
+      tier: input.tier,
+      seatQuota: input.seatQuota,
+      pendingCustomDomain: input.customDomain ?? null,
+      adminEmail: email,
+      via: opts.via,
+      invitation,
+      trialEndsAt: created.tenant.trialEndsAt?.toISOString() ?? null,
+    },
   };
-  await afterCommit('the audit entry', () => runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId })));
+  await afterCommit('the audit entry', () =>
+    runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId }))
+  );
   await afterCommit('the audit entry', () => runWithTenant(id, () => logAuditEvent({ ...entry, tenantId: id, userId: undefined })));
   return { tenant: created.tenant, adminId: created.admin.id, invitation };
 }

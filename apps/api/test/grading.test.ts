@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  GradableQuestion,
-  gradeQuestion,
-  gradeQuiz,
-  hasPassed,
-  normalizeAnswers,
-} from '../src/lib/grading';
+import { GradableQuestion, gradeQuestion, gradeQuiz, hasPassed, normalizeAnswers } from '../src/lib/grading';
 
 const opts = (...spec: [string, string, boolean][]) => spec.map(([id, text, isCorrect]) => ({ id, text, isCorrect }));
 
@@ -155,7 +149,12 @@ describe('hasPassed', () => {
 describe('normalizeAnswers', () => {
   it('accepts both the map and the list form', () => {
     expect(normalizeAnswers({ a: 'x' })).toEqual({ a: 'x' });
-    expect(normalizeAnswers([{ questionId: 'a', answer: 'x' }, { questionId: 'b', answer: ['1', '2'] }])).toEqual({
+    expect(
+      normalizeAnswers([
+        { questionId: 'a', answer: 'x' },
+        { questionId: 'b', answer: ['1', '2'] },
+      ])
+    ).toEqual({
       a: 'x',
       b: ['1', '2'],
     });

@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import React, { useMemo, useState } from "react";
-import { X } from "lucide-react";
-import { api } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
-import { useAction, useApiData } from "@/hooks/useApiData";
-import { useEscapeKey } from "@/hooks/useEscapeKey";
-import { useStaffCourses } from "@/hooks/useStaffCourses";
-import { Banner } from "@/components/admin/IdentityPanels";
-import { eventProblem, toLocalInput } from "@/lib/assessmentForms";
-import { card, danger, ghost, input, label, primary } from "@/components/assessments/ui";
+import React, { useMemo, useState } from 'react';
+import { X } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import { useAction, useApiData } from '@/hooks/useApiData';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
+import { useStaffCourses } from '@/hooks/useStaffCourses';
+import { Banner } from '@/components/admin/IdentityPanels';
+import { eventProblem, toLocalInput } from '@/lib/assessmentForms';
+import { card, danger, ghost, input, label, primary } from '@/components/assessments/ui';
 
-const CATEGORIES = ["EXAM", "LAB", "LECTURE", "OFFICE_HOURS", "DEADLINE"] as const;
+const CATEGORIES = ['EXAM', 'LAB', 'LECTURE', 'OFFICE_HOURS', 'DEADLINE'] as const;
 type Category = (typeof CATEGORIES)[number];
 
 interface EventRow {
@@ -23,7 +23,7 @@ interface EventRow {
   endsAt: string;
   timezone: string;
   courseId: string | null;
-  source: "EVENT" | "QUIZ" | "ASSIGNMENT";
+  source: 'EVENT' | 'QUIZ' | 'ASSIGNMENT';
 }
 
 interface Draft {
@@ -35,17 +35,17 @@ interface Draft {
   courseId: string; // "" = whole organisation
 }
 
-const ORG = "__org__";
+const ORG = '__org__';
 const browserZone = () => {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   } catch {
-    return "UTC";
+    return 'UTC';
   }
 };
 
 /** Live classes keep their own calendar entry; it is managed from Live Classes. */
-const isLiveClass = (e: EventRow) => e.category === "LECTURE" && e.title.startsWith("Live class: ");
+const isLiveClass = (e: EventRow) => e.category === 'LECTURE' && e.title.startsWith('Live class: ');
 
 const Form: React.FC<{
   initial: Draft;
@@ -104,12 +104,18 @@ const Form: React.FC<{
       </div>
       <label className="block space-y-1 text-xs font-semibold text-ink-muted">
         Details (optional)
-        <textarea className={`${input} w-full`} rows={3} maxLength={5000} value={d.description} onChange={(e) => set({ description: e.target.value })} />
+        <textarea
+          className={`${input} w-full`}
+          rows={3}
+          maxLength={5000}
+          value={d.description}
+          onChange={(e) => set({ description: e.target.value })}
+        />
       </label>
       <p className="text-[11px] text-ink-subtle">Times are in your time zone ({browserZone()}).</p>
       <div className="flex items-center gap-3">
         <button className={primary} disabled={busy || !!problem}>
-          {busy ? "Saving…" : editing ? "Save event" : "Add event"}
+          {busy ? 'Saving…' : editing ? 'Save event' : 'Add event'}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
           Cancel
@@ -124,17 +130,20 @@ const Form: React.FC<{
 export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEscapeKey(onClose);
   const { user } = useAuth();
-  const isAdmin = user?.role === "TENANT_ADMIN" || user?.role === "SUPER_ADMIN";
+  const isAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN';
   const { courses } = useStaffCourses({ editableOnly: true });
-  const [filter, setFilter] = useState<string>("");
-  const [mode, setMode] = useState<"new" | { edit: string } | { del: string } | null>(null);
+  const [filter, setFilter] = useState<string>('');
+  const [mode, setMode] = useState<'new' | { edit: string } | { del: string } | null>(null);
   const { busy, error, run, clearError } = useAction();
 
   // Show what is coming up, plus the last week for reference.
   const from = useMemo(() => new Date(Date.now() - 7 * 86_400_000).toISOString(), []);
-  const events = useApiData<{ data: EventRow[] }>("/api/v1/calendar/events", { from, courseId: filter && filter !== ORG ? filter : undefined });
+  const events = useApiData<{ data: EventRow[] }>('/api/v1/calendar/events', {
+    from,
+    courseId: filter && filter !== ORG ? filter : undefined,
+  });
   // Quiz and assignment due dates are listed too, but they are edited on the quiz or assignment, not here.
-  const rows = (events.data?.data ?? []).filter((e) => e.source === "EVENT" && (filter === ORG ? e.courseId === null : true));
+  const rows = (events.data?.data ?? []).filter((e) => e.source === 'EVENT' && (filter === ORG ? e.courseId === null : true));
   const courseOf = (id: string | null) => courses.find((c) => c.id === id);
   const canChange = (e: EventRow) => !isLiveClass(e) && (e.courseId ? !!courseOf(e.courseId) : isAdmin);
 
@@ -150,7 +159,7 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
 
   const create = (d: Draft) =>
     run(async () => {
-      await api.post("/api/v1/calendar/events", bodyOf(d, true));
+      await api.post('/api/v1/calendar/events', bodyOf(d, true));
       setMode(null);
       await events.reload();
     });
@@ -171,18 +180,39 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
     setMode(m);
   };
 
-  const blank: Draft = { title: "", description: "", category: "EXAM", start: "", end: "", courseId: isAdmin ? ORG : courses[0]?.id ?? "" };
+  const blank: Draft = {
+    title: '',
+    description: '',
+    category: 'EXAM',
+    start: '',
+    end: '',
+    courseId: isAdmin ? ORG : (courses[0]?.id ?? ''),
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/85 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-label="Academic calendar events">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/85 p-4 backdrop-blur-md"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Academic calendar events"
+    >
       <div className="flex h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-2xl">
         <div className="flex items-center justify-between gap-4 border-b border-line bg-canvas px-6 py-4">
           <div>
             <h3 className="text-base font-bold text-ink">Calendar events</h3>
-            <p className="text-xs text-ink-muted">Exams, deadlines, labs and office hours. Learners see them on their academic calendar. Live classes appear here too but are managed from Live Classes.</p>
+            <p className="text-xs text-ink-muted">
+              Exams, deadlines, labs and office hours. Learners see them on their academic calendar. Live classes appear here too but are
+              managed from Live Classes.
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            <select data-readonly-ok value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Show events for" className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none">
+            <select
+              data-readonly-ok
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              aria-label="Show events for"
+              className="rounded-xl border border-line bg-surface px-3 py-1.5 text-xs text-ink focus:border-brand focus:outline-none"
+            >
               <option value="">Everything I can see</option>
               <option value={ORG}>Organisation-wide only</option>
               {courses.map((c) => (
@@ -191,7 +221,11 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
                 </option>
               ))}
             </select>
-            <button onClick={onClose} aria-label="Close" className="rounded-xl p-1 text-ink-muted transition-colors hover:bg-raised hover:text-ink">
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="rounded-xl p-1 text-ink-muted transition-colors hover:bg-raised hover:text-ink"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -200,18 +234,27 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
         <div className="flex-1 space-y-3 overflow-y-auto p-6">
           {(error || events.error) && <Banner kind="error">{error || events.error}</Banner>}
           {events.isLoading && !events.data && <p className="text-xs text-ink-subtle">Loading events…</p>}
-          {!events.isLoading && rows.length === 0 && mode !== "new" && <p className={`${card} text-center text-xs text-ink-muted`}>No events in this view yet.</p>}
+          {!events.isLoading && rows.length === 0 && mode !== 'new' && (
+            <p className={`${card} text-center text-xs text-ink-muted`}>No events in this view yet.</p>
+          )}
 
           <ul className="space-y-3">
             {rows.map((e) => {
-              const editing = typeof mode === "object" && mode !== null && "edit" in mode && mode.edit === e.id;
-              const deleting = typeof mode === "object" && mode !== null && "del" in mode && mode.del === e.id;
+              const editing = typeof mode === 'object' && mode !== null && 'edit' in mode && mode.edit === e.id;
+              const deleting = typeof mode === 'object' && mode !== null && 'del' in mode && mode.del === e.id;
               const course = courseOf(e.courseId);
               return (
                 <li key={e.id} className={`${card} space-y-3`}>
                   {editing ? (
                     <Form
-                      initial={{ title: e.title, description: e.description ?? "", category: e.category, start: toLocalInput(e.startsAt), end: toLocalInput(e.endsAt), courseId: e.courseId ?? ORG }}
+                      initial={{
+                        title: e.title,
+                        description: e.description ?? '',
+                        category: e.category,
+                        start: toLocalInput(e.startsAt),
+                        end: toLocalInput(e.endsAt),
+                        courseId: e.courseId ?? ORG,
+                      }}
                       editing
                       courses={course ? [course] : []}
                       allowOrg={e.courseId === null}
@@ -224,8 +267,12 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h4 className="text-sm font-bold text-ink">{e.title}</h4>
-                          <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-bold text-ink-muted">{label(e.category)}</span>
-                          <span className="rounded-full border border-brand/30 bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-fg">{e.courseId ? course?.code ?? "course" : "everyone"}</span>
+                          <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-[10px] font-bold text-ink-muted">
+                            {label(e.category)}
+                          </span>
+                          <span className="rounded-full border border-brand/30 bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-fg">
+                            {e.courseId ? (course?.code ?? 'course') : 'everyone'}
+                          </span>
                         </div>
                         <p className="text-[11px] text-ink-muted">
                           {new Date(e.startsAt).toLocaleString()} to {new Date(e.endsAt).toLocaleString()}
@@ -263,10 +310,18 @@ export const CalendarManager: React.FC<{ onClose: () => void }> = ({ onClose }) 
 
           {courses.length === 0 && !isAdmin ? (
             <p className="text-[11px] text-ink-subtle">Only instructors and administrators can add events.</p>
-          ) : mode === "new" ? (
-            <Form initial={blank} editing={false} courses={courses} allowOrg={isAdmin} busy={busy} onSave={create} onCancel={() => setMode(null)} />
+          ) : mode === 'new' ? (
+            <Form
+              initial={blank}
+              editing={false}
+              courses={courses}
+              allowOrg={isAdmin}
+              busy={busy}
+              onSave={create}
+              onCancel={() => setMode(null)}
+            />
           ) : (
-            <button className={primary} onClick={() => start("new")}>
+            <button className={primary} onClick={() => start('new')}>
               + New event
             </button>
           )}

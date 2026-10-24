@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { useCourseByCode, useForum, useModerationQueue } from "@/hooks/useEngagement";
-import { ReportControl, ReportsPanel, ThreadModerationBar } from "@/components/forum/Moderation";
-import { activateOnKey } from "@/lib/a11y";
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useCourseByCode, useForum, useModerationQueue } from '@/hooks/useEngagement';
+import { ReportControl, ReportsPanel, ThreadModerationBar } from '@/components/forum/Moderation';
+import { activateOnKey } from '@/lib/a11y';
 import {
   X,
   MessageSquare,
@@ -20,7 +20,7 @@ import {
   Flag,
   Eye,
   EyeOff,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface DiscussionForumProps {
   /** Used to find the course; falls back to the first course the user can see. */
@@ -32,21 +32,17 @@ interface DiscussionForumProps {
 
 // Categories every course can use. Older threads may carry others (the API still accepts them),
 // and those show up as filters only while a thread in them is loaded.
-const CATEGORIES = ["General", "Assignments", "Exams", "Logistics"] as const;
+const CATEGORIES = ['General', 'Assignments', 'Exams', 'Logistics'] as const;
 const CATEGORY_LABELS: Record<(typeof CATEGORIES)[number], string> = {
-  General: "General",
-  Assignments: "Assignments & labs",
-  Exams: "Exams",
-  Logistics: "Logistics",
+  General: 'General',
+  Assignments: 'Assignments & labs',
+  Exams: 'Exams',
+  Logistics: 'Logistics',
 };
 
-const STAFF_ROLES = ["INSTRUCTOR", "TEACHING_ASSISTANT", "TENANT_ADMIN", "SUPER_ADMIN"];
+const STAFF_ROLES = ['INSTRUCTOR', 'TEACHING_ASSISTANT', 'TENANT_ADMIN', 'SUPER_ADMIN'];
 
-export const DiscussionForum: React.FC<DiscussionForumProps> = ({
-  courseCode,
-  courseId,
-  onClose,
-}) => {
+export const DiscussionForum: React.FC<DiscussionForumProps> = ({ courseCode, courseId, onClose }) => {
   const { user } = useAuth();
   const { course, courses, selectCourse, isLoading: courseLoading } = useCourseByCode(courseCode, user, courseId);
   const isStaff = !!user && STAFF_ROLES.includes(user.role);
@@ -54,42 +50,41 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
   const queue = useModerationQueue(isStaff ? course?.id : null);
   const [showReports, setShowReports] = useState(false);
   const { threads, activeId, setActiveId } = forum;
-  const readOnly = user?.role === "AUDITOR";
+  const readOnly = user?.role === 'AUDITOR';
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [showNewThreadModal, setShowNewThreadModal] = useState(false);
 
   // New Thread Form States
-  const [newTitle, setNewTitle] = useState("");
-  const [newCategory, setNewCategory] = useState<(typeof CATEGORIES)[number]>("General");
-  const [newContent, setNewContent] = useState("");
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState<(typeof CATEGORIES)[number]>('General');
+  const [newContent, setNewContent] = useState('');
 
   // Reply Input State
-  const [replyText, setReplyText] = useState("");
+  const [replyText, setReplyText] = useState('');
 
   const activeThread = threads.find((t) => t.id === activeId) || threads[0];
 
   const filterCategories = [
-    "ALL",
+    'ALL',
     ...CATEGORIES,
     ...Array.from(new Set([...threads.map((t) => t.category), selectedCategory])).filter(
-      (c) => c !== "ALL" && !(CATEGORIES as readonly string[]).includes(c)
+      (c) => c !== 'ALL' && !(CATEGORIES as readonly string[]).includes(c)
     ),
   ];
 
   const filteredThreads = threads.filter((t) => {
     const matchesSearch =
-      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "ALL" || t.category === selectedCategory;
+      t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.content.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'ALL' || t.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   const handlePostReply = async () => {
     if (!replyText.trim() || !activeThread) return;
     await forum.postReply(activeThread.id, replyText.trim());
-    setReplyText("");
+    setReplyText('');
   };
 
   const handleCreateThread = async (e: React.FormEvent) => {
@@ -97,22 +92,27 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
     if (!newTitle.trim() || !newContent.trim()) return;
     await forum.createThread({ title: newTitle.trim(), body: newContent.trim(), category: newCategory });
     setShowNewThreadModal(false);
-    setNewTitle("");
-    setNewContent("");
+    setNewTitle('');
+    setNewContent('');
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== 'Escape') return;
       if (showNewThreadModal) setShowNewThreadModal(false);
       else onClose();
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [onClose, showNewThreadModal]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="forum-h">
+    <div
+      className="fixed inset-0 z-50 bg-canvas/85 backdrop-blur-md flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="forum-h"
+    >
       <div className="relative bg-surface border border-line rounded-3xl w-full max-w-6xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
         {/* Top Header */}
         <div className="bg-canvas border-b border-line px-6 py-4 flex items-center justify-between">
@@ -122,11 +122,13 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 id="forum-h" className="font-bold text-base text-ink">Course Collaboration & Q&A Forum</h3>
+                <h3 id="forum-h" className="font-bold text-base text-ink">
+                  Course Collaboration & Q&A Forum
+                </h3>
                 {courses.length > 1 ? (
                   <select
                     aria-label="Course"
-                    value={course?.id ?? ""}
+                    value={course?.id ?? ''}
                     onChange={(e) => selectCourse(e.target.value)}
                     className="rounded-full border border-brand/50 bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand-fg focus:outline-none"
                   >
@@ -138,13 +140,11 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                   </select>
                 ) : (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand-fg border border-brand/50">
-                    {course ? `${course.code} Community` : "Community"}
+                    {course ? `${course.code} Community` : 'Community'}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-ink-muted">
-                Peer discussions, algorithm debugging, and instructor-verified answers.
-              </p>
+              <p className="text-xs text-ink-muted">Peer discussions, algorithm debugging, and instructor-verified answers.</p>
             </div>
           </div>
 
@@ -162,13 +162,13 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               </button>
             )}
             {!readOnly && (
-            <button
-              onClick={() => setShowNewThreadModal(true)}
-              className="px-4 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand/20 transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Ask Question</span>
-            </button>
+              <button
+                onClick={() => setShowNewThreadModal(true)}
+                className="px-4 py-2 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-brand/20 transition-all"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Ask Question</span>
+              </button>
             )}
             <button
               onClick={onClose}
@@ -199,9 +199,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-                  selectedCategory === cat
-                    ? "bg-brand text-on-brand"
-                    : "text-ink-muted hover:text-ink bg-surface/60 border border-line"
+                  selectedCategory === cat ? 'bg-brand text-on-brand' : 'text-ink-muted hover:text-ink bg-surface/60 border border-line'
                 }`}
               >
                 {cat}
@@ -220,15 +218,13 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
         <div className="flex-1 flex overflow-hidden">
           {/* Thread List Left */}
           <div className="w-full md:w-5/12 border-r border-line overflow-y-auto p-4 space-y-3 bg-canvas/30">
-            {(courseLoading || forum.isLoading) && (
-              <div className="text-xs text-ink-subtle p-6 text-center">Loading discussions...</div>
-            )}
+            {(courseLoading || forum.isLoading) && <div className="text-xs text-ink-subtle p-6 text-center">Loading discussions...</div>}
             {!courseLoading && !forum.isLoading && !course && (
               <div className="text-xs text-ink-subtle p-6 text-center">You are not part of any course yet.</div>
             )}
             {!courseLoading && !forum.isLoading && course && filteredThreads.length === 0 && (
               <div className="text-xs text-ink-subtle p-6 text-center">
-                {threads.length === 0 ? "No questions yet. Be the first to ask one." : "No topics match your search."}
+                {threads.length === 0 ? 'No questions yet. Be the first to ask one.' : 'No topics match your search.'}
               </div>
             )}
             {filteredThreads.map((thread) => {
@@ -242,9 +238,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                   onClick={() => setActiveId(thread.id)}
                   onKeyDown={activateOnKey(() => setActiveId(thread.id))}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-brand/15 border-brand/60 shadow-md"
-                      : "bg-canvas/80 border-line/80 hover:border-line"
+                    isActive ? 'bg-brand/15 border-brand/60 shadow-md' : 'bg-canvas/80 border-line/80 hover:border-line'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -272,12 +266,8 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                     </div>
                   </div>
 
-                  <h4 className="font-bold text-xs text-ink mt-2 line-clamp-2">
-                    {thread.title}
-                  </h4>
-                  <p className="text-[11px] text-ink-muted mt-1 line-clamp-2">
-                    {thread.content}
-                  </p>
+                  <h4 className="font-bold text-xs text-ink mt-2 line-clamp-2">{thread.title}</h4>
+                  <p className="text-[11px] text-ink-muted mt-1 line-clamp-2">{thread.content}</p>
 
                   <div className="flex items-center justify-between text-[11px] text-ink-subtle mt-3 pt-2 border-t border-line">
                     <div className="flex items-center gap-1.5">
@@ -320,9 +310,9 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                     </div>
 
                     <button
-                      onClick={() => forum.vote("THREAD", activeThread.id, activeThread.id)}
+                      onClick={() => forum.vote('THREAD', activeThread.id, activeThread.id)}
                       disabled={forum.busy || readOnly}
-                      className={`px-3 py-1.5 bg-surface hover:bg-brand/20 border text-ink hover:text-brand-fg rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${activeThread.votedByMe ? "border-brand text-brand-fg" : "border-line"}`}
+                      className={`px-3 py-1.5 bg-surface hover:bg-brand/20 border text-ink hover:text-brand-fg rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${activeThread.votedByMe ? 'border-brand text-brand-fg' : 'border-line'}`}
                     >
                       <ThumbsUp className="h-3.5 w-3.5" />
                       <span>{activeThread.upvotes}</span>
@@ -331,13 +321,17 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
 
                   <div>
                     <h3 className="text-base font-extrabold text-ink">{activeThread.title}</h3>
-                    <p className="text-xs text-ink mt-2 leading-relaxed whitespace-pre-wrap">
-                      {activeThread.content}
-                    </p>
+                    <p className="text-xs text-ink mt-2 leading-relaxed whitespace-pre-wrap">{activeThread.content}</p>
                   </div>
 
                   <div className="space-y-2">
-                    {isStaff && <ThreadModerationBar thread={activeThread} busy={forum.busy} onModerate={(patch) => forum.moderateThread(activeThread.id, patch)} />}
+                    {isStaff && (
+                      <ThreadModerationBar
+                        thread={activeThread}
+                        busy={forum.busy}
+                        onModerate={(patch) => forum.moderateThread(activeThread.id, patch)}
+                      />
+                    )}
                     {!readOnly && <ReportControl targetType="THREAD" targetId={activeThread.id} subject="this thread" />}
                   </div>
                 </div>
@@ -346,83 +340,89 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-line pb-2">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-                      Community Replies ({activeThread.replies.filter((r) => !r.hidden).length}){activeThread.locked ? " · Locked" : ""}
+                      Community Replies ({activeThread.replies.filter((r) => !r.hidden).length}){activeThread.locked ? ' · Locked' : ''}
                     </h4>
                   </div>
 
-                  {activeThread.replies.filter((r) => !r.hidden || isStaff).map((reply) => (
-                    <div
-                      key={reply.id}
-                      className={`p-4 rounded-2xl border space-y-3 ${
-                        reply.isVerifiedAnswer
-                          ? "bg-success/10 border-success/30 shadow-md shadow-success/10"
-                          : "bg-canvas border-line"
-                      } ${reply.hidden ? "opacity-60" : ""}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`h-6 w-6 rounded-lg flex items-center justify-center text-[10px] font-bold ${
-                            reply.role === "INSTRUCTOR"
-                              ? "bg-purple-600 text-on-brand"
-                              : reply.role === "TA"
-                              ? "bg-amber-600 text-on-brand"
-                              : "bg-raised text-ink"
-                          }`}>
-                            {reply.author[0]}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <strong className="text-xs text-ink">{reply.author}</strong>
-                              {reply.isVerifiedAnswer && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/30 flex items-center gap-1">
-                                  <ShieldCheck className="h-3 w-3 text-success" />
-                                  Verified by Faculty
-                                </span>
-                              )}
+                  {activeThread.replies
+                    .filter((r) => !r.hidden || isStaff)
+                    .map((reply) => (
+                      <div
+                        key={reply.id}
+                        className={`p-4 rounded-2xl border space-y-3 ${
+                          reply.isVerifiedAnswer ? 'bg-success/10 border-success/30 shadow-md shadow-success/10' : 'bg-canvas border-line'
+                        } ${reply.hidden ? 'opacity-60' : ''}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className={`h-6 w-6 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                                reply.role === 'INSTRUCTOR'
+                                  ? 'bg-purple-600 text-on-brand'
+                                  : reply.role === 'TA'
+                                    ? 'bg-amber-600 text-on-brand'
+                                    : 'bg-raised text-ink'
+                              }`}
+                            >
+                              {reply.author[0]}
                             </div>
-                            <span className="text-[10px] text-ink-subtle">{reply.timestamp}</span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <strong className="text-xs text-ink">{reply.author}</strong>
+                                {reply.isVerifiedAnswer && (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/30 flex items-center gap-1">
+                                    <ShieldCheck className="h-3 w-3 text-success" />
+                                    Verified by Faculty
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-ink-subtle">{reply.timestamp}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {reply.hidden && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/30">
+                                Hidden
+                              </span>
+                            )}
+                            {isStaff && (
+                              <button
+                                onClick={() => forum.moderatePost(reply.id, !reply.hidden, activeThread.id)}
+                                disabled={forum.busy}
+                                className="px-2.5 py-1 bg-surface border border-line text-ink-muted hover:text-ink rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
+                              >
+                                {reply.hidden ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                                <span>{reply.hidden ? 'Restore' : 'Hide'}</span>
+                              </button>
+                            )}
+                            {isStaff && (
+                              <button
+                                onClick={() => forum.endorse(reply.id, activeThread.id)}
+                                disabled={forum.busy}
+                                className="px-2.5 py-1 bg-surface border border-line text-ink-muted hover:text-success rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
+                              >
+                                <ShieldCheck className="h-3 w-3" />
+                                <span>{reply.isVerifiedAnswer ? 'Unverify' : 'Verify'}</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => forum.vote('POST', reply.id, activeThread.id)}
+                              disabled={forum.busy || readOnly}
+                              className={`px-2.5 py-1 bg-surface border text-ink-muted hover:text-ink rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60 ${reply.votedByMe ? 'border-brand text-brand-fg' : 'border-line'}`}
+                            >
+                              <ThumbsUp className="h-3 w-3" />
+                              <span>{reply.upvotes}</span>
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          {reply.hidden && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/30">Hidden</span>}
-                          {isStaff && (
-                            <button
-                              onClick={() => forum.moderatePost(reply.id, !reply.hidden, activeThread.id)}
-                              disabled={forum.busy}
-                              className="px-2.5 py-1 bg-surface border border-line text-ink-muted hover:text-ink rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
-                            >
-                              {reply.hidden ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                              <span>{reply.hidden ? "Restore" : "Hide"}</span>
-                            </button>
-                          )}
-                          {isStaff && (
-                            <button
-                              onClick={() => forum.endorse(reply.id, activeThread.id)}
-                              disabled={forum.busy}
-                              className="px-2.5 py-1 bg-surface border border-line text-ink-muted hover:text-success rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60"
-                            >
-                              <ShieldCheck className="h-3 w-3" />
-                              <span>{reply.isVerifiedAnswer ? "Unverify" : "Verify"}</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => forum.vote("POST", reply.id, activeThread.id)}
-                            disabled={forum.busy || readOnly}
-                            className={`px-2.5 py-1 bg-surface border text-ink-muted hover:text-ink rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-60 ${reply.votedByMe ? "border-brand text-brand-fg" : "border-line"}`}
-                          >
-                            <ThumbsUp className="h-3 w-3" />
-                            <span>{reply.upvotes}</span>
-                          </button>
-                        </div>
+                        <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap">{reply.content}</p>
+                        {!readOnly && !reply.hidden && (
+                          <ReportControl targetType="POST" targetId={reply.id} subject={`the reply by ${reply.author}`} />
+                        )}
                       </div>
-
-                      <p className="text-xs text-ink leading-relaxed whitespace-pre-wrap">
-                        {reply.content}
-                      </p>
-                      {!readOnly && !reply.hidden && <ReportControl targetType="POST" targetId={reply.id} subject={`the reply by ${reply.author}`} />}
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
 
@@ -430,12 +430,12 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               <div className="p-4 bg-canvas border-t border-line flex items-center gap-3">
                 <input
                   type="text"
-                  placeholder={activeThread.locked && !isStaff ? "This thread is locked" : "Write a constructive response or answer..."}
+                  placeholder={activeThread.locked && !isStaff ? 'This thread is locked' : 'Write a constructive response or answer...'}
                   disabled={readOnly || (activeThread.locked && !isStaff)}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       handlePostReply();
                     }
@@ -483,17 +483,16 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
           <div className="bg-surface border border-line rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <h4 className="font-bold text-sm text-ink">Ask a New Course Question</h4>
-              <button
-                onClick={() => setShowNewThreadModal(false)}
-                className="text-ink-muted hover:text-ink"
-              >
+              <button onClick={() => setShowNewThreadModal(false)} className="text-ink-muted hover:text-ink">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <form onSubmit={handleCreateThread} className="space-y-3 text-xs">
               <div>
-                <label htmlFor="thread-title" className="text-ink-muted font-semibold block mb-1">Title</label>
+                <label htmlFor="thread-title" className="text-ink-muted font-semibold block mb-1">
+                  Title
+                </label>
                 <input
                   id="thread-title"
                   type="text"
@@ -505,7 +504,9 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               </div>
 
               <div>
-                <label htmlFor="thread-category" className="text-ink-muted font-semibold block mb-1">Category</label>
+                <label htmlFor="thread-category" className="text-ink-muted font-semibold block mb-1">
+                  Category
+                </label>
                 <select
                   id="thread-category"
                   value={newCategory}
@@ -521,7 +522,9 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({
               </div>
 
               <div>
-                <label htmlFor="thread-details" className="text-ink-muted font-semibold block mb-1">Details</label>
+                <label htmlFor="thread-details" className="text-ink-muted font-semibold block mb-1">
+                  Details
+                </label>
                 <textarea
                   id="thread-details"
                   rows={4}

@@ -35,7 +35,11 @@ const IDP = 'https://idp.example.org/metadata';
 const ENTRY = 'https://idp.example.org/sso';
 const ACS = `${APP}/api/v1/auth/saml/acs`;
 const SP = `${APP}/api/v1/auth/saml/metadata/harvard`;
-const samlKeys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+const samlKeys = crypto.generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+});
 
 // ---- LTI platform
 const ltiKeys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -56,8 +60,15 @@ function startIdp() {
       res.setHeader('content-type', 'application/json');
       res.end(JSON.stringify(b));
     };
-    if (url.pathname === '/.well-known/openid-configuration') return json({ issuer: ISSUER, authorization_endpoint: `${ISSUER}/authorize`, token_endpoint: `${ISSUER}/token`, jwks_uri: `${ISSUER}/jwks` });
-    if (url.pathname === '/jwks') return json({ keys: [{ ...idpKey.publicKey.export({ format: 'jwk' }), kid: 'k1', use: 'sig', alg: 'RS256' }] });
+    if (url.pathname === '/.well-known/openid-configuration')
+      return json({
+        issuer: ISSUER,
+        authorization_endpoint: `${ISSUER}/authorize`,
+        token_endpoint: `${ISSUER}/token`,
+        jwks_uri: `${ISSUER}/jwks`,
+      });
+    if (url.pathname === '/jwks')
+      return json({ keys: [{ ...idpKey.publicKey.export({ format: 'jwk' }), kid: 'k1', use: 'sig', alg: 'RS256' }] });
     if (url.pathname === '/token' && req.method === 'POST') {
       let body = '';
       req.on('data', (c) => (body += c));
@@ -65,9 +76,19 @@ function startIdp() {
         const f = new URLSearchParams(body);
         const grant = grants.get(f.get('code') ?? '');
         grants.delete(f.get('code') ?? '');
-        const ok = grant && crypto.createHash('sha256').update(f.get('code_verifier') ?? '').digest('base64url') === grant.challenge && f.get('client_secret') === CLIENT_SECRET;
+        const ok =
+          grant &&
+          crypto
+            .createHash('sha256')
+            .update(f.get('code_verifier') ?? '')
+            .digest('base64url') === grant.challenge &&
+          f.get('client_secret') === CLIENT_SECRET;
         if (!grant || !ok) return json({ error: 'invalid_grant' }, 400);
-        const id_token = jwt.sign({ iss: ISSUER, aud: CLIENT_ID, nonce: grant.nonce, ...grant.claims }, idpKey.privateKey, { algorithm: 'RS256', keyid: 'k1', expiresIn: 300 });
+        const id_token = jwt.sign({ iss: ISSUER, aud: CLIENT_ID, nonce: grant.nonce, ...grant.claims }, idpKey.privateKey, {
+          algorithm: 'RS256',
+          keyid: 'k1',
+          expiresIn: 300,
+        });
         return json({ id_token, access_token: 'unused', token_type: 'Bearer' });
       });
       return;
@@ -75,10 +96,12 @@ function startIdp() {
     res.statusCode = 404;
     res.end();
   });
-  return new Promise<void>((r) => idp.listen(0, '127.0.0.1', () => {
-    ISSUER = `http://127.0.0.1:${(idp.address() as any).port}`;
-    r();
-  }));
+  return new Promise<void>((r) =>
+    idp.listen(0, '127.0.0.1', () => {
+      ISSUER = `http://127.0.0.1:${(idp.address() as any).port}`;
+      r();
+    })
+  );
 }
 
 async function seed(jwksUrl: string) {
@@ -87,7 +110,19 @@ async function seed(jwksUrl: string) {
   // Suspended tenants never resolve; an unknown hint would fall through to the default tenant instead.
   await admin.tenant.create({ data: { id: 't-s', slug: 'suspended', name: 'Gone', tier: 'STARTER', status: 'SUSPENDED' } });
   const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true, ...extra } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+        ...extra,
+      },
+    });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 's4']) await user(s, 't-h', 'harvard', 'STUDENT');
@@ -95,11 +130,31 @@ async function seed(jwksUrl: string) {
 
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course c1', status: 'PUBLISHED' } });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 } });
+  await admin.assignment.create({
+    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 },
+  });
   await admin.assignmentSubmission.create({ data: { id: 'as-1', assignmentId: 'a1', userId: 's1', submissionText: 'x' } });
-  await admin.liveSession.create({ data: { id: 'ls-1', tenantId: 't-h', courseId: 'c1', createdById: 'teacher', title: 'Live', scheduledAt: new Date(), roomName: 'lms_t-h_ls-1' } });
+  await admin.liveSession.create({
+    data: {
+      id: 'ls-1',
+      tenantId: 't-h',
+      courseId: 'c1',
+      createdById: 'teacher',
+      title: 'Live',
+      scheduledAt: new Date(),
+      roomName: 'lms_t-h_ls-1',
+    },
+  });
   await admin.ltiDeployment.create({
-    data: { tenantId: 't-h', clientId: 'client-1', deploymentId: 'dep-1', issuer: 'https://platform.example.edu', authLoginUrl: 'https://p/login', authTokensUrl: 'https://p/token', keySetUrl: jwksUrl },
+    data: {
+      tenantId: 't-h',
+      clientId: 'client-1',
+      deploymentId: 'dep-1',
+      issuer: 'https://platform.example.edu',
+      authLoginUrl: 'https://p/login',
+      authTokensUrl: 'https://p/token',
+      keySetUrl: jwksUrl,
+    },
   });
 }
 
@@ -135,7 +190,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -152,14 +210,24 @@ function conforms(key: string, res: request.Response, opts: { json?: boolean } =
   const doc = docs.find((d) => d.status === res.status);
   if (!doc) {
     // An error: declared in `errors` (401/403 are implied for guarded routes, 429 for limiters).
-    expect([401, 403, 429], `${key} answered ${res.status}: ${res.text}`).toSatisfy((implied: number[]) => (entry.errors ?? []).includes(res.status) || implied.includes(res.status));
+    expect([401, 403, 429], `${key} answered ${res.status}: ${res.text}`).toSatisfy(
+      (implied: number[]) => (entry.errors ?? []).includes(res.status) || implied.includes(res.status)
+    );
     return;
   }
   if (doc.contentType) expect(String(res.headers['content-type'])).toContain(doc.contentType);
   if (doc.schema) {
-    const body = opts.json === false ? res.text : doc.contentType && doc.contentType !== 'application/json' && doc.contentType.includes('json') ? JSON.parse(res.text) : res.body;
+    const body =
+      opts.json === false
+        ? res.text
+        : doc.contentType && doc.contentType !== 'application/json' && doc.contentType.includes('json')
+          ? JSON.parse(res.text)
+          : res.body;
     const parsed = doc.schema.safeParse(body);
-    expect(parsed.success, `${key} ${res.status}: ${JSON.stringify(parsed.success ? null : parsed.error)} body=${JSON.stringify(body)}`).toBe(true);
+    expect(
+      parsed.success,
+      `${key} ${res.status}: ${JSON.stringify(parsed.success ? null : parsed.error)} body=${JSON.stringify(body)}`
+    ).toBe(true);
   }
 }
 
@@ -233,7 +301,11 @@ describe('OIDC single sign-on', () => {
   });
 
   it('configures, starts, and completes a sign-in', async () => {
-    const put = await (await as('admin')).put('/api/v1/admin/sso').send({ issuer: ISSUER, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, enabled: true, allowedDomains: [] });
+    const put = await (
+      await as('admin')
+    )
+      .put('/api/v1/admin/sso')
+      .send({ issuer: ISSUER, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, enabled: true, allowedDomains: [] });
     expect(put.status).toBe(200);
 
     const status = await request(app).get('/api/v1/auth/sso/status').set('x-tenant-id', 'harvard');
@@ -245,7 +317,11 @@ describe('OIDC single sign-on', () => {
     redirectTo(start, 302, new RegExp(`^${ISSUER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/authorize\\?`));
     expect(String(start.headers['set-cookie'])).toContain('lms_sso=');
     const q = new URL(start.headers.location).searchParams;
-    grants.set('good-code', { claims: { sub: 'sub-s1', email: 's1@x.edu', email_verified: true }, challenge: q.get('code_challenge')!, nonce: q.get('nonce')! });
+    grants.set('good-code', {
+      claims: { sub: 'sub-s1', email: 's1@x.edu', email_verified: true },
+      challenge: q.get('code_challenge')!,
+      nonce: q.get('nonce')!,
+    });
     const cb = await agent.get(`/api/v1/auth/sso/callback?code=good-code&state=${q.get('state')}`).set('x-tenant-id', 'harvard');
     redirectTo(cb, 302, `${APP}/`);
     expect(String(cb.headers['set-cookie'])).toContain('lms_token=');
@@ -275,8 +351,16 @@ describe('SAML single sign-on', () => {
     `<saml:AttributeStatement><saml:Attribute Name="email"><saml:AttributeValue>${email}</saml:AttributeValue></saml:Attribute></saml:AttributeStatement>` +
     `</saml:Assertion>`;
   const sign = (xml: string) => {
-    const sig = new SignedXml({ privateKey: samlKeys.privateKey, canonicalizationAlgorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#', signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256' });
-    sig.addReference({ xpath: "//*[local-name(.)='Assertion']", digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256', transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#'] });
+    const sig = new SignedXml({
+      privateKey: samlKeys.privateKey,
+      canonicalizationAlgorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#',
+      signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256',
+    });
+    sig.addReference({
+      xpath: "//*[local-name(.)='Assertion']",
+      digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256',
+      transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#'],
+    });
     sig.computeSignature(xml, { location: { reference: "//*[local-name(.)='Assertion']/*[local-name(.)='Issuer']", action: 'after' } });
     return sig.getSignedXml();
   };
@@ -290,7 +374,11 @@ describe('SAML single sign-on', () => {
     const before = await request(app).get('/api/v1/auth/saml/metadata/harvard');
     expect(before.status).toBe(404);
     conforms('GET /api/v1/auth/saml/metadata/:slug', before);
-    const put = await (await as('admin')).put('/api/v1/admin/saml').send({ entryPoint: ENTRY, idpIssuer: IDP, idpCert: samlKeys.publicKey, emailAttribute: 'email', enabled: true, allowedDomains: [] });
+    const put = await (
+      await as('admin')
+    )
+      .put('/api/v1/admin/saml')
+      .send({ entryPoint: ENTRY, idpIssuer: IDP, idpCert: samlKeys.publicKey, emailAttribute: 'email', enabled: true, allowedDomains: [] });
     expect(put.status).toBe(200);
     const meta = await request(app).get('/api/v1/auth/saml/metadata/harvard');
     expect(meta.status).toBe(200);
@@ -308,7 +396,11 @@ describe('SAML single sign-on', () => {
     const { inflateRawSync } = await import('zlib');
     const xml = inflateRawSync(Buffer.from(new URL(start.headers.location).searchParams.get('SAMLRequest')!, 'base64')).toString();
     const id = /ID="([^"]+)"/.exec(xml)![1];
-    const acs = await agent.post('/api/v1/auth/saml/acs').set('x-tenant-id', 'harvard').type('form').send({ SAMLResponse: response(id, 's2@x.edu'), RelayState: '' });
+    const acs = await agent
+      .post('/api/v1/auth/saml/acs')
+      .set('x-tenant-id', 'harvard')
+      .type('form')
+      .send({ SAMLResponse: response(id, 's2@x.edu'), RelayState: '' });
     redirectTo(acs, 303, `${APP}/`);
     expect(String(acs.headers['set-cookie'])).toContain('lms_token=');
 
@@ -323,11 +415,22 @@ describe('SAML single sign-on', () => {
 describe('LTI 1.3 launch', () => {
   const token = (over: Record<string, unknown> = {}) =>
     jwt.sign(
-      { iss: 'https://platform.example.edu', aud: 'client-1', sub: 'u1', email: 's4@x.edu', nonce: `n-${crypto.randomUUID()}`, [`${CLAIM}/version`]: '1.3.0', [`${CLAIM}/deployment_id`]: 'dep-1', [`${CLAIM}/target_link_uri`]: 'https://lms/courses/c1', ...over },
+      {
+        iss: 'https://platform.example.edu',
+        aud: 'client-1',
+        sub: 'u1',
+        email: 's4@x.edu',
+        nonce: `n-${crypto.randomUUID()}`,
+        [`${CLAIM}/version`]: '1.3.0',
+        [`${CLAIM}/deployment_id`]: 'dep-1',
+        [`${CLAIM}/target_link_uri`]: 'https://lms/courses/c1',
+        ...over,
+      },
       ltiKeys.privateKey,
       { algorithm: 'RS256', keyid: 'k1', expiresIn: '5m' }
     );
-  const launch = (id_token: string, tenant = 'harvard') => request(app).post('/api/v1/lti/launch').set('x-tenant-id', tenant).send({ id_token });
+  const launch = (id_token: string, tenant = 'harvard') =>
+    request(app).post('/api/v1/lti/launch').set('x-tenant-id', tenant).send({ id_token });
 
   it('answers 200 with the launch result', async () => {
     const res = await launch(token());
@@ -370,7 +473,13 @@ describe('SCIM 2.0', () => {
       expect(res.headers['content-type']).toContain('application/scim+json');
     }
   };
-  const user = { schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'], userName: 'New.Person@x.edu', externalId: 'okta-123', name: { givenName: 'New', familyName: 'Person' }, active: true };
+  const user = {
+    schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+    userName: 'New.Person@x.edu',
+    externalId: 'okta-123',
+    name: { givenName: 'New', familyName: 'Person' },
+    active: true,
+  };
 
   beforeAll(async () => {
     const res = await (await as('admin')).post('/api/v1/admin/scim-tokens').send({ label: 'Okta' });
@@ -423,14 +532,23 @@ describe('SCIM 2.0', () => {
     expect(rename.status).toBe(400);
     check('PUT /api/v1/scim/v2/Users/:id', rename);
 
-    const patch = await scim('patch', `/Users/${id}`).send(JSON.stringify({ schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'], Operations: [{ op: 'replace', path: 'active', value: false }] }));
+    const patch = await scim('patch', `/Users/${id}`).send(
+      JSON.stringify({
+        schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+        Operations: [{ op: 'replace', path: 'active', value: false }],
+      })
+    );
     expect(patch.status).toBe(200);
     check('PATCH /api/v1/scim/v2/Users/:id', patch);
     expect(JSON.parse(patch.text).active).toBe(false);
-    const badPatch = await scim('patch', `/Users/${id}`).send(JSON.stringify({ Operations: [{ op: 'replace', path: 'role', value: 'SUPER_ADMIN' }] }));
+    const badPatch = await scim('patch', `/Users/${id}`).send(
+      JSON.stringify({ Operations: [{ op: 'replace', path: 'role', value: 'SUPER_ADMIN' }] })
+    );
     expect(badPatch.status).toBe(400);
     check('PATCH /api/v1/scim/v2/Users/:id', badPatch);
-    const protectedPatch = await scim('patch', '/Users/admin').send(JSON.stringify({ Operations: [{ op: 'replace', path: 'active', value: false }] }));
+    const protectedPatch = await scim('patch', '/Users/admin').send(
+      JSON.stringify({ Operations: [{ op: 'replace', path: 'active', value: false }] })
+    );
     expect(protectedPatch.status).toBe(403);
     check('PATCH /api/v1/scim/v2/Users/:id', protectedPatch);
 
@@ -479,12 +597,24 @@ describe('signed provider callbacks', () => {
 
   const hook = (body: object | string, secret = LK_SECRET) => {
     const raw = typeof body === 'string' ? body : JSON.stringify(body);
-    const token = jwt.sign({ iss: LK_KEY, sha256: crypto.createHash('sha256').update(raw).digest('base64') }, secret, { algorithm: 'HS256', expiresIn: 300 });
-    return request(app).post('/api/v1/integrations/livekit').set('content-type', 'application/webhook+json').set('authorization', token).send(raw);
+    const token = jwt.sign({ iss: LK_KEY, sha256: crypto.createHash('sha256').update(raw).digest('base64') }, secret, {
+      algorithm: 'HS256',
+      expiresIn: 300,
+    });
+    return request(app)
+      .post('/api/v1/integrations/livekit')
+      .set('content-type', 'application/webhook+json')
+      .set('authorization', token)
+      .send(raw);
   };
 
   it('POST /integrations/livekit', async () => {
-    const joined = await hook({ event: 'participant_joined', room: { name: 'lms_t-h_ls-1' }, participant: { identity: 's1' }, createdAt: Math.floor(Date.now() / 1000) });
+    const joined = await hook({
+      event: 'participant_joined',
+      room: { name: 'lms_t-h_ls-1' },
+      participant: { identity: 's1' },
+      createdAt: Math.floor(Date.now() / 1000),
+    });
     expect(joined.status).toBe(200);
     expect(joined.body).toEqual({ ok: true });
     conforms('POST /api/v1/integrations/livekit', joined);

@@ -34,7 +34,7 @@ export const CAPTCHA_UNAVAILABLE_MESSAGE = 'The security check (CAPTCHA) could n
 export const captchaEnabled = () => !!config.TURNSTILE_SECRET_KEY;
 
 /** The public site key for the web app's widget, or null while the CAPTCHA is off. */
-export const captchaSiteKey = (): string | null => (captchaEnabled() ? config.TURNSTILE_SITE_KEY ?? null : null);
+export const captchaSiteKey = (): string | null => (captchaEnabled() ? (config.TURNSTILE_SITE_KEY ?? null) : null);
 
 export interface CaptchaOptions {
   /** The widget's `action`; a token made for another form is refused. */

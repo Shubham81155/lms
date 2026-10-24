@@ -21,10 +21,30 @@ export type RetentionClass = (typeof RETENTION_CLASSES)[number];
 /** What each class is, and the fewest days it may be kept for (shorter would delete data people still need). */
 export const CLASS_INFO: Record<RetentionClass, { label: string; min: number; field: string; what: string }> = {
   notifications: { label: 'Notifications', min: 30, field: 'notificationsDays', what: 'In-app notifications older than this are deleted.' },
-  tokens: { label: 'Used and expired tokens', min: 7, field: 'tokensDays', what: 'Password-reset and e-mail confirmation tokens that were used or expired this long ago are deleted.' },
-  proctoring: { label: 'Proctoring evidence', min: 30, field: 'proctoringDays', what: 'Snapshot links and event details of proctoring events are cleared; the events (type, severity, time) stay.' },
-  supportAccess: { label: 'Support access records', min: 90, field: 'supportAccessDays', what: 'Support passes that ended this long ago, and their hand-off links, are deleted.' },
-  infectedFiles: { label: 'Infected uploads', min: 7, field: 'infectedFilesDays', what: 'Files a virus scan found infected are deleted this long after the scan.' },
+  tokens: {
+    label: 'Used and expired tokens',
+    min: 7,
+    field: 'tokensDays',
+    what: 'Password-reset and e-mail confirmation tokens that were used or expired this long ago are deleted.',
+  },
+  proctoring: {
+    label: 'Proctoring evidence',
+    min: 30,
+    field: 'proctoringDays',
+    what: 'Snapshot links and event details of proctoring events are cleared; the events (type, severity, time) stay.',
+  },
+  supportAccess: {
+    label: 'Support access records',
+    min: 90,
+    field: 'supportAccessDays',
+    what: 'Support passes that ended this long ago, and their hand-off links, are deleted.',
+  },
+  infectedFiles: {
+    label: 'Infected uploads',
+    min: 7,
+    field: 'infectedFilesDays',
+    what: 'Files a virus scan found infected are deleted this long after the scan.',
+  },
 };
 
 const days = (min: number) => z.number().int().min(min).max(3650).nullable();
@@ -64,7 +84,14 @@ export const policyView = (p: Policy | null) => ({
   proctoringDays: p?.proctoringDays ?? null,
   supportAccessDays: p?.supportAccessDays ?? null,
   infectedFilesDays: p?.infectedFilesDays ?? null,
-  lastRun: p?.lastRunAt && p.lastRunJson ? ({ at: p.lastRunAt.toISOString(), dryRun: p.lastRunDryRun ?? true, ...(p.lastRunJson as unknown as RetentionCounts) } satisfies RetentionRunSummary) : null,
+  lastRun:
+    p?.lastRunAt && p.lastRunJson
+      ? ({
+          at: p.lastRunAt.toISOString(),
+          dryRun: p.lastRunDryRun ?? true,
+          ...(p.lastRunJson as unknown as RetentionCounts),
+        } satisfies RetentionRunSummary)
+      : null,
   rowCap: config.RETENTION_ROW_CAP,
   classes: RETENTION_CLASSES.map((c) => ({ key: c, ...CLASS_INFO[c] })),
 });
@@ -72,20 +99,51 @@ export const policyView = (p: Policy | null) => ({
 /** The audit sanitiser redacts any key containing "token", which would blank the counts and days of that class. */
 const auditSafe = <T extends Record<string, unknown>>(o: T) => {
   const { tokens, tokensDays, ...rest } = o as Record<string, unknown>;
-  return { ...rest, ...(tokens !== undefined ? { expiredLinks: tokens } : {}), ...(tokensDays !== undefined ? { expiredLinksDays: tokensDays } : {}) };
+  return {
+    ...rest,
+    ...(tokens !== undefined ? { expiredLinks: tokens } : {}),
+    ...(tokensDays !== undefined ? { expiredLinksDays: tokensDays } : {}),
+  };
 };
 
 export const loadPolicy = (tenantId: string) => prisma.retentionPolicy.findFirst({ where: { tenantId } });
 
-export async function savePolicy(tenantId: string, input: RetentionPolicyInput, userId: string | null, ctx: { ipAddress?: string; userAgent?: string } = {}) {
+export async function savePolicy(
+  tenantId: string,
+  input: RetentionPolicyInput,
+  userId: string | null,
+  ctx: { ipAddress?: string; userAgent?: string } = {}
+) {
   const before = await loadPolicy(tenantId);
-  const saved = await prisma.retentionPolicy.upsert({ where: { tenantId }, create: { tenantId, ...input, updatedById: userId }, update: { ...input, updatedById: userId } });
-  await logAuditEvent({ tenantId, userId, action: 'RETENTION_POLICY_CHANGED', resourceType: 'RETENTION_POLICY', resourceId: tenantId, ipAddress: ctx.ipAddress, userAgent: ctx.userAgent, diffJson: { before: before ? auditSafe({ ...policyView(before), lastRun: undefined, classes: undefined }) : null, after: auditSafe(input) } });
+  const saved = await prisma.retentionPolicy.upsert({
+    where: { tenantId },
+    create: { tenantId, ...input, updatedById: userId },
+    update: { ...input, updatedById: userId },
+  });
+  await logAuditEvent({
+    tenantId,
+    userId,
+    action: 'RETENTION_POLICY_CHANGED',
+    resourceType: 'RETENTION_POLICY',
+    resourceId: tenantId,
+    ipAddress: ctx.ipAddress,
+    userAgent: ctx.userAgent,
+    diffJson: {
+      before: before ? auditSafe({ ...policyView(before), lastRun: undefined, classes: undefined }) : null,
+      after: auditSafe(input),
+    },
+  });
   return saved;
 }
 
 /** Removes (or counts) up to `cap` rows with the given ids in one go; returns what was handled. */
-async function inBatches<T extends { id: string }>(find: (take: number) => Promise<T[]>, total: () => Promise<number>, act: (rows: T[]) => Promise<void>, dryRun: boolean, cap: number): Promise<{ done: number; remaining: number }> {
+async function inBatches<T extends { id: string }>(
+  find: (take: number) => Promise<T[]>,
+  total: () => Promise<number>,
+  act: (rows: T[]) => Promise<void>,
+  dryRun: boolean,
+  cap: number
+): Promise<{ done: number; remaining: number }> {
   if (dryRun) return { done: await total(), remaining: 0 };
   const rows = await find(cap);
   if (rows.length) await act(rows);
@@ -97,7 +155,11 @@ async function inBatches<T extends { id: string }>(find: (take: number) => Promi
  * Applies a policy to its organisation. `dryRun` overrides the policy's own setting (a manual "what would happen"
  * run); `now` and `cap` are for tests. Must run inside the organisation's tenant context.
  */
-export async function applyRetention(tenantId: string, policy: Pick<Policy, 'notificationsDays' | 'tokensDays' | 'proctoringDays' | 'supportAccessDays' | 'infectedFilesDays'>, opts: { dryRun: boolean; now?: Date; cap?: number }): Promise<RetentionCounts> {
+export async function applyRetention(
+  tenantId: string,
+  policy: Pick<Policy, 'notificationsDays' | 'tokensDays' | 'proctoringDays' | 'supportAccessDays' | 'infectedFilesDays'>,
+  opts: { dryRun: boolean; now?: Date; cap?: number }
+): Promise<RetentionCounts> {
   const now = opts.now ?? new Date();
   const cap = opts.cap ?? config.RETENTION_ROW_CAP;
   const cutoff = (n: number) => new Date(now.getTime() - n * DAY_MS);
@@ -157,7 +219,11 @@ export async function applyRetention(tenantId: string, policy: Pick<Policy, 'not
       await inBatches(
         (take) => prisma.proctoringLog.findMany({ where, select: { id: true }, take }),
         () => prisma.proctoringLog.count({ where }),
-        async (rows) => void (await prisma.proctoringLog.updateMany({ where: { id: { in: rows.map((r) => r.id) } }, data: { snapshotUrl: null, metadataJson: Prisma.DbNull } })),
+        async (rows) =>
+          void (await prisma.proctoringLog.updateMany({
+            where: { id: { in: rows.map((r) => r.id) } },
+            data: { snapshotUrl: null, metadataJson: Prisma.DbNull },
+          })),
         opts.dryRun,
         cap
       )
@@ -216,14 +282,24 @@ export async function applyRetention(tenantId: string, policy: Pick<Policy, 'not
  * Runs the organisation's policy now and records the run (summary on the policy, one audit entry). A manual run
  * may ask for a dry run; a policy that is not enabled is only ever run dry.
  */
-export async function runRetention(tenantId: string, opts: { dryRun?: boolean; userId?: string | null; scheduled?: boolean; now?: Date; ctx?: { ipAddress?: string; userAgent?: string } } = {}): Promise<RetentionRunSummary> {
+export async function runRetention(
+  tenantId: string,
+  opts: { dryRun?: boolean; userId?: string | null; scheduled?: boolean; now?: Date; ctx?: { ipAddress?: string; userAgent?: string } } = {}
+): Promise<RetentionRunSummary> {
   const policy = await loadPolicy(tenantId);
   if (!policy) throw Object.assign(new Error('No retention policy'), { noPolicy: true });
   const dryRun = !policy.enabled || (opts.dryRun ?? policy.dryRun);
   const now = opts.now ?? new Date();
   const result = await applyRetention(tenantId, policy, { dryRun, now });
   const summary: RetentionRunSummary = { at: now.toISOString(), dryRun, ...result };
-  await prisma.retentionPolicy.update({ where: { tenantId }, data: { lastRunAt: now, lastRunDryRun: dryRun, lastRunJson: { counts: result.counts, remaining: result.remaining } as unknown as Prisma.InputJsonValue } });
+  await prisma.retentionPolicy.update({
+    where: { tenantId },
+    data: {
+      lastRunAt: now,
+      lastRunDryRun: dryRun,
+      lastRunJson: { counts: result.counts, remaining: result.remaining } as unknown as Prisma.InputJsonValue,
+    },
+  });
   await logAuditEvent({
     tenantId,
     userId: opts.userId ?? null,
@@ -232,7 +308,11 @@ export async function runRetention(tenantId: string, opts: { dryRun?: boolean; u
     resourceId: tenantId,
     ipAddress: opts.ctx?.ipAddress,
     userAgent: opts.ctx?.userAgent,
-    diffJson: { by: opts.scheduled ? 'SCHEDULE' : 'ADMINISTRATOR', counts: auditSafe(result.counts), remaining: auditSafe(result.remaining) },
+    diffJson: {
+      by: opts.scheduled ? 'SCHEDULE' : 'ADMINISTRATOR',
+      counts: auditSafe(result.counts),
+      remaining: auditSafe(result.remaining),
+    },
   });
   return summary;
 }
@@ -256,7 +336,10 @@ export async function runRetentionJob(now = new Date()): Promise<RetentionJobRes
         if (!policy?.enabled) return;
         if (policy.lastRunAt && now.getTime() - policy.lastRunAt.getTime() < 20 * 60 * 60 * 1000) return;
         // Claim the run: a conditional update on the last-run time, so only one process proceeds.
-        const claim = await prisma.retentionPolicy.updateMany({ where: { tenantId: t.id, lastRunAt: policy.lastRunAt }, data: { lastRunAt: now } });
+        const claim = await prisma.retentionPolicy.updateMany({
+          where: { tenantId: t.id, lastRunAt: policy.lastRunAt },
+          data: { lastRunAt: now },
+        });
         if (claim.count !== 1) return;
         const summary = await runRetention(t.id, { scheduled: true, now });
         result.organisations++;

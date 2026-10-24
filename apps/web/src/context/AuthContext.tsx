@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
-import { PUBLIC_PATHS, canView, homeFor, type Role } from "@/lib/roles";
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { api, ApiError } from '@/lib/api';
+import { PUBLIC_PATHS, canView, homeFor, type Role } from '@/lib/roles';
 
 export interface UserSession {
   id: string;
@@ -53,8 +53,8 @@ function toSession(u: ApiUser): UserSession {
     name: `${u.firstName} ${u.lastName}`.trim(),
     role: u.role,
     tenantId: u.tenantId,
-    tenantName: u.tenant?.name ?? "",
-    tenantSlug: u.tenant?.slug ?? "",
+    tenantName: u.tenant?.name ?? '',
+    tenantSlug: u.tenant?.slug ?? '',
     organizationUrl: u.organizationUrl ?? null,
     platformOperator: u.platformOperator === true,
     // Operators land in the platform console; everyone else in their role's area.
@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let cancelled = false;
     api
-      .get<{ user: ApiUser }>("/api/v1/auth/me")
+      .get<{ user: ApiUser }>('/api/v1/auth/me')
       .then((data) => {
         if (!cancelled) setUser(toSession(data.user));
       })
@@ -93,21 +93,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isLoading) return;
 
     // Links from notifications and emails sign people in themselves (see DeepLink), keeping the destination.
-    if (PUBLIC_PATHS.includes(pathname) || ["/courses/", "/quizzes/", "/assignments/"].some((p) => pathname.startsWith(p))) return;
+    if (PUBLIC_PATHS.includes(pathname) || ['/courses/', '/quizzes/', '/assignments/'].some((p) => pathname.startsWith(p))) return;
 
     if (!user) {
-      router.replace("/login");
+      router.replace('/login');
       return;
     }
 
     if (!canView(user, pathname)) {
-      router.replace(user.targetRoute || "/login");
+      router.replace(user.targetRoute || '/login');
     }
   }, [user, isLoading, pathname, router]);
 
   const login = useCallback(async (email: string, password: string, mfaCode?: string) => {
     try {
-      const data = await api.post<{ user: ApiUser }>("/api/v1/auth/login", {
+      const data = await api.post<{ user: ApiUser }>('/api/v1/auth/login', {
         email,
         password,
         ...(mfaCode ? { mfaCode } : {}),
@@ -116,8 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session);
       return { success: true, targetRoute: session.targetRoute };
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Unable to reach the server. Please try again.";
+      const message = err instanceof ApiError ? err.message : 'Unable to reach the server. Please try again.';
       // The password was right but the account needs its second factor.
       const mfaRequired = err instanceof ApiError && err.status === 401 && err.details?.mfaRequired === true;
       return { success: false, error: message, mfaRequired };
@@ -126,24 +125,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async () => {
     try {
-      await api.post("/api/v1/auth/logout");
+      await api.post('/api/v1/auth/logout');
     } finally {
       setUser(null);
-      router.push("/login");
+      router.push('/login');
     }
   }, [router]);
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, isLoading, login, logout }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };

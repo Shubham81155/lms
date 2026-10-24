@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { useTheme } from "@/context/ThemeContext";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useTheme } from '@/context/ThemeContext';
 
 // Cloudflare Turnstile CAPTCHA for public forms. The site key comes from the API (GET
 // /api/v1/organizations/captcha); with none, the CAPTCHA is off and this renders nothing. Each token can be
 // checked once only, so a form calls reset() after a refused submit to get a fresh one.
 
-const SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+const SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 interface TurnstileOptions {
   sitekey: string;
   action?: string;
-  theme?: "light" | "dark" | "auto";
-  size?: "normal" | "flexible" | "compact";
-  retry?: "auto" | "never";
-  "refresh-expired"?: "auto" | "manual" | "never";
+  theme?: 'light' | 'dark' | 'auto';
+  size?: 'normal' | 'flexible' | 'compact';
+  retry?: 'auto' | 'never';
+  'refresh-expired'?: 'auto' | 'manual' | 'never';
   callback?: (token: string) => void;
-  "error-callback"?: (code: string) => boolean | void;
-  "expired-callback"?: () => void;
-  "timeout-callback"?: () => void;
+  'error-callback'?: (code: string) => boolean | void;
+  'expired-callback'?: () => void;
+  'timeout-callback'?: () => void;
 }
 
 interface Turnstile {
@@ -41,11 +41,11 @@ function loadTurnstile(): Promise<Turnstile> {
   if (window.turnstile) return Promise.resolve(window.turnstile);
   if (!loading) {
     loading = new Promise<Turnstile>((resolve, reject) => {
-      const script = document.createElement("script");
+      const script = document.createElement('script');
       script.src = SCRIPT_URL;
       script.async = true;
-      script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("Turnstile did not load")));
-      script.onerror = () => reject(new Error("Turnstile did not load"));
+      script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error('Turnstile did not load')));
+      script.onerror = () => reject(new Error('Turnstile did not load'));
       document.head.appendChild(script);
     }).catch((err) => {
       loading = null; // a later mount may try again
@@ -78,12 +78,16 @@ export const Captcha = forwardRef<CaptchaHandle, CaptchaProps>(function Captcha(
   onTokenRef.current = onToken;
   const [problem, setProblem] = useState<string | null>(null);
 
-  useImperativeHandle(ref, () => ({
-    reset() {
-      onTokenRef.current(null);
-      if (widget.current) widget.current.api.reset(widget.current.id);
-    },
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      reset() {
+        onTokenRef.current(null);
+        if (widget.current) widget.current.api.reset(widget.current.id);
+      },
+    }),
+    []
+  );
 
   // Rendered again when the theme changes: Turnstile cannot restyle a widget in place.
   useEffect(() => {
@@ -103,24 +107,24 @@ export const Captcha = forwardRef<CaptchaHandle, CaptchaProps>(function Captcha(
           sitekey: siteKey,
           action,
           theme,
-          size: "flexible",
-          retry: "never",
-          "refresh-expired": "manual",
+          size: 'flexible',
+          retry: 'never',
+          'refresh-expired': 'manual',
           callback: (token) => {
             setProblem(null);
             onTokenRef.current(token);
           },
-          "error-callback": () => {
+          'error-callback': () => {
             onTokenRef.current(null);
-            setProblem("The security check failed to run. Trying again…");
+            setProblem('The security check failed to run. Trying again…');
             resetSoon(3000);
             return true;
           },
-          "expired-callback": () => {
+          'expired-callback': () => {
             onTokenRef.current(null);
             resetSoon(0);
           },
-          "timeout-callback": () => {
+          'timeout-callback': () => {
             onTokenRef.current(null);
             resetSoon(0);
           },
@@ -130,7 +134,9 @@ export const Captcha = forwardRef<CaptchaHandle, CaptchaProps>(function Captcha(
       .catch(() => {
         if (!alive) return;
         onTokenRef.current(null);
-        setProblem("The security check could not load. Check your connection or allow challenges.cloudflare.com in any content blocker, then reload the page.");
+        setProblem(
+          'The security check could not load. Check your connection or allow challenges.cloudflare.com in any content blocker, then reload the page.'
+        );
       });
     return () => {
       alive = false;
@@ -146,7 +152,11 @@ export const Captcha = forwardRef<CaptchaHandle, CaptchaProps>(function Captcha(
   return (
     <div className={className}>
       <div ref={container} className="min-h-[65px]" />
-      {problem && <p role="alert" className="mt-1.5 text-[11px] text-danger">{problem}</p>}
+      {problem && (
+        <p role="alert" className="mt-1.5 text-[11px] text-danger">
+          {problem}
+        </p>
+      )}
     </div>
   );
 });

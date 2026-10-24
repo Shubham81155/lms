@@ -64,7 +64,8 @@ export interface SamlFlow {
   origin: string;
 }
 
-export const signSamlFlow = (f: SamlFlow) => jwt.sign(f, config.JWT_SECRET, { algorithm: 'HS256', audience: FLOW_AUDIENCE, expiresIn: '10m' });
+export const signSamlFlow = (f: SamlFlow) =>
+  jwt.sign(f, config.JWT_SECRET, { algorithm: 'HS256', audience: FLOW_AUDIENCE, expiresIn: '10m' });
 
 export function readSamlFlow(token: string | undefined): SamlFlow | null {
   if (!token) return null;
@@ -86,11 +87,20 @@ export const safeEqual = (a: string, b: string) => {
  * Validates and normalises what an administrator pastes as the IdP's signing key: a certificate
  * (checked for validity dates) or a public key. A private key is refused outright.
  */
-export function parseIdpKey(input: string): { pem: string; kind: 'CERTIFICATE' | 'PUBLIC KEY'; fingerprint: string; notAfter: Date | null } {
+export function parseIdpKey(input: string): {
+  pem: string;
+  kind: 'CERTIFICATE' | 'PUBLIC KEY';
+  fingerprint: string;
+  notAfter: Date | null;
+} {
   const raw = input.trim();
-  if (/PRIVATE KEY/.test(raw)) throw new SamlError('That is a private key. Paste the IdP\'s public certificate instead.');
+  if (/PRIVATE KEY/.test(raw)) throw new SamlError("That is a private key. Paste the IdP's public certificate instead.");
 
-  const pemOf = (label: string, b64: string) => `-----BEGIN ${label}-----\n${b64.replace(/\s+/g, '').replace(/(.{64})/g, '$1\n').trim()}\n-----END ${label}-----`;
+  const pemOf = (label: string, b64: string) =>
+    `-----BEGIN ${label}-----\n${b64
+      .replace(/\s+/g, '')
+      .replace(/(.{64})/g, '$1\n')
+      .trim()}\n-----END ${label}-----`;
   try {
     if (/BEGIN PUBLIC KEY/.test(raw)) {
       const key = crypto.createPublicKey(raw);
@@ -143,9 +153,28 @@ export function responseSucceeded(samlResponseBase64: string): boolean {
  * (a transient NameID), in which case the account is found by e-mail on every sign-in.
  */
 // Name attributes as Azure AD / Entra, Okta, Google, Shibboleth (eduPerson OIDs) and ADFS send them.
-const GIVEN_NAME = ['givenName', 'firstName', 'given_name', 'urn:oid:2.5.4.42', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'];
-const SURNAME = ['sn', 'surname', 'lastName', 'family_name', 'urn:oid:2.5.4.4', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'];
-const DISPLAY_NAME = ['displayName', 'cn', 'name', 'urn:oid:2.16.840.1.113730.3.1.241', 'http://schemas.microsoft.com/identity/claims/displayname'];
+const GIVEN_NAME = [
+  'givenName',
+  'firstName',
+  'given_name',
+  'urn:oid:2.5.4.42',
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname',
+];
+const SURNAME = [
+  'sn',
+  'surname',
+  'lastName',
+  'family_name',
+  'urn:oid:2.5.4.4',
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname',
+];
+const DISPLAY_NAME = [
+  'displayName',
+  'cn',
+  'name',
+  'urn:oid:2.16.840.1.113730.3.1.241',
+  'http://schemas.microsoft.com/identity/claims/displayname',
+];
 
 /** The person's names from the assertion's attributes, for an account created at first sign-in. */
 export function namesFromProfile(profile: Profile): { firstName: string | null; lastName: string | null } {

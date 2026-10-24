@@ -24,7 +24,18 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('dean', 'TENANT_ADMIN');
   await user('teacher', 'INSTRUCTOR');
   await user('co-teacher', 'INSTRUCTOR');
@@ -32,13 +43,37 @@ beforeAll(async () => {
   await user('ta', 'TEACHING_ASSISTANT');
   await user('s1', 'STUDENT');
 
-  await admin.term.create({ data: { id: 'fall', tenantId: 't-h', name: 'Fall 2026', startsOn: new Date('2026-09-01T00:00:00Z'), endsOn: new Date('2026-12-20T00:00:00Z') } });
-  await admin.term.create({ data: { id: 'spring', tenantId: 't-h', name: 'Spring 2027', startsOn: new Date('2027-01-15T00:00:00Z'), endsOn: new Date('2027-05-10T00:00:00Z') } });
+  await admin.term.create({
+    data: {
+      id: 'fall',
+      tenantId: 't-h',
+      name: 'Fall 2026',
+      startsOn: new Date('2026-09-01T00:00:00Z'),
+      endsOn: new Date('2026-12-20T00:00:00Z'),
+    },
+  });
+  await admin.term.create({
+    data: {
+      id: 'spring',
+      tenantId: 't-h',
+      name: 'Spring 2027',
+      startsOn: new Date('2027-01-15T00:00:00Z'),
+      endsOn: new Date('2027-05-10T00:00:00Z'),
+    },
+  });
 
   await admin.course.create({
     data: {
-      id: 'c1', tenantId: 't-h', code: 'CS101-F26', title: 'Intro to CS', status: 'PUBLISHED', termId: 'fall', syllabus: 'Week 1: basics',
-      passingGradePercent: 60, gradeCurveMethod: 'ADD_POINTS', gradeCurveValue: 3,
+      id: 'c1',
+      tenantId: 't-h',
+      code: 'CS101-F26',
+      title: 'Intro to CS',
+      status: 'PUBLISHED',
+      termId: 'fall',
+      syllabus: 'Week 1: basics',
+      passingGradePercent: 60,
+      gradeCurveMethod: 'ADD_POINTS',
+      gradeCurveValue: 3,
     },
   });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
@@ -47,19 +82,47 @@ beforeAll(async () => {
   await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: 's1', status: 'IN_PROGRESS' } });
   await admin.gradeCategory.create({ data: { id: 'cat-exams', tenantId: 't-h', courseId: 'c1', name: 'Exams', weightPercent: 100 } });
   await admin.module.create({
-    data: { id: 'm1', courseId: 'c1', title: 'Week 1', orderIndex: 0, lessons: { create: [{ id: 'l1', title: 'Reading', orderIndex: 0 }, { id: 'l2', title: 'Slides', contentType: 'PDF_DOCUMENT', orderIndex: 1 }] } },
+    data: {
+      id: 'm1',
+      courseId: 'c1',
+      title: 'Week 1',
+      orderIndex: 0,
+      lessons: {
+        create: [
+          { id: 'l1', title: 'Reading', orderIndex: 0 },
+          { id: 'l2', title: 'Slides', contentType: 'PDF_DOCUMENT', orderIndex: 1 },
+        ],
+      },
+    },
   });
   await admin.quiz.create({
     data: {
-      id: 'q1', tenantId: 't-h', courseId: 'c1', title: 'Midterm', gradeCategoryId: 'cat-exams', dueAt: new Date('2026-10-15T12:00:00Z'), availableFrom: new Date('2026-10-14T12:00:00Z'),
+      id: 'q1',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Midterm',
+      gradeCategoryId: 'cat-exams',
+      dueAt: new Date('2026-10-15T12:00:00Z'),
+      availableFrom: new Date('2026-10-14T12:00:00Z'),
       questions: { create: [{ questionText: '2 + 2?', points: 2, optionsJson: [{ id: 'o4', text: '4', isCorrect: true }] }] },
     },
   });
   await admin.assignment.create({
-    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 10, dueDate: new Date('2026-11-01T12:00:00Z'), rubricJson: [{ id: 'r1', name: 'Clarity', maxPoints: 10 }] },
+    data: {
+      id: 'a1',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Essay',
+      instructions: 'Write',
+      maxPoints: 10,
+      dueDate: new Date('2026-11-01T12:00:00Z'),
+      rubricJson: [{ id: 'r1', name: 'Clarity', maxPoints: 10 }],
+    },
   });
   await admin.assignmentSubmission.create({ data: { assignmentId: 'a1', userId: 's1', submissionText: 'mine', grade: 9 } });
-  await admin.questionBankItem.create({ data: { tenantId: 't-h', courseId: 'c1', ownerId: 'teacher', questionText: 'Bank question', tags: ['week1'] } });
+  await admin.questionBankItem.create({
+    data: { tenantId: 't-h', courseId: 'c1', ownerId: 'teacher', questionText: 'Bank question', tags: ['week1'] },
+  });
 
   dir = await mkdtemp(path.join(os.tmpdir(), 'lms-copy-test-'));
   process.env.DATABASE_URL = db.appUrl;
@@ -77,7 +140,10 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -99,7 +165,10 @@ function check(key: string, res: { status: number; body: any }, status: number) 
 describe('terms', () => {
   it('are listed for everyone and managed by administrators', async () => {
     const list = check('GET /api/v1/terms', await (await as('s1')).get('/api/v1/terms'), 200);
-    expect(list.data.map((t: any) => [t.name, t.courseCount])).toEqual([['Spring 2027', 0], ['Fall 2026', 1]]);
+    expect(list.data.map((t: any) => [t.name, t.courseCount])).toEqual([
+      ['Spring 2027', 0],
+      ['Fall 2026', 1],
+    ]);
 
     const body = { name: 'Summer 2027', startsOn: '2027-06-01', endsOn: '2027-08-15' };
     expect((await (await as('teacher')).post('/api/v1/terms').send(body)).status).toBe(403);
@@ -136,24 +205,52 @@ describe('course copy', () => {
 
   it('copies the material into a draft in the new term, dates moved by the gap between terms', async () => {
     const t = await as('teacher');
-    const up = await t.post('/api/v1/files').query({ purpose: 'LESSON_MEDIA', courseId: 'c1', filename: 'slides.pdf' }).set('content-type', 'application/pdf').send(Buffer.from('%PDF-1.4 slides'));
+    const up = await t
+      .post('/api/v1/files')
+      .query({ purpose: 'LESSON_MEDIA', courseId: 'c1', filename: 'slides.pdf' })
+      .set('content-type', 'application/pdf')
+      .send(Buffer.from('%PDF-1.4 slides'));
     expect(up.status).toBe(201);
     lessonFileUrl = up.body.data.url;
     expect((await t.patch('/api/v1/courses/c1/lessons/l2').send({ mediaUrl: lessonFileUrl })).status).toBe(200);
 
-    const res = check('POST /api/v1/courses/:id/copy', await t.post('/api/v1/courses/c1/copy').send({ code: 'CS101-S27', termId: 'spring' }), 201);
+    const res = check(
+      'POST /api/v1/courses/:id/copy',
+      await t.post('/api/v1/courses/c1/copy').send({ code: 'CS101-S27', termId: 'spring' }),
+      201
+    );
     const shift = Math.round((Date.parse('2027-01-15T00:00:00Z') - Date.parse('2026-09-01T00:00:00Z')) / DAY);
     expect(res.data.shiftDays).toBe(shift);
-    expect(res.data.copied).toEqual({ modules: 1, lessons: 2, quizzes: 1, questions: 1, assignments: 1, gradeCategories: 1, questionBankItems: 1, files: 1 });
+    expect(res.data.copied).toEqual({
+      modules: 1,
+      lessons: 2,
+      quizzes: 1,
+      questions: 1,
+      assignments: 1,
+      gradeCategories: 1,
+      questionBankItems: 1,
+      files: 1,
+    });
     expect(res.data.course).toMatchObject({ code: 'CS101-S27', title: 'Intro to CS', status: 'DRAFT', termId: 'spring' });
     copyId = res.data.course.id;
 
     const copy = await admin.course.findUniqueOrThrow({
       where: { id: copyId },
-      include: { instructors: true, enrollments: true, gradeCategories: true, quizzes: { include: { questions: true } }, assignments: { include: { submissions: true } }, modules: { include: { lessons: true } } },
+      include: {
+        instructors: true,
+        enrollments: true,
+        gradeCategories: true,
+        quizzes: { include: { questions: true } },
+        assignments: { include: { submissions: true } },
+        modules: { include: { lessons: true } },
+      },
     });
     expect(copy).toMatchObject({ syllabus: 'Week 1: basics', passingGradePercent: 60, gradeCurveMethod: 'ADD_POINTS', gradeCurveValue: 3 });
-    expect(copy.instructors.map((i) => [i.userId, i.isPrimary]).sort()).toEqual([['co-teacher', false], ['ta', false], ['teacher', true]]);
+    expect(copy.instructors.map((i) => [i.userId, i.isPrimary]).sort()).toEqual([
+      ['co-teacher', false],
+      ['ta', false],
+      ['teacher', true],
+    ]);
     expect(copy.enrollments).toEqual([]);
     expect(copy.assignments[0].submissions).toEqual([]);
     expect(copy.assignments[0].dueDate!.getTime()).toBe(Date.parse('2026-11-01T12:00:00Z') + shift * DAY);
@@ -167,7 +264,7 @@ describe('course copy', () => {
   });
 
   it('gives the copy its own copy of uploaded lesson files', async () => {
-    const lessons = (await admin.lesson.findMany({ where: { module: { courseId: copyId } }, orderBy: { orderIndex: 'asc' } }));
+    const lessons = await admin.lesson.findMany({ where: { module: { courseId: copyId } }, orderBy: { orderIndex: 'asc' } });
     const newUrl = lessons[1].mediaUrl!;
     expect(newUrl).toMatch(/^\/api\/v1\/files\//);
     expect(newUrl).not.toBe(lessonFileUrl);
@@ -182,13 +279,21 @@ describe('course copy', () => {
   });
 
   it('takes an explicit date shift and a new title, and stays in the term when none is given', async () => {
-    const res = check('POST /api/v1/courses/:id/copy', await (await as('dean')).post('/api/v1/courses/c1/copy').send({ code: 'CS101-F26B', title: 'Intro to CS (section B)', shiftDays: 0 }), 201);
+    const res = check(
+      'POST /api/v1/courses/:id/copy',
+      await (await as('dean')).post('/api/v1/courses/c1/copy').send({ code: 'CS101-F26B', title: 'Intro to CS (section B)', shiftDays: 0 }),
+      201
+    );
     expect(res.data).toMatchObject({ shiftDays: 0, course: { title: 'Intro to CS (section B)', termId: 'fall' } });
     const a = await admin.assignment.findFirstOrThrow({ where: { courseId: res.data.course.id } });
     expect(a.dueDate!.toISOString()).toBe('2026-11-01T12:00:00.000Z');
     // An administrator's copy keeps the original teaching team.
     const team = await admin.courseInstructor.findMany({ where: { courseId: res.data.course.id }, orderBy: { userId: 'asc' } });
-    expect(team.map((i) => [i.userId, i.isPrimary])).toEqual([['co-teacher', false], ['ta', false], ['teacher', true]]);
+    expect(team.map((i) => [i.userId, i.isPrimary])).toEqual([
+      ['co-teacher', false],
+      ['ta', false],
+      ['teacher', true],
+    ]);
     expect(await admin.auditLog.count({ where: { action: 'COURSE_COPIED' } })).toBe(2);
   });
 });

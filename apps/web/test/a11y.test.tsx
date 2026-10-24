@@ -19,7 +19,13 @@ async function violations(container: HTMLElement) {
   const result = await axe.run(container, {
     runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] },
     // Fragments have no page around them; jsdom has no layout, so contrast and size rules cannot run.
-    rules: { region: { enabled: false }, 'color-contrast': { enabled: false }, 'target-size': { enabled: false }, 'landmark-one-main': { enabled: false }, 'page-has-heading-one': { enabled: false } },
+    rules: {
+      region: { enabled: false },
+      'color-contrast': { enabled: false },
+      'target-size': { enabled: false },
+      'landmark-one-main': { enabled: false },
+      'page-has-heading-one': { enabled: false },
+    },
   });
   return result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.html).join(' | ')}`);
 }
@@ -30,7 +36,17 @@ describe('axe on shared components', () => {
       it(`the ${variant} sidebar of the ${area} area has no violations`, async () => {
         const sections = visibleSections(area, { privacy: () => {}, people: () => {} }, 'SUPER_ADMIN');
         const { container } = render(
-          <Sidebar area={area} sections={sections} activeKey={sections[0]?.items[0]?.key} variant={variant} onSelect={() => {}} onClose={() => {}} user={{ name: 'Ada Lovelace', role: 'SUPER_ADMIN' }} onOpenPrivacy={() => {}} onSignOut={() => {}} />,
+          <Sidebar
+            area={area}
+            sections={sections}
+            activeKey={sections[0]?.items[0]?.key}
+            variant={variant}
+            onSelect={() => {}}
+            onClose={() => {}}
+            user={{ name: 'Ada Lovelace', role: 'SUPER_ADMIN' }}
+            onOpenPrivacy={() => {}}
+            onSignOut={() => {}}
+          />
         );
         expect(await violations(container)).toEqual([]);
       });
@@ -38,14 +54,14 @@ describe('axe on shared components', () => {
   it('the sign-in card with a labelled form has no violations', async () => {
     const { container } = render(
       <ThemeProvider>
-      <AuthCard title="Sign in" subtitle="Welcome back">
-        <form>
-          <label htmlFor="e">E-mail</label>
-          <input id="e" type="email" autoComplete="username" className={inputClass} />
-          <button type="submit">Sign in</button>
-        </form>
-      </AuthCard>
-      </ThemeProvider>,
+        <AuthCard title="Sign in" subtitle="Welcome back">
+          <form>
+            <label htmlFor="e">E-mail</label>
+            <input id="e" type="email" autoComplete="username" className={inputClass} />
+            <button type="submit">Sign in</button>
+          </form>
+        </AuthCard>
+      </ThemeProvider>
     );
     expect(await violations(container)).toEqual([]);
   });
@@ -68,7 +84,10 @@ function Opener() {
   );
 }
 
-const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 40)); });
+const flush = () =>
+  act(async () => {
+    await new Promise((r) => setTimeout(r, 40));
+  });
 
 describe('modal dialogs', () => {
   it('take focus in, keep Tab inside, and give focus back to the opener', async () => {

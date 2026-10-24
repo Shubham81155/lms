@@ -19,51 +19,127 @@ export async function buildUserExport(userId: string, tenantId: string) {
   const user = await prisma.user.findFirst({
     where: { id: userId, tenantId },
     select: {
-      id: true, email: true, firstName: true, lastName: true, avatarUrl: true, role: true, status: true, emailVerified: true,
-      idpProvider: true, mfaEnabled: true, directoryOptOut: true, lastLoginAt: true, createdAt: true,
-      isMinor: true, guardianEmail: true, guardianConsentAt: true,
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      avatarUrl: true,
+      role: true,
+      status: true,
+      emailVerified: true,
+      idpProvider: true,
+      mfaEnabled: true,
+      directoryOptOut: true,
+      lastLoginAt: true,
+      createdAt: true,
+      isMinor: true,
+      guardianEmail: true,
+      guardianConsentAt: true,
     },
   });
   if (!user) return null;
 
-  const [enrollments, quizAttempts, assignments, notifications, preferences, threads, posts, grades, attendance, xapi, activity, guardians, scorm, consents] =
-    await Promise.all([
-      prisma.enrollment.findMany({
-        where: { userId, tenantId },
-        select: { courseId: true, status: true, progressPercent: true, finalGrade: true, enrolledAt: true, completedAt: true, certificate: { select: { certificateNumber: true, issuedAt: true, expiresAt: true } } },
-      }),
-      prisma.quizSubmission.findMany({
-        where: { userId, quiz: { tenantId } },
-        select: { id: true, quizId: true, attemptNumber: true, score: true, maxScore: true, passed: true, submittedAt: true, answersJson: true, proctoringLogs: { select: { eventType: true, severity: true, timestamp: true } } },
-      }),
-      prisma.assignmentSubmission.findMany({
-        where: { userId, assignment: { tenantId } },
-        select: {
-          id: true, assignmentId: true, fileUrl: true, submissionText: true, grade: true, feedback: true, plagiarismScore: true, submittedAt: true, gradedAt: true,
-          appeal: { select: { reason: true, status: true, response: true, createdAt: true } },
-          versions: { orderBy: { version: 'asc' }, select: { version: true, fileUrl: true, submissionText: true, submittedAt: true, isLate: true } },
+  const [
+    enrollments,
+    quizAttempts,
+    assignments,
+    notifications,
+    preferences,
+    threads,
+    posts,
+    grades,
+    attendance,
+    xapi,
+    activity,
+    guardians,
+    scorm,
+    consents,
+  ] = await Promise.all([
+    prisma.enrollment.findMany({
+      where: { userId, tenantId },
+      select: {
+        courseId: true,
+        status: true,
+        progressPercent: true,
+        finalGrade: true,
+        enrolledAt: true,
+        completedAt: true,
+        certificate: { select: { certificateNumber: true, issuedAt: true, expiresAt: true } },
+      },
+    }),
+    prisma.quizSubmission.findMany({
+      where: { userId, quiz: { tenantId } },
+      select: {
+        id: true,
+        quizId: true,
+        attemptNumber: true,
+        score: true,
+        maxScore: true,
+        passed: true,
+        submittedAt: true,
+        answersJson: true,
+        proctoringLogs: { select: { eventType: true, severity: true, timestamp: true } },
+      },
+    }),
+    prisma.assignmentSubmission.findMany({
+      where: { userId, assignment: { tenantId } },
+      select: {
+        id: true,
+        assignmentId: true,
+        fileUrl: true,
+        submissionText: true,
+        grade: true,
+        feedback: true,
+        plagiarismScore: true,
+        submittedAt: true,
+        gradedAt: true,
+        appeal: { select: { reason: true, status: true, response: true, createdAt: true } },
+        versions: {
+          orderBy: { version: 'asc' },
+          select: { version: true, fileUrl: true, submissionText: true, submittedAt: true, isLate: true },
         },
-      }),
-      prisma.notification.findMany({ where: { userId, tenantId }, select: { category: true, title: true, body: true, link: true, readAt: true, createdAt: true } }),
-      prisma.notificationPreference.findFirst({ where: { userId } }),
-      prisma.forumThread.findMany({ where: { authorId: userId, tenantId }, select: { id: true, courseId: true, title: true, body: true, createdAt: true } }),
-      prisma.forumPost.findMany({ where: { authorId: userId, tenantId }, select: { id: true, threadId: true, body: true, createdAt: true } }),
-      prisma.courseGrade.findMany({ where: { userId, tenantId }, select: { courseId: true, rawPercent: true, curvedPercent: true, letter: true, status: true, updatedAt: true } }),
-      prisma.liveAttendance.findMany({ where: { userId, tenantId } }),
-      prisma.xapiStatement.findMany({ where: { actorUserId: userId, tenantId }, select: { statementJson: true } }),
-      prisma.auditLog.findMany({
-        where: { userId, tenantId },
-        orderBy: { createdAt: 'desc' },
-        take: 5000,
-        select: { action: true, resourceType: true, resourceId: true, ipAddress: true, userAgent: true, createdAt: true },
-      }),
-      prisma.userGuardian.findMany({ where: { OR: [{ studentId: userId }, { guardianId: userId }] }, select: { studentId: true, guardianId: true, relation: true } }),
-      prisma.scormAttempt.findMany({ where: { userId, tenantId }, select: { packageId: true, status: true, scorePercent: true, completedAt: true, cmiJson: true, updatedAt: true } }),
-      consentHistory(tenantId, userId),
-    ]);
+      },
+    }),
+    prisma.notification.findMany({
+      where: { userId, tenantId },
+      select: { category: true, title: true, body: true, link: true, readAt: true, createdAt: true },
+    }),
+    prisma.notificationPreference.findFirst({ where: { userId } }),
+    prisma.forumThread.findMany({
+      where: { authorId: userId, tenantId },
+      select: { id: true, courseId: true, title: true, body: true, createdAt: true },
+    }),
+    prisma.forumPost.findMany({ where: { authorId: userId, tenantId }, select: { id: true, threadId: true, body: true, createdAt: true } }),
+    prisma.courseGrade.findMany({
+      where: { userId, tenantId },
+      select: { courseId: true, rawPercent: true, curvedPercent: true, letter: true, status: true, updatedAt: true },
+    }),
+    prisma.liveAttendance.findMany({ where: { userId, tenantId } }),
+    prisma.xapiStatement.findMany({ where: { actorUserId: userId, tenantId }, select: { statementJson: true } }),
+    prisma.auditLog.findMany({
+      where: { userId, tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
+      select: { action: true, resourceType: true, resourceId: true, ipAddress: true, userAgent: true, createdAt: true },
+    }),
+    prisma.userGuardian.findMany({
+      where: { OR: [{ studentId: userId }, { guardianId: userId }] },
+      select: { studentId: true, guardianId: true, relation: true },
+    }),
+    prisma.scormAttempt.findMany({
+      where: { userId, tenantId },
+      select: { packageId: true, status: true, scorePercent: true, completedAt: true, cmiJson: true, updatedAt: true },
+    }),
+    consentHistory(tenantId, userId),
+  ]);
 
   return {
-    exportMetadata: { format: 'LMS_PERSONAL_DATA_EXPORT_V1', generatedAt: new Date().toISOString(), subjectId: userId, regulation: 'GDPR Art. 15/20; DPDP Act s.11; FERPA 34 CFR 99.10' },
+    exportMetadata: {
+      format: 'LMS_PERSONAL_DATA_EXPORT_V1',
+      generatedAt: new Date().toISOString(),
+      subjectId: userId,
+      regulation: 'GDPR Art. 15/20; DPDP Act s.11; FERPA 34 CFR 99.10',
+    },
     profile: user,
     enrollments,
     quizAttempts,
@@ -100,10 +176,22 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
   await prisma.user.update({
     where: { id: userId },
     data: {
-      email: erasedEmail(userId), firstName: ERASED_NAME, lastName: 'User', avatarUrl: null, passwordHash: null,
-      emailVerified: false, idpProvider: null, idpSubjectId: null,
-      mfaEnabled: false, mfaSecret: null, mfaRecoveryHashes: [], lockedUntil: null, directoryOptOut: true,
-      status: 'SUSPENDED', erasedAt: new Date(), guardianEmail: null,
+      email: erasedEmail(userId),
+      firstName: ERASED_NAME,
+      lastName: 'User',
+      avatarUrl: null,
+      passwordHash: null,
+      emailVerified: false,
+      idpProvider: null,
+      idpSubjectId: null,
+      mfaEnabled: false,
+      mfaSecret: null,
+      mfaRecoveryHashes: [],
+      lockedUntil: null,
+      directoryOptOut: true,
+      status: 'SUSPENDED',
+      erasedAt: new Date(),
+      guardianEmail: null,
     },
   });
   await revokeSessions(userId);
@@ -116,19 +204,34 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
   await prisma.guardianConsentRequest.deleteMany({ where: { tenantId, userId } });
 
   // Free text the person wrote can contain anything; scores and grades are kept for the record.
-  await prisma.assignmentSubmission.updateMany({ where: { userId, assignment: { tenantId } }, data: { submissionText: null, fileUrl: null } });
-  await prisma.assignmentSubmissionVersion.updateMany({ where: { tenantId, submission: { userId } }, data: { submissionText: null, fileUrl: null } });
+  await prisma.assignmentSubmission.updateMany({
+    where: { userId, assignment: { tenantId } },
+    data: { submissionText: null, fileUrl: null },
+  });
+  await prisma.assignmentSubmissionVersion.updateMany({
+    where: { tenantId, submission: { userId } },
+    data: { submissionText: null, fileUrl: null },
+  });
   await eraseUploadsOf(userId, tenantId);
   // SCORM run-time data can hold anything the package stored (names, answers); status and score are kept.
   await prisma.scormAttempt.updateMany({ where: { userId, tenantId }, data: { cmiJson: {} } });
   await prisma.proctoringLog.updateMany({ where: { submission: { userId } }, data: { snapshotUrl: null } });
-  await prisma.forumThread.updateMany({ where: { authorId: userId, tenantId }, data: { title: '[removed]', body: '[removed]', hidden: true } });
+  await prisma.forumThread.updateMany({
+    where: { authorId: userId, tenantId },
+    data: { title: '[removed]', body: '[removed]', hidden: true },
+  });
   await prisma.forumPost.updateMany({ where: { authorId: userId, tenantId }, data: { body: '[removed]', hidden: true } });
 
   // xAPI statements embed the actor's name and e-mail; keep the verb and object, drop the actor.
-  const statements = await prisma.xapiStatement.findMany({ where: { actorUserId: userId, tenantId }, select: { id: true, statementJson: true } });
+  const statements = await prisma.xapiStatement.findMany({
+    where: { actorUserId: userId, tenantId },
+    select: { id: true, statementJson: true },
+  });
   for (const st of statements) {
-    const json = { ...((st.statementJson as Record<string, unknown>) ?? {}), actor: { objectType: 'Agent', name: 'Erased user', account: { homePage: 'urn:lms:erased', name: userId } } };
+    const json = {
+      ...((st.statementJson as Record<string, unknown>) ?? {}),
+      actor: { objectType: 'Agent', name: 'Erased user', account: { homePage: 'urn:lms:erased', name: userId } },
+    };
     await prisma.xapiStatement.update({ where: { id: st.id }, data: { statementJson: json as any } });
   }
 }

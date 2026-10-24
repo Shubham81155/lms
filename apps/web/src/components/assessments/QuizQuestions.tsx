@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
-import { useAction, useApiData } from "@/hooks/useApiData";
-import { Banner } from "@/components/admin/IdentityPanels";
-import { draftProblem, type ChoiceOption } from "@/lib/forms";
-import { QuestionFields, blankQuestion, questionBody, type QuestionDraft } from "./QuestionFields";
-import { card, ghost, label, primary } from "./ui";
+import React, { useState } from 'react';
+import { Trash2 } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAction, useApiData } from '@/hooks/useApiData';
+import { Banner } from '@/components/admin/IdentityPanels';
+import { draftProblem, type ChoiceOption } from '@/lib/forms';
+import { QuestionFields, blankQuestion, questionBody, type QuestionDraft } from './QuestionFields';
+import { card, ghost, label, primary } from './ui';
 
 interface ApiQuestion {
   id: string;
@@ -24,8 +24,8 @@ const toDraft = (q: ApiQuestion): QuestionDraft => ({
   text: q.questionText,
   points: String(q.points),
   options: q.optionsJson ?? [],
-  answer: q.correctAnswer ?? "",
-  bloom: q.bloomLevel ?? "",
+  answer: q.correctAnswer ?? '',
+  bloom: q.bloomLevel ?? '',
 });
 
 interface FormProps {
@@ -50,7 +50,7 @@ const QuestionForm: React.FC<FormProps> = ({ initial, saveLabel, busy, onSave, o
       <QuestionFields d={d} set={(p) => setD((x) => ({ ...x, ...p }))} />
       <div className="flex items-center gap-3">
         <button className={primary} disabled={busy || !!problem}>
-          {busy ? "Saving…" : saveLabel}
+          {busy ? 'Saving…' : saveLabel}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
           Cancel
@@ -65,13 +65,13 @@ const QuestionForm: React.FC<FormProps> = ({ initial, saveLabel, busy, onSave, o
 export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChanged: () => void }> = ({ quizId, canEdit, onChanged }) => {
   const quiz = useApiData<{ data: { questions: ApiQuestion[] } }>(`/api/v1/quizzes/${quizId}`);
   const { busy, error, run, clearError } = useAction();
-  const [editing, setEditing] = useState<ApiQuestion | "new" | null>(null);
+  const [editing, setEditing] = useState<ApiQuestion | 'new' | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const questions = quiz.data?.data.questions ?? [];
 
   const save = (d: QuestionDraft) =>
     run(async () => {
-      if (editing && editing !== "new") await api.patch(`/api/v1/quizzes/${quizId}/questions/${editing.id}`, questionBody(d));
+      if (editing && editing !== 'new') await api.patch(`/api/v1/quizzes/${quizId}/questions/${editing.id}`, questionBody(d));
       else await api.post(`/api/v1/quizzes/${quizId}/questions`, questionBody(d));
       setEditing(null);
       await quiz.reload();
@@ -91,13 +91,15 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
       {(error || quiz.error) && <Banner kind="error">{error || quiz.error}</Banner>}
       {quiz.isLoading && !quiz.data && <p className="text-xs text-ink-subtle">Loading questions…</p>}
 
-      {!quiz.isLoading && questions.length === 0 && editing !== "new" && (
-        <p className={`${card} text-center text-xs text-ink-muted`}>No questions yet. {canEdit ? "Add one below, or copy several from the question bank." : ""}</p>
+      {!quiz.isLoading && questions.length === 0 && editing !== 'new' && (
+        <p className={`${card} text-center text-xs text-ink-muted`}>
+          No questions yet. {canEdit ? 'Add one below, or copy several from the question bank.' : ''}
+        </p>
       )}
 
       <ol className="space-y-2">
         {questions.map((q, i) =>
-          editing !== "new" && editing?.id === q.id ? (
+          editing !== 'new' && editing?.id === q.id ? (
             <li key={q.id}>
               <QuestionForm initial={toDraft(q)} saveLabel="Save question" busy={busy} onSave={save} onCancel={() => setEditing(null)} />
             </li>
@@ -109,7 +111,9 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
                 <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
                   <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-ink">{label(q.questionType)}</span>
                   <span className="rounded-full border border-line bg-surface px-2 py-0.5 text-ink">{q.points} pt</span>
-                  {q.bloomLevel && <span className="rounded-full border border-orchid/30 bg-orchid/15 px-2 py-0.5 text-orchid">{label(q.bloomLevel)}</span>}
+                  {q.bloomLevel && (
+                    <span className="rounded-full border border-orchid/30 bg-orchid/15 px-2 py-0.5 text-orchid">{label(q.bloomLevel)}</span>
+                  )}
                 </div>
               </div>
               {canEdit &&
@@ -125,7 +129,14 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
                   </div>
                 ) : (
                   <div className="flex gap-2">
-                    <button className={ghost} onClick={() => { clearError(); setEditing(q); }} aria-label={`Edit question ${i + 1}`}>
+                    <button
+                      className={ghost}
+                      onClick={() => {
+                        clearError();
+                        setEditing(q);
+                      }}
+                      aria-label={`Edit question ${i + 1}`}
+                    >
                       Edit
                     </button>
                     <button className={ghost} onClick={() => setDeleting(q.id)} aria-label={`Delete question ${i + 1}`}>
@@ -139,10 +150,16 @@ export const QuizQuestions: React.FC<{ quizId: string; canEdit: boolean; onChang
       </ol>
 
       {canEdit &&
-        (editing === "new" ? (
+        (editing === 'new' ? (
           <QuestionForm initial={blankQuestion()} saveLabel="Add question" busy={busy} onSave={save} onCancel={() => setEditing(null)} />
         ) : (
-          <button className={ghost} onClick={() => { clearError(); setEditing("new"); }}>
+          <button
+            className={ghost}
+            onClick={() => {
+              clearError();
+              setEditing('new');
+            }}
+          >
             + Add question
           </button>
         ))}

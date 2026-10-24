@@ -61,7 +61,7 @@ export function clamdScanner(host: string, port: number, timeoutMs: number): Vir
           const found = /^stream: (.+) FOUND$/.exec(line);
           if (found) return finish(null, { infected: true, signature: found[1] });
           if (/size limit exceeded/i.test(line)) return finish(new ScanLimitExceededError());
-          finish(new ScanUnavailableError(line ?`the virus scanner replied: ${line}` : 'the virus scanner closed the connection'));
+          finish(new ScanUnavailableError(line ? `the virus scanner replied: ${line}` : 'the virus scanner closed the connection'));
         };
 
         socket.on('error', (e) => {
@@ -158,9 +158,15 @@ export async function scanPendingFiles(opts: { batch?: number } = {}): Promise<S
           await prisma.storedFile.update({ where: { id: file.id }, data: { scanStatus, scannedAt: new Date() } });
           if (result.infected) {
             totals.infected++;
-            logger.warn({ fileId: file.id, tenantId: tenant.id, signature: result.signature }, 'malware found in a stored file; it is no longer served');
+            logger.warn(
+              { fileId: file.id, tenantId: tenant.id, signature: result.signature },
+              'malware found in a stored file; it is no longer served'
+            );
             await logAuditEvent({
-              tenantId: tenant.id, action: 'FILE_MALWARE_FOUND', resourceType: 'FILE', resourceId: file.id,
+              tenantId: tenant.id,
+              action: 'FILE_MALWARE_FOUND',
+              resourceType: 'FILE',
+              resourceId: file.id,
               diffJson: { signature: result.signature, purpose: file.purpose, courseId: file.courseId, sha256: file.sha256 },
             });
           } else totals.clean++;

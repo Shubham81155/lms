@@ -17,8 +17,8 @@ name: enterprise-lms
 x-logging: &logging
   driver: json-file
   options:
-    max-size: "20m"
-    max-file: "5"
+    max-size: '20m'
+    max-file: '5'
 
 x-api-image: &api-image
   image: enterprise-lms/api:${LMS_IMAGE_TAG:-latest}
@@ -37,9 +37,9 @@ services:
       api: { condition: service_healthy }
       web: { condition: service_healthy }
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
     environment:
       LMS_BASE_DOMAIN: ${TENANT_BASE_DOMAIN:?set TENANT_BASE_DOMAIN}
       SCORM_CONTENT_HOST: ${SCORM_CONTENT_HOST:?set SCORM_CONTENT_HOST}
@@ -55,7 +55,7 @@ services:
       - caddy-config:/config
     networks: [edge]
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:2019/config/']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -79,9 +79,9 @@ services:
       # sends straight to the API.
       API_URL: http://api:4000
     networks: [edge]
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ['no-new-privileges:true']
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -92,11 +92,11 @@ services:
   # The migrations grant lms_app its table privileges, so they must run after the role exists (init script).
   migrate:
     <<: *api-image
-    restart: "no"
+    restart: 'no'
     depends_on:
       postgres: { condition: service_healthy }
     working_dir: /app
-    command: ["npm", "run", "db:deploy", "-w", "@enterprise-lms/database"]
+    command: ['npm', 'run', 'db:deploy', '-w', '@enterprise-lms/database']
     environment:
       NODE_ENV: production
       # Prisma's migrate uses DIRECT_URL (the owner); DATABASE_URL must be set for the schema to load.
@@ -206,9 +206,9 @@ services:
     volumes:
       - uploads:/app/storage # STORAGE_DRIVER=local only; unused with s3
     networks: [edge, backend]
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ['no-new-privileges:true']
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -231,7 +231,7 @@ services:
       - ./deploy/init-db-prod.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
     networks: [backend]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 20
@@ -241,10 +241,10 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "volatile-lru"]
+    command: ['redis-server', '--save', '', '--appendonly', 'no', '--maxmemory', '256mb', '--maxmemory-policy', 'volatile-lru']
     networks: [backend]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 3s
       retries: 5
@@ -296,9 +296,9 @@ services:
     volumes:
       - backups:/backups
     networks: [backend, edge] # edge only for the upload to S3
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ['no-new-privileges:true']
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9199/backup.txt"]
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9199/backup.txt']
       interval: 60s
       timeout: 5s
       retries: 3
@@ -331,11 +331,11 @@ services:
       - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus-data:/prometheus
     ports:
-      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+      - '127.0.0.1:${PROMETHEUS_PORT:-9090}:9090'
     networks: [backend, edge] # backend: api and backup; edge: so the published port works (backend is internal)
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ['no-new-privileges:true']
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/healthy"]
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9090/-/healthy']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -345,7 +345,7 @@ services:
     image: prom/alertmanager:v0.27.0
     profiles: [monitoring]
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "/usr/local/bin/alertmanager-entrypoint.sh"]
+    entrypoint: ['/bin/sh', '/usr/local/bin/alertmanager-entrypoint.sh']
     environment:
       ALERT_WEBHOOK_URL:
       ALERT_SMTP_SMARTHOST:
@@ -359,9 +359,9 @@ services:
       - ./deploy/monitoring/alertmanager-entrypoint.sh:/usr/local/bin/alertmanager-entrypoint.sh:ro
       - alertmanager-data:/alertmanager
     networks: [backend, edge] # edge: it sends the webhook / SMTP
-    security_opt: ["no-new-privileges:true"]
+    security_opt: ['no-new-privileges:true']
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9093/-/healthy"]
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9093/-/healthy']
       interval: 30s
       timeout: 5s
       retries: 3

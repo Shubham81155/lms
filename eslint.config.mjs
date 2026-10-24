@@ -5,7 +5,18 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/.next/**', '**/coverage/**', '**/*.js', '**/*.d.ts', 'apps/web/next-env.d.ts', 'apps/web/src/lib/api-schema.ts'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.next/**',
+      '**/coverage/**',
+      '**/*.js',
+      '**/*.d.ts',
+      'apps/web/next-env.d.ts',
+      'apps/web/src/lib/api-schema.ts',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
@@ -31,13 +42,28 @@ export default tseslint.config(
     plugins: { 'jsx-a11y': jsxA11y },
     rules: Object.fromEntries(
       Object.keys(jsxA11y.configs.recommended.rules)
-        .filter((r) => !['jsx-a11y/label-has-for', 'jsx-a11y/control-has-associated-label', 'jsx-a11y/media-has-caption', 'jsx-a11y/no-autofocus'].includes(r))
+        .filter(
+          (r) =>
+            ![
+              'jsx-a11y/label-has-for',
+              'jsx-a11y/control-has-associated-label',
+              'jsx-a11y/media-has-caption',
+              'jsx-a11y/no-autofocus',
+            ].includes(r)
+        )
         .map((r) => [r, 'error'])
     ),
   },
   {
     // Tests, seed scripts and the mail dev transport may print.
-    files: ['**/test/**', '**/seed.ts', '**/scripts/**', 'apps/api/src/lib/mailer.ts', 'apps/api/src/openapi/build.ts', 'apps/api/src/openapi/missing.ts'],
+    files: [
+      '**/test/**',
+      '**/seed.ts',
+      '**/scripts/**',
+      'apps/api/src/lib/mailer.ts',
+      'apps/api/src/openapi/build.ts',
+      'apps/api/src/openapi/missing.ts',
+    ],
     rules: { 'no-console': 'off', '@typescript-eslint/no-require-imports': 'off' },
   }
 );

@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
-const COLLAPSED_KEY = "lms_sidebar_collapsed";
-const DESKTOP_QUERY = "(min-width: 1024px)";
+const COLLAPSED_KEY = 'lms_sidebar_collapsed';
+const DESKTOP_QUERY = '(min-width: 1024px)';
 /** Below this width the rail starts as icons only, so the page keeps its room, until the person chooses. */
-const ROOMY_QUERY = "(min-width: 1280px)";
+const ROOMY_QUERY = '(min-width: 1280px)';
 
 /**
  * Sidebar state: the desktop rail can be collapsed (remembered per browser) and below the desktop
@@ -20,7 +20,7 @@ export function useSidebar() {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(COLLAPSED_KEY);
-      setCollapsed(stored === null ? !window.matchMedia(ROOMY_QUERY).matches : stored === "1");
+      setCollapsed(stored === null ? !window.matchMedia(ROOMY_QUERY).matches : stored === '1');
     } catch {
       /* storage can be blocked; the sidebar then follows the window width */
       setCollapsed(!window.matchMedia(ROOMY_QUERY).matches);
@@ -32,7 +32,7 @@ export function useSidebar() {
     const next = !collapsed;
     setCollapsed(next);
     try {
-      localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
+      localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0');
     } catch {
       /* not persisted */
     }
@@ -45,8 +45,8 @@ export function useSidebar() {
   useEffect(() => {
     const mq = window.matchMedia(DESKTOP_QUERY);
     const onChange = () => mq.matches && setMobileOpen(false);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
   }, []);
 
   return { collapsed, ready, toggleCollapsed, mobileOpen, openMobile, closeMobile };
@@ -67,18 +67,18 @@ export function useDrawerBehavior(open: boolean, containerRef: RefObject<HTMLEle
     const container = containerRef.current;
     const opener = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
 
     const focusables = () => Array.from(container?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter((el) => el.offsetParent !== null);
     (focusables()[0] ?? container)?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         e.preventDefault();
         onCloseRef.current();
         return;
       }
-      if (e.key !== "Tab") return;
+      if (e.key !== 'Tab') return;
       const els = focusables();
       if (els.length === 0) return;
       const first = els[0];
@@ -95,10 +95,10 @@ export function useDrawerBehavior(open: boolean, containerRef: RefObject<HTMLEle
         first.focus();
       }
     };
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener('keydown', onKeyDown);
 
     return () => {
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = previousOverflow;
       opener?.focus?.();
     };

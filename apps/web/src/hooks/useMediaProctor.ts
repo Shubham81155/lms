@@ -1,28 +1,28 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { FaceWatch, SoundWatch, rms } from "@/lib/proctor-signals";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { FaceWatch, SoundWatch, rms } from '@/lib/proctor-signals';
 
 // Camera and microphone proctoring in the learner's browser. Faces are found with MediaPipe's face detector
 // (served from /proctoring, see scripts/copy-proctoring-assets.mjs) and sound is measured with Web Audio.
 // Nothing but the resulting events leaves the browser: no image, video or audio is uploaded or stored.
 
-export type MediaProctorEvent = "FACE_NOT_DETECTED" | "MULTIPLE_FACES" | "AUDIO_SPIKE" | "CAMERA_STOPPED" | "MICROPHONE_STOPPED";
+export type MediaProctorEvent = 'FACE_NOT_DETECTED' | 'MULTIPLE_FACES' | 'AUDIO_SPIKE' | 'CAMERA_STOPPED' | 'MICROPHONE_STOPPED';
 
-export type MediaProctorStatus = "off" | "starting" | "on" | "error";
+export type MediaProctorStatus = 'off' | 'starting' | 'on' | 'error';
 
 const FACE_EVERY_MS = 500;
 const SOUND_EVERY_MS = 200;
-const ASSETS = "/proctoring";
+const ASSETS = '/proctoring';
 
 type Detector = { detectForVideo(video: HTMLVideoElement, timestamp: number): { detections: unknown[] }; close(): void };
 
 async function loadFaceDetector(): Promise<Detector> {
-  const { FaceDetector, FilesetResolver } = await import("@mediapipe/tasks-vision");
+  const { FaceDetector, FilesetResolver } = await import('@mediapipe/tasks-vision');
   const fileset = await FilesetResolver.forVisionTasks(`${ASSETS}/wasm`);
   return FaceDetector.createFromOptions(fileset, {
-    baseOptions: { modelAssetPath: `${ASSETS}/blaze_face_short_range.tflite`, delegate: "CPU" },
-    runningMode: "VIDEO",
+    baseOptions: { modelAssetPath: `${ASSETS}/blaze_face_short_range.tflite`, delegate: 'CPU' },
+    runningMode: 'VIDEO',
     // Chrome's synthetic test camera gives false faces at 0.55-0.74; a real face in view scores higher.
     minDetectionConfidence: 0.8,
   });
@@ -30,11 +30,12 @@ async function loadFaceDetector(): Promise<Detector> {
 
 /** Why the camera or microphone could not be used, in words for the learner. */
 function permissionMessage(e: unknown, camera: boolean, microphone: boolean): string {
-  const what = camera && microphone ? "camera and microphone" : camera ? "camera" : "microphone";
+  const what = camera && microphone ? 'camera and microphone' : camera ? 'camera' : 'microphone';
   const name = (e as { name?: string })?.name;
-  if (name === "NotAllowedError" || name === "SecurityError") return `This exam needs your ${what}. Allow access in your browser (the icon in the address bar), then press Start again.`;
-  if (name === "NotFoundError" || name === "OverconstrainedError") return `No ${what} was found. Connect one and press Start again.`;
-  if (name === "NotReadableError") return `Your ${what} is in use by another app. Close it and press Start again.`;
+  if (name === 'NotAllowedError' || name === 'SecurityError')
+    return `This exam needs your ${what}. Allow access in your browser (the icon in the address bar), then press Start again.`;
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return `No ${what} was found. Connect one and press Start again.`;
+  if (name === 'NotReadableError') return `Your ${what} is in use by another app. Close it and press Start again.`;
   return `Your ${what} could not be started.`;
 }
 
@@ -47,7 +48,7 @@ export function useMediaProctor(opts: { camera: boolean; microphone: boolean; ac
   const onEvent = useRef(opts.onEvent);
   onEvent.current = opts.onEvent;
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [status, setStatus] = useState<MediaProctorStatus>("off");
+  const [status, setStatus] = useState<MediaProctorStatus>('off');
   /** The camera works but faces cannot be detected here (the detector failed to load). */
   const [detectorProblem, setDetectorProblem] = useState<string | null>(null);
   const videoEl = useRef<HTMLVideoElement | null>(null);
@@ -58,23 +59,23 @@ export function useMediaProctor(opts: { camera: boolean; microphone: boolean; ac
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setStream(null);
-    setStatus("off");
+    setStatus('off');
   }, []);
 
   const start = useCallback(async () => {
     if (!needed) return;
     if (streamRef.current) return;
-    setStatus("starting");
+    setStatus('starting');
     try {
       const s = await navigator.mediaDevices.getUserMedia({
-        video: camera ? { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: "user" } : false,
+        video: camera ? { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } : false,
         audio: microphone ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false } : false,
       });
       streamRef.current = s;
       setStream(s);
-      setStatus("on");
+      setStatus('on');
     } catch (e) {
-      setStatus("error");
+      setStatus('error');
       throw new Error(permissionMessage(e, camera, microphone));
     }
   }, [needed, camera, microphone]);
@@ -98,10 +99,10 @@ export function useMediaProctor(opts: { camera: boolean; microphone: boolean; ac
   useEffect(() => {
     if (!stream || !active) return;
     const tracks = stream.getTracks();
-    const ended = (t: MediaStreamTrack) => () => onEvent.current(t.kind === "video" ? "CAMERA_STOPPED" : "MICROPHONE_STOPPED");
+    const ended = (t: MediaStreamTrack) => () => onEvent.current(t.kind === 'video' ? 'CAMERA_STOPPED' : 'MICROPHONE_STOPPED');
     const handlers = tracks.map((t) => [t, ended(t)] as const);
-    handlers.forEach(([t, h]) => t.addEventListener("ended", h));
-    return () => handlers.forEach(([t, h]) => t.removeEventListener("ended", h));
+    handlers.forEach(([t, h]) => t.addEventListener('ended', h));
+    return () => handlers.forEach(([t, h]) => t.removeEventListener('ended', h));
   }, [stream, active]);
 
   // Faces.
@@ -123,7 +124,11 @@ export function useMediaProctor(opts: { camera: boolean; microphone: boolean; ac
           for (const e of watch.update(t, faces)) onEvent.current(e);
         }, FACE_EVERY_MS);
       })
-      .catch(() => !cancelled && setDetectorProblem("Face detection could not start in this browser. Your camera is still shown to you, but nothing is checked."));
+      .catch(
+        () =>
+          !cancelled &&
+          setDetectorProblem('Face detection could not start in this browser. Your camera is still shown to you, but nothing is checked.')
+      );
     return () => {
       cancelled = true;
       if (timer) clearInterval(timer);
@@ -142,7 +147,7 @@ export function useMediaProctor(opts: { camera: boolean; microphone: boolean; ac
     const samples = new Float32Array(analyser.fftSize);
     const watch = new SoundWatch();
     const timer = setInterval(() => {
-      if (ctx.state === "suspended") ctx.resume().catch(() => undefined);
+      if (ctx.state === 'suspended') ctx.resume().catch(() => undefined);
       analyser.getFloatTimeDomainData(samples);
       for (const e of watch.update(performance.now(), rms(samples))) onEvent.current(e);
     }, SOUND_EVERY_MS);

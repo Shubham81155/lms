@@ -24,8 +24,23 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-a', slug: 'acme', name: 'Acme College', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-s', slug: 'sus', name: 'Suspended', tier: 'ENTERPRISE', status: 'SUSPENDED' } });
-  await admin.tenant.create({ data: { id: 't-r', slug: 'ro', name: 'Read only', tier: 'ENTERPRISE', status: 'TRIAL', trialEndsAt: new Date(MONDAY.getTime() - DAY), trialExpiredAt: new Date(MONDAY.getTime() - DAY) } });
-  for (const [t, n] of [['t-a', 'a'], ['t-s', 's'], ['t-r', 'r']] as const) await user(`${n}-student`, t, 'STUDENT');
+  await admin.tenant.create({
+    data: {
+      id: 't-r',
+      slug: 'ro',
+      name: 'Read only',
+      tier: 'ENTERPRISE',
+      status: 'TRIAL',
+      trialEndsAt: new Date(MONDAY.getTime() - DAY),
+      trialExpiredAt: new Date(MONDAY.getTime() - DAY),
+    },
+  });
+  for (const [t, n] of [
+    ['t-a', 'a'],
+    ['t-s', 's'],
+    ['t-r', 'r'],
+  ] as const)
+    await user(`${n}-student`, t, 'STUDENT');
   await user('a-erased', 't-a', 'STUDENT', { erasedAt: new Date() });
   await user('a-locked', 't-a', 'STUDENT', { status: 'LOCKED' });
   process.env.DATABASE_URL = db.appUrl;
@@ -52,20 +67,42 @@ beforeEach(async () => {
 });
 
 function user(id: string, tenantId: string, role: any, over: object = {}) {
-  return admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true, ...over } });
+  return admin.user.create({
+    data: {
+      id,
+      tenantId,
+      email: `${id}@x.edu`,
+      firstName: id,
+      lastName: 'L',
+      role,
+      passwordHash: bcrypt.hashSync(PASSWORD, 4),
+      emailVerified: true,
+      ...over,
+    },
+  });
 }
 
 async function as(who: string, tenant: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
 
-const sched = (over: Partial<import('../src/lib/digest.js').DigestSchedule> = {}) => ({ digestFrequency: 'WEEKLY', digestHour: 8, digestWeekday: 1, timezone: 'UTC', lastDigestAt: null, ...over });
+const sched = (over: Partial<import('../src/lib/digest.js').DigestSchedule> = {}) => ({
+  digestFrequency: 'WEEKLY',
+  digestHour: 8,
+  digestWeekday: 1,
+  timezone: 'UTC',
+  lastDigestAt: null,
+  ...over,
+});
 
 describe('when a digest is due', () => {
-  it('waits for the chosen hour in the person\'s own time zone', () => {
+  it("waits for the chosen hour in the person's own time zone", () => {
     const noon = new Date('2026-11-09T12:00:00Z'); // 17:30 in Kolkata, 07:00 in New York
     expect(digest.digestDue(sched({ digestFrequency: 'DAILY', digestHour: 8 }), noon)).toBe(true);
     expect(digest.digestDue(sched({ digestFrequency: 'DAILY', digestHour: 8, timezone: 'America/New_York' }), noon)).toBe(false);
@@ -128,7 +165,9 @@ describe('the message', () => {
   });
 
   it('is null when what there is lies in sections the person switched off', () => {
-    const m = digest.buildDigest(input({ sections: ['grades'], announcements: [{ title: 'Hello', courseTitle: 'Bio', createdAt: MONDAY, link: '/courses/c1' }] }));
+    const m = digest.buildDigest(
+      input({ sections: ['grades'], announcements: [{ title: 'Hello', courseTitle: 'Bio', createdAt: MONDAY, link: '/courses/c1' }] })
+    );
     expect(m).toBeNull();
   });
 
@@ -137,7 +176,13 @@ describe('the message', () => {
       input({
         deadlines: [
           { kind: 'Quiz', title: 'Later', courseTitle: 'Bio', dueAt: new Date('2026-11-14T10:00:00Z'), link: '/quizzes/q2' },
-          { kind: 'Assignment', title: 'Essay <b>1</b>', courseTitle: 'Bio', dueAt: new Date('2026-11-11T10:00:00Z'), link: '/courses/c1/assignments' },
+          {
+            kind: 'Assignment',
+            title: 'Essay <b>1</b>',
+            courseTitle: 'Bio',
+            dueAt: new Date('2026-11-11T10:00:00Z'),
+            link: '/courses/c1/assignments',
+          },
         ],
         notifications: [
           { category: 'GRADE', title: 'Graded: Essay', body: 'You got 9/10', link: '/courses/c1/grades' },
@@ -173,9 +218,28 @@ describe('the job', () => {
   async function seedAcme() {
     await admin.course.create({ data: { id: 'c1', tenantId: 't-a', code: 'BIO-1', title: 'Cell Biology', status: 'PUBLISHED' } });
     await admin.enrollment.create({ data: { tenantId: 't-a', courseId: 'c1', userId: 'a-student', status: 'ENROLLED' } });
-    await admin.assignment.create({ data: { id: 'as1', tenantId: 't-a', courseId: 'c1', title: 'Lab report', instructions: 'Write it', dueDate: new Date('2026-11-12T10:00:00Z') } });
-    await admin.announcement.create({ data: { tenantId: 't-a', courseId: 'c1', title: 'Welcome back', body: 'Hi', createdAt: new Date('2026-11-08T10:00:00Z') } });
-    await admin.notification.create({ data: { tenantId: 't-a', userId: 'a-student', category: 'GRADE', title: 'Graded: Quiz 1', createdAt: new Date('2026-11-08T11:00:00Z') } });
+    await admin.assignment.create({
+      data: {
+        id: 'as1',
+        tenantId: 't-a',
+        courseId: 'c1',
+        title: 'Lab report',
+        instructions: 'Write it',
+        dueDate: new Date('2026-11-12T10:00:00Z'),
+      },
+    });
+    await admin.announcement.create({
+      data: { tenantId: 't-a', courseId: 'c1', title: 'Welcome back', body: 'Hi', createdAt: new Date('2026-11-08T10:00:00Z') },
+    });
+    await admin.notification.create({
+      data: {
+        tenantId: 't-a',
+        userId: 'a-student',
+        category: 'GRADE',
+        title: 'Graded: Quiz 1',
+        createdAt: new Date('2026-11-08T11:00:00Z'),
+      },
+    });
   }
 
   beforeEach(async () => {
@@ -219,26 +283,75 @@ describe('the job', () => {
   });
 
   it('leaves out what was already e-mailed on its own and what has been read', async () => {
-    await admin.notification.create({ data: { tenantId: 't-a', userId: 'a-student', category: 'GRADE', title: 'Mailed already', emailStatus: 'SENT', createdAt: new Date('2026-11-08T11:00:00Z') } });
-    await admin.notification.create({ data: { tenantId: 't-a', userId: 'a-student', category: 'FORUM', title: 'Seen already', readAt: new Date(), createdAt: new Date('2026-11-08T11:00:00Z') } });
-    await admin.notification.create({ data: { tenantId: 't-a', userId: 'a-student', category: 'FORUM', title: 'Too old', createdAt: new Date('2026-10-01T11:00:00Z') } });
-    await admin.notification.create({ data: { tenantId: 't-a', userId: 'a-student', category: 'FORUM', title: 'Fresh reply', createdAt: new Date('2026-11-08T11:00:00Z') } });
+    await admin.notification.create({
+      data: {
+        tenantId: 't-a',
+        userId: 'a-student',
+        category: 'GRADE',
+        title: 'Mailed already',
+        emailStatus: 'SENT',
+        createdAt: new Date('2026-11-08T11:00:00Z'),
+      },
+    });
+    await admin.notification.create({
+      data: {
+        tenantId: 't-a',
+        userId: 'a-student',
+        category: 'FORUM',
+        title: 'Seen already',
+        readAt: new Date(),
+        createdAt: new Date('2026-11-08T11:00:00Z'),
+      },
+    });
+    await admin.notification.create({
+      data: { tenantId: 't-a', userId: 'a-student', category: 'FORUM', title: 'Too old', createdAt: new Date('2026-10-01T11:00:00Z') },
+    });
+    await admin.notification.create({
+      data: { tenantId: 't-a', userId: 'a-student', category: 'FORUM', title: 'Fresh reply', createdAt: new Date('2026-11-08T11:00:00Z') },
+    });
     await digest.runDigestJob(MONDAY);
     expect(outbox).toHaveLength(1);
     expect(outbox[0].text).toContain('Fresh reply');
     for (const left of ['Mailed already', 'Seen already', 'Too old']) expect(outbox[0].text).not.toContain(left);
   });
 
-  it('honours sections, OFF, and the person\'s own deadline extension; skips work already handed in', async () => {
-    await admin.assignment.create({ data: { id: 'as2', tenantId: 't-a', courseId: 'c1', title: 'Done already', instructions: 'x', dueDate: new Date('2026-11-12T10:00:00Z') } });
+  it("honours sections, OFF, and the person's own deadline extension; skips work already handed in", async () => {
+    await admin.assignment.create({
+      data: {
+        id: 'as2',
+        tenantId: 't-a',
+        courseId: 'c1',
+        title: 'Done already',
+        instructions: 'x',
+        dueDate: new Date('2026-11-12T10:00:00Z'),
+      },
+    });
     await admin.assignmentSubmission.create({ data: { assignmentId: 'as2', userId: 'a-student', submissionText: 'x' } });
-    await admin.assignment.create({ data: { id: 'as3', tenantId: 't-a', courseId: 'c1', title: 'Extended past the week', instructions: 'x', dueDate: new Date('2026-11-10T10:00:00Z') } });
-    await admin.deadlineExtension.create({ data: { tenantId: 't-a', userId: 'a-student', assignmentId: 'as3', dueAt: new Date('2026-12-20T10:00:00Z'), grantedById: 'a-student' } });
+    await admin.assignment.create({
+      data: {
+        id: 'as3',
+        tenantId: 't-a',
+        courseId: 'c1',
+        title: 'Extended past the week',
+        instructions: 'x',
+        dueDate: new Date('2026-11-10T10:00:00Z'),
+      },
+    });
+    await admin.deadlineExtension.create({
+      data: {
+        tenantId: 't-a',
+        userId: 'a-student',
+        assignmentId: 'as3',
+        dueAt: new Date('2026-12-20T10:00:00Z'),
+        grantedById: 'a-student',
+      },
+    });
     await admin.notificationPreference.create({ data: { tenantId: 't-a', userId: 'a-student', digestSections: ['deadlines'] } });
     await digest.runDigestJob(MONDAY);
     expect(outbox).toHaveLength(1);
     expect(outbox[0].text).toContain('Lab report');
-    for (const left of ['Done already', 'Extended past the week', 'Welcome back', 'Graded: Quiz 1']) expect(outbox[0].text).not.toContain(left);
+    for (const left of ['Done already', 'Extended past the week', 'Welcome back', 'Graded: Quiz 1'])
+      expect(outbox[0].text).not.toContain(left);
 
     outbox.length = 0;
     await admin.notificationPreference.update({ where: { userId: 'a-student' }, data: { lastDigestAt: null, digestFrequency: 'OFF' } });
@@ -248,11 +361,21 @@ describe('the job', () => {
 
   it('sends nothing for suspended or read-only organisations, erased or locked people, or when mail would be dropped', async () => {
     await admin.notification.createMany({
-      data: ['t-s:s-student', 't-r:r-student', 't-a:a-erased', 't-a:a-locked'].map((k) => ({ tenantId: k.split(':')[0], userId: k.split(':')[1], category: 'FORUM', title: 'Reply', createdAt: new Date('2026-11-08T11:00:00Z') })),
+      data: ['t-s:s-student', 't-r:r-student', 't-a:a-erased', 't-a:a-locked'].map((k) => ({
+        tenantId: k.split(':')[0],
+        userId: k.split(':')[1],
+        category: 'FORUM',
+        title: 'Reply',
+        createdAt: new Date('2026-11-08T11:00:00Z'),
+      })),
     });
     await digest.runDigestJob(MONDAY);
-    expect(outbox.map((m) => m.to).filter((to) => ['s-student', 'r-student', 'a-erased', 'a-locked'].some((u) => to.startsWith(u)))).toEqual([]);
-    expect(await admin.notificationPreference.count({ where: { userId: { in: ['s-student', 'r-student', 'a-erased', 'a-locked'] } } })).toBe(0);
+    expect(
+      outbox.map((m) => m.to).filter((to) => ['s-student', 'r-student', 'a-erased', 'a-locked'].some((u) => to.startsWith(u)))
+    ).toEqual([]);
+    expect(
+      await admin.notificationPreference.count({ where: { userId: { in: ['s-student', 'r-student', 'a-erased', 'a-locked'] } } })
+    ).toBe(0);
 
     outbox.length = 0;
     await admin.notificationPreference.deleteMany();
@@ -262,8 +385,15 @@ describe('the job', () => {
   });
 
   it('counts a failed send and carries on with the others, without a retry loop', async () => {
-    await admin.notification.create({ data: { tenantId: 't-a', userId: 'a-student', category: 'FORUM', title: 'Reply', createdAt: new Date('2026-11-08T11:00:00Z') } });
-    mailer.setMailer({ mode: 'smtp', async send() { throw new Error('mailbox full'); } });
+    await admin.notification.create({
+      data: { tenantId: 't-a', userId: 'a-student', category: 'FORUM', title: 'Reply', createdAt: new Date('2026-11-08T11:00:00Z') },
+    });
+    mailer.setMailer({
+      mode: 'smtp',
+      async send() {
+        throw new Error('mailbox full');
+      },
+    });
     expect(await digest.runDigestJob(MONDAY)).toMatchObject({ sent: 0, failed: 1 });
     expect(await digest.runDigestJob(new Date(MONDAY.getTime() + 3_600_000))).toMatchObject({ sent: 0, failed: 0 });
   });
@@ -273,11 +403,31 @@ describe('the API', () => {
   it('reads defaults, saves digest settings (and the inactive channels), and rejects bad values', async () => {
     const a = await as('a-student', 'acme');
     const read = await a.get('/api/v1/notifications/preferences');
-    expect(read.body.data).toMatchObject({ digestFrequency: 'WEEKLY', digestHour: 8, digestWeekday: 1, digestSections: ['deadlines', 'announcements', 'grades', 'forum', 'live'], smsEnabled: false, pushEnabled: false, lastDigestAt: null });
+    expect(read.body.data).toMatchObject({
+      digestFrequency: 'WEEKLY',
+      digestHour: 8,
+      digestWeekday: 1,
+      digestSections: ['deadlines', 'announcements', 'grades', 'forum', 'live'],
+      smsEnabled: false,
+      pushEnabled: false,
+      lastDigestAt: null,
+    });
 
-    const put = await a.put('/api/v1/notifications/preferences').send({ digestFrequency: 'DAILY', digestHour: 18, digestWeekday: 5, digestSections: ['grades', 'grades', 'live'], timezone: 'Asia/Kolkata' });
+    const put = await a.put('/api/v1/notifications/preferences').send({
+      digestFrequency: 'DAILY',
+      digestHour: 18,
+      digestWeekday: 5,
+      digestSections: ['grades', 'grades', 'live'],
+      timezone: 'Asia/Kolkata',
+    });
     expect(put.status).toBe(200);
-    expect(put.body.data).toMatchObject({ digestFrequency: 'DAILY', digestHour: 18, digestWeekday: 5, digestSections: ['grades', 'live'], timezone: 'Asia/Kolkata' });
+    expect(put.body.data).toMatchObject({
+      digestFrequency: 'DAILY',
+      digestHour: 18,
+      digestWeekday: 5,
+      digestSections: ['grades', 'live'],
+      timezone: 'Asia/Kolkata',
+    });
     expect((await a.get('/api/v1/notifications/preferences')).body.data.digestFrequency).toBe('DAILY');
 
     for (const bad of [{ digestFrequency: 'HOURLY' }, { digestHour: 24 }, { digestWeekday: 7 }, { digestSections: ['everything'] }]) {
@@ -285,7 +435,7 @@ describe('the API', () => {
     }
   });
 
-  it('keeps one person\'s settings from another\'s', async () => {
+  it("keeps one person's settings from another's", async () => {
     await user('a-other', 't-a', 'STUDENT');
     const a = await as('a-student', 'acme');
     await a.put('/api/v1/notifications/preferences').send({ digestFrequency: 'OFF' });
@@ -300,7 +450,11 @@ describe('the API', () => {
     expect(check.body.data).toEqual({ organisation: 'Acme College', digestFrequency: 'WEEKLY' });
     expect(await admin.notificationPreference.count({ where: { userId: 'a-student' } })).toBe(0); // GET changes nothing
 
-    const done = await request(app).post('/api/v1/notifications/unsubscribe').query({ token }).type('form').send('List-Unsubscribe=One-Click');
+    const done = await request(app)
+      .post('/api/v1/notifications/unsubscribe')
+      .query({ token })
+      .type('form')
+      .send('List-Unsubscribe=One-Click');
     expect(done.status).toBe(200);
     expect(done.body.data.digestFrequency).toBe('OFF');
     expect((await admin.notificationPreference.findUniqueOrThrow({ where: { userId: 'a-student' } })).digestFrequency).toBe('OFF');

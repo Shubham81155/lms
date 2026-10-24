@@ -35,7 +35,7 @@ export class FieldEncryption {
     if (!plaintext) return plaintext;
     const iv = crypto.randomBytes(IV_LENGTH);
     const cipher = crypto.createCipheriv(ALGORITHM, this.key, iv);
-    
+
     let encrypted = cipher.update(plaintext, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     const authTag = cipher.getAuthTag();
@@ -48,7 +48,7 @@ export class FieldEncryption {
    */
   public decrypt(cipherPayload: string): string {
     if (!cipherPayload || !cipherPayload.includes(':')) return cipherPayload;
-    
+
     const parts = cipherPayload.split(':');
     if (parts.length !== 3) {
       throw new Error('Invalid encrypted payload format');
@@ -57,10 +57,10 @@ export class FieldEncryption {
     const [ivHex, authTagHex, encryptedHex] = parts;
     const iv = Buffer.from(ivHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
-    
+
     const decipher = crypto.createDecipheriv(ALGORITHM, this.key, iv);
     decipher.setAuthTag(authTag);
-    
+
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
@@ -71,14 +71,7 @@ export class FieldEncryption {
 // 2. FINE-GRAINED ROLE-BASED & ATTRIBUTE-BASED ACCESS CONTROL
 // =========================================================
 
-export type UserRole =
-  | 'SUPER_ADMIN'
-  | 'TENANT_ADMIN'
-  | 'INSTRUCTOR'
-  | 'TEACHING_ASSISTANT'
-  | 'STUDENT'
-  | 'PARENT_GUARDIAN'
-  | 'AUDITOR';
+export type UserRole = 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'INSTRUCTOR' | 'TEACHING_ASSISTANT' | 'STUDENT' | 'PARENT_GUARDIAN' | 'AUDITOR';
 
 export type PermissionAction =
   | 'course:create'
@@ -95,31 +88,37 @@ export type PermissionAction =
 
 const ROLE_PERMISSIONS: Record<UserRole, PermissionAction[]> = {
   SUPER_ADMIN: [
-    'course:create', 'course:update', 'course:delete', 'course:view',
-    'grade:view_own', 'grade:view_all', 'grade:modify', 'quiz:proctor',
-    'tenant:manage_branding', 'tenant:manage_sso', 'audit:export'
+    'course:create',
+    'course:update',
+    'course:delete',
+    'course:view',
+    'grade:view_own',
+    'grade:view_all',
+    'grade:modify',
+    'quiz:proctor',
+    'tenant:manage_branding',
+    'tenant:manage_sso',
+    'audit:export',
   ],
   TENANT_ADMIN: [
-    'course:create', 'course:update', 'course:delete', 'course:view',
-    'grade:view_all', 'grade:modify', 'quiz:proctor',
-    'tenant:manage_branding', 'tenant:manage_sso', 'audit:export'
+    'course:create',
+    'course:update',
+    'course:delete',
+    'course:view',
+    'grade:view_all',
+    'grade:modify',
+    'quiz:proctor',
+    'tenant:manage_branding',
+    'tenant:manage_sso',
+    'audit:export',
   ],
-  INSTRUCTOR: [
-    'course:create', 'course:update', 'course:view',
-    'grade:view_all', 'grade:modify', 'quiz:proctor'
-  ],
-  TEACHING_ASSISTANT: [
-    'course:view', 'grade:view_all', 'grade:modify', 'quiz:proctor'
-  ],
-  STUDENT: [
-    'course:view', 'grade:view_own'
-  ],
+  INSTRUCTOR: ['course:create', 'course:update', 'course:view', 'grade:view_all', 'grade:modify', 'quiz:proctor'],
+  TEACHING_ASSISTANT: ['course:view', 'grade:view_all', 'grade:modify', 'quiz:proctor'],
+  STUDENT: ['course:view', 'grade:view_own'],
   PARENT_GUARDIAN: [
-    'grade:view_own' // Evaluated in ABAC context for ward
+    'grade:view_own', // Evaluated in ABAC context for ward
   ],
-  AUDITOR: [
-    'course:view', 'grade:view_all', 'audit:export'
-  ]
+  AUDITOR: ['course:view', 'grade:view_all', 'audit:export'],
 };
 
 export class AccessControlEngine {
@@ -135,11 +134,7 @@ export class AccessControlEngine {
    * ABAC (Attribute-Based Access Control) check:
    * e.g. An instructor can only edit a course if they are assigned as its instructor.
    */
-  public static canEditCourse(
-    role: UserRole,
-    userId: string,
-    courseInstructorIds: string[]
-  ): boolean {
+  public static canEditCourse(role: UserRole, userId: string, courseInstructorIds: string[]): boolean {
     if (role === 'SUPER_ADMIN' || role === 'TENANT_ADMIN') return true;
     if (role === 'INSTRUCTOR' && courseInstructorIds.includes(userId)) return true;
     return false;
@@ -152,8 +147,17 @@ export class AccessControlEngine {
 
 export class AuditSanitizer {
   private static SENSITIVE_KEYS = [
-    'password', 'passwordhash', 'secret', 'ssn', 'token', 'authorization', 'cookie',
-    'creditcard', 'apikey', 'mfa', 'dateofbirth',
+    'password',
+    'passwordhash',
+    'secret',
+    'ssn',
+    'token',
+    'authorization',
+    'cookie',
+    'creditcard',
+    'apikey',
+    'mfa',
+    'dateofbirth',
   ];
   private static MAX_DEPTH = 8;
   private static REDACTED = '[REDACTED_FOR_SECURITY]';
@@ -177,11 +181,8 @@ export class AuditSanitizer {
     const out: Record<string, unknown> = {};
     for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
       const lowerKey = key.toLowerCase();
-      out[key] = this.SENSITIVE_KEYS.some((s) => lowerKey.includes(s))
-        ? this.REDACTED
-        : this.walk(v, depth + 1);
+      out[key] = this.SENSITIVE_KEYS.some((s) => lowerKey.includes(s)) ? this.REDACTED : this.walk(v, depth + 1);
     }
     return out;
   }
 }
-

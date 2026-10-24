@@ -1,11 +1,5 @@
 export type QuestionType =
-  | 'MULTIPLE_CHOICE'
-  | 'MULTI_SELECT'
-  | 'TRUE_FALSE'
-  | 'SHORT_ANSWER'
-  | 'ESSAY'
-  | 'CODE_SANDBOX'
-  | 'FORMULA_CALCULATED';
+  'MULTIPLE_CHOICE' | 'MULTI_SELECT' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY' | 'CODE_SANDBOX' | 'FORMULA_CALCULATED';
 
 /** Question types that a person must mark. */
 export const MANUAL_TYPES: readonly QuestionType[] = ['ESSAY', 'CODE_SANDBOX'];
@@ -41,7 +35,11 @@ interface Option {
   isCorrect?: unknown;
 }
 
-const norm = (v: unknown): string => String(v ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+const norm = (v: unknown): string =>
+  String(v ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 
 function optionsOf(raw: unknown): Option[] {
   return Array.isArray(raw) ? raw.filter((o): o is Option => !!o && typeof o === 'object') : [];
@@ -165,9 +163,7 @@ export function gradeQuiz(questions: GradableQuestion[], answers: Record<string,
 }
 
 /** Accepts the answer map the API documents, or the [{ questionId, answer }] list the web client sends. */
-export function normalizeAnswers(
-  input: Record<string, Answer> | { questionId: string; answer: Answer }[]
-): Record<string, Answer> {
+export function normalizeAnswers(input: Record<string, Answer> | { questionId: string; answer: Answer }[]): Record<string, Answer> {
   if (!Array.isArray(input)) return input;
   const out: Record<string, Answer> = {};
   for (const item of input) out[item.questionId] = item.answer;

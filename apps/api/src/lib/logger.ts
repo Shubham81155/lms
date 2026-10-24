@@ -10,14 +10,7 @@ export const logger = pino({
   base: undefined,
   timestamp: pino.stdTimeFunctions.isoTime,
   redact: {
-    paths: [
-      'req.headers.authorization',
-      'req.headers.cookie',
-      '*.password',
-      '*.passwordHash',
-      '*.token',
-      '*.authorization',
-    ],
+    paths: ['req.headers.authorization', 'req.headers.cookie', '*.password', '*.passwordHash', '*.token', '*.authorization'],
     censor: '[REDACTED]',
   },
 });

@@ -73,7 +73,18 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('teacher', 'INSTRUCTOR');
   await user('s1', 'STUDENT');
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course', status: 'PUBLISHED' } });
@@ -99,13 +110,20 @@ afterEach(() => scan.setVirusScanner(null));
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
 
 const upload = (agent: request.Agent, body: Buffer, filename = 'notes.txt') =>
-  agent.post('/api/v1/files').query({ purpose: 'ASSIGNMENT_SUBMISSION', courseId: 'c1', filename }).set('content-type', 'text/plain').send(body);
+  agent
+    .post('/api/v1/files')
+    .query({ purpose: 'ASSIGNMENT_SUBMISSION', courseId: 'c1', filename })
+    .set('content-type', 'text/plain')
+    .send(body);
 
 describe('the clamd client', () => {
   it('sends the whole file in length-prefixed chunks and reads the answer', async () => {
@@ -114,23 +132,33 @@ describe('the clamd client', () => {
     const big = Buffer.alloc(300 * 1024, 7); // several 64 KB chunks
     expect(await scanner.scan(Readable.from([big.subarray(0, 1000), big.subarray(1000)]))).toEqual({ infected: false });
     expect(Buffer.compare(clamd.received[0], big)).toBe(0);
-    expect(await scanner.scan(Readable.from([Buffer.from('hello '), EICAR]))).toEqual({ infected: true, signature: 'Eicar-Test-Signature' });
+    expect(await scanner.scan(Readable.from([Buffer.from('hello '), EICAR]))).toEqual({
+      infected: true,
+      signature: 'Eicar-Test-Signature',
+    });
     await clamd.close();
   });
 
   it('reports a scanner that is over its limit or down as unavailable, never as clean', async () => {
     const clamd = await fakeClamd(1024);
-    await expect(scan.clamdScanner('127.0.0.1', clamd.port, 5000).scan(Readable.from([Buffer.alloc(200 * 1024)]))).rejects.toBeInstanceOf(scan.ScanUnavailableError);
+    await expect(scan.clamdScanner('127.0.0.1', clamd.port, 5000).scan(Readable.from([Buffer.alloc(200 * 1024)]))).rejects.toBeInstanceOf(
+      scan.ScanUnavailableError
+    );
     await clamd.close();
-    await expect(scan.clamdScanner('127.0.0.1', clamd.port, 5000).scan(Readable.from([Buffer.from('x')]))).rejects.toBeInstanceOf(scan.ScanUnavailableError);
+    await expect(scan.clamdScanner('127.0.0.1', clamd.port, 5000).scan(Readable.from([Buffer.from('x')]))).rejects.toBeInstanceOf(
+      scan.ScanUnavailableError
+    );
   });
 
   it('rejects explicitly on "INSTREAM size limit exceeded", with a clear message, never as clean', async () => {
     const clamd = await fakeClamd(1024, true);
-    const err = await scan.clamdScanner('127.0.0.1', clamd.port, 5000).scan(Readable.from([Buffer.alloc(200 * 1024)])).then(
-      (r) => r,
-      (e) => e
-    );
+    const err = await scan
+      .clamdScanner('127.0.0.1', clamd.port, 5000)
+      .scan(Readable.from([Buffer.alloc(200 * 1024)]))
+      .then(
+        (r) => r,
+        (e) => e
+      );
     expect(err).toBeInstanceOf(scan.ScanLimitExceededError);
     expect(err).toBeInstanceOf(scan.ScanUnavailableError);
     expect(err.message).toMatch(/StreamMaxLength/);

@@ -62,7 +62,12 @@ export const keyHint = (key: string) => `…${key.slice(-4)}`;
 
 export function platformAiSettings(): AiSettings | null {
   if (!config.AI_PROVIDER || !config.AI_API_KEY) return null;
-  return { provider: config.AI_PROVIDER, model: config.AI_MODEL || PROVIDER_INFO[config.AI_PROVIDER].defaultModel, apiKey: config.AI_API_KEY, source: 'PLATFORM' };
+  return {
+    provider: config.AI_PROVIDER,
+    model: config.AI_MODEL || PROVIDER_INFO[config.AI_PROVIDER].defaultModel,
+    apiKey: config.AI_API_KEY,
+    source: 'PLATFORM',
+  };
 }
 
 /**
@@ -138,7 +143,17 @@ export async function generateJson<T extends z.ZodTypeAny>(opts: GenerateJsonOpt
   const { provider, model } = opts.settings;
   const raw = await ADAPTERS[provider](opts);
   logger.info(
-    { purpose: opts.purpose, provider, model, source: opts.settings.source, ms: Date.now() - started, inputTokens: raw.inputTokens, outputTokens: raw.outputTokens, declined: raw.declined, truncated: raw.truncated },
+    {
+      purpose: opts.purpose,
+      provider,
+      model,
+      source: opts.settings.source,
+      ms: Date.now() - started,
+      inputTokens: raw.inputTokens,
+      outputTokens: raw.outputTokens,
+      declined: raw.declined,
+      truncated: raw.truncated,
+    },
     'AI request'
   );
   if (raw.declined) throw new HttpError(422, 'The AI service declined this request. Rephrase it and try again.');
@@ -147,7 +162,10 @@ export async function generateJson<T extends z.ZodTypeAny>(opts: GenerateJsonOpt
   try {
     json = JSON.parse(raw.text);
   } catch {
-    throw new HttpError(502, raw.truncated ? 'The AI answer was too long. Ask a narrower question.' : 'The AI service sent an unreadable answer. Try again.');
+    throw new HttpError(
+      502,
+      raw.truncated ? 'The AI answer was too long. Ask a narrower question.' : 'The AI service sent an unreadable answer. Try again.'
+    );
   }
   const checked = opts.schema.safeParse(json);
   if (!checked.success) {
@@ -160,7 +178,12 @@ export async function generateJson<T extends z.ZodTypeAny>(opts: GenerateJsonOpt
 // --------------------------------------------------------------------------- Claude
 
 async function anthropic(opts: GenerateJsonOptions<z.ZodTypeAny>): Promise<RawAnswer> {
-  const client = new Anthropic({ apiKey: opts.settings.apiKey, baseURL: config.ANTHROPIC_API_URL, timeout: config.AI_TIMEOUT_MS, maxRetries: 1 });
+  const client = new Anthropic({
+    apiKey: opts.settings.apiKey,
+    baseURL: config.ANTHROPIC_API_URL,
+    timeout: config.AI_TIMEOUT_MS,
+    maxRetries: 1,
+  });
   let message: Anthropic.Beta.BetaMessage;
   try {
     message = await client.beta.messages.create({
@@ -209,7 +232,8 @@ export function toGeminiSchema(schema: unknown): unknown {
   for (const [k, v] of Object.entries(s)) {
     if (k === 'additionalProperties') continue;
     if (k === 'type' && typeof v === 'string') out.type = v.toUpperCase();
-    else if (k === 'properties' && v && typeof v === 'object') out.properties = Object.fromEntries(Object.entries(v).map(([p, ps]) => [p, toGeminiSchema(ps)]));
+    else if (k === 'properties' && v && typeof v === 'object')
+      out.properties = Object.fromEntries(Object.entries(v).map(([p, ps]) => [p, toGeminiSchema(ps)]));
     else if (k === 'items' || k === 'anyOf') out[k] = toGeminiSchema(v);
     else out[k] = v;
   }
@@ -218,7 +242,12 @@ export function toGeminiSchema(schema: unknown): unknown {
 
 const geminiReply = z.object({
   candidates: z
-    .array(z.object({ content: z.object({ parts: z.array(z.object({ text: z.string().optional() })).optional() }).optional(), finishReason: z.string().optional() }))
+    .array(
+      z.object({
+        content: z.object({ parts: z.array(z.object({ text: z.string().optional() })).optional() }).optional(),
+        finishReason: z.string().optional(),
+      })
+    )
     .optional(),
   promptFeedback: z.object({ blockReason: z.string().optional() }).optional(),
   usageMetadata: z.object({ promptTokenCount: z.number().optional(), candidatesTokenCount: z.number().optional() }).optional(),
@@ -226,21 +255,26 @@ const geminiReply = z.object({
 
 async function gemini(opts: GenerateJsonOptions<z.ZodTypeAny>): Promise<RawAnswer> {
   const url = `${config.GEMINI_API_URL.replace(/\/+$/, '')}/models/${encodeURIComponent(opts.settings.model)}:generateContent`;
-  const res = await post(url, { 'x-goog-api-key': opts.settings.apiKey }, {
-    systemInstruction: { parts: [{ text: opts.system }] },
-    contents: opts.turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: toGeminiSchema(opts.jsonSchema),
-      maxOutputTokens: opts.maxOutputTokens ?? 4096,
-    },
-  });
+  const res = await post(
+    url,
+    { 'x-goog-api-key': opts.settings.apiKey },
+    {
+      systemInstruction: { parts: [{ text: opts.system }] },
+      contents: opts.turns.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: toGeminiSchema(opts.jsonSchema),
+        maxOutputTokens: opts.maxOutputTokens ?? 4096,
+      },
+    }
+  );
   const parsed = geminiReply.safeParse(res);
   if (!parsed.success) throw new HttpError(502, 'The AI service sent an unexpected reply');
   const candidate = parsed.data.candidates?.[0];
   return {
     text: candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? '',
-    declined: !!parsed.data.promptFeedback?.blockReason || candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'PROHIBITED_CONTENT',
+    declined:
+      !!parsed.data.promptFeedback?.blockReason || candidate?.finishReason === 'SAFETY' || candidate?.finishReason === 'PROHIBITED_CONTENT',
     truncated: candidate?.finishReason === 'MAX_TOKENS',
     inputTokens: parsed.data.usageMetadata?.promptTokenCount,
     outputTokens: parsed.data.usageMetadata?.candidatesTokenCount,
@@ -250,20 +284,29 @@ async function gemini(opts: GenerateJsonOptions<z.ZodTypeAny>): Promise<RawAnswe
 // --------------------------------------------------------------------------- Grok
 
 const chatReply = z.object({
-  choices: z.array(z.object({ message: z.object({ content: z.string().nullable().optional(), refusal: z.string().nullable().optional() }), finish_reason: z.string().nullable().optional() })),
+  choices: z.array(
+    z.object({
+      message: z.object({ content: z.string().nullable().optional(), refusal: z.string().nullable().optional() }),
+      finish_reason: z.string().nullable().optional(),
+    })
+  ),
   usage: z.object({ prompt_tokens: z.number().optional(), completion_tokens: z.number().optional() }).optional(),
 });
 
 async function xai(opts: GenerateJsonOptions<z.ZodTypeAny>): Promise<RawAnswer> {
-  const res = await post(`${config.XAI_API_URL.replace(/\/+$/, '')}/chat/completions`, { authorization: `Bearer ${opts.settings.apiKey}` }, {
-    model: opts.settings.model,
-    max_tokens: opts.maxOutputTokens ?? 4096,
-    messages: [
-      { role: 'system', content: opts.system },
-      ...opts.turns.map((t) => ({ role: t.role === 'model' ? 'assistant' : 'user', content: t.text })),
-    ],
-    response_format: { type: 'json_schema', json_schema: { name: 'answer', schema: opts.jsonSchema, strict: true } },
-  });
+  const res = await post(
+    `${config.XAI_API_URL.replace(/\/+$/, '')}/chat/completions`,
+    { authorization: `Bearer ${opts.settings.apiKey}` },
+    {
+      model: opts.settings.model,
+      max_tokens: opts.maxOutputTokens ?? 4096,
+      messages: [
+        { role: 'system', content: opts.system },
+        ...opts.turns.map((t) => ({ role: t.role === 'model' ? 'assistant' : 'user', content: t.text })),
+      ],
+      response_format: { type: 'json_schema', json_schema: { name: 'answer', schema: opts.jsonSchema, strict: true } },
+    }
+  );
   const parsed = chatReply.safeParse(res);
   if (!parsed.success || parsed.data.choices.length === 0) throw new HttpError(502, 'The AI service sent an unexpected reply');
   const choice = parsed.data.choices[0];
@@ -280,7 +323,12 @@ async function xai(opts: GenerateJsonOptions<z.ZodTypeAny>): Promise<RawAnswer> 
 async function post(url: string, headers: Record<string, string>, body: unknown): Promise<unknown> {
   let res: Response;
   try {
-    res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), signal: AbortSignal.timeout(config.AI_TIMEOUT_MS) });
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...headers },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
+    });
   } catch (err) {
     logger.warn({ err: (err as Error)?.name }, 'AI request failed');
     throw unreachable();
@@ -292,7 +340,11 @@ async function post(url: string, headers: Record<string, string>, body: unknown)
   return res.json().catch(() => null);
 }
 
-const ADAPTERS: Record<AiProvider, (opts: GenerateJsonOptions<z.ZodTypeAny>) => Promise<RawAnswer>> = { ANTHROPIC: anthropic, GEMINI: gemini, XAI: xai };
+const ADAPTERS: Record<AiProvider, (opts: GenerateJsonOptions<z.ZodTypeAny>) => Promise<RawAnswer>> = {
+  ANTHROPIC: anthropic,
+  GEMINI: gemini,
+  XAI: xai,
+};
 
 // --------------------------------------------------------------------------- helpers
 

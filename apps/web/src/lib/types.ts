@@ -1,39 +1,15 @@
-export type UserRole =
-  | 'SUPER_ADMIN'
-  | 'TENANT_ADMIN'
-  | 'INSTRUCTOR'
-  | 'TEACHING_ASSISTANT'
-  | 'STUDENT'
-  | 'PARENT_GUARDIAN'
-  | 'AUDITOR';
+export type UserRole = 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'INSTRUCTOR' | 'TEACHING_ASSISTANT' | 'STUDENT' | 'PARENT_GUARDIAN' | 'AUDITOR';
 
 export type UserStatus = 'ACTIVE' | 'INVITED' | 'LOCKED' | 'SUSPENDED';
 
 export type CourseStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
-export type EnrollmentStatus =
-  | 'ENROLLED'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'DROPPED'
-  | 'FAILED';
+export type EnrollmentStatus = 'ENROLLED' | 'IN_PROGRESS' | 'COMPLETED' | 'DROPPED' | 'FAILED';
 
-export type ContentType =
-  | 'RICHTEXT'
-  | 'VIDEO'
-  | 'SCORM_PACKAGE'
-  | 'PDF_DOCUMENT'
-  | 'INTERACTIVE_CODE'
-  | 'EXTERNAL_LTI_TOOL';
+export type ContentType = 'RICHTEXT' | 'VIDEO' | 'SCORM_PACKAGE' | 'PDF_DOCUMENT' | 'INTERACTIVE_CODE' | 'EXTERNAL_LTI_TOOL';
 
 export type QuestionType =
-  | 'MULTIPLE_CHOICE'
-  | 'MULTI_SELECT'
-  | 'TRUE_FALSE'
-  | 'SHORT_ANSWER'
-  | 'ESSAY'
-  | 'CODE_SANDBOX'
-  | 'FORMULA_CALCULATED';
+  'MULTIPLE_CHOICE' | 'MULTI_SELECT' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY' | 'CODE_SANDBOX' | 'FORMULA_CALCULATED';
 
 export interface User {
   id: string;

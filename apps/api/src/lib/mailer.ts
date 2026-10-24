@@ -45,7 +45,14 @@ function smtpMailer(url: string): Mailer {
   return {
     mode: 'smtp',
     async send(message) {
-      await transport.sendMail({ from: config.MAIL_FROM, to: message.to, subject: message.subject, text: message.text, ...(message.html ? { html: message.html } : {}), ...(message.headers ? { headers: message.headers } : {}) });
+      await transport.sendMail({
+        from: config.MAIL_FROM,
+        to: message.to,
+        subject: message.subject,
+        text: message.text,
+        ...(message.html ? { html: message.html } : {}),
+        ...(message.headers ? { headers: message.headers } : {}),
+      });
     },
   };
 }

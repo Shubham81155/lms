@@ -61,7 +61,12 @@ describe('AuditSanitizer', () => {
   });
 
   it('masks secrets inside arrays', () => {
-    const out = AuditSanitizer.sanitize({ users: [{ name: 'a', password: 'p' }, { name: 'b', token: 't' }] });
+    const out = AuditSanitizer.sanitize({
+      users: [
+        { name: 'a', password: 'p' },
+        { name: 'b', token: 't' },
+      ],
+    });
     expect(out.users).toEqual([
       { name: 'a', password: '[REDACTED_FOR_SECURITY]' },
       { name: 'b', token: '[REDACTED_FOR_SECURITY]' },

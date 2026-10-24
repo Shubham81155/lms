@@ -12,9 +12,9 @@ domain only works once the organisation has proved it controls the domain's DNS.
    organisation while it waits, and the platform will not get a certificate for it.
 3. The organisation adds a DNS TXT record (the admin panel shows the exact values, with copy buttons):
 
-   | Type | Name | Value |
-   |---|---|---|
-   | TXT | `_lms-verify.learn.university.edu` | `lms-verify=<token>` |
+   | Type | Name                               | Value                |
+   | ---- | ---------------------------------- | -------------------- |
+   | TXT  | `_lms-verify.learn.university.edu` | `lms-verify=<token>` |
 
 4. They press **Check now** (`POST /api/v1/admin/custom-domain/verify`). When the record is found the domain
    becomes **live** (`Tenant.customDomain`): requests on that host belong to the organisation, links in e-mails
@@ -47,11 +47,11 @@ Rules:
 
 ## Configuration
 
-| Variable | |
-|---|---|
-| `CUSTOM_DOMAIN_TARGET` | Host organisations point their CNAME at, shown in the admin panel. Optional. |
-| `TLS_ASK_SECRET` | Turns on `GET /internal/tls/allowed` (below). At least 16 characters. |
-| `CUSTOM_DOMAIN_DNS_TIMEOUT_MS` | One DNS lookup's timeout, default 5000. |
+| Variable                       |                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `CUSTOM_DOMAIN_TARGET`         | Host organisations point their CNAME at, shown in the admin panel. Optional. |
+| `TLS_ASK_SECRET`               | Turns on `GET /internal/tls/allowed` (below). At least 16 characters.        |
+| `CUSTOM_DOMAIN_DNS_TIMEOUT_MS` | One DNS lookup's timeout, default 5000.                                      |
 
 ## TLS certificates (Caddy on-demand TLS)
 

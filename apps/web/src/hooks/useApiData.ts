@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { api, ApiError } from "@/lib/api";
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { api, ApiError } from '@/lib/api';
 
-export const errorMessage = (e: unknown, fallback = "Something went wrong. Please try again.") =>
+export const errorMessage = (e: unknown, fallback = 'Something went wrong. Please try again.') =>
   e instanceof ApiError ? e.message : (e as any)?.message || fallback;
 
 /**
@@ -39,7 +39,7 @@ export function useApiData<T>(path: string | null, params?: Record<string, strin
     } catch (e) {
       if (alive.current) {
         setData(null);
-        setError(errorMessage(e, "Could not load this section."));
+        setError(errorMessage(e, 'Could not load this section.'));
       }
     } finally {
       if (alive.current) setIsLoading(false);
@@ -58,7 +58,7 @@ export function useAction() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const run = useCallback(async <R,>(fn: () => Promise<R>): Promise<R | undefined> => {
+  const run = useCallback(async <R>(fn: () => Promise<R>): Promise<R | undefined> => {
     setBusy(true);
     setError(null);
     try {
@@ -76,10 +76,10 @@ export function useAction() {
 
 /** Saves a Blob from an authenticated endpoint (needs the session cookie, so not a plain link). */
 export async function downloadFile(path: string, filename: string) {
-  const res = await fetch(path, { credentials: "include" });
-  if (!res.ok) throw new Error("Download failed");
+  const res = await fetch(path, { credentials: 'include' });
+  if (!res.ok) throw new Error('Download failed');
   const url = URL.createObjectURL(await res.blob());
-  const a = document.createElement("a");
+  const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);

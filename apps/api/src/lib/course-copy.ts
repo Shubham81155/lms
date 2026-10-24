@@ -52,8 +52,17 @@ export async function copyCourse(sourceId: string, opts: CopyOptions, actor: { i
   const bank = await prisma.questionBankItem.findMany({ where: { tenantId, courseId: source.id } });
 
   // Uploaded lesson files: duplicate the bytes first (slow, outside the transaction); undone on failure.
-  const fileIds = [...new Set(source.modules.flatMap((m) => m.lessons).map((l) => (l.mediaUrl ? UPLOAD.exec(l.mediaUrl)?.[1] : undefined)).filter((x): x is string => !!x))];
-  const files = await prisma.storedFile.findMany({ where: { id: { in: fileIds }, tenantId, courseId: source.id, purpose: 'LESSON_MEDIA' } });
+  const fileIds = [
+    ...new Set(
+      source.modules
+        .flatMap((m) => m.lessons)
+        .map((l) => (l.mediaUrl ? UPLOAD.exec(l.mediaUrl)?.[1] : undefined))
+        .filter((x): x is string => !!x)
+    ),
+  ];
+  const files = await prisma.storedFile.findMany({
+    where: { id: { in: fileIds }, tenantId, courseId: source.id, purpose: 'LESSON_MEDIA' },
+  });
   const copiedFiles: { oldId: string; newId: string; key: string; file: (typeof files)[number] }[] = [];
   try {
     for (const f of files) {
@@ -73,7 +82,10 @@ export async function copyCourse(sourceId: string, opts: CopyOptions, actor: { i
 
   const instructors =
     actor.role === 'INSTRUCTOR'
-      ? [{ userId: actor.id, isPrimary: true }, ...source.instructors.filter((i) => i.userId !== actor.id).map((i) => ({ userId: i.userId, isPrimary: false }))]
+      ? [
+          { userId: actor.id, isPrimary: true },
+          ...source.instructors.filter((i) => i.userId !== actor.id).map((i) => ({ userId: i.userId, isPrimary: false })),
+        ]
       : source.instructors;
 
   try {
@@ -102,20 +114,31 @@ export async function copyCourse(sourceId: string, opts: CopyOptions, actor: { i
         for (const c of copiedFiles) {
           await tx.storedFile.create({
             data: {
-              id: c.newId, tenantId, ownerId: actor.id, courseId: course.id, purpose: 'LESSON_MEDIA', storageKey: c.key,
-              filename: c.file.filename, contentType: c.file.contentType, sizeBytes: c.file.sizeBytes, sha256: c.file.sha256,
+              id: c.newId,
+              tenantId,
+              ownerId: actor.id,
+              courseId: course.id,
+              purpose: 'LESSON_MEDIA',
+              storageKey: c.key,
+              filename: c.file.filename,
+              contentType: c.file.contentType,
+              sizeBytes: c.file.sizeBytes,
+              sha256: c.file.sha256,
               // The same bytes: a copy is as clean, unscanned or withdrawn as its original.
-              scanStatus: c.file.scanStatus, scannedAt: c.file.scannedAt,
+              scanStatus: c.file.scanStatus,
+              scannedAt: c.file.scannedAt,
             },
           });
         }
 
         const category = new Map<string, string>();
         for (const g of source.gradeCategories) {
-          const created = await tx.gradeCategory.create({ data: { tenantId, courseId: course.id, name: g.name, weightPercent: g.weightPercent, orderIndex: g.orderIndex } });
+          const created = await tx.gradeCategory.create({
+            data: { tenantId, courseId: course.id, name: g.name, weightPercent: g.weightPercent, orderIndex: g.orderIndex },
+          });
           category.set(g.id, created.id);
         }
-        const mapCategory = (id: string | null) => (id ? category.get(id) ?? null : null);
+        const mapCategory = (id: string | null) => (id ? (category.get(id) ?? null) : null);
 
         let lessons = 0;
         for (const m of source.modules) {
@@ -196,8 +219,17 @@ export async function copyCourse(sourceId: string, opts: CopyOptions, actor: { i
         for (const b of bank) {
           await tx.questionBankItem.create({
             data: {
-              tenantId, courseId: course.id, ownerId: actor.id, questionText: b.questionText, questionType: b.questionType, points: b.points,
-              optionsJson: b.optionsJson ?? Prisma.JsonNull, correctAnswer: b.correctAnswer, explanation: b.explanation, tags: b.tags, bloomLevel: b.bloomLevel,
+              tenantId,
+              courseId: course.id,
+              ownerId: actor.id,
+              questionText: b.questionText,
+              questionType: b.questionType,
+              points: b.points,
+              optionsJson: b.optionsJson ?? Prisma.JsonNull,
+              correctAnswer: b.correctAnswer,
+              explanation: b.explanation,
+              tags: b.tags,
+              bloomLevel: b.bloomLevel,
             },
           });
         }

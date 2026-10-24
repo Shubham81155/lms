@@ -29,7 +29,16 @@ const view = (t: { id: string; name: string; startsOn: Date; endsOn: Date; _coun
 });
 
 const audit = (req: Parameters<typeof tenantIdOf>[0], action: string, id: string, diffJson: unknown) =>
-  logAuditEvent({ tenantId: tenantIdOf(req), userId: req.user!.id, action, resourceType: 'TERM', resourceId: id, ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson });
+  logAuditEvent({
+    tenantId: tenantIdOf(req),
+    userId: req.user!.id,
+    action,
+    resourceType: 'TERM',
+    resourceId: id,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    diffJson,
+  });
 
 const nameTaken = (e: unknown) => (e as { code?: string })?.code === 'P2002';
 
@@ -90,7 +99,10 @@ router.delete(
   requireRole('TENANT_ADMIN', 'SUPER_ADMIN'),
   route('Failed to delete the term', async (req, res) => {
     const id = idSchema.parse(req.params.id);
-    const term = await prisma.term.findFirst({ where: { id, tenantId: tenantIdOf(req) }, include: { _count: { select: { courses: true } } } });
+    const term = await prisma.term.findFirst({
+      where: { id, tenantId: tenantIdOf(req) },
+      include: { _count: { select: { courses: true } } },
+    });
     if (!term) throw new HttpError(404, 'Term not found');
     if (term._count.courses > 0) throw new HttpError(409, 'Courses still belong to this term; move them to another term first');
     await prisma.term.delete({ where: { id } });

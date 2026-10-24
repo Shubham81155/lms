@@ -39,7 +39,15 @@ export async function submitDuePlagiarismChecks(opts: { now?: Date; batch?: numb
           where: { plagiarismStatus: 'PENDING', plagiarismNextAttemptAt: { lte: now }, assignment: { tenantId: tenant.id } },
           orderBy: { plagiarismNextAttemptAt: 'asc' },
           take: opts.batch ?? 25,
-          select: { id: true, userId: true, submissionText: true, plagiarismAttempts: true, plagiarismNextAttemptAt: true, plagiarismScanId: true, assignmentId: true },
+          select: {
+            id: true,
+            userId: true,
+            submissionText: true,
+            plagiarismAttempts: true,
+            plagiarismNextAttemptAt: true,
+            plagiarismScanId: true,
+            assignmentId: true,
+          },
         });
         for (const s of due) {
           // Claim: only the instance that moves nextAttemptAt proceeds. A Copyleaks scan id is fixed here,
@@ -61,14 +69,23 @@ export async function submitDuePlagiarismChecks(opts: { now?: Date; batch?: numb
             : await postToSubmitUrl(secret, tenant.slug, s);
 
           if (status !== null && status >= 200 && status < 300) {
-            await prisma.assignmentSubmission.updateMany({ where: stillClaimed, data: { plagiarismStatus: 'SUBMITTED', plagiarismAttempts: attempts, plagiarismNextAttemptAt: null } });
+            await prisma.assignmentSubmission.updateMany({
+              where: stillClaimed,
+              data: { plagiarismStatus: 'SUBMITTED', plagiarismAttempts: attempts, plagiarismNextAttemptAt: null },
+            });
             totals.submitted++;
           } else if (isRetryable(status) && attempts < SUBMIT_MAX_ATTEMPTS) {
             const delay = SUBMIT_RETRY_DELAYS_SECONDS[attempts - 1];
-            await prisma.assignmentSubmission.updateMany({ where: stillClaimed, data: { plagiarismAttempts: attempts, plagiarismNextAttemptAt: new Date(Date.now() + delay * 1000) } });
+            await prisma.assignmentSubmission.updateMany({
+              where: stillClaimed,
+              data: { plagiarismAttempts: attempts, plagiarismNextAttemptAt: new Date(Date.now() + delay * 1000) },
+            });
             totals.retried++;
           } else {
-            await prisma.assignmentSubmission.updateMany({ where: stillClaimed, data: { plagiarismStatus: 'FAILED', plagiarismAttempts: attempts, plagiarismNextAttemptAt: null } });
+            await prisma.assignmentSubmission.updateMany({
+              where: stillClaimed,
+              data: { plagiarismStatus: 'FAILED', plagiarismAttempts: attempts, plagiarismNextAttemptAt: null },
+            });
             totals.failed++;
           }
         }
@@ -81,7 +98,11 @@ export async function submitDuePlagiarismChecks(opts: { now?: Date; batch?: numb
 }
 
 /** Sends one check to PLAGIARISM_SUBMIT_URL; returns the HTTP status, or null when no answer came. */
-async function postToSubmitUrl(secret: string, tenantSlug: string, s: { id: string; assignmentId: string; userId: string; submissionText: string | null }) {
+async function postToSubmitUrl(
+  secret: string,
+  tenantSlug: string,
+  s: { id: string; assignmentId: string; userId: string; submissionText: string | null }
+) {
   const body = JSON.stringify({
     submissionId: s.id,
     assignmentId: s.assignmentId,

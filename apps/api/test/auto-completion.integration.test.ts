@@ -19,20 +19,46 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('teacher', 'INSTRUCTOR');
   await user('dean', 'TENANT_ADMIN');
   for (const s of ['s1', 's2', 's3', 's4']) await user(s, 'STUDENT');
 
   // c-plain has no gradebook; c-graded has one (a grade category), pass mark 70.
   for (const c of ['c-plain', 'c-graded']) {
-    await admin.course.create({ data: { id: c, tenantId: 't-h', code: c.toUpperCase(), title: c, status: 'PUBLISHED', passingGradePercent: 70 } });
+    await admin.course.create({
+      data: { id: c, tenantId: 't-h', code: c.toUpperCase(), title: c, status: 'PUBLISHED', passingGradePercent: 70 },
+    });
     await admin.courseInstructor.create({ data: { courseId: c, userId: 'teacher', isPrimary: true } });
-    await admin.module.create({ data: { courseId: c, title: 'Week 1', orderIndex: 1, lessons: { create: [{ id: `${c}-l1`, title: 'One', orderIndex: 1 }, { id: `${c}-l2`, title: 'Two', orderIndex: 2 }] } } });
+    await admin.module.create({
+      data: {
+        courseId: c,
+        title: 'Week 1',
+        orderIndex: 1,
+        lessons: {
+          create: [
+            { id: `${c}-l1`, title: 'One', orderIndex: 1 },
+            { id: `${c}-l2`, title: 'Two', orderIndex: 2 },
+          ],
+        },
+      },
+    });
   }
   await admin.gradeCategory.create({ data: { tenantId: 't-h', courseId: 'c-graded', name: 'Exams', weightPercent: 100 } });
   await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c-plain', userId: 's1', status: 'IN_PROGRESS' } });
-  for (const s of ['s2', 's3', 's4']) await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c-graded', userId: s, status: 'IN_PROGRESS' } });
+  for (const s of ['s2', 's3', 's4'])
+    await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c-graded', userId: s, status: 'IN_PROGRESS' } });
 
   process.env.DATABASE_URL = db.appUrl;
   app = (await import('../src/server.js')).app;
@@ -45,7 +71,10 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -59,7 +88,17 @@ const enrollmentOf = (userId: string, courseId: string) =>
   admin.enrollment.findUniqueOrThrow({ where: { courseId_userId: { courseId, userId } }, include: { certificate: true } });
 const submittedGrade = (userId: string, curvedPercent: number) =>
   admin.courseGrade.create({
-    data: { tenantId: 't-h', courseId: 'c-graded', userId, rawPercent: curvedPercent, curvedPercent, letter: 'X', breakdownJson: {}, status: 'SUBMITTED', submittedById: 'teacher' },
+    data: {
+      tenantId: 't-h',
+      courseId: 'c-graded',
+      userId,
+      rawPercent: curvedPercent,
+      curvedPercent,
+      letter: 'X',
+      breakdownJson: {},
+      status: 'SUBMITTED',
+      submittedById: 'teacher',
+    },
   });
 
 describe('course without a gradebook', () => {

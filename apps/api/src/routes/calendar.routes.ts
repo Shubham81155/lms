@@ -15,14 +15,17 @@ router.use(authenticateJWT);
 
 const CATEGORIES = ['EXAM', 'LAB', 'LECTURE', 'OFFICE_HOURS', 'DEADLINE'] as const;
 
-const tz = z.string().max(64).refine((v) => {
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: v });
-    return true;
-  } catch {
-    return false;
-  }
-}, 'Unknown time zone');
+const tz = z
+  .string()
+  .max(64)
+  .refine((v) => {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: v });
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Unknown time zone');
 
 const eventShape = {
   title: z.string().trim().min(1).max(200),
@@ -38,7 +41,10 @@ export const updateSchema = z
   .object({
     ...eventShape,
     // An event cannot be moved between courses: any value is rejected.
-    courseId: z.any().refine((v) => v === undefined, 'courseId cannot be changed').optional(),
+    courseId: z
+      .any()
+      .refine((v) => v === undefined, 'courseId cannot be changed')
+      .optional(),
   })
   .partial()
   .refine((e) => !e.startsAt || !e.endsAt || e.endsAt >= e.startsAt, { message: 'endsAt must not be before startsAt' });
@@ -67,12 +73,7 @@ async function queryEvents(req: Request) {
   const { from, to, courseId } = parseQuery(req, rangeQuery);
   const visible = await visibleCourseIds(req);
   if (courseId && visible !== 'ALL' && !visible.includes(courseId)) return [];
-  const scope =
-    courseId
-      ? { courseId }
-      : visible === 'ALL'
-        ? {}
-        : { OR: [{ courseId: null }, { courseId: { in: visible } }] };
+  const scope = courseId ? { courseId } : visible === 'ALL' ? {} : { OR: [{ courseId: null }, { courseId: { in: visible } }] };
   const tenantId = tenantIdOf(req);
   const [events, due] = await Promise.all([
     prisma.calendarEvent.findMany({
@@ -109,7 +110,12 @@ async function dueDates(userId: string, tenantId: string, courseIds: string[] | 
     prisma.quiz.findMany({
       where: { tenantId, ...course, questions: { some: {} }, OR: dated('dueAt') },
       select: {
-        id: true, title: true, courseId: true, dueAt: true, maxAttempts: true, createdAt: true,
+        id: true,
+        title: true,
+        courseId: true,
+        dueAt: true,
+        maxAttempts: true,
+        createdAt: true,
         course: { select: { code: true } },
         extensions: { where: { userId }, select: { dueAt: true } },
         submissions: { where: { userId, submittedAt: { not: null } }, select: { id: true } },
@@ -119,7 +125,11 @@ async function dueDates(userId: string, tenantId: string, courseIds: string[] | 
     prisma.assignment.findMany({
       where: { tenantId, ...course, OR: dated('dueDate') },
       select: {
-        id: true, title: true, courseId: true, dueDate: true, createdAt: true,
+        id: true,
+        title: true,
+        courseId: true,
+        dueDate: true,
+        createdAt: true,
         course: { select: { code: true } },
         extensions: { where: { userId }, select: { dueAt: true } },
         submissions: { where: { userId }, select: { id: true } },
@@ -171,7 +181,11 @@ router.get(
 );
 
 const icsEscape = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
-const icsDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+const icsDate = (d: Date) =>
+  d
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '');
 /** RFC 5545 line folding at 75 octets. */
 const fold = (line: string) => {
   if (line.length <= 75) return line;

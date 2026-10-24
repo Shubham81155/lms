@@ -72,7 +72,8 @@ export async function loadSupportSession(passId: string, tenantId: string, opera
   const status = passStatus(pass);
   if (status !== 'ACTIVE') {
     // An expired pass leaves the support account active until something closes it; do that now.
-    if (status === 'EXPIRED') closeIdleSupportAccount(tenantId).catch((err) => logger.warn({ err, tenantId }, 'could not close the support account'));
+    if (status === 'EXPIRED')
+      closeIdleSupportAccount(tenantId).catch((err) => logger.warn({ err, tenantId }, 'could not close the support account'));
     return null;
   }
   return { passId, scope: pass.scope as SupportScope, expiresAt: pass.expiresAt, operatorEmail };
@@ -82,13 +83,23 @@ export async function loadSupportSession(passId: string, tenantId: string, opera
 export function generateSupportToken(user: { id: string; tenantId: string; tokenVersion: number }, session: SupportSession): string {
   const seconds = Math.max(1, Math.floor((session.expiresAt.getTime() - Date.now()) / 1000));
   return jwt.sign(
-    { id: user.id, role: 'TENANT_ADMIN', email: SUPPORT_USER_EMAIL, tenantId: user.tenantId, tv: user.tokenVersion, sp: session.passId, op: session.operatorEmail },
+    {
+      id: user.id,
+      role: 'TENANT_ADMIN',
+      email: SUPPORT_USER_EMAIL,
+      tenantId: user.tenantId,
+      tv: user.tokenVersion,
+      sp: session.passId,
+      op: session.operatorEmail,
+    },
     config.JWT_SECRET,
     { algorithm: 'HS256', expiresIn: seconds }
   );
 }
 
-type UserClient = { user: { findFirst: (args: any) => Promise<any>; create: (args: any) => Promise<any>; update: (args: any) => Promise<any> } };
+type UserClient = {
+  user: { findFirst: (args: any) => Promise<any>; create: (args: any) => Promise<any>; update: (args: any) => Promise<any> };
+};
 
 /**
  * Makes the organisation's support account usable (creating it the first time) and returns it. Deliberately not
@@ -99,7 +110,16 @@ export async function activateSupportAccount(client: UserClient, tenantId: strin
   const select = { id: true, tokenVersion: true };
   if (existing) return client.user.update({ where: { id: existing.id }, data: { status: 'ACTIVE', role: 'TENANT_ADMIN' }, select });
   return client.user.create({
-    data: { tenantId, email: SUPPORT_USER_EMAIL, firstName: 'Platform', lastName: 'support', role: 'TENANT_ADMIN', status: 'ACTIVE', emailVerified: true, idpProvider: 'SUPPORT' },
+    data: {
+      tenantId,
+      email: SUPPORT_USER_EMAIL,
+      firstName: 'Platform',
+      lastName: 'support',
+      role: 'TENANT_ADMIN',
+      status: 'ACTIVE',
+      emailVerified: true,
+      idpProvider: 'SUPPORT',
+    },
     select,
   });
 }
@@ -121,9 +141,7 @@ export async function closeIdleSupportAccount(tenantId: string): Promise<void> {
     prisma.supportPass.count({ where: { tenantId, revokedAt: null, expiresAt: { gt: new Date() } } })
   );
   if (active > 0) return;
-  const open = await runWithTenant(tenantId, () =>
-    prisma.user.count({ where: { tenantId, email: SUPPORT_USER_EMAIL, status: 'ACTIVE' } })
-  );
+  const open = await runWithTenant(tenantId, () => prisma.user.count({ where: { tenantId, email: SUPPORT_USER_EMAIL, status: 'ACTIVE' } }));
   if (open > 0) await endSupportSessions(tenantId);
 }
 
@@ -158,8 +176,13 @@ export function refuseSupportWrite(req: Request, res: Response): boolean {
   res.on('finish', () => {
     runWithTenant(tenantId, () =>
       logAuditEvent({
-        tenantId, userId, action: 'SUPPORT_WRITE', resourceType: 'SUPPORT_PASS', resourceId: support.passId,
-        ipAddress: req.ip, userAgent: req.headers['user-agent'],
+        tenantId,
+        userId,
+        action: 'SUPPORT_WRITE',
+        resourceType: 'SUPPORT_PASS',
+        resourceId: support.passId,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
         diffJson: { operatorEmail: support.operatorEmail, method: req.method, path, status: res.statusCode },
       })
     ).catch(() => undefined);
@@ -178,8 +201,13 @@ export async function endSupportSession(req: Request, via: 'exit' | 'logout'): P
   await endSupportSessions(tenantId);
   await runWithTenant(tenantId, () =>
     logAuditEvent({
-      tenantId, userId: req.user!.id, action: 'SUPPORT_SESSION_ENDED', resourceType: 'SUPPORT_PASS', resourceId: support.passId,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'],
+      tenantId,
+      userId: req.user!.id,
+      action: 'SUPPORT_SESSION_ENDED',
+      resourceType: 'SUPPORT_PASS',
+      resourceId: support.passId,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
       diffJson: { operatorEmail: support.operatorEmail, scope: support.scope, via },
     })
   );

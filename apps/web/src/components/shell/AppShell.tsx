@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import React, { useRef, useState } from "react";
-import clsx from "clsx";
-import { useAuth } from "@/context/AuthContext";
-import { PrivacySettings } from "@/components/PrivacySettings";
-import { ConsentGate } from "@/components/ConsentGate";
-import { Sidebar } from "@/components/shell/Sidebar";
-import { TopBar, type TopBarSearch } from "@/components/shell/TopBar";
-import { SupportBanner, useSupportSession } from "@/components/shell/SupportBanner";
-import { useReadOnlyForms } from "@/components/shell/useReadOnlyForms";
-import { useDrawerBehavior, useSidebar } from "@/hooks/useSidebar";
-import { currentTab, visibleSections, type Area, type NavItem } from "@/lib/navigation";
-import { useT } from "@/lib/i18n";
+import React, { useRef, useState } from 'react';
+import clsx from 'clsx';
+import { useAuth } from '@/context/AuthContext';
+import { PrivacySettings } from '@/components/PrivacySettings';
+import { ConsentGate } from '@/components/ConsentGate';
+import { Sidebar } from '@/components/shell/Sidebar';
+import { TopBar, type TopBarSearch } from '@/components/shell/TopBar';
+import { SupportBanner, useSupportSession } from '@/components/shell/SupportBanner';
+import { useReadOnlyForms } from '@/components/shell/useReadOnlyForms';
+import { useDrawerBehavior, useSidebar } from '@/hooks/useSidebar';
+import { currentTab, visibleSections, type Area, type NavItem } from '@/lib/navigation';
+import { useT } from '@/lib/i18n';
 
 interface AppShellProps {
   area: Area;
@@ -39,14 +39,14 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
   const mainRef = useRef<HTMLDivElement>(null);
   const support = useSupportSession();
   // A read-only support session cannot change anything: say so by locking the page's form controls.
-  useReadOnlyForms(mainRef, support?.scope === "READ_ONLY");
+  useReadOnlyForms(mainRef, support?.scope === 'READ_ONLY');
   useDrawerBehavior(mobileOpen, drawerRef, closeMobile);
 
   const sections = visibleSections(area, actions, user?.role);
   const current = currentTab(area, activeKey);
 
   const select = (item: NavItem) => {
-    if (item.kind === "tab") onNavigate?.(item.key);
+    if (item.kind === 'tab') onNavigate?.(item.key);
     else actions?.[item.key]?.();
     closeMobile();
   };
@@ -62,16 +62,16 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-xl focus:bg-brand focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-on-brand"
       >
-        {t("shell.skipToContent")}
+        {t('shell.skipToContent')}
       </a>
 
       {/* Desktop rail */}
       <aside
         id="app-sidebar"
         className={clsx(
-          "sticky top-0 z-30 hidden h-screen shrink-0 border-r border-line bg-surface lg:block",
-          ready && "transition-[width] duration-200",
-          collapsed ? "w-[76px]" : "w-64",
+          'sticky top-0 z-30 hidden h-screen shrink-0 border-r border-line bg-surface lg:block',
+          ready && 'transition-[width] duration-200',
+          collapsed ? 'w-[76px]' : 'w-64'
         )}
       >
         <Sidebar
@@ -92,19 +92,22 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
         <div
           aria-hidden="true"
           onClick={closeMobile}
-          className={clsx("fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200", mobileOpen ? "opacity-100" : "pointer-events-none opacity-0")}
+          className={clsx(
+            'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm transition-opacity duration-200',
+            mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+          )}
         />
         <aside
           id="app-drawer"
           ref={drawerRef}
           role="dialog"
           aria-modal="true"
-          aria-label={t("shell.navigation")}
+          aria-label={t('shell.navigation')}
           tabIndex={-1}
           inert={!mobileOpen}
           className={clsx(
-            "fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] border-r border-line bg-surface shadow-2xl outline-none transition-transform duration-200",
-            mobileOpen ? "translate-x-0" : "-translate-x-full",
+            'fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] border-r border-line bg-surface shadow-2xl outline-none transition-transform duration-200',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
           <Sidebar
@@ -139,7 +142,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
       </div>
 
       {/* Ordinary sessions only: not a support pass (the operator is not the data subject) and not the operator console. */}
-      {user && !support && !user.platformOperator && area !== "platform" && <ConsentGate />}
+      {user && !support && !user.platformOperator && area !== 'platform' && <ConsentGate />}
 
       {showPrivacy && <PrivacySettings onClose={() => setShowPrivacy(false)} />}
     </div>

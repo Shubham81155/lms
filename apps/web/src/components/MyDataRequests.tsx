@@ -1,22 +1,22 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Download, FileText } from "lucide-react";
-import { api } from "@/lib/api";
-import { useAction, useApiData, downloadFile } from "@/hooks/useApiData";
-import { Banner } from "@/components/admin/IdentityPanels";
-import { KIND_LABEL, REQUEST_KINDS, STATUS_LABEL, day, dueText, isOpen, type MyRequest, type RequestKind } from "@/lib/dataRequests";
+import React, { useState } from 'react';
+import { Download, FileText } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAction, useApiData, downloadFile } from '@/hooks/useApiData';
+import { Banner } from '@/components/admin/IdentityPanels';
+import { KIND_LABEL, REQUEST_KINDS, STATUS_LABEL, day, dueText, isOpen, type MyRequest, type RequestKind } from '@/lib/dataRequests';
 
-const card = "bg-canvas border border-line rounded-2xl p-5 space-y-3";
+const card = 'bg-canvas border border-line rounded-2xl p-5 space-y-3';
 const input =
-  "w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
+  'w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
 
 const STATUS_CLS: Record<string, string> = {
-  OPEN: "bg-accent/10 text-ink border-accent/40",
-  IN_PROGRESS: "bg-brand/10 text-ink border-brand/40",
-  FULFILLED: "bg-success/10 text-success border-success/30",
-  REJECTED: "bg-danger/10 text-danger border-danger/30",
-  CANCELLED: "bg-raised text-ink-muted border-line",
+  OPEN: 'bg-accent/10 text-ink border-accent/40',
+  IN_PROGRESS: 'bg-brand/10 text-ink border-brand/40',
+  FULFILLED: 'bg-success/10 text-success border-success/30',
+  REJECTED: 'bg-danger/10 text-danger border-danger/30',
+  CANCELLED: 'bg-raised text-ink-muted border-line',
 };
 
 /**
@@ -24,11 +24,11 @@ const STATUS_CLS: Record<string, string> = {
  * it is open, and download the data once an access request was answered with it. Backed by /api/v1/privacy/requests.
  */
 export const MyDataRequests: React.FC = () => {
-  const mine = useApiData<{ data: MyRequest[] }>("/api/v1/privacy/requests/mine");
+  const mine = useApiData<{ data: MyRequest[] }>('/api/v1/privacy/requests/mine');
   const file = useAction();
   const act = useAction();
-  const [kind, setKind] = useState<RequestKind>("ACCESS");
-  const [details, setDetails] = useState("");
+  const [kind, setKind] = useState<RequestKind>('ACCESS');
+  const [details, setDetails] = useState('');
   const [filed, setFiled] = useState(false);
 
   const rows = mine.data?.data ?? [];
@@ -38,8 +38,8 @@ export const MyDataRequests: React.FC = () => {
     e.preventDefault();
     file.run(async () => {
       setFiled(false);
-      await api.post("/api/v1/privacy/requests", { kind, details: details.trim() || undefined });
-      setDetails("");
+      await api.post('/api/v1/privacy/requests', { kind, details: details.trim() || undefined });
+      setDetails('');
       setFiled(true);
       await mine.reload();
     });
@@ -57,10 +57,13 @@ export const MyDataRequests: React.FC = () => {
     <section className={card} aria-labelledby="requests-h">
       <div className="flex items-center gap-2">
         <FileText className="h-4 w-4 text-brand-fg" />
-        <h4 id="requests-h" className="text-sm font-bold text-ink">Your data requests</h4>
+        <h4 id="requests-h" className="text-sm font-bold text-ink">
+          Your data requests
+        </h4>
       </div>
       <p className="text-xs text-ink-muted leading-relaxed">
-        Ask the organisation about your data: a copy, a correction, erasure, or to limit how it is used. An administrator answers each request, and you are e-mailed when it changes.
+        Ask the organisation about your data: a copy, a correction, erasure, or to limit how it is used. An administrator answers each
+        request, and you are e-mailed when it changes.
       </p>
 
       <form onSubmit={submit} className="space-y-2" aria-label="File a data request">
@@ -70,19 +73,30 @@ export const MyDataRequests: React.FC = () => {
             {REQUEST_KINDS.map((k) => (
               <option key={k} value={k} disabled={openKinds.has(k)}>
                 {KIND_LABEL[k]}
-                {openKinds.has(k) ? " (already open)" : ""}
+                {openKinds.has(k) ? ' (already open)' : ''}
               </option>
             ))}
           </select>
         </label>
         <label className="block space-y-1">
           <span className="text-[11px] text-ink-muted">Details (optional)</span>
-          <textarea className={input} rows={2} maxLength={2000} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Anything that helps us answer, e.g. which data you mean" />
+          <textarea
+            className={input}
+            rows={2}
+            maxLength={2000}
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            placeholder="Anything that helps us answer, e.g. which data you mean"
+          />
         </label>
         {file.error && <Banner kind="error">{file.error}</Banner>}
         {filed && !file.error && <Banner kind="ok">Your request was filed. You will hear back by e-mail.</Banner>}
-        <button type="submit" disabled={file.busy || openKinds.has(kind)} className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all">
-          {file.busy ? "Filing…" : "File request"}
+        <button
+          type="submit"
+          disabled={file.busy || openKinds.has(kind)}
+          className="px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold transition-all"
+        >
+          {file.busy ? 'Filing…' : 'File request'}
         </button>
       </form>
 
@@ -99,21 +113,31 @@ export const MyDataRequests: React.FC = () => {
                   <div className="text-xs font-semibold text-ink">{KIND_LABEL[r.kind]}</div>
                   <div className="text-[11px] text-ink-subtle">
                     Filed {day(r.receivedAt)}
-                    {isOpen(r) ? ` · answer due ${day(r.dueAt)}` : r.closedAt ? ` · closed ${day(r.closedAt)}` : ""}
+                    {isOpen(r) ? ` · answer due ${day(r.dueAt)}` : r.closedAt ? ` · closed ${day(r.closedAt)}` : ''}
                   </div>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_CLS[r.status]}`}>{STATUS_LABEL[r.status]}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_CLS[r.status]}`}>
+                  {STATUS_LABEL[r.status]}
+                </span>
               </div>
               {isOpen(r) && r.overdue && <p className="text-[11px] text-danger">{dueText(r.daysLeft)}: we are late with this answer.</p>}
               {r.resolution && <p className="text-xs text-ink-muted whitespace-pre-line">{r.resolution}</p>}
               <div className="flex gap-2">
-                {r.exportAttached && r.status === "FULFILLED" && (
-                  <button onClick={() => download(r)} disabled={act.busy} className="px-3 py-1.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5">
+                {r.exportAttached && r.status === 'FULFILLED' && (
+                  <button
+                    onClick={() => download(r)}
+                    disabled={act.busy}
+                    className="px-3 py-1.5 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5"
+                  >
                     <Download className="h-3.5 w-3.5" /> Download my data
                   </button>
                 )}
                 {isOpen(r) && (
-                  <button onClick={() => cancel(r)} disabled={act.busy} className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold disabled:opacity-50">
+                  <button
+                    onClick={() => cancel(r)}
+                    disabled={act.busy}
+                    className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold disabled:opacity-50"
+                  >
                     Cancel request
                   </button>
                 )}

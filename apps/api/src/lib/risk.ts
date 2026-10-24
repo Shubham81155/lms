@@ -59,7 +59,12 @@ export function scoreRisk(i: RiskInput): { level: 'LOW' | 'MEDIUM' | 'HIGH'; sco
 export async function computeAtRisk(tenantId: string, courseIds: string[]) {
   if (courseIds.length === 0) return [];
   const enrollments = await prisma.enrollment.findMany({
-    where: { tenantId, courseId: { in: courseIds }, status: { in: ['ENROLLED', 'IN_PROGRESS'] }, user: { NOT: { isMinor: true, guardianConsentAt: null } } },
+    where: {
+      tenantId,
+      courseId: { in: courseIds },
+      status: { in: ['ENROLLED', 'IN_PROGRESS'] },
+      user: { NOT: { isMinor: true, guardianConsentAt: null } },
+    },
     select: {
       userId: true,
       courseId: true,
@@ -73,7 +78,14 @@ export async function computeAtRisk(tenantId: string, courseIds: string[]) {
   const [subs, assignments, lastXapi] = await Promise.all([
     prisma.quizSubmission.findMany({
       where: { userId: { in: userIds }, quiz: { courseId: { in: courseIds } }, submittedAt: { not: null } },
-      select: { userId: true, score: true, maxScore: true, passed: true, quiz: { select: { courseId: true } }, proctoringLogs: { select: { severity: true } } },
+      select: {
+        userId: true,
+        score: true,
+        maxScore: true,
+        passed: true,
+        quiz: { select: { courseId: true } },
+        proctoringLogs: { select: { severity: true } },
+      },
     }),
     prisma.assignmentSubmission.findMany({
       where: { userId: { in: userIds }, assignment: { courseId: { in: courseIds } }, plagiarismScore: { not: null } },

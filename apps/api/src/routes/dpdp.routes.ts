@@ -9,8 +9,30 @@ import { logAuditEvent } from '../lib/audit';
 import { rateLimitStore } from '../lib/rate-limit-store';
 import { resolveTenant } from '../lib/tenant';
 import { consentReport, listPurposes, myConsents, purposeView, savePurposes, savePurposesSchema, setConsent } from '../lib/consent';
-import { breachQuerySchema, breachView, createBreach, createBreachSchema, getBreach, listBreaches, notifyPeople, notifyPeopleSchema, updateBreach, updateBreachSchema } from '../lib/breaches';
-import { confirmGuardianConsent, guardianConsentInfo, guardianRequestSchema, guardianTokenSchema, guardianWithdrawalInfo, minorStatus, requestGuardianConsent, setMinor, setMinorSchema, withdrawGuardianConsent } from '../lib/guardian';
+import {
+  breachQuerySchema,
+  breachView,
+  createBreach,
+  createBreachSchema,
+  getBreach,
+  listBreaches,
+  notifyPeople,
+  notifyPeopleSchema,
+  updateBreach,
+  updateBreachSchema,
+} from '../lib/breaches';
+import {
+  confirmGuardianConsent,
+  guardianConsentInfo,
+  guardianRequestSchema,
+  guardianTokenSchema,
+  guardianWithdrawalInfo,
+  minorStatus,
+  requestGuardianConsent,
+  setMinor,
+  setMinorSchema,
+  withdrawGuardianConsent,
+} from '../lib/guardian';
 
 // Mounted at /api/v1/privacy, after routes/privacy.routes.ts: the DPDP Act side of privacy. Consent purposes and each
 // person's answers (/consents), the personal-data breach register with its 72-hour clock (/breaches), the
@@ -48,10 +70,18 @@ export const grievanceOfficerSchema = z
 // ---------------------------------------------------------------------------- consent
 
 /** GET /api/v1/privacy/consents - the organisation's active purposes with the caller's answer to each */
-router.get('/consents', authenticateJWT, route('Failed to load consents', async (req, res) => res.json({ data: await myConsents(tenantIdOf(req), req.user!.id) })));
+router.get(
+  '/consents',
+  authenticateJWT,
+  route('Failed to load consents', async (req, res) => res.json({ data: await myConsents(tenantIdOf(req), req.user!.id) }))
+);
 
 /** GET /api/v1/privacy/consents/report - per purpose and version: granted, withdrawn, no answer (administrators) */
-router.get('/consents/report', ...adminOnly, route('Failed to build the consent report', async (req, res) => res.json({ data: await consentReport(tenantIdOf(req)) })));
+router.get(
+  '/consents/report',
+  ...adminOnly,
+  route('Failed to build the consent report', async (req, res) => res.json({ data: await consentReport(tenantIdOf(req)) }))
+);
 
 /** POST /api/v1/privacy/consents/:key/grant */
 router.post(
@@ -74,7 +104,13 @@ router.post(
 );
 
 /** GET /api/v1/privacy/consent-purposes - every purpose, inactive ones too, with the lawful-basis note (administrators) */
-router.get('/consent-purposes', ...adminOnly, route('Failed to load purposes', async (req, res) => res.json({ data: (await listPurposes(tenantIdOf(req), true)).map((p) => purposeView(p, true)) })));
+router.get(
+  '/consent-purposes',
+  ...adminOnly,
+  route('Failed to load purposes', async (req, res) =>
+    res.json({ data: (await listPurposes(tenantIdOf(req), true)).map((p) => purposeView(p, true)) })
+  )
+);
 
 /** PUT /api/v1/privacy/consent-purposes - create or update purposes by key (administrators) */
 router.put(
@@ -111,7 +147,13 @@ router.post(
 );
 
 /** GET /api/v1/privacy/breaches/:id */
-router.get('/breaches/:id', ...adminOnly, route('Failed to load the breach', async (req, res) => res.json({ data: breachView(await getBreach(tenantIdOf(req), String(req.params.id))) })));
+router.get(
+  '/breaches/:id',
+  ...adminOnly,
+  route('Failed to load the breach', async (req, res) =>
+    res.json({ data: breachView(await getBreach(tenantIdOf(req), String(req.params.id))) })
+  )
+);
 
 /** PATCH /api/v1/privacy/breaches/:id - record containment, notifications, owner; closing needs a notification or a reason (administrators) */
 router.patch(
@@ -142,11 +184,24 @@ router.get(
   route('Failed to load the grievance officer', async (req, res) => {
     const tenant = await resolveTenant(req.tenantHints);
     if (!tenant) throw new HttpError(404, 'Organisation not found');
-    const t = await basePrisma.tenant.findUnique({ where: { id: tenant.id }, select: { name: true, grievanceName: true, grievanceEmail: true, grievancePhone: true, grievanceAddress: true, grievanceSlaDays: true } });
+    const t = await basePrisma.tenant.findUnique({
+      where: { id: tenant.id },
+      select: {
+        name: true,
+        grievanceName: true,
+        grievanceEmail: true,
+        grievancePhone: true,
+        grievanceAddress: true,
+        grievanceSlaDays: true,
+      },
+    });
     return res.json({
       data: {
         organisation: t?.name ?? tenant.name,
-        officer: t?.grievanceName && t.grievanceEmail ? { name: t.grievanceName, email: t.grievanceEmail, phone: t.grievancePhone, address: t.grievanceAddress } : null,
+        officer:
+          t?.grievanceName && t.grievanceEmail
+            ? { name: t.grievanceName, email: t.grievanceEmail, phone: t.grievancePhone, address: t.grievanceAddress }
+            : null,
         responseDays: t?.grievanceSlaDays ?? null,
       },
     });
@@ -162,14 +217,38 @@ router.put(
     const tenantId = tenantIdOf(req);
     const t = await basePrisma.tenant.update({
       where: { id: tenantId },
-      data: { grievanceName: b.name, grievanceEmail: b.email, grievancePhone: b.name ? b.phone ?? null : null, grievanceAddress: b.name ? b.address ?? null : null, grievanceSlaDays: b.responseDays ?? null },
-      select: { name: true, grievanceName: true, grievanceEmail: true, grievancePhone: true, grievanceAddress: true, grievanceSlaDays: true },
+      data: {
+        grievanceName: b.name,
+        grievanceEmail: b.email,
+        grievancePhone: b.name ? (b.phone ?? null) : null,
+        grievanceAddress: b.name ? (b.address ?? null) : null,
+        grievanceSlaDays: b.responseDays ?? null,
+      },
+      select: {
+        name: true,
+        grievanceName: true,
+        grievanceEmail: true,
+        grievancePhone: true,
+        grievanceAddress: true,
+        grievanceSlaDays: true,
+      },
     });
-    await logAuditEvent({ tenantId, userId: req.user!.id, action: 'GRIEVANCE_OFFICER_SET', resourceType: 'TENANT', resourceId: tenantId, ...ctxOf(req), diffJson: { officer: t.grievanceName ? true : false, responseDays: t.grievanceSlaDays } });
+    await logAuditEvent({
+      tenantId,
+      userId: req.user!.id,
+      action: 'GRIEVANCE_OFFICER_SET',
+      resourceType: 'TENANT',
+      resourceId: tenantId,
+      ...ctxOf(req),
+      diffJson: { officer: t.grievanceName ? true : false, responseDays: t.grievanceSlaDays },
+    });
     return res.json({
       data: {
         organisation: t.name,
-        officer: t.grievanceName && t.grievanceEmail ? { name: t.grievanceName, email: t.grievanceEmail, phone: t.grievancePhone, address: t.grievanceAddress } : null,
+        officer:
+          t.grievanceName && t.grievanceEmail
+            ? { name: t.grievanceName, email: t.grievanceEmail, phone: t.grievancePhone, address: t.grievanceAddress }
+            : null,
         responseDays: t.grievanceSlaDays,
       },
     });
@@ -179,7 +258,11 @@ router.put(
 // ---------------------------------------------------------------------------- children and guardians
 
 /** GET /api/v1/privacy/me/minor - whether the caller is marked under 18 and whether a guardian has consented */
-router.get('/me/minor', authenticateJWT, route('Failed to load the status', async (req, res) => res.json({ data: await minorStatus(tenantIdOf(req), req.user!.id) })));
+router.get(
+  '/me/minor',
+  authenticateJWT,
+  route('Failed to load the status', async (req, res) => res.json({ data: await minorStatus(tenantIdOf(req), req.user!.id) }))
+);
 
 /** PUT /api/v1/privacy/me/minor - declare yourself under 18 (cannot be undone by you) */
 router.put(
@@ -205,7 +288,9 @@ router.post(
 router.get(
   '/users/:id/minor',
   ...adminOnly,
-  route('Failed to load the status', async (req, res) => res.json({ data: await minorStatus(tenantIdOf(req), idSchema.parse(String(req.params.id))) }))
+  route('Failed to load the status', async (req, res) =>
+    res.json({ data: await minorStatus(tenantIdOf(req), idSchema.parse(String(req.params.id))) })
+  )
 );
 
 /** PUT /api/v1/privacy/users/:id/minor - mark or clear a person as under 18 (administrators) */

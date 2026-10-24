@@ -1,26 +1,13 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import type { NotificationItem } from "@/hooks/useNotifications";
-import { NotificationSettings } from "@/components/NotificationSettings";
-import { useT } from "@/lib/i18n";
-import { activateOnKey } from "@/lib/a11y";
+import React, { useState } from 'react';
+import type { NotificationItem } from '@/hooks/useNotifications';
+import { NotificationSettings } from '@/components/NotificationSettings';
+import { useT } from '@/lib/i18n';
+import { activateOnKey } from '@/lib/a11y';
 
 export type { NotificationItem };
-import {
-  Bell,
-  Check,
-  CheckCheck,
-  Clock,
-  Award,
-  Video,
-  FileCheck,
-  AlertTriangle,
-  Sparkles,
-  X,
-  ExternalLink,
-  Settings,
-} from "lucide-react";
+import { Bell, Check, CheckCheck, Clock, Award, Video, FileCheck, AlertTriangle, Sparkles, X, ExternalLink, Settings } from 'lucide-react';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -45,7 +32,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   onMarkAllRead,
   onDismiss,
 }) => {
-  const [filter, setFilter] = useState<"ALL" | "UNREAD" | "ACADEMIC" | "SECURITY">("ALL");
+  const [filter, setFilter] = useState<'ALL' | 'UNREAD' | 'ACADEMIC' | 'SECURITY'>('ALL');
   const [showSettings, setShowSettings] = useState(false);
   const t = useT();
 
@@ -54,9 +41,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const filteredNotifications = notifications.filter((n) => {
-    if (filter === "UNREAD") return !n.isRead;
-    if (filter === "ACADEMIC") return n.type === "ACADEMIC" || n.type === "EXAM";
-    if (filter === "SECURITY") return n.type === "SECURITY";
+    if (filter === 'UNREAD') return !n.isRead;
+    if (filter === 'ACADEMIC') return n.type === 'ACADEMIC' || n.type === 'EXAM';
+    if (filter === 'SECURITY') return n.type === 'SECURITY';
     return true;
   });
 
@@ -72,34 +59,29 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             <Bell className="h-4 w-4" />
           </div>
           <div>
-            <h4 className="font-bold text-xs text-ink">{t("notif.title")}</h4>
-            <p className="text-[10px] text-ink-muted">
-              {unreadCount > 0 ? t.plural("notif.unread", unreadCount) : t("notif.allCaughtUp")}
-            </p>
+            <h4 className="font-bold text-xs text-ink">{t('notif.title')}</h4>
+            <p className="text-[10px] text-ink-muted">{unreadCount > 0 ? t.plural('notif.unread', unreadCount) : t('notif.allCaughtUp')}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (
-            <button
-              onClick={markAllAsRead}
-              className="text-[10px] font-semibold text-brand-fg hover:text-brand-fg flex items-center gap-1"
-            >
+            <button onClick={markAllAsRead} className="text-[10px] font-semibold text-brand-fg hover:text-brand-fg flex items-center gap-1">
               <CheckCheck className="h-3 w-3" />
-              <span>{t("notif.markAllRead")}</span>
+              <span>{t('notif.markAllRead')}</span>
             </button>
           )}
           <button
             onClick={() => setShowSettings((v) => !v)}
-            aria-label={t("notif.settings")}
+            aria-label={t('notif.settings')}
             aria-pressed={showSettings}
-            className={`p-1 rounded-lg transition-colors ${showSettings ? "text-brand-fg bg-raised" : "text-ink-muted hover:text-ink hover:bg-raised"}`}
+            className={`p-1 rounded-lg transition-colors ${showSettings ? 'text-brand-fg bg-raised' : 'text-ink-muted hover:text-ink hover:bg-raised'}`}
           >
             <Settings className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={onClose}
-            aria-label={t("notif.close")}
+            aria-label={t('notif.close')}
             className="p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-raised transition-colors"
           >
             <X className="h-3.5 w-3.5" />
@@ -111,106 +93,94 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         <NotificationSettings onDone={() => setShowSettings(false)} />
       ) : (
         <>
-      {/* Filter Tabs */}
-      <div className="bg-canvas/60 border-b border-line px-3 py-2 flex items-center gap-1 overflow-x-auto text-[11px]">
-        {[
-          { id: "ALL", label: t("notif.filter.all") },
-          { id: "UNREAD", label: t("notif.filter.unread", { count: unreadCount }) },
-          { id: "ACADEMIC", label: t("notif.filter.academic") },
-          { id: "SECURITY", label: t("notif.filter.security") },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setFilter(tab.id as any)}
-            className={`px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors ${
-              filter === tab.id
-                ? "bg-brand text-on-brand shadow-sm"
-                : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Notifications List */}
-      <div className="max-h-96 overflow-y-auto divide-y divide-line/80">
-        {isLoading && notifications.length === 0 ? (
-          <div className="p-8 text-center text-ink-subtle text-xs">{t("notif.loading")}</div>
-        ) : error && notifications.length === 0 ? (
-          <div className="p-8 text-center text-danger text-xs">{error}</div>
-        ) : filteredNotifications.length === 0 ? (
-          <div className="p-8 text-center text-ink-subtle text-xs">
-            {t("notif.empty")}
+          {/* Filter Tabs */}
+          <div className="bg-canvas/60 border-b border-line px-3 py-2 flex items-center gap-1 overflow-x-auto text-[11px]">
+            {[
+              { id: 'ALL', label: t('notif.filter.all') },
+              { id: 'UNREAD', label: t('notif.filter.unread', { count: unreadCount }) },
+              { id: 'ACADEMIC', label: t('notif.filter.academic') },
+              { id: 'SECURITY', label: t('notif.filter.security') },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id as any)}
+                className={`px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors ${
+                  filter === tab.id ? 'bg-brand text-on-brand shadow-sm' : 'text-ink-muted hover:text-ink'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-        ) : (
-          filteredNotifications.map((notif) => (
-            // A mouse shortcut for "mark as read": the row holds its own buttons, so it cannot be a button itself.
-            // Keyboard users reach the same action with Enter or Space on the row (unread ones only).
-            // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-            <div
-              key={notif.id}
-              onClick={() => markSingleAsRead(notif.id)}
-              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-              tabIndex={notif.isRead ? undefined : 0}
-              onKeyDown={notif.isRead ? undefined : activateOnKey(() => markSingleAsRead(notif.id))}
-              className={`p-3.5 text-xs transition-colors hover:bg-raised/40 cursor-pointer ${
-                !notif.isRead ? "bg-brand/15" : "bg-transparent"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  {!notif.isRead && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand-hover shrink-0" />
-                  )}
-                  <strong className={`font-semibold text-ink ${!notif.isRead ? "text-ink" : ""}`}>
-                    {notif.title}
-                  </strong>
-                </div>
-                <span className="flex shrink-0 items-center gap-1.5">
-                  <span className="text-[10px] text-ink-subtle">{notif.timestamp}</span>
-                  {onDismiss && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDismiss(notif.id);
-                      }}
-                      aria-label={t("notif.dismiss", { title: notif.title })}
-                      className="rounded p-0.5 text-ink-subtle transition-colors hover:bg-raised hover:text-ink"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </span>
-              </div>
 
-              <p className="text-[11px] text-ink-muted mt-1 leading-relaxed">
-                {notif.message}
-              </p>
+          {/* Notifications List */}
+          <div className="max-h-96 overflow-y-auto divide-y divide-line/80">
+            {isLoading && notifications.length === 0 ? (
+              <div className="p-8 text-center text-ink-subtle text-xs">{t('notif.loading')}</div>
+            ) : error && notifications.length === 0 ? (
+              <div className="p-8 text-center text-danger text-xs">{error}</div>
+            ) : filteredNotifications.length === 0 ? (
+              <div className="p-8 text-center text-ink-subtle text-xs">{t('notif.empty')}</div>
+            ) : (
+              filteredNotifications.map((notif) => (
+                // A mouse shortcut for "mark as read": the row holds its own buttons, so it cannot be a button itself.
+                // Keyboard users reach the same action with Enter or Space on the row (unread ones only).
+                // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+                <div
+                  key={notif.id}
+                  onClick={() => markSingleAsRead(notif.id)}
+                  // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+                  tabIndex={notif.isRead ? undefined : 0}
+                  onKeyDown={notif.isRead ? undefined : activateOnKey(() => markSingleAsRead(notif.id))}
+                  className={`p-3.5 text-xs transition-colors hover:bg-raised/40 cursor-pointer ${
+                    !notif.isRead ? 'bg-brand/15' : 'bg-transparent'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {!notif.isRead && <span className="h-1.5 w-1.5 rounded-full bg-brand-hover shrink-0" />}
+                      <strong className={`font-semibold text-ink ${!notif.isRead ? 'text-ink' : ''}`}>{notif.title}</strong>
+                    </div>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <span className="text-[10px] text-ink-subtle">{notif.timestamp}</span>
+                      {onDismiss && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDismiss(notif.id);
+                          }}
+                          aria-label={t('notif.dismiss', { title: notif.title })}
+                          className="rounded p-0.5 text-ink-subtle transition-colors hover:bg-raised hover:text-ink"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </span>
+                  </div>
 
-              {notif.actionLabel && (
-                <div className="mt-2.5 flex items-center justify-between">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      markSingleAsRead(notif.id);
-                      if (onActionClick && notif.actionUrl) onActionClick(notif.actionUrl);
-                      onClose();
-                    }}
-                    className="text-[10px] font-bold text-brand-fg hover:text-brand-fg flex items-center gap-1 bg-brand/15 px-2 py-1 rounded-md border border-brand/30 transition-colors"
-                  >
-                    <span>{notif.actionLabel}</span>
-                    <ExternalLink className="h-2.5 w-2.5" />
-                  </button>
-                  <span className="text-[9px] uppercase font-bold text-ink-subtle tracking-wider">
-                    {notif.type}
-                  </span>
+                  <p className="text-[11px] text-ink-muted mt-1 leading-relaxed">{notif.message}</p>
+
+                  {notif.actionLabel && (
+                    <div className="mt-2.5 flex items-center justify-between">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markSingleAsRead(notif.id);
+                          if (onActionClick && notif.actionUrl) onActionClick(notif.actionUrl);
+                          onClose();
+                        }}
+                        className="text-[10px] font-bold text-brand-fg hover:text-brand-fg flex items-center gap-1 bg-brand/15 px-2 py-1 rounded-md border border-brand/30 transition-colors"
+                      >
+                        <span>{notif.actionLabel}</span>
+                        <ExternalLink className="h-2.5 w-2.5" />
+                      </button>
+                      <span className="text-[9px] uppercase font-bold text-ink-subtle tracking-wider">{notif.type}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
+              ))
+            )}
+          </div>
         </>
       )}
     </div>

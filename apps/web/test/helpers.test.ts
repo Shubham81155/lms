@@ -20,7 +20,15 @@ describe('rubricDraft', () => {
     expect(rubricDraft(crit, { a: 'abc', b: '1' }).problem).toMatch(/between/);
   });
   it('avoids floating point noise', () => {
-    expect(rubricDraft([{ id: 'a', name: 'A', maxPoints: 1 }, { id: 'b', name: 'B', maxPoints: 1 }], { a: '0.1', b: '0.2' }).total).toBe(0.3);
+    expect(
+      rubricDraft(
+        [
+          { id: 'a', name: 'A', maxPoints: 1 },
+          { id: 'b', name: 'B', maxPoints: 1 },
+        ],
+        { a: '0.1', b: '0.2' }
+      ).total
+    ).toBe(0.3);
   });
 });
 
@@ -42,15 +50,52 @@ describe('draftProblem (question bank)', () => {
   it('requires text, two options and exactly one correct for single-choice', () => {
     expect(draftProblem({ ...mc([]), text: ' ' })).toMatch(/Write the question/);
     expect(draftProblem(mc([{ text: 'a', isCorrect: true }]))).toMatch(/two options/);
-    expect(draftProblem(mc([{ text: 'a', isCorrect: true }, { text: 'b', isCorrect: true }]))).toMatch(/exactly one/);
-    expect(draftProblem(mc([{ text: 'a', isCorrect: false }, { text: 'b', isCorrect: false }]))).toMatch(/exactly one/);
-    expect(draftProblem(mc([{ text: 'a', isCorrect: true }, { text: 'b', isCorrect: false }]))).toBeNull();
+    expect(
+      draftProblem(
+        mc([
+          { text: 'a', isCorrect: true },
+          { text: 'b', isCorrect: true },
+        ])
+      )
+    ).toMatch(/exactly one/);
+    expect(
+      draftProblem(
+        mc([
+          { text: 'a', isCorrect: false },
+          { text: 'b', isCorrect: false },
+        ])
+      )
+    ).toMatch(/exactly one/);
+    expect(
+      draftProblem(
+        mc([
+          { text: 'a', isCorrect: true },
+          { text: 'b', isCorrect: false },
+        ])
+      )
+    ).toBeNull();
   });
   it('ignores blank option rows', () => {
-    expect(draftProblem(mc([{ text: 'a', isCorrect: true }, { text: '  ', isCorrect: false }, { text: 'b', isCorrect: false }]))).toBeNull();
+    expect(
+      draftProblem(
+        mc([
+          { text: 'a', isCorrect: true },
+          { text: '  ', isCorrect: false },
+          { text: 'b', isCorrect: false },
+        ])
+      )
+    ).toBeNull();
   });
   it('allows several correct answers for multi-select but at least one', () => {
-    const ms = (c1: boolean, c2: boolean) => ({ type: 'MULTI_SELECT', text: 'Q?', answer: '', options: [{ text: 'a', isCorrect: c1 }, { text: 'b', isCorrect: c2 }] });
+    const ms = (c1: boolean, c2: boolean) => ({
+      type: 'MULTI_SELECT',
+      text: 'Q?',
+      answer: '',
+      options: [
+        { text: 'a', isCorrect: c1 },
+        { text: 'b', isCorrect: c2 },
+      ],
+    });
     expect(draftProblem(ms(true, true))).toBeNull();
     expect(draftProblem(ms(false, false))).toMatch(/at least one/);
   });
@@ -79,7 +124,12 @@ describe('notification and calendar formatting', () => {
   it('maps server notifications to display items', () => {
     const base = { id: '1', body: null, link: null, readAt: null, createdAt: '2026-10-20T12:00:00Z' };
     expect(toItem({ ...base, category: 'EXAM', title: 't' })).toMatchObject({ type: 'EXAM', isRead: false, message: '' });
-    expect(toItem({ ...base, category: 'GRADE', title: 't', readAt: 'x', link: '/a' })).toMatchObject({ type: 'ACADEMIC', isRead: true, actionUrl: '/a', actionLabel: 'Open' });
+    expect(toItem({ ...base, category: 'GRADE', title: 't', readAt: 'x', link: '/a' })).toMatchObject({
+      type: 'ACADEMIC',
+      isRead: true,
+      actionUrl: '/a',
+      actionLabel: 'Open',
+    });
     expect(toItem({ ...base, category: 'WHO_KNOWS', title: 't' }).type).toBe('ANNOUNCEMENT');
   });
 });
@@ -88,14 +138,26 @@ import { buildAnswers, choicesFor, formatClock, isAnswered, remainingSeconds, un
 
 describe('quiz helpers', () => {
   const qs = [
-    { id: 'q1', questionText: 'A', questionType: 'MULTIPLE_CHOICE', points: 1, options: [{ id: 'a', text: 'x' }, { id: 'b', text: 'y' }] },
+    {
+      id: 'q1',
+      questionText: 'A',
+      questionType: 'MULTIPLE_CHOICE',
+      points: 1,
+      options: [
+        { id: 'a', text: 'x' },
+        { id: 'b', text: 'y' },
+      ],
+    },
     { id: 'q2', questionText: 'B', questionType: 'TRUE_FALSE', points: 1, options: null },
     { id: 'q3', questionText: 'C', questionType: 'MULTI_SELECT', points: 1, options: [{ id: 'a', text: 'x' }] },
     { id: 'q4', questionText: 'D', questionType: 'SHORT_ANSWER', points: 1 },
   ];
 
   it('offers True/False when a true/false question has no options', () => {
-    expect(choicesFor(qs[1])).toEqual([{ id: 'true', text: 'True' }, { id: 'false', text: 'False' }]);
+    expect(choicesFor(qs[1])).toEqual([
+      { id: 'true', text: 'True' },
+      { id: 'false', text: 'False' },
+    ]);
     expect(choicesFor(qs[0]).map((c) => c.id)).toEqual(['a', 'b']);
     expect(choicesFor(qs[3])).toEqual([]);
   });
@@ -147,7 +209,8 @@ describe('branding and hierarchy form rules', () => {
   it('accepts empty or http(s) URLs only', () => {
     expect(isHttpUrlOrEmpty('')).toBe(true);
     expect(isHttpUrlOrEmpty(' https://example.com/logo.png ')).toBe(true);
-    for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'ftp://x.example', 'not a url']) expect(isHttpUrlOrEmpty(bad), bad).toBe(false);
+    for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'ftp://x.example', 'not a url'])
+      expect(isHttpUrlOrEmpty(bad), bad).toBe(false);
   });
   it('normalises and validates campus codes', () => {
     expect(normaliseCode(' cam-01 ')).toBe('CAM-01');

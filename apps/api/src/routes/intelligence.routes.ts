@@ -22,7 +22,10 @@ const router = Router();
 export const statementSchema = z.object({
   id: z.string().refine(isUuid, 'Statement id must be a UUID').optional(),
   actor: z
-    .object({ mbox: z.string().regex(/^mailto:[^\s@]+@[^\s@]+$/, 'actor.mbox must be a mailto: IRI'), name: z.string().max(200).optional() })
+    .object({
+      mbox: z.string().regex(/^mailto:[^\s@]+@[^\s@]+$/, 'actor.mbox must be a mailto: IRI'),
+      name: z.string().max(200).optional(),
+    })
     .passthrough(),
   verb: z.object({ id: z.string().url().max(2048), display: z.record(z.string()).optional() }).passthrough(),
   object: z.object({ id: z.string().url().max(2048) }).passthrough(),
@@ -75,12 +78,22 @@ router.post(
         continue;
       }
       await prisma.xapiStatement.create({
-        data: { id, tenantId, actorUserId: actor?.id ?? null, verbId: s.verb.id, objectId: s.object.id, statementJson: json as any, timestamp },
+        data: {
+          id,
+          tenantId,
+          actorUserId: actor?.id ?? null,
+          verbId: s.verb.id,
+          objectId: s.object.id,
+          statementJson: json as any,
+          timestamp,
+        },
       });
       ids.push(id);
       stored++;
     }
-    return res.status(Array.isArray(req.body) ? 200 : 201).json({ message: 'xAPI Statement recorded', statementIds: ids, statementId: ids[0], stored });
+    return res
+      .status(Array.isArray(req.body) ? 200 : 201)
+      .json({ message: 'xAPI Statement recorded', statementIds: ids, statementId: ids[0], stored });
   })
 );
 
@@ -120,12 +133,16 @@ router.get(
       visible = [user.id, ...learners.map((l) => l.userId)];
     }
 
-    const actor = (wholeTenant || courseStaff) && q.actorEmail ? await prisma.user.findFirst({ where: { tenantId, email: q.actorEmail.toLowerCase() }, select: { id: true } }) : null;
-    const actorFilter = q.actorEmail && (wholeTenant || courseStaff)
-      ? { actorUserId: actor && (visible === null || visible.includes(actor.id)) ? actor.id : '__none__' }
-      : visible === null
-        ? {}
-        : { actorUserId: { in: visible } };
+    const actor =
+      (wholeTenant || courseStaff) && q.actorEmail
+        ? await prisma.user.findFirst({ where: { tenantId, email: q.actorEmail.toLowerCase() }, select: { id: true } })
+        : null;
+    const actorFilter =
+      q.actorEmail && (wholeTenant || courseStaff)
+        ? { actorUserId: actor && (visible === null || visible.includes(actor.id)) ? actor.id : '__none__' }
+        : visible === null
+          ? {}
+          : { actorUserId: { in: visible } };
     const where = {
       tenantId,
       ...actorFilter,
@@ -144,7 +161,16 @@ router.get(
 // Proctoring telemetry
 // ---------------------------------------------------------------------------
 
-const EVENT_TYPES = ['TAB_SWITCH', 'FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'AUDIO_SPIKE', 'COPY_PASTE', 'FULLSCREEN_EXIT', 'CAMERA_STOPPED', 'MICROPHONE_STOPPED'] as const;
+const EVENT_TYPES = [
+  'TAB_SWITCH',
+  'FACE_NOT_DETECTED',
+  'MULTIPLE_FACES',
+  'AUDIO_SPIKE',
+  'COPY_PASTE',
+  'FULLSCREEN_EXIT',
+  'CAMERA_STOPPED',
+  'MICROPHONE_STOPPED',
+] as const;
 /** Reported from the camera or microphone: only accepted when the quiz asks for that device. */
 const CAMERA_EVENTS: readonly string[] = ['FACE_NOT_DETECTED', 'MULTIPLE_FACES', 'CAMERA_STOPPED'];
 const MICROPHONE_EVENTS: readonly string[] = ['AUDIO_SPIKE', 'MICROPHONE_STOPPED'];
@@ -153,7 +179,12 @@ export const proctorEventSchema = z.object({
   submissionId: idSchema,
   eventType: z.enum(EVENT_TYPES),
   severity: z.enum(SEVERITIES),
-  snapshotUrl: z.string().url().max(2048).refine((u) => /^https:\/\//i.test(u), 'snapshotUrl must be https').optional(),
+  snapshotUrl: z
+    .string()
+    .url()
+    .max(2048)
+    .refine((u) => /^https:\/\//i.test(u), 'snapshotUrl must be https')
+    .optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 
@@ -171,18 +202,26 @@ router.post(
 
     const submission = await prisma.quizSubmission.findFirst({
       where: { id: body.submissionId, userId: req.user!.id },
-      select: { id: true, submittedAt: true, quiz: { select: { id: true, title: true, courseId: true, requireProctoring: true, proctorCamera: true, proctorMicrophone: true } } },
+      select: {
+        id: true,
+        submittedAt: true,
+        quiz: { select: { id: true, title: true, courseId: true, requireProctoring: true, proctorCamera: true, proctorMicrophone: true } },
+      },
     });
     if (!submission) throw new HttpError(404, 'Submission not found');
     if (submission.submittedAt) throw new HttpError(409, 'This attempt is already submitted');
     if (!submission.quiz.requireProctoring) throw new HttpError(400, 'Proctoring is not enabled for this quiz');
-    if (CAMERA_EVENTS.includes(body.eventType) && !submission.quiz.proctorCamera) throw new HttpError(400, 'This quiz does not use the camera');
-    if (MICROPHONE_EVENTS.includes(body.eventType) && !submission.quiz.proctorMicrophone) throw new HttpError(400, 'This quiz does not use the microphone');
+    if (CAMERA_EVENTS.includes(body.eventType) && !submission.quiz.proctorCamera)
+      throw new HttpError(400, 'This quiz does not use the camera');
+    if (MICROPHONE_EVENTS.includes(body.eventType) && !submission.quiz.proctorMicrophone)
+      throw new HttpError(400, 'This quiz does not use the microphone');
     // Children's data (DPDP Act s.9(3)): no behavioural monitoring of any kind (camera, microphone, snapshots, tab
     // switches, copy-paste, full-screen exits) until a guardian has consented.
     if (await minorMonitoringBlocked(tenantId, req.user!.id)) throw new HttpError(403, MONITORING_BLOCKED_MESSAGE);
 
-    const before = assessProctoring(await prisma.proctoringLog.findMany({ where: { submissionId: submission.id }, select: { severity: true } }));
+    const before = assessProctoring(
+      await prisma.proctoringLog.findMany({ where: { submissionId: submission.id }, select: { severity: true } })
+    );
     await prisma.proctoringLog.create({
       data: {
         submissionId: submission.id,
@@ -192,7 +231,9 @@ router.post(
         metadataJson: (body.metadata as any) ?? undefined,
       },
     });
-    const after = assessProctoring(await prisma.proctoringLog.findMany({ where: { submissionId: submission.id }, select: { severity: true } }));
+    const after = assessProctoring(
+      await prisma.proctoringLog.findMany({ where: { submissionId: submission.id }, select: { severity: true } })
+    );
 
     if (after.flagged && !before.flagged) {
       const staff = await prisma.courseInstructor.findMany({ where: { courseId: submission.quiz.courseId }, select: { userId: true } });
@@ -209,7 +250,13 @@ router.post(
         )
       );
     }
-    return res.status(201).json({ status: 'recorded', flagged: after.flagged, riskScore: after.score, eventType: body.eventType, timestamp: new Date().toISOString() });
+    return res.status(201).json({
+      status: 'recorded',
+      flagged: after.flagged,
+      riskScore: after.score,
+      eventType: body.eventType,
+      timestamp: new Date().toISOString(),
+    });
   })
 );
 
@@ -235,7 +282,11 @@ router.get(
         orderBy: { timestamp: 'desc' },
         take: limit,
         select: {
-          id: true, eventType: true, severity: true, timestamp: true, submissionId: true,
+          id: true,
+          eventType: true,
+          severity: true,
+          timestamp: true,
+          submissionId: true,
           submission: { select: { user: { select: { firstName: true, lastName: true } }, quiz: { select: { title: true } } } },
         },
       }),
@@ -271,7 +322,10 @@ router.get(
     const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? '10'), 10) || 10));
     const where = {
       grade: null,
-      assignment: { tenantId: tenantIdOf(req), ...(isAdminRole(user.role) ? {} : { course: { instructors: { some: { userId: user.id } } } }) },
+      assignment: {
+        tenantId: tenantIdOf(req),
+        ...(isAdminRole(user.role) ? {} : { course: { instructors: { some: { userId: user.id } } } }),
+      },
     };
     const [total, rows] = await Promise.all([
       prisma.assignmentSubmission.count({ where }),
@@ -280,7 +334,9 @@ router.get(
         orderBy: { submittedAt: 'asc' },
         take: limit,
         select: {
-          id: true, submittedAt: true, plagiarismScore: true,
+          id: true,
+          submittedAt: true,
+          plagiarismScore: true,
           user: { select: { firstName: true, lastName: true } },
           assignment: { select: { id: true, title: true, course: { select: { id: true, code: true } } } },
         },
@@ -307,7 +363,10 @@ router.get(
   '/quizzes/:quizId/proctoring',
   authenticateJWT,
   route('Failed to load proctoring report', async (req, res) => {
-    const quiz = await prisma.quiz.findFirst({ where: { id: idSchema.parse(req.params.quizId), tenantId: tenantIdOf(req) }, select: { id: true, courseId: true, title: true } });
+    const quiz = await prisma.quiz.findFirst({
+      where: { id: idSchema.parse(req.params.quizId), tenantId: tenantIdOf(req) },
+      select: { id: true, courseId: true, title: true },
+    });
     if (!quiz) throw new HttpError(404, 'Quiz not found');
     await requireCourseStaff(req, quiz.courseId);
     const subs = await prisma.quizSubmission.findMany({
@@ -317,7 +376,13 @@ router.get(
     return res.json({
       data: subs
         .filter((s) => s.proctoringLogs.length > 0)
-        .map((s) => ({ submissionId: s.id, userId: s.userId, attemptNumber: s.attemptNumber, ...assessProctoring(s.proctoringLogs), events: s.proctoringLogs })),
+        .map((s) => ({
+          submissionId: s.id,
+          userId: s.userId,
+          attemptNumber: s.attemptNumber,
+          ...assessProctoring(s.proctoringLogs),
+          events: s.proctoringLogs,
+        })),
     });
   })
 );
@@ -349,7 +414,10 @@ router.post(
   route('Failed to send nudge', async (req, res) => {
     const body = parseBody(req, nudgeSchema);
     const access = await requireCourseStaff(req, body.courseId);
-    const enrolled = await prisma.enrollment.findUnique({ where: { courseId_userId: { courseId: access.course.id, userId: body.userId } }, select: { id: true } });
+    const enrolled = await prisma.enrollment.findUnique({
+      where: { courseId_userId: { courseId: access.course.id, userId: body.userId } },
+      select: { id: true },
+    });
     if (!enrolled) throw new HttpError(404, 'Learner is not enrolled in this course');
     await notify({
       tenantId: tenantIdOf(req),

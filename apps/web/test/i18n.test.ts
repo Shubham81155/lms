@@ -101,7 +101,7 @@ describe('plurals and formatting', () => {
     expect(translatePlural('en', 'notif.unread', 1500)).toBe('1,500 unread alerts');
   });
 
-  it('formats dates with the language\'s month names in UTC', () => {
+  it("formats dates with the language's month names in UTC", () => {
     expect(formatDate('en', '2026-06-05T10:00:00Z')).toBe('5 June 2026');
     expect(formatDate('hi', '2026-06-05T10:00:00Z')).toMatch(/जून/);
     expect(formatDate('en', 'not a date')).toBe('');
@@ -118,7 +118,7 @@ describe('choosing the language', () => {
     expect(fromAcceptLanguage(null)).toBeNull();
   });
 
-  it('prefers the person\'s choice, then the organisation\'s, then the browser\'s, then English', () => {
+  it("prefers the person's choice, then the organisation's, then the browser's, then English", () => {
     expect(resolveLocale({ chosen: 'en', tenantDefault: 'hi', acceptLanguage: 'hi' })).toBe('en');
     expect(resolveLocale({ chosen: 'xx', tenantDefault: 'hi', acceptLanguage: 'en' })).toBe('hi');
     expect(resolveLocale({ acceptLanguage: 'hi-IN' })).toBe('hi');

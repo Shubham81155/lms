@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import React, { useEffect, useRef } from "react";
-import { useApiData } from "@/hooks/useApiData";
+import React, { useEffect, useRef } from 'react';
+import { useApiData } from '@/hooks/useApiData';
 
 interface Launch {
   url: string;
   origin: string;
-  version: "1.2" | "2004";
+  version: '1.2' | '2004';
 }
 
 /**
@@ -23,11 +23,11 @@ export const ScormFrame: React.FC<{ packageId: string; title: string; onComplete
     if (!data) return;
     const onMessage = (e: MessageEvent) => {
       // Only the content origin's player page may report progress.
-      if (e.origin !== data.origin || e.data?.type !== "lms-scorm") return;
+      if (e.origin !== data.origin || e.data?.type !== 'lms-scorm') return;
       if (e.data.completed) done.current?.();
     };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
   }, [data]);
 
   if (launch.isLoading) return <p className="py-10 text-center text-xs text-ink-muted">Loading the activity…</p>;
@@ -35,7 +35,7 @@ export const ScormFrame: React.FC<{ packageId: string; title: string; onComplete
     return (
       <div role="alert" className="rounded-2xl border border-danger/30 bg-danger/10 p-6 text-center">
         <p className="text-sm font-bold text-danger">This activity cannot be opened</p>
-        <p className="mt-1.5 text-xs text-ink-muted">{launch.error ?? "Try again later."}</p>
+        <p className="mt-1.5 text-xs text-ink-muted">{launch.error ?? 'Try again later.'}</p>
       </div>
     );
   }

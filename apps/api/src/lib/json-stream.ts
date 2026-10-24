@@ -28,7 +28,11 @@ export class JsonObjectStream {
   }
 
   /** `page(cursor)` returns the next rows after the id `cursor` (or the first rows), at most `pageSize`. */
-  async array<T extends { id: string }>(name: string, page: (cursor: string | undefined) => Promise<T[]>, pageSize = 1000): Promise<number> {
+  async array<T extends { id: string }>(
+    name: string,
+    page: (cursor: string | undefined) => Promise<T[]>,
+    pageSize = 1000
+  ): Promise<number> {
     await this.key(name);
     await this.write('[');
     let cursor: string | undefined;

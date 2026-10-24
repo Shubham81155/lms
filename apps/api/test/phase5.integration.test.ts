@@ -18,9 +18,24 @@ let signCallback: typeof import('../src/routes/integrations.routes.js').signCall
 const pw = (slug: string) => `${PASSWORD}-${slug}`;
 
 async function seed() {
-  for (const [id, slug] of [['t-h', 'harvard'], ['t-m', 'mit']]) await admin.tenant.create({ data: { id, slug, name: slug } });
+  for (const [id, slug] of [
+    ['t-h', 'harvard'],
+    ['t-m', 'mit'],
+  ])
+    await admin.tenant.create({ data: { id, slug, name: slug } });
   const user = (id: string, tenantId: string, slug: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+      },
+    });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('admin2', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
@@ -33,21 +48,65 @@ async function seed() {
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course c1', status: 'PUBLISHED' } });
   await admin.course.create({ data: { id: 'c2', tenantId: 't-h', code: 'C2', title: 'Course c2', status: 'PUBLISHED' } });
   await admin.course.create({ data: { id: 'm1', tenantId: 't-m', code: 'M1', title: 'MIT', status: 'PUBLISHED' } });
-  await admin.courseInstructor.createMany({ data: [{ courseId: 'c1', userId: 'teacher', isPrimary: true }, { courseId: 'c1', userId: 'ta' }, { courseId: 'c2', userId: 'teacher2', isPrimary: true }, { courseId: 'm1', userId: 'm-teacher' }] });
-  for (const s of ['s1', 's2', 's3']) await admin.enrollment.create({ data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS', progressPercent: 50 } });
+  await admin.courseInstructor.createMany({
+    data: [
+      { courseId: 'c1', userId: 'teacher', isPrimary: true },
+      { courseId: 'c1', userId: 'ta' },
+      { courseId: 'c2', userId: 'teacher2', isPrimary: true },
+      { courseId: 'm1', userId: 'm-teacher' },
+    ],
+  });
+  for (const s of ['s1', 's2', 's3'])
+    await admin.enrollment.create({
+      data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS', progressPercent: 50 },
+    });
 
-  const q = (id: string, bloomLevel?: string) => ({ id, questionText: `Q ${id}`, questionType: 'MULTIPLE_CHOICE' as const, points: 1, bloomLevel: bloomLevel ?? null, optionsJson: [{ id: 'a', text: 'x', isCorrect: true }, { id: 'b', text: 'y', isCorrect: false }] });
-  await admin.quiz.create({ data: { id: 'q1', tenantId: 't-h', courseId: 'c1', title: 'Quiz 1', questions: { create: [q('q1a', 'APPLY')] } } });
+  const q = (id: string, bloomLevel?: string) => ({
+    id,
+    questionText: `Q ${id}`,
+    questionType: 'MULTIPLE_CHOICE' as const,
+    points: 1,
+    bloomLevel: bloomLevel ?? null,
+    optionsJson: [
+      { id: 'a', text: 'x', isCorrect: true },
+      { id: 'b', text: 'y', isCorrect: false },
+    ],
+  });
+  await admin.quiz.create({
+    data: { id: 'q1', tenantId: 't-h', courseId: 'c1', title: 'Quiz 1', questions: { create: [q('q1a', 'APPLY')] } },
+  });
   await admin.quiz.create({ data: { id: 'q-c2', tenantId: 't-h', courseId: 'c2', title: 'Other course quiz' } });
-  await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 } });
-  await admin.assignment.create({ data: { id: 'a-m', tenantId: 't-m', courseId: 'm1', title: 'MIT essay', instructions: 'Write', maxPoints: 100 } });
+  await admin.assignment.create({
+    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', maxPoints: 100 },
+  });
+  await admin.assignment.create({
+    data: { id: 'a-m', tenantId: 't-m', courseId: 'm1', title: 'MIT essay', instructions: 'Write', maxPoints: 100 },
+  });
 
   const sub = (id: string, userId: string, score: number) =>
-    admin.quizSubmission.create({ data: { id, quizId: 'q1', userId, maxScore: 1, score, passed: score === 1, submittedAt: new Date(), answersJson: { pendingManual: [], grading: { q1a: { awardedPoints: score, maxPoints: 1, needsManualGrading: false, isCorrect: score === 1 } } } } });
+    admin.quizSubmission.create({
+      data: {
+        id,
+        quizId: 'q1',
+        userId,
+        maxScore: 1,
+        score,
+        passed: score === 1,
+        submittedAt: new Date(),
+        answersJson: {
+          pendingManual: [],
+          grading: { q1a: { awardedPoints: score, maxPoints: 1, needsManualGrading: false, isCorrect: score === 1 } },
+        },
+      },
+    });
   await sub('qs-1', 's1', 1);
   await sub('qs-2', 's2', 0);
-  await admin.assignmentSubmission.create({ data: { id: 'as-1', assignmentId: 'a1', userId: 's1', submissionText: 'x', grade: 90, gradedAt: new Date() } });
-  await admin.assignmentSubmission.create({ data: { id: 'as-2', assignmentId: 'a1', userId: 's2', submissionText: 'x', grade: 50, gradedAt: new Date() } });
+  await admin.assignmentSubmission.create({
+    data: { id: 'as-1', assignmentId: 'a1', userId: 's1', submissionText: 'x', grade: 90, gradedAt: new Date() },
+  });
+  await admin.assignmentSubmission.create({
+    data: { id: 'as-2', assignmentId: 'a1', userId: 's2', submissionText: 'x', grade: 50, gradedAt: new Date() },
+  });
   await admin.assignmentSubmission.create({ data: { id: 'as-3', assignmentId: 'a1', userId: 's3', submissionText: 'x' } }); // not graded yet
   await admin.assignmentSubmission.create({ data: { id: 'as-m', assignmentId: 'a-m', userId: 'm-teacher', submissionText: 'x' } });
 }
@@ -69,15 +128,30 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
 
 // ---------------------------------------------------------------------------
 describe('grade arithmetic', () => {
-  const cats = [{ id: 'q', name: 'Quizzes', weightPercent: 40 }, { id: 'a', name: 'Assignments', weightPercent: 60 }];
-  const item = (categoryId: string, percent: number | null, over: Partial<ItemScore> = {}): ItemScore => ({ itemId: Math.random().toString(), type: 'QUIZ', title: 't', categoryId, percent, pending: percent === null, missing: false, ...over });
+  const cats = [
+    { id: 'q', name: 'Quizzes', weightPercent: 40 },
+    { id: 'a', name: 'Assignments', weightPercent: 60 },
+  ];
+  const item = (categoryId: string, percent: number | null, over: Partial<ItemScore> = {}): ItemScore => ({
+    itemId: Math.random().toString(),
+    type: 'QUIZ',
+    title: 't',
+    categoryId,
+    percent,
+    pending: percent === null,
+    missing: false,
+    ...over,
+  });
 
   it('weights category averages', () => {
     const r = computeRawGrade(cats, [item('q', 100), item('q', 50), item('a', 80)]);
@@ -143,27 +217,61 @@ describe('gradebook workflow', () => {
 
   it('validates categories and item assignments', async () => {
     const put = (categories: unknown) => teacher.put(`${G}/categories`).send({ categories });
-    expect((await put([{ name: 'Quizzes', weightPercent: 40 }, { name: 'Assignments', weightPercent: 50 }])).status).toBe(400); // 90
-    expect((await put([{ name: 'Quizzes', weightPercent: 50 }, { name: 'quizzes', weightPercent: 50 }])).status).toBe(400); // duplicate
+    expect(
+      (
+        await put([
+          { name: 'Quizzes', weightPercent: 40 },
+          { name: 'Assignments', weightPercent: 50 },
+        ])
+      ).status
+    ).toBe(400); // 90
+    expect(
+      (
+        await put([
+          { name: 'Quizzes', weightPercent: 50 },
+          { name: 'quizzes', weightPercent: 50 },
+        ])
+      ).status
+    ).toBe(400); // duplicate
     expect((await put([])).status).toBe(400);
-    const ok = await put([{ name: 'Quizzes', weightPercent: 40 }, { name: 'Assignments', weightPercent: 60 }]);
+    const ok = await put([
+      { name: 'Quizzes', weightPercent: 40 },
+      { name: 'Assignments', weightPercent: 60 },
+    ]);
     expect(ok.status).toBe(200);
     ids = Object.fromEntries(ok.body.data.map((c: any) => [c.name, c.id]));
 
     const items = (arr: unknown) => teacher.put(`${G}/items`).send({ items: arr });
     expect((await items([{ type: 'QUIZ', id: 'q-c2', categoryId: ids.Quizzes }])).status).toBe(400); // quiz of another course
     expect((await items([{ type: 'QUIZ', id: 'q1', categoryId: 'nope' }])).status).toBe(400);
-    expect((await items([{ type: 'QUIZ', id: 'q1', categoryId: ids.Quizzes }, { type: 'ASSIGNMENT', id: 'a1', categoryId: ids.Assignments }])).status).toBe(200);
+    expect(
+      (
+        await items([
+          { type: 'QUIZ', id: 'q1', categoryId: ids.Quizzes },
+          { type: 'ASSIGNMENT', id: 'a1', categoryId: ids.Assignments },
+        ])
+      ).status
+    ).toBe(200);
     const cfg = (await teacher.get(`${G}/config`)).body.data;
     expect(cfg.items.find((i: any) => i.id === 'q1').gradeCategoryId).toBe(ids.Quizzes);
   });
 
   it('keeps assigned items when categories are re-saved by name', async () => {
-    await teacher.put(`${G}/categories`).send({ categories: [{ name: 'quizzes', weightPercent: 30 }, { name: 'Assignments', weightPercent: 70 }] });
+    await teacher.put(`${G}/categories`).send({
+      categories: [
+        { name: 'quizzes', weightPercent: 30 },
+        { name: 'Assignments', weightPercent: 70 },
+      ],
+    });
     const cfg = (await teacher.get(`${G}/config`)).body.data;
     expect(cfg.categories.map((c: any) => c.weightPercent).sort()).toEqual([30, 70]);
     expect(cfg.items.find((i: any) => i.id === 'q1').gradeCategoryId).toBe(ids.Quizzes);
-    await teacher.put(`${G}/categories`).send({ categories: [{ name: 'Quizzes', weightPercent: 40 }, { name: 'Assignments', weightPercent: 60 }] });
+    await teacher.put(`${G}/categories`).send({
+      categories: [
+        { name: 'Quizzes', weightPercent: 40 },
+        { name: 'Assignments', weightPercent: 60 },
+      ],
+    });
   });
 
   it('validates the curve', async () => {
@@ -256,7 +364,14 @@ describe('gradebook workflow', () => {
 
   it('audits every state change', async () => {
     const actions = (await admin.auditLog.findMany({ where: { tenantId: 't-h', resourceType: 'GRADEBOOK' } })).map((a) => a.action);
-    for (const a of ['GRADEBOOK_CATEGORIES_UPDATED', 'GRADEBOOK_CALCULATED', 'GRADEBOOK_SUBMITTED', 'GRADEBOOK_APPROVED', 'GRADEBOOK_REOPENED', 'GRADEBOOK_REJECTED']) {
+    for (const a of [
+      'GRADEBOOK_CATEGORIES_UPDATED',
+      'GRADEBOOK_CALCULATED',
+      'GRADEBOOK_SUBMITTED',
+      'GRADEBOOK_APPROVED',
+      'GRADEBOOK_REOPENED',
+      'GRADEBOOK_REJECTED',
+    ]) {
       expect(actions, a).toContain(a);
     }
   });
@@ -265,9 +380,16 @@ describe('gradebook workflow', () => {
 // ---------------------------------------------------------------------------
 describe('question bank', () => {
   const mc = (over: object = {}) => ({
-    questionText: 'What does Raft elect?', questionType: 'MULTIPLE_CHOICE', points: 2,
-    optionsJson: [{ text: 'A leader', isCorrect: true }, { text: 'A follower', isCorrect: false }],
-    tags: ['Raft', 'consensus', 'raft'], bloomLevel: 'UNDERSTAND', ...over,
+    questionText: 'What does Raft elect?',
+    questionType: 'MULTIPLE_CHOICE',
+    points: 2,
+    optionsJson: [
+      { text: 'A leader', isCorrect: true },
+      { text: 'A follower', isCorrect: false },
+    ],
+    tags: ['Raft', 'consensus', 'raft'],
+    bloomLevel: 'UNDERSTAND',
+    ...over,
   });
   let itemId: string;
   let courseItemId: string;
@@ -289,7 +411,16 @@ describe('question bank', () => {
     expect(res.body.data.optionsJson.every((o: any) => o.id)).toBe(true);
 
     const bad = (over: object) => teacher.post('/api/v1/question-bank').send(mc(over));
-    expect((await bad({ optionsJson: [{ text: 'a', isCorrect: true }, { text: 'b', isCorrect: true }] })).status).toBe(400);
+    expect(
+      (
+        await bad({
+          optionsJson: [
+            { text: 'a', isCorrect: true },
+            { text: 'b', isCorrect: true },
+          ],
+        })
+      ).status
+    ).toBe(400);
     expect((await bad({ bloomLevel: 'SPLEEN' })).status).toBe(400);
     expect((await bad({ questionType: 'SHORT_ANSWER', optionsJson: null })).status).toBe(400); // needs a key
     expect((await bad({ courseId: 'c2' })).status).toBe(403); // teacher cannot edit c2
@@ -320,8 +451,20 @@ describe('question bank', () => {
 
   it('lets only the author or an administrator change an item', async () => {
     const teacher = await as('teacher');
-    expect((await teacher.patch(`/api/v1/question-bank/${itemId}`).send({ points: 3, tags: ['x'] })).body.data).toMatchObject({ points: 3, tags: ['x'] });
-    expect((await teacher.patch(`/api/v1/question-bank/${itemId}`).send({ optionsJson: [{ text: 'a', isCorrect: false }, { text: 'b', isCorrect: false }] })).status).toBe(400);
+    expect((await teacher.patch(`/api/v1/question-bank/${itemId}`).send({ points: 3, tags: ['x'] })).body.data).toMatchObject({
+      points: 3,
+      tags: ['x'],
+    });
+    expect(
+      (
+        await teacher.patch(`/api/v1/question-bank/${itemId}`).send({
+          optionsJson: [
+            { text: 'a', isCorrect: false },
+            { text: 'b', isCorrect: false },
+          ],
+        })
+      ).status
+    ).toBe(400);
     // Shared with course c1: the TA cannot (not an author role), another teacher cannot see it.
     expect((await (await as('teacher2')).patch(`/api/v1/question-bank/${itemId}`).send({ points: 9 })).status).toBe(404);
     expect((await (await as('admin')).patch(`/api/v1/question-bank/${itemId}`).send({ points: 4 })).status).toBe(200);
@@ -375,11 +518,17 @@ describe('question bank', () => {
     expect(res.body.bloomsMastery.map((b: any) => b.level)).toEqual(['APPLY']); // only levels with data
 
     const created = await (await as('teacher')).post('/api/v1/quizzes/q1/questions').send({
-      questionText: 'Tagged directly', questionType: 'TRUE_FALSE', correctAnswer: 'true', bloomLevel: 'CREATE',
+      questionText: 'Tagged directly',
+      questionType: 'TRUE_FALSE',
+      correctAnswer: 'true',
+      bloomLevel: 'CREATE',
     });
     expect(created.status).toBe(201);
     expect(created.body.data.bloomLevel).toBe('CREATE');
-    expect((await (await as('teacher')).patch(`/api/v1/quizzes/q1/questions/${created.body.data.id}`).send({ bloomLevel: 'EVALUATE' })).body.data.bloomLevel).toBe('EVALUATE');
+    expect(
+      (await (await as('teacher')).patch(`/api/v1/quizzes/q1/questions/${created.body.data.id}`).send({ bloomLevel: 'EVALUATE' })).body.data
+        .bloomLevel
+    ).toBe('EVALUATE');
   });
 });
 
@@ -421,7 +570,7 @@ describe('plagiarism provider callbacks', () => {
     expect(res.body.alerted).toBe(2); // teacher and TA of c1
     const notes = (await (await as('teacher')).get('/api/v1/notifications?category=GRADE')).body.data;
     expect(notes.some((n: any) => n.title.includes('High similarity'))).toBe(true);
-    expect((await admin.auditLog.count({ where: { action: 'PLAGIARISM_RESULT_RECORDED' } }))).toBeGreaterThanOrEqual(2);
+    expect(await admin.auditLog.count({ where: { action: 'PLAGIARISM_RESULT_RECORDED' } })).toBeGreaterThanOrEqual(2);
   });
 
   it('feeds the early-warning radar', async () => {
@@ -451,7 +600,10 @@ describe('plagiarism provider callbacks', () => {
   });
 
   it('does not break normal JSON endpoints that share the API root', async () => {
-    const login = await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 's1@x.edu', password: pw('harvard') });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 's1@x.edu', password: pw('harvard') });
     expect(login.status).toBe(200);
   });
 });
@@ -459,9 +611,22 @@ describe('plagiarism provider callbacks', () => {
 // ---------------------------------------------------------------------------
 describe('pending submissions feed', () => {
   it('lists ungraded work oldest first, scoped to the caller’s courses', async () => {
-    await admin.assignment.create({ data: { id: 'a2', tenantId: 't-h', courseId: 'c1', title: 'Lab 2', instructions: 'x', maxPoints: 10 } });
-    await admin.assignmentSubmission.create({ data: { id: 'p-1', assignmentId: 'a2', userId: 's1', submissionText: 'x', submittedAt: new Date(Date.now() - 7_200_000), plagiarismScore: 42 } });
-    await admin.assignmentSubmission.create({ data: { id: 'p-2', assignmentId: 'a2', userId: 's2', submissionText: 'x', submittedAt: new Date(Date.now() - 3_600_000) } });
+    await admin.assignment.create({
+      data: { id: 'a2', tenantId: 't-h', courseId: 'c1', title: 'Lab 2', instructions: 'x', maxPoints: 10 },
+    });
+    await admin.assignmentSubmission.create({
+      data: {
+        id: 'p-1',
+        assignmentId: 'a2',
+        userId: 's1',
+        submissionText: 'x',
+        submittedAt: new Date(Date.now() - 7_200_000),
+        plagiarismScore: 42,
+      },
+    });
+    await admin.assignmentSubmission.create({
+      data: { id: 'p-2', assignmentId: 'a2', userId: 's2', submissionText: 'x', submittedAt: new Date(Date.now() - 3_600_000) },
+    });
     await admin.assignment.create({ data: { id: 'a3', tenantId: 't-h', courseId: 'c2', title: 'Other course', instructions: 'x' } });
     await admin.assignmentSubmission.create({ data: { id: 'p-3', assignmentId: 'a3', userId: 's3', submissionText: 'x' } });
 
@@ -505,7 +670,12 @@ describe('gradebook responses match the API description', () => {
 
     // Make sure there is something to read: categories exist from the workflow tests, but set them
     // here too so this test stands on its own.
-    const cats = await teacher.put(`${G}/categories`).send({ categories: [{ name: 'Quizzes', weightPercent: 40 }, { name: 'Assignments', weightPercent: 60 }] });
+    const cats = await teacher.put(`${G}/categories`).send({
+      categories: [
+        { name: 'Quizzes', weightPercent: 40 },
+        { name: 'Assignments', weightPercent: 60 },
+      ],
+    });
     expect(z.object({ data: z.array(docs.GradebookCategory) }).safeParse(cats.body).success, JSON.stringify(cats.body)).toBe(true);
 
     const config = await teacher.get(`${G}/config`);
@@ -513,7 +683,10 @@ describe('gradebook responses match the API description', () => {
 
     const calc = await teacher.post(`${G}/calculate`);
     expect(calc.status).toBe(200);
-    expect(z.object({ data: z.object({ learners: z.number(), calculated: z.number(), skippedApproved: z.number() }) }).safeParse(calc.body).success).toBe(true);
+    expect(
+      z.object({ data: z.object({ learners: z.number(), calculated: z.number(), skippedApproved: z.number() }) }).safeParse(calc.body)
+        .success
+    ).toBe(true);
 
     const staff = await teacher.get(G);
     const parsedStaff = docs.GradebookStaffView.safeParse(staff.body);
@@ -529,17 +702,24 @@ describe('gradebook responses match the API description', () => {
 
 describe('administrators choose who teaches a course', () => {
   const PATH = '/api/v1/courses/c2/instructors';
-  const team = () => admin.courseInstructor.findMany({ where: { courseId: 'c2' }, orderBy: { userId: 'asc' }, select: { userId: true, isPrimary: true } });
+  const team = () =>
+    admin.courseInstructor.findMany({ where: { courseId: 'c2' }, orderBy: { userId: 'asc' }, select: { userId: true, isPrimary: true } });
 
   it('replaces the team, notifies the people added and audits the change', async () => {
     const a = await as('admin');
     const res = await a.put(PATH).send({ instructors: [{ userId: 'teacher', isPrimary: true }, { userId: 'ta' }] });
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(2);
-    expect(await team()).toEqual([{ userId: 'ta', isPrimary: false }, { userId: 'teacher', isPrimary: true }]);
+    expect(await team()).toEqual([
+      { userId: 'ta', isPrimary: false },
+      { userId: 'teacher', isPrimary: true },
+    ]);
     expect(await admin.notification.count({ where: { userId: 'teacher', title: 'You now teach "Course c2"' } })).toBe(1);
     expect(await admin.notification.count({ where: { userId: 'teacher2', title: { contains: 'You now teach' } } })).toBe(0);
-    const log = await admin.auditLog.findFirst({ where: { action: 'COURSE_INSTRUCTORS_CHANGED', resourceId: 'c2' }, orderBy: { createdAt: 'desc' } });
+    const log = await admin.auditLog.findFirst({
+      where: { action: 'COURSE_INSTRUCTORS_CHANGED', resourceId: 'c2' },
+      orderBy: { createdAt: 'desc' },
+    });
     expect(log?.diffJson).toMatchObject({ added: ['teacher', 'ta'], removed: ['teacher2'] });
 
     // The new teacher now sees the course among their own; the removed one no longer can edit it.
@@ -550,13 +730,30 @@ describe('administrators choose who teaches a course', () => {
     const a = await as('admin');
     const bad = (instructors: unknown[]) => a.put(PATH).send({ instructors });
     expect((await bad([{ userId: 'teacher' }])).status).toBe(400); // no main teacher
-    expect((await bad([{ userId: 'teacher', isPrimary: true }, { userId: 'teacher2', isPrimary: true }])).status).toBe(400);
-    expect((await bad([{ userId: 'teacher', isPrimary: true }, { userId: 'teacher', isPrimary: false }])).status).toBe(400);
+    expect(
+      (
+        await bad([
+          { userId: 'teacher', isPrimary: true },
+          { userId: 'teacher2', isPrimary: true },
+        ])
+      ).status
+    ).toBe(400);
+    expect(
+      (
+        await bad([
+          { userId: 'teacher', isPrimary: true },
+          { userId: 'teacher', isPrimary: false },
+        ])
+      ).status
+    ).toBe(400);
     expect((await bad([{ userId: 'ta', isPrimary: true }])).status).toBe(400); // assistants cannot be the main teacher
     expect((await bad([{ userId: 's1', isPrimary: true }])).status).toBe(400); // learners cannot teach
     expect((await bad([{ userId: 'm-teacher', isPrimary: true }])).status).toBe(400); // another organisation
     expect((await a.put('/api/v1/courses/m1/instructors').send({ instructors: [] })).status).toBe(404);
-    expect(await team()).toEqual([{ userId: 'ta', isPrimary: false }, { userId: 'teacher', isPrimary: true }]);
+    expect(await team()).toEqual([
+      { userId: 'ta', isPrimary: false },
+      { userId: 'teacher', isPrimary: true },
+    ]);
   });
 
   it('is for administrators only', async () => {

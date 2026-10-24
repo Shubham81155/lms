@@ -7,28 +7,43 @@ import { idSchema, parseBody } from '../lib/validate';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { contentDisposition, storage } from '../lib/storage';
 import {
-  OffboardingActor, auditDownload, cancelDeletion, downloadableExport, offboardingOverview, offboardingState, requestExport, scheduleDeletion,
+  OffboardingActor,
+  auditDownload,
+  cancelDeletion,
+  downloadableExport,
+  offboardingOverview,
+  offboardingState,
+  requestExport,
+  scheduleDeletion,
 } from '../lib/offboarding';
 
 // Organisation offboarding (lib/offboarding.ts): full exports and scheduled deletion.
 // The default router is mounted at /api/v1/admin (the organisation's administrators, for their own organisation);
 // operatorOffboardingRoutes at /api/v1/operator (the platform operator, for any organisation, and the deleted ones).
 
-export const deletionSchema = z.object({
-  /** The organisation's address (slug), typed by the person to confirm. */
-  confirmSlug: z.string().trim().min(1).max(64),
-}).strict();
+export const deletionSchema = z
+  .object({
+    /** The organisation's address (slug), typed by the person to confirm. */
+    confirmSlug: z.string().trim().min(1).max(64),
+  })
+  .strict();
 
 const actorOf = (req: Request, operator: boolean): OffboardingActor => ({
-  tenantId: tenantIdOf(req), userId: req.user!.id, email: req.user!.email, operator, ipAddress: req.ip, userAgent: req.headers['user-agent'],
+  tenantId: tenantIdOf(req),
+  userId: req.user!.id,
+  email: req.user!.email,
+  operator,
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
 });
 
 /** Streams the ZIP (or redirects to a short-lived storage link), after auditing the download. */
 async function sendExport(req: Request, res: Response, operator: boolean) {
   const e = await downloadableExport(idSchema.parse(req.params.exportId ?? req.params.id), { tenantId: tenantIdOf(req), operator });
-  const slug = (await basePrisma.tenant.findUnique({ where: { id: e.tenantId }, select: { slug: true } }))?.slug
-    ?? (await basePrisma.tenantDeletion.findUnique({ where: { tenantId: e.tenantId }, select: { slug: true } }))?.slug
-    ?? 'organisation';
+  const slug =
+    (await basePrisma.tenant.findUnique({ where: { id: e.tenantId }, select: { slug: true } }))?.slug ??
+    (await basePrisma.tenantDeletion.findUnique({ where: { tenantId: e.tenantId }, select: { slug: true } }))?.slug ??
+    'organisation';
   const filename = `${slug}-export-${e.createdAt.toISOString().slice(0, 10)}${e.isFinal ? '-final' : ''}.zip`;
   await auditDownload(e, actorOf(req, operator));
 
@@ -57,7 +72,9 @@ router.get(
 /** POST /api/v1/admin/offboarding/export: queue a full export (ZIP). */
 router.post(
   '/offboarding/export',
-  route('Failed to request the export', async (req, res) => res.status(202).json({ data: await requestExport(tenantIdOf(req), actorOf(req, false)) }))
+  route('Failed to request the export', async (req, res) =>
+    res.status(202).json({ data: await requestExport(tenantIdOf(req), actorOf(req, false)) })
+  )
 );
 
 /** GET /api/v1/admin/offboarding/export/:id/download: the ZIP of a ready export. */
@@ -97,7 +114,12 @@ async function requireOperator(req: Request, res: Response, next: NextFunction) 
 }
 
 export const operatorOffboardingRoutes = Router();
-operatorOffboardingRoutes.use(['/offboarding', '/exports', '/tenants/:id/offboarding', '/tenants/:id/export', '/tenants/:id/deletion'], authenticateJWT, requireRole('SUPER_ADMIN'), requireOperator);
+operatorOffboardingRoutes.use(
+  ['/offboarding', '/exports', '/tenants/:id/offboarding', '/tenants/:id/export', '/tenants/:id/deletion'],
+  authenticateJWT,
+  requireRole('SUPER_ADMIN'),
+  requireOperator
+);
 
 /** GET /api/v1/operator/offboarding: scheduled deletions and deleted organisations. */
 operatorOffboardingRoutes.get(
@@ -107,12 +129,16 @@ operatorOffboardingRoutes.get(
 
 operatorOffboardingRoutes.get(
   '/tenants/:id/offboarding',
-  route('Failed to load offboarding', async (req, res) => res.json({ data: await offboardingState(idSchema.parse(req.params.id), { operator: true }) }))
+  route('Failed to load offboarding', async (req, res) =>
+    res.json({ data: await offboardingState(idSchema.parse(req.params.id), { operator: true }) })
+  )
 );
 
 operatorOffboardingRoutes.post(
   '/tenants/:id/export',
-  route('Failed to request the export', async (req, res) => res.status(202).json({ data: await requestExport(idSchema.parse(req.params.id), actorOf(req, true)) }))
+  route('Failed to request the export', async (req, res) =>
+    res.status(202).json({ data: await requestExport(idSchema.parse(req.params.id), actorOf(req, true)) })
+  )
 );
 
 operatorOffboardingRoutes.post(
@@ -125,7 +151,9 @@ operatorOffboardingRoutes.post(
 
 operatorOffboardingRoutes.delete(
   '/tenants/:id/deletion',
-  route('Failed to cancel the deletion', async (req, res) => res.json({ data: await cancelDeletion(idSchema.parse(req.params.id), actorOf(req, true)) }))
+  route('Failed to cancel the deletion', async (req, res) =>
+    res.json({ data: await cancelDeletion(idSchema.parse(req.params.id), actorOf(req, true)) })
+  )
 );
 
 /** Any export, including the final export of a deleted organisation. */

@@ -21,9 +21,24 @@ let app: import('express').Express;
 let lk: typeof import('../src/lib/livekit.js');
 
 async function seed() {
-  for (const [id, slug] of [['t-h', 'harvard'], ['t-m', 'mit']]) await admin.tenant.create({ data: { id, slug, name: slug } });
+  for (const [id, slug] of [
+    ['t-h', 'harvard'],
+    ['t-m', 'mit'],
+  ])
+    await admin.tenant.create({ data: { id, slug, name: slug } });
   const user = (id: string, tenantId: string, slug: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+      },
+    });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
   await user('teacher2', 't-h', 'harvard', 'INSTRUCTOR');
@@ -35,8 +50,16 @@ async function seed() {
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course 1', status: 'PUBLISHED' } });
   await admin.course.create({ data: { id: 'c2', tenantId: 't-h', code: 'C2', title: 'Course 2', status: 'PUBLISHED' } });
   await admin.course.create({ data: { id: 'm1', tenantId: 't-m', code: 'M1', title: 'MIT', status: 'PUBLISHED' } });
-  await admin.courseInstructor.createMany({ data: [{ courseId: 'c1', userId: 'teacher', isPrimary: true }, { courseId: 'c1', userId: 'ta' }, { courseId: 'c2', userId: 'teacher2', isPrimary: true }, { courseId: 'm1', userId: 'm-teacher' }] });
-  for (const s of ['s1', 's2']) await admin.enrollment.create({ data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
+  await admin.courseInstructor.createMany({
+    data: [
+      { courseId: 'c1', userId: 'teacher', isPrimary: true },
+      { courseId: 'c1', userId: 'ta' },
+      { courseId: 'c2', userId: 'teacher2', isPrimary: true },
+      { courseId: 'm1', userId: 'm-teacher' },
+    ],
+  });
+  for (const s of ['s1', 's2'])
+    await admin.enrollment.create({ data: { id: `e-${s}`, tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
   await admin.enrollment.create({ data: { id: 'e-drop', tenantId: 't-h', courseId: 'c1', userId: 'sdrop', status: 'DROPPED' } });
   await admin.enrollment.create({ data: { id: 'e-s1c2', tenantId: 't-h', courseId: 'c2', userId: 's3', status: 'ENROLLED' } });
 }
@@ -60,7 +83,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -80,7 +106,11 @@ function signedWebhook(body: object | string, over: { secret?: string; key?: str
 }
 const hook = (body: object | string, over: Parameters<typeof signedWebhook>[1] = {}) => {
   const { raw, token } = signedWebhook(body, over);
-  return request(app).post('/api/v1/integrations/livekit').set('content-type', 'application/webhook+json').set('authorization', token).send(raw);
+  return request(app)
+    .post('/api/v1/integrations/livekit')
+    .set('content-type', 'application/webhook+json')
+    .set('authorization', token)
+    .send(raw);
 };
 
 // ---------------------------------------------------------------------------
@@ -88,15 +118,39 @@ describe('pure helpers', () => {
   it('builds and parses room names, rejecting anything that is not ours', () => {
     expect(lk.roomNameFor('t-h', 'abc-123')).toBe('lms_t-h_abc-123');
     expect(lk.parseRoomName('lms_t-h_abc-123')).toEqual({ tenantId: 't-h', sessionId: 'abc-123' });
-    for (const bad of ['', 'lms_only', 'other_t-h_abc', 'lms_t-h_abc_extra', 'lms_t h_abc', "lms_t-h_abc'; DROP", 'lms__abc', `lms_${'x'.repeat(65)}_a`]) {
+    for (const bad of [
+      '',
+      'lms_only',
+      'other_t-h_abc',
+      'lms_t-h_abc_extra',
+      'lms_t h_abc',
+      "lms_t-h_abc'; DROP",
+      'lms__abc',
+      `lms_${'x'.repeat(65)}_a`,
+    ]) {
       expect(lk.parseRoomName(bad), bad).toBeNull();
     }
   });
 
   it('issues a token that LiveKit would accept and that limits what the holder may do', () => {
-    const t = decode(lk.issueJoinToken({ identity: 'u1', name: 'Ada L', room: 'lms_t_s', canPublish: false, roomAdmin: false, role: 'LEARNER', ttlSeconds: 3600 }));
+    const t = decode(
+      lk.issueJoinToken({
+        identity: 'u1',
+        name: 'Ada L',
+        room: 'lms_t_s',
+        canPublish: false,
+        roomAdmin: false,
+        role: 'LEARNER',
+        ttlSeconds: 3600,
+      })
+    );
     expect(t.exp - t.iat).toBe(3600);
-    expect(t).toMatchObject({ iss: LK_KEY, sub: 'u1', name: 'Ada L', video: { room: 'lms_t_s', roomJoin: true, canSubscribe: true, canPublish: false, canPublishData: true } });
+    expect(t).toMatchObject({
+      iss: LK_KEY,
+      sub: 'u1',
+      name: 'Ada L',
+      video: { room: 'lms_t_s', roomJoin: true, canSubscribe: true, canPublish: false, canPublishData: true },
+    });
     expect(t.video.roomAdmin).toBeUndefined();
     expect(JSON.parse(t.metadata)).toEqual({ role: 'LEARNER' });
   });
@@ -109,7 +163,12 @@ describe('pure helpers', () => {
     expect(lk.verifyWebhook(signedWebhook({ event: 'x' }, { secret: 'y'.repeat(40) }).token, raw)).toBe(false);
     expect(lk.verifyWebhook(signedWebhook({ event: 'x' }, { key: 'OtherKey' }).token, raw)).toBe(false);
     expect(lk.verifyWebhook(signedWebhook({ event: 'x' }, { expiresIn: -10 }).token, raw)).toBe(false);
-    expect(lk.verifyWebhook(jwt.sign({ iss: LK_KEY, sha256: crypto.createHash('sha256').update(raw).digest('base64') }, '', { algorithm: 'none' as any }), raw)).toBe(false);
+    expect(
+      lk.verifyWebhook(
+        jwt.sign({ iss: LK_KEY, sha256: crypto.createHash('sha256').update(raw).digest('base64') }, '', { algorithm: 'none' as any }),
+        raw
+      )
+    ).toBe(false);
     expect(lk.verifyWebhook(undefined, raw)).toBe(false);
     expect(lk.verifyWebhook('garbage', raw)).toBe(false);
   });
@@ -125,17 +184,31 @@ describe('pure helpers', () => {
 
 // ---------------------------------------------------------------------------
 describe('scheduling', () => {
-  const body = (over: object = {}) => ({ title: 'Raft consensus', description: 'Leader election', scheduledAt: inFuture(3_600_000), durationMins: 60, ...over });
+  const body = (over: object = {}) => ({
+    title: 'Raft consensus',
+    description: 'Leader election',
+    scheduledAt: inFuture(3_600_000),
+    durationMins: 60,
+    ...over,
+  });
 
   it('is limited to course editors', async () => {
-    for (const who of ['s1', 'ta', 'teacher2']) expect((await (await as(who)).post('/api/v1/courses/c1/live-sessions').send(body())).status, who).toBe(403);
+    for (const who of ['s1', 'ta', 'teacher2'])
+      expect((await (await as(who)).post('/api/v1/courses/c1/live-sessions').send(body())).status, who).toBe(403);
     expect((await request(app).post('/api/v1/courses/c1/live-sessions').send(body())).status).toBe(401);
     expect((await (await as('m-teacher', 'mit')).post('/api/v1/courses/c1/live-sessions').send(body())).status).toBe(404); // other tenant
   });
 
   it('validates input', async () => {
     const t = await as('teacher');
-    for (const bad of [body({ title: 'x' }), body({ scheduledAt: inFuture(-3_600_000) }), body({ durationMins: 2 }), body({ durationMins: 500 }), body({ scheduledAt: 'soon' }), {}]) {
+    for (const bad of [
+      body({ title: 'x' }),
+      body({ scheduledAt: inFuture(-3_600_000) }),
+      body({ durationMins: 2 }),
+      body({ durationMins: 500 }),
+      body({ scheduledAt: 'soon' }),
+      {},
+    ]) {
       expect((await t.post('/api/v1/courses/c1/live-sessions').send(bad)).status, JSON.stringify(bad)).toBe(400);
     }
   });
@@ -154,9 +227,13 @@ describe('scheduling', () => {
 
     for (const who of ['s1', 's2']) {
       const notes = (await (await as(who)).get('/api/v1/notifications?category=LIVE')).body.data;
-      expect(notes.some((n: any) => n.title === 'Live class scheduled: Raft consensus'), who).toBe(true);
+      expect(
+        notes.some((n: any) => n.title === 'Live class scheduled: Raft consensus'),
+        who
+      ).toBe(true);
     }
-    for (const who of ['s3', 'sdrop', 'teacher']) expect((await (await as(who)).get('/api/v1/notifications?category=LIVE')).body.data, who).toHaveLength(0);
+    for (const who of ['s3', 'sdrop', 'teacher'])
+      expect((await (await as(who)).get('/api/v1/notifications?category=LIVE')).body.data, who).toHaveLength(0);
     expect(await admin.auditLog.count({ where: { action: 'LIVE_SESSION_SCHEDULED' } })).toBe(1);
   });
 
@@ -185,7 +262,11 @@ describe('scheduling', () => {
     expect((await t.post(`/api/v1/live-sessions/${id}/cancel`)).body.data.status).toBe('CANCELLED');
     expect(await admin.calendarEvent.count({ where: { id: calendarId } })).toBe(0);
     expect((await (await as('s1')).get('/api/v1/courses/c1/live-sessions')).body.data.map((s: any) => s.id)).not.toContain(id);
-    expect((await (await as('s1')).get('/api/v1/notifications?category=LIVE')).body.data.some((n: any) => n.title === 'Live class cancelled: Cancel me')).toBe(true);
+    expect(
+      (await (await as('s1')).get('/api/v1/notifications?category=LIVE')).body.data.some(
+        (n: any) => n.title === 'Live class cancelled: Cancel me'
+      )
+    ).toBe(true);
     expect((await t.post(`/api/v1/live-sessions/${id}/cancel`)).status).toBe(409); // already cancelled
     expect((await t.patch(`/api/v1/live-sessions/${id}`).send({ title: 'x1' })).status).toBe(409);
   });
@@ -197,7 +278,11 @@ describe('lifecycle and joining', () => {
   let room: string;
 
   beforeAll(async () => {
-    const res = await (await as('teacher')).post('/api/v1/courses/c1/live-sessions').send({ title: 'Live lecture', scheduledAt: inFuture(60_000), durationMins: 90 });
+    const res = await (
+      await as('teacher')
+    )
+      .post('/api/v1/courses/c1/live-sessions')
+      .send({ title: 'Live lecture', scheduledAt: inFuture(60_000), durationMins: 90 });
     id = res.body.data.id;
     room = (await admin.liveSession.findUnique({ where: { id } }))!.roomName;
   });
@@ -232,13 +317,16 @@ describe('lifecycle and joining', () => {
   });
 
   it('is started by an editor only, once, telling the learners', async () => {
-    for (const who of ['s1', 'ta', 'teacher2']) expect((await (await as(who)).post(`/api/v1/live-sessions/${id}/start`)).status, who).toBe(403);
+    for (const who of ['s1', 'ta', 'teacher2'])
+      expect((await (await as(who)).post(`/api/v1/live-sessions/${id}/start`)).status, who).toBe(403);
     const t = await as('teacher');
     const [a, b] = await Promise.all([t.post(`/api/v1/live-sessions/${id}/start`), t.post(`/api/v1/live-sessions/${id}/start`)]);
     expect([a.status, b.status]).toEqual([200, 200]); // idempotent
     expect(a.body.data.status).toBe('LIVE');
     expect(await admin.auditLog.count({ where: { action: 'LIVE_SESSION_STARTED', resourceId: id } })).toBe(1);
-    const notes = (await (await as('s1')).get('/api/v1/notifications?category=LIVE')).body.data.filter((n: any) => n.title === 'Live now: Live lecture');
+    const notes = (await (await as('s1')).get('/api/v1/notifications?category=LIVE')).body.data.filter(
+      (n: any) => n.title === 'Live now: Live lecture'
+    );
     expect(notes).toHaveLength(1);
   });
 
@@ -247,7 +335,11 @@ describe('lifecycle and joining', () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ url: LK_URL, roomName: room, role: 'LEARNER', canPublish: false });
     const t = decode(res.body.data.token);
-    expect(t).toMatchObject({ sub: 's1', name: 's1 L', video: { room, roomJoin: true, canSubscribe: true, canPublish: false, canPublishData: true } });
+    expect(t).toMatchObject({
+      sub: 's1',
+      name: 's1 L',
+      video: { room, roomJoin: true, canSubscribe: true, canPublish: false, canPublishData: true },
+    });
     expect(t.video.roomAdmin).toBeUndefined();
     const lifetime = t.exp - t.iat;
     expect(lifetime).toBeGreaterThanOrEqual(15 * 60);
@@ -262,12 +354,16 @@ describe('lifecycle and joining', () => {
     expect(ta.role).toBe('ASSISTANT');
     expect(decode(ta.token).video).toMatchObject({ canPublish: true });
     expect(decode(ta.token).video.roomAdmin).toBeUndefined();
-    expect(JSON.parse(decode((await (await as('admin')).post(`/api/v1/live-sessions/${id}/join`)).body.data.token).metadata).role).toBe('HOST');
+    expect(JSON.parse(decode((await (await as('admin')).post(`/api/v1/live-sessions/${id}/join`)).body.data.token).metadata).role).toBe(
+      'HOST'
+    );
   });
 
   it('turns on learner audio/video only when the instructor allowed it', async () => {
     const t = await as('teacher');
-    const open = (await t.post('/api/v1/courses/c1/live-sessions').send({ title: 'Open floor', scheduledAt: inFuture(60_000), allowStudentVideo: true })).body.data.id;
+    const open = (
+      await t.post('/api/v1/courses/c1/live-sessions').send({ title: 'Open floor', scheduledAt: inFuture(60_000), allowStudentVideo: true })
+    ).body.data.id;
     await t.post(`/api/v1/live-sessions/${open}/start`);
     const j = (await (await as('s2')).post(`/api/v1/live-sessions/${open}/join`)).body.data;
     expect(j.canPublish).toBe(true);
@@ -276,7 +372,8 @@ describe('lifecycle and joining', () => {
   });
 
   it('refuses people who should not be in the room', async () => {
-    for (const who of ['s3', 'sdrop', 'auditor', 'teacher2']) expect((await (await as(who)).post(`/api/v1/live-sessions/${id}/join`)).status, who).toBe(403);
+    for (const who of ['s3', 'sdrop', 'auditor', 'teacher2'])
+      expect((await (await as(who)).post(`/api/v1/live-sessions/${id}/join`)).status, who).toBe(403);
     expect((await request(app).post(`/api/v1/live-sessions/${id}/join`)).status).toBe(401);
     expect((await (await as('m-teacher', 'mit')).post(`/api/v1/live-sessions/${id}/join`)).status).toBe(404);
     expect((await (await as('s1')).post('/api/v1/live-sessions/nonexistent/join')).status).toBe(404);
@@ -289,7 +386,10 @@ describe('lifecycle and joining', () => {
   });
 
   it('is ended by an editor, closing open attendance, and cannot be joined afterwards', async () => {
-    await admin.liveAttendance.updateMany({ where: { sessionId: id, userId: 's1' }, data: { activeSince: new Date(Date.now() - 400_000) } });
+    await admin.liveAttendance.updateMany({
+      where: { sessionId: id, userId: 's1' },
+      data: { activeSince: new Date(Date.now() - 400_000) },
+    });
     expect((await (await as('ta')).post(`/api/v1/live-sessions/${id}/end`)).status).toBe(403);
     const res = await (await as('teacher')).post(`/api/v1/live-sessions/${id}/end`);
     expect(res.body.data.status).toBe('ENDED');
@@ -309,7 +409,12 @@ describe('media server webhooks and attendance', () => {
   let id: string;
   let room: string;
   const T0 = Math.floor(Date.now() / 1000);
-  const evt = (event: string, identity: string | undefined, atSec: number, roomName = room) => ({ event, createdAt: atSec, room: { name: roomName }, ...(identity ? { participant: { identity } } : {}) });
+  const evt = (event: string, identity: string | undefined, atSec: number, roomName = room) => ({
+    event,
+    createdAt: atSec,
+    room: { name: roomName },
+    ...(identity ? { participant: { identity } } : {}),
+  });
 
   beforeAll(async () => {
     const t = await as('teacher');
@@ -371,7 +476,8 @@ describe('media server webhooks and attendance', () => {
     expect(by.s1.minutes).toBeGreaterThanOrEqual(9);
     expect(by.s2).toMatchObject({ present: true, inRoomNow: false, minutes: 7 }); // 460 s
     expect(res.body.summary).toEqual({ enrolled: 2, present: 2 });
-    for (const who of ['s1', 'teacher2']) expect((await (await as(who)).get(`/api/v1/live-sessions/${id}/attendance`)).status, who).toBe(403);
+    for (const who of ['s1', 'teacher2'])
+      expect((await (await as(who)).get(`/api/v1/live-sessions/${id}/attendance`)).status, who).toBe(403);
     expect((await (await as('ta')).get(`/api/v1/live-sessions/${id}/attendance`)).status).toBe(200); // assigned staff
     expect((await (await as('m-teacher', 'mit')).get(`/api/v1/live-sessions/${id}/attendance`)).status).toBe(404);
   });

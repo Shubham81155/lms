@@ -32,7 +32,11 @@ describe('API description', () => {
   it('has matching generated web types: run `npm run api:sync` after changing the API', () => {
     const root = path.resolve(__dirname, '../../..');
     const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'lms-types-')), 'api-schema.ts');
-    execFileSync(process.execPath, [path.join(root, 'node_modules/openapi-typescript/bin/cli.js'), path.join(root, 'apps/api/openapi.json'), '-o', out], { stdio: 'pipe' });
+    execFileSync(
+      process.execPath,
+      [path.join(root, 'node_modules/openapi-typescript/bin/cli.js'), path.join(root, 'apps/api/openapi.json'), '-o', out],
+      { stdio: 'pipe' }
+    );
     const norm = (f: string) => fs.readFileSync(f, 'utf8').split(String.fromCharCode(13)).join('');
     expect(norm(path.join(root, 'apps/web/src/lib/api-schema.ts'))).toBe(norm(out));
   });
@@ -40,7 +44,9 @@ describe('API description', () => {
   it('describes every operation, with a summary and every request schema expressible', () => {
     const doc: any = buildOpenApi();
     const missing = Object.entries(doc.paths).flatMap(([p, item]: [string, any]) =>
-      Object.entries(item).filter(([, op]: [string, any]) => !op.summary).map(([m]) => `${m.toUpperCase()} ${p}`)
+      Object.entries(item)
+        .filter(([, op]: [string, any]) => !op.summary)
+        .map(([m]) => `${m.toUpperCase()} ${p}`)
     );
     expect(missing).toEqual([]);
     expect(UNDESCRIBABLE).toEqual([]);
@@ -134,7 +140,10 @@ describe('authentication coverage', () => {
   ].sort();
 
   it('only the intended routes are reachable without a session', () => {
-    const open = ops.filter((o) => o.security !== 'session').map(label).sort();
+    const open = ops
+      .filter((o) => o.security !== 'session')
+      .map(label)
+      .sort();
     expect(open).toEqual(EXPECTED_NOT_SESSION_GUARDED);
   });
 

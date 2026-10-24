@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import React, { useEffect, useRef } from "react";
-import { ShieldCheck } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { Banner } from "@/components/admin/IdentityPanels";
-import { ConsentList, GuardianForm, needsAnswer, useMinorStatus, useMyConsents } from "@/components/PrivacyConsents";
+import React, { useEffect, useRef } from 'react';
+import { ShieldCheck } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { Banner } from '@/components/admin/IdentityPanels';
+import { ConsentList, GuardianForm, needsAnswer, useMinorStatus, useMyConsents } from '@/components/PrivacyConsents';
 
 /**
  * Blocks the app after sign-in until every required, active consent purpose has a current answer. Optional purposes
@@ -29,11 +29,11 @@ export const ConsentGate: React.FC = () => {
   // Keep the page behind the dialog out of reach of the keyboard while it is open.
   useEffect(() => {
     if (!pending) return;
-    const main = document.getElementById("main-content");
-    const had = main?.hasAttribute("inert");
-    main?.setAttribute("inert", "");
+    const main = document.getElementById('main-content');
+    const had = main?.hasAttribute('inert');
+    main?.setAttribute('inert', '');
     return () => {
-      if (!had) main?.removeAttribute("inert");
+      if (!had) main?.removeAttribute('inert');
     };
   }, [pending]);
 
@@ -45,14 +45,25 @@ export const ConsentGate: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[70] bg-canvas/90 backdrop-blur-md flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="consent-gate-h">
-      <div ref={panel} tabIndex={-1} className="bg-surface border border-line rounded-3xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl outline-none">
+    <div
+      className="fixed inset-0 z-[70] bg-canvas/90 backdrop-blur-md flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="consent-gate-h"
+    >
+      <div
+        ref={panel}
+        tabIndex={-1}
+        className="bg-surface border border-line rounded-3xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl outline-none"
+      >
         <div className="border-b border-line px-6 py-4 flex items-center gap-3">
           <div className="h-9 w-9 rounded-2xl bg-success/20 border border-success/30 flex items-center justify-center text-success">
             <ShieldCheck className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
-            <h2 id="consent-gate-h" className="font-bold text-base text-ink">Before you continue</h2>
+            <h2 id="consent-gate-h" className="font-bold text-base text-ink">
+              Before you continue
+            </h2>
             <p className="text-xs text-ink-muted">Your organisation needs your consent to use your data in these ways.</p>
           </div>
         </div>
@@ -61,15 +72,21 @@ export const ConsentGate: React.FC = () => {
             <>
               <GuardianForm minor={m} onChanged={reloadAll} idPrefix="gate" />
               {m?.guardianEmail && (
-                <button type="button" onClick={reloadAll} className="px-4 py-2 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={reloadAll}
+                  className="px-4 py-2 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold"
+                >
                   My guardian has confirmed: check again
                 </button>
               )}
             </>
           ) : (
             <>
-              <ConsentList consents={rows.filter((c) => c.status === "NONE" || c.outdated)} onChanged={reloadAll} grantOnly />
-              <p className="text-[11px] text-ink-subtle">Optional items can be left unanswered. You can change any answer later under Account security and privacy.</p>
+              <ConsentList consents={rows.filter((c) => c.status === 'NONE' || c.outdated)} onChanged={reloadAll} grantOnly />
+              <p className="text-[11px] text-ink-subtle">
+                Optional items can be left unanswered. You can change any answer later under Account security and privacy.
+              </p>
             </>
           )}
           {(consents.error || minor.error) && <Banner kind="error">{consents.error || minor.error}</Banner>}

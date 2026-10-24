@@ -1,17 +1,18 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import QRCode from "qrcode";
-import { KeyRound, ShieldCheck, Copy } from "lucide-react";
-import { api } from "@/lib/api";
-import { useAction, useApiData } from "@/hooks/useApiData";
-import { Banner } from "@/components/admin/IdentityPanels";
+import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
+import { KeyRound, ShieldCheck, Copy } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAction, useApiData } from '@/hooks/useApiData';
+import { Banner } from '@/components/admin/IdentityPanels';
 
-const card = "bg-canvas border border-line rounded-2xl p-5 space-y-3";
+const card = 'bg-canvas border border-line rounded-2xl p-5 space-y-3';
 const input =
-  "w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand";
-const primaryBtn = "px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold";
-const ghostBtn = "px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold disabled:opacity-50";
+  'w-full bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
+const primaryBtn = 'px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold';
+const ghostBtn =
+  'px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold disabled:opacity-50';
 
 interface Status {
   enabled: boolean;
@@ -24,14 +25,14 @@ interface Status {
  * scanned code can never lock anyone out: scan, then prove the app works. Recovery codes are shown once.
  */
 export const MfaSettings: React.FC = () => {
-  const { data, reload } = useApiData<{ data: Status }>("/api/v1/auth/mfa/status");
+  const { data, reload } = useApiData<{ data: Status }>('/api/v1/auth/mfa/status');
   const { busy, error, run, clearError } = useAction();
   const [setup, setSetup] = useState<{ secret: string; otpauthUrl: string } | null>(null);
   const [qr, setQr] = useState<string | null>(null);
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState('');
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [disabling, setDisabling] = useState(false);
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState('');
   const status = data?.data;
 
   useEffect(() => {
@@ -41,18 +42,18 @@ export const MfaSettings: React.FC = () => {
 
   const start = () =>
     run(async () => {
-      const r = await api.post<{ data: { secret: string; otpauthUrl: string } }>("/api/v1/auth/mfa/setup", {});
+      const r = await api.post<{ data: { secret: string; otpauthUrl: string } }>('/api/v1/auth/mfa/setup', {});
       setSetup(r.data);
-      setCode("");
+      setCode('');
     });
 
   const confirm = (e: React.FormEvent) => {
     e.preventDefault();
     run(async () => {
-      const r = await api.post<{ data: { recoveryCodes: string[] } }>("/api/v1/auth/mfa/enable", { code: code.trim() });
+      const r = await api.post<{ data: { recoveryCodes: string[] } }>('/api/v1/auth/mfa/enable', { code: code.trim() });
       setRecoveryCodes(r.data.recoveryCodes);
       setSetup(null);
-      setCode("");
+      setCode('');
       await reload();
     });
   };
@@ -60,10 +61,10 @@ export const MfaSettings: React.FC = () => {
   const disable = (e: React.FormEvent) => {
     e.preventDefault();
     run(async () => {
-      await api.post("/api/v1/auth/mfa/disable", { password, code: code.trim() });
+      await api.post('/api/v1/auth/mfa/disable', { password, code: code.trim() });
       setDisabling(false);
-      setPassword("");
-      setCode("");
+      setPassword('');
+      setCode('');
       setRecoveryCodes(null);
       await reload();
     });
@@ -84,20 +85,22 @@ export const MfaSettings: React.FC = () => {
         <>
           <p className="text-xs text-ink-muted">
             {status.enabled
-              ? `On. Signing in needs a code from your authenticator app. ${status.recoveryCodesRemaining} recovery code${status.recoveryCodesRemaining === 1 ? "" : "s"} left.`
-              : "Off. Turn it on to require a code from an authenticator app (such as Google Authenticator, Microsoft Authenticator or 1Password) when you sign in."}
+              ? `On. Signing in needs a code from your authenticator app. ${status.recoveryCodesRemaining} recovery code${status.recoveryCodesRemaining === 1 ? '' : 's'} left.`
+              : 'Off. Turn it on to require a code from an authenticator app (such as Google Authenticator, Microsoft Authenticator or 1Password) when you sign in.'}
           </p>
           {error && <Banner kind="error">{error}</Banner>}
 
           {recoveryCodes && (
             <div className="rounded-xl border border-accent/40 bg-accent/10 p-3 space-y-2">
-              <p className="text-xs font-semibold text-ink">Save these recovery codes now. Each works once if you lose your phone, and they will not be shown again.</p>
+              <p className="text-xs font-semibold text-ink">
+                Save these recovery codes now. Each works once if you lose your phone, and they will not be shown again.
+              </p>
               <ul className="grid grid-cols-2 gap-1 font-mono text-xs text-ink">
                 {recoveryCodes.map((c) => (
                   <li key={c}>{c}</li>
                 ))}
               </ul>
-              <button type="button" className={ghostBtn} onClick={() => navigator.clipboard?.writeText(recoveryCodes.join("\n"))}>
+              <button type="button" className={ghostBtn} onClick={() => navigator.clipboard?.writeText(recoveryCodes.join('\n'))}>
                 <Copy className="h-3 w-3 inline mr-1" />
                 Copy codes
               </button>
@@ -117,7 +120,9 @@ export const MfaSettings: React.FC = () => {
                 <li>Enter the 6-digit code the app shows.</li>
               </ol>
               <div className="flex flex-wrap items-center gap-4">
-                {qr && <img src={qr} alt="QR code for your authenticator app" width={176} height={176} className="rounded-lg bg-white p-1" />}
+                {qr && (
+                  <img src={qr} alt="QR code for your authenticator app" width={176} height={176} className="rounded-lg bg-white p-1" />
+                )}
                 <div className="space-y-1">
                   <div className="text-[11px] text-ink-subtle">Key</div>
                   <code className="block break-all font-mono text-xs text-ink">{setup.secret}</code>
@@ -133,7 +138,7 @@ export const MfaSettings: React.FC = () => {
                   value={code}
                   onChange={(e) => {
                     clearError();
-                    setCode(e.target.value.replace(/\D/g, ""));
+                    setCode(e.target.value.replace(/\D/g, ''));
                   }}
                   placeholder="123456"
                   aria-label="Code from your authenticator app"
@@ -156,8 +161,24 @@ export const MfaSettings: React.FC = () => {
           {status.enabled && disabling && (
             <form onSubmit={disable} className="space-y-2 max-w-sm">
               <p className="text-xs text-ink-muted">Confirm with your password and a current code (or a recovery code).</p>
-              <input className={input} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" aria-label="Password" />
-              <input className={input} autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Code" aria-label="Authenticator or recovery code" maxLength={32} />
+              <input
+                className={input}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                aria-label="Password"
+              />
+              <input
+                className={input}
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.trim())}
+                placeholder="Code"
+                aria-label="Authenticator or recovery code"
+                maxLength={32}
+              />
               <div className="flex gap-2">
                 <button className={primaryBtn} disabled={busy || !password || code.length < 6}>
                   Turn off two-step sign-in

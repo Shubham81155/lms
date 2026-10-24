@@ -49,8 +49,7 @@ const courseSummary = {
 } as const;
 
 const isCourseStaff = (user: NonNullable<Request['user']>, instructorIds: string[]) =>
-  isAdminRole(user.role) ||
-  ((COURSE_STAFF_ROLES as readonly string[]).includes(user.role) && instructorIds.includes(user.id));
+  isAdminRole(user.role) || ((COURSE_STAFF_ROLES as readonly string[]).includes(user.role) && instructorIds.includes(user.id));
 
 /**
  * GET /api/v1/enrollments/grades
@@ -82,16 +81,30 @@ router.get(
         where: { courseId: { in: courseIds } },
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
         select: {
-          id: true, title: true, courseId: true, maxPoints: true, dueDate: true,
-          submissions: { where: { userId }, select: { submittedAt: true, isLate: true, grade: true, feedback: true, gradedAt: true, appeal: { select: { status: true } } } },
+          id: true,
+          title: true,
+          courseId: true,
+          maxPoints: true,
+          dueDate: true,
+          submissions: {
+            where: { userId },
+            select: { submittedAt: true, isLate: true, grade: true, feedback: true, gradedAt: true, appeal: { select: { status: true } } },
+          },
         },
       }),
       prisma.quiz.findMany({
         where: { courseId: { in: courseIds }, questions: { some: {} } },
         orderBy: { createdAt: 'asc' },
         select: {
-          id: true, title: true, courseId: true, maxAttempts: true, passingPercent: true,
-          submissions: { where: { userId, submittedAt: { not: null } }, select: { score: true, maxScore: true, passed: true, submittedAt: true, answersJson: true } },
+          id: true,
+          title: true,
+          courseId: true,
+          maxAttempts: true,
+          passingPercent: true,
+          submissions: {
+            where: { userId, submittedAt: { not: null } },
+            select: { score: true, maxScore: true, passed: true, submittedAt: true, answersJson: true },
+          },
         },
       }),
     ]);
@@ -157,7 +170,12 @@ router.get(
     const userId = req.user!.id;
     const tenantId = tenantIdOf(req);
     const enrollments = await prisma.enrollment.findMany({
-      where: { tenantId, userId, status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS] }, course: { status: 'PUBLISHED' } },
+      where: {
+        tenantId,
+        userId,
+        status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS] },
+        course: { status: 'PUBLISHED' },
+      },
       select: { course: { select: { id: true, code: true, title: true } } },
     });
     const courses = new Map(enrollments.map((e) => [e.course.id, e.course]));
@@ -175,12 +193,22 @@ router.get(
       prisma.quiz.findMany({
         where: { courseId: { in: courseIds }, questions: { some: {} } },
         select: {
-          id: true, title: true, courseId: true, timeLimitMins: true, maxAttempts: true, requireProctoring: true, availableFrom: true, dueAt: true,
+          id: true,
+          title: true,
+          courseId: true,
+          timeLimitMins: true,
+          maxAttempts: true,
+          requireProctoring: true,
+          availableFrom: true,
+          dueAt: true,
           submissions: { where: { userId }, select: { submittedAt: true } },
         },
       }),
     ]);
-    const extensions = await prisma.deadlineExtension.findMany({ where: { tenantId, userId }, select: { assignmentId: true, quizId: true, dueAt: true } });
+    const extensions = await prisma.deadlineExtension.findMany({
+      where: { tenantId, userId },
+      select: { assignmentId: true, quizId: true, dueAt: true },
+    });
     const extended = new Map(extensions.map((e) => [(e.assignmentId ?? e.quizId)!, e.dueAt]));
 
     const now = Date.now();
@@ -307,7 +335,10 @@ const listEnrollments = route('Failed to retrieve enrollments', async (req: Requ
   ]);
 
   if (rosterMode) return res.status(200).json({ data: enrollments, pagination: pageMeta(page, limit, total) });
-  const lessons = await lessonsToContinue(user.id, enrollments.map((e) => e.courseId));
+  const lessons = await lessonsToContinue(
+    user.id,
+    enrollments.map((e) => e.courseId)
+  );
   return res.status(200).json({
     data: enrollments.map((e) => ({ ...e, ...lessons.get(e.courseId)! })),
     pagination: pageMeta(page, limit, total),
@@ -329,7 +360,10 @@ async function lessonsToContinue(userId: string, courseIds: string[]) {
   ]);
   const done = new Set(finished.map((f) => f.lessonId));
   const out = new Map(
-    courseIds.map((id) => [id, { lessons: { total: 0, completed: 0 }, nextLesson: null as { id: string; title: string; moduleTitle: string } | null }])
+    courseIds.map((id) => [
+      id,
+      { lessons: { total: 0, completed: 0 }, nextLesson: null as { id: string; title: string; moduleTitle: string } | null },
+    ])
   );
   for (const m of modules) {
     const entry = out.get(m.courseId)!;
@@ -374,7 +408,12 @@ router.post(
         instructors: { select: { userId: true } },
       },
     });
-    const staff = !!course && isCourseStaff(user, course.instructors.map((i) => i.userId));
+    const staff =
+      !!course &&
+      isCourseStaff(
+        user,
+        course.instructors.map((i) => i.userId)
+      );
 
     // Learners cannot tell a draft from a course that does not exist.
     if (!course || (course.status !== 'PUBLISHED' && !staff && !canSeeAllCourses(user.role))) {
@@ -388,14 +427,11 @@ router.post(
           throw new HttpError(403, 'Forbidden: your role cannot enroll in courses');
         }
         if (!course.allowSelfEnroll) {
-          throw new HttpError(
-            403,
-            'Self-enrollment is not permitted for this course. Please contact an instructor or administrator.'
-          );
+          throw new HttpError(403, 'Self-enrollment is not permitted for this course. Please contact an instructor or administrator.');
         }
         if (course.status !== 'PUBLISHED') throw new HttpError(400, 'This course is not open for enrollment');
       }
-    } else if (!staff || (user.role === 'TEACHING_ASSISTANT')) {
+    } else if (!staff || user.role === 'TEACHING_ASSISTANT') {
       // Only administrators and the assigned instructor may enroll other people.
       throw new HttpError(403, 'Forbidden: only the course instructor or an administrator can enroll other users');
     }
@@ -428,7 +464,11 @@ router.post(
           where: { id: existing.id },
           // Coming back picks up where they left off: progress, finished lessons and any grade are kept.
           // Lessons may have been added or removed meanwhile, so progress is re-derived from what they finished.
-          data: { status: resumed.progressPercent > 0 ? EnrollmentStatus.IN_PROGRESS : EnrollmentStatus.ENROLLED, progressPercent: resumed.progressPercent, completedAt: null },
+          data: {
+            status: resumed.progressPercent > 0 ? EnrollmentStatus.IN_PROGRESS : EnrollmentStatus.ENROLLED,
+            progressPercent: resumed.progressPercent,
+            completedAt: null,
+          },
           include,
         })
       : await prisma.enrollment.create({
@@ -470,7 +510,14 @@ router.delete(
     });
 
     const isOwner = !!enrollment && enrollment.userId === user.id;
-    const mayRemove = !!enrollment && !isOwner && isCourseStaff(user, enrollment.course.instructors.map((i) => i.userId)) && user.role !== 'TEACHING_ASSISTANT';
+    const mayRemove =
+      !!enrollment &&
+      !isOwner &&
+      isCourseStaff(
+        user,
+        enrollment.course.instructors.map((i) => i.userId)
+      ) &&
+      user.role !== 'TEACHING_ASSISTANT';
     if (!enrollment || (!isOwner && !mayRemove)) throw new HttpError(404, 'Enrollment record not found');
 
     if (enrollment.status === EnrollmentStatus.DROPPED) throw new HttpError(409, 'This enrollment was already withdrawn');
@@ -515,7 +562,13 @@ router.patch(
 
     const isOwner = !!enrollment && enrollment.userId === user.id;
     // Staff powers apply to other people's enrollments only; nobody grades their own.
-    const staff = !!enrollment && !isOwner && isCourseStaff(user, enrollment.course.instructors.map((i) => i.userId));
+    const staff =
+      !!enrollment &&
+      !isOwner &&
+      isCourseStaff(
+        user,
+        enrollment.course.instructors.map((i) => i.userId)
+      );
     if (!enrollment || (!isOwner && !staff)) throw new HttpError(404, 'Enrollment record not found');
 
     if (enrollment.status === EnrollmentStatus.DROPPED) {

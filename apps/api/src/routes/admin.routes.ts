@@ -45,7 +45,13 @@ export const auditQuery = z
   });
 
 const TENANT_AUDIT_FIELDS = [
-  'name', 'logoUrl', 'primaryColor', 'secondaryColor', 'faviconUrl', 'ferpaCompliant', 'coppaCompliant',
+  'name',
+  'logoUrl',
+  'primaryColor',
+  'secondaryColor',
+  'faviconUrl',
+  'ferpaCompliant',
+  'coppaCompliant',
 ] as const;
 
 /** GET /api/v1/admin/tenant */
@@ -133,7 +139,12 @@ router.get(
   '/audit-logs/actions',
   requireRole(...AUDITORS),
   route('Failed to list audit actions', async (req, res) => {
-    const rows = await prisma.auditLog.groupBy({ by: ['action'], where: { tenantId: tenantIdOf(req) }, _count: { action: true }, orderBy: { action: 'asc' } });
+    const rows = await prisma.auditLog.groupBy({
+      by: ['action'],
+      where: { tenantId: tenantIdOf(req) },
+      _count: { action: true },
+      orderBy: { action: 'asc' },
+    });
     return res.json({ data: rows.map((r) => ({ action: r.action, count: r._count.action })) });
   })
 );
@@ -153,8 +164,12 @@ router.get(
     const q = parseQuery(req, auditQuery);
     const where = auditWhere(tenantId, q);
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: 'AUDIT_LOG_EXPORTED', resourceType: 'AUDIT_LOG',
-      ipAddress: req.ip, userAgent: req.headers['user-agent'],
+      tenantId,
+      userId: req.user!.id,
+      action: 'AUDIT_LOG_EXPORTED',
+      resourceType: 'AUDIT_LOG',
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
       diffJson: { filters: { ...q, page: undefined, limit: undefined } },
     });
 
@@ -163,7 +178,7 @@ router.get(
     res.write('﻿');
     res.write(csvRow(['time', 'action', 'resource_type', 'resource_id', 'user_email', 'user_role', 'ip_address', 'user_agent', 'details']));
     let cursor: string | undefined;
-    for (let sent = 0; sent < EXPORT_MAX; ) {
+    for (let sent = 0; sent < EXPORT_MAX;) {
       const batch = await prisma.auditLog.findMany({
         where,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -172,7 +187,19 @@ router.get(
         include: { user: { select: { email: true, role: true } } },
       });
       for (const l of batch) {
-        res.write(csvRow([l.createdAt, l.action, l.resourceType, l.resourceId, l.user?.email, l.user?.role, l.ipAddress, l.userAgent, l.diffJson ? JSON.stringify(l.diffJson) : '']));
+        res.write(
+          csvRow([
+            l.createdAt,
+            l.action,
+            l.resourceType,
+            l.resourceId,
+            l.user?.email,
+            l.user?.role,
+            l.ipAddress,
+            l.userAgent,
+            l.diffJson ? JSON.stringify(l.diffJson) : '',
+          ])
+        );
       }
       sent += batch.length;
       if (batch.length < EXPORT_PAGE) break;
@@ -214,22 +241,24 @@ router.get(
   route('Failed to retrieve admin stats', async (req, res) => {
     const tenantId = tenantIdOf(req);
 
-    const [totalUsers, totalCourses, totalEnrollments, completedEnrollments, activeEnrollments, roleDistribution] =
-      await Promise.all([
-        prisma.user.count({ where: { tenantId } }),
-        prisma.course.count({ where: { tenantId } }),
-        prisma.enrollment.count({ where: { tenantId } }),
-        prisma.enrollment.count({ where: { tenantId, status: EnrollmentStatus.COMPLETED } }),
-        prisma.enrollment.count({
-          where: { tenantId, status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS] } },
-        }),
-        prisma.user.groupBy({ by: ['role'], where: { tenantId }, _count: { role: true } }),
-      ]);
+    const [totalUsers, totalCourses, totalEnrollments, completedEnrollments, activeEnrollments, roleDistribution] = await Promise.all([
+      prisma.user.count({ where: { tenantId } }),
+      prisma.course.count({ where: { tenantId } }),
+      prisma.enrollment.count({ where: { tenantId } }),
+      prisma.enrollment.count({ where: { tenantId, status: EnrollmentStatus.COMPLETED } }),
+      prisma.enrollment.count({
+        where: { tenantId, status: { in: [EnrollmentStatus.ENROLLED, EnrollmentStatus.IN_PROGRESS] } },
+      }),
+      prisma.user.groupBy({ by: ['role'], where: { tenantId }, _count: { role: true } }),
+    ]);
 
-    const roleCounts = roleDistribution.reduce((acc, curr) => {
-      acc[curr.role] = curr._count.role;
-      return acc;
-    }, {} as Record<string, number>);
+    const roleCounts = roleDistribution.reduce(
+      (acc, curr) => {
+        acc[curr.role] = curr._count.role;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     return res.status(200).json({
       data: {
@@ -238,8 +267,7 @@ router.get(
         totalEnrollments,
         completedEnrollments,
         activeEnrollments,
-        completionRate:
-          totalEnrollments > 0 ? parseFloat(((completedEnrollments / totalEnrollments) * 100).toFixed(2)) : 0,
+        completionRate: totalEnrollments > 0 ? parseFloat(((completedEnrollments / totalEnrollments) * 100).toFixed(2)) : 0,
         roleCounts,
       },
     });

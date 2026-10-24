@@ -25,7 +25,9 @@ export async function withJobLock<T>(name: string, fn: () => Promise<T>, maxMs =
   try {
     const result = await basePrisma.$transaction(
       async (tx) => {
-        const [row] = await tx.$queryRaw<{ locked: boolean }[]>`SELECT pg_try_advisory_xact_lock(${JOB_LOCK_NAMESPACE}::int, ${lockKey(name)}::int) AS locked`;
+        const [row] = await tx.$queryRaw<
+          { locked: boolean }[]
+        >`SELECT pg_try_advisory_xact_lock(${JOB_LOCK_NAMESPACE}::int, ${lockKey(name)}::int) AS locked`;
         if (!row?.locked) return null;
         ran = true;
         return fn();

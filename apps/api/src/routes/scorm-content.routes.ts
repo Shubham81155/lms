@@ -8,7 +8,16 @@ import { config } from '../config';
 import { logger } from '../lib/logger';
 import { storage } from '../lib/storage';
 import { recordLessonsDone } from '../lib/completion';
-import { isWithdrawn, safeEntryPath, scormContentOrigin, summarise, verifyLaunch, WITHDRAWN_MESSAGE, type LaunchClaims, type PackageFile } from '../lib/scorm';
+import {
+  isWithdrawn,
+  safeEntryPath,
+  scormContentOrigin,
+  summarise,
+  verifyLaunch,
+  WITHDRAWN_MESSAGE,
+  type LaunchClaims,
+  type PackageFile,
+} from '../lib/scorm';
 
 // Mounted at /scorm-content and meant to be reached on SCORM_CONTENT_ORIGIN only (server.ts keeps other
 // routes off that host). There is no session here: every URL carries a signed token for one learner and one
@@ -63,47 +72,76 @@ const onContentHost = (req: Request) => {
 };
 
 /** Verifies the host, the token and that the learner still exists, then runs the rest inside the token's tenant. */
-const withToken = (handler: (req: Request, res: Response, ctx: Ctx) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => {
-  if (!onContentHost(req)) return res.status(404).type('text/plain').send('Not found');
-  const claims = verifyLaunch(String(req.params.token));
-  if (!claims) return res.status(403).type('text/plain').send('This link has expired. Reopen the lesson.');
-  return runWithTenant(claims.t, async () => {
-    try {
-      // A token outlives a deactivated or erased account; it must not keep reading or writing its data.
-      const learner = await prisma.user.findFirst({ where: { id: claims.u, tenantId: claims.t, status: 'ACTIVE', erasedAt: null }, select: { id: true } });
-      if (!learner) return res.status(403).type('text/plain').send('This link is no longer valid.');
-      const pkg = await prisma.scormPackage.findFirst({
-        where: { id: claims.p, tenantId: claims.t },
-        select: { id: true, courseId: true, version: true, launchPath: true, filesJson: true, title: true, sourceFile: { select: { scanStatus: true } } },
-      });
-      if (!pkg) return res.status(404).type('text/plain').send('Not found');
-      // Checked on every request, so an open lesson stops as soon as a scan withdraws the package.
-      if (isWithdrawn(pkg)) return res.status(410).type('text/plain').send(WITHDRAWN_MESSAGE);
-      contentHeaders(res);
-      await handler(req, res, { claims, pkg });
-    } catch (err) {
-      next(err);
-    }
-  });
-};
+const withToken =
+  (handler: (req: Request, res: Response, ctx: Ctx) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => {
+    if (!onContentHost(req)) return res.status(404).type('text/plain').send('Not found');
+    const claims = verifyLaunch(String(req.params.token));
+    if (!claims) return res.status(403).type('text/plain').send('This link has expired. Reopen the lesson.');
+    return runWithTenant(claims.t, async () => {
+      try {
+        // A token outlives a deactivated or erased account; it must not keep reading or writing its data.
+        const learner = await prisma.user.findFirst({
+          where: { id: claims.u, tenantId: claims.t, status: 'ACTIVE', erasedAt: null },
+          select: { id: true },
+        });
+        if (!learner) return res.status(403).type('text/plain').send('This link is no longer valid.');
+        const pkg = await prisma.scormPackage.findFirst({
+          where: { id: claims.p, tenantId: claims.t },
+          select: {
+            id: true,
+            courseId: true,
+            version: true,
+            launchPath: true,
+            filesJson: true,
+            title: true,
+            sourceFile: { select: { scanStatus: true } },
+          },
+        });
+        if (!pkg) return res.status(404).type('text/plain').send('Not found');
+        // Checked on every request, so an open lesson stops as soon as a scan withdraws the package.
+        if (isWithdrawn(pkg)) return res.status(410).type('text/plain').send(WITHDRAWN_MESSAGE);
+        contentHeaders(res);
+        await handler(req, res, { claims, pkg });
+      } catch (err) {
+        next(err);
+      }
+    });
+  };
 
 /** The values a package may read but never write. */
 async function readOnlyValues(version: string, userId: string, hasSaved: boolean): Promise<Record<string, string>> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true } });
   const entry = hasSaved ? 'resume' : 'ab-initio';
   return version === '2004'
-    ? { 'cmi.learner_id': userId, 'cmi.learner_name': `${u?.firstName ?? ''} ${u?.lastName ?? ''}`.trim(), 'cmi.mode': 'normal', 'cmi.credit': 'credit', 'cmi.entry': entry }
-    : { 'cmi.core.student_id': userId, 'cmi.core.student_name': `${u?.lastName ?? ''}, ${u?.firstName ?? ''}`, 'cmi.core.lesson_mode': 'normal', 'cmi.core.credit': 'credit', 'cmi.core.entry': entry };
+    ? {
+        'cmi.learner_id': userId,
+        'cmi.learner_name': `${u?.firstName ?? ''} ${u?.lastName ?? ''}`.trim(),
+        'cmi.mode': 'normal',
+        'cmi.credit': 'credit',
+        'cmi.entry': entry,
+      }
+    : {
+        'cmi.core.student_id': userId,
+        'cmi.core.student_name': `${u?.lastName ?? ''}, ${u?.firstName ?? ''}`,
+        'cmi.core.lesson_mode': 'normal',
+        'cmi.core.credit': 'credit',
+        'cmi.core.entry': entry,
+      };
 }
 
 const defaults = (version: string): Record<string, string> =>
-  version === '2004' ? { 'cmi.completion_status': 'unknown', 'cmi.success_status': 'unknown' } : { 'cmi.core.lesson_status': 'not attempted' };
+  version === '2004'
+    ? { 'cmi.completion_status': 'unknown', 'cmi.success_status': 'unknown' }
+    : { 'cmi.core.lesson_status': 'not attempted' };
 
 /** GET /scorm-content/:token/__state */
 router.get(
   '/:token/__state',
   withToken(async (_req, res, { claims, pkg }) => {
-    const attempt = await prisma.scormAttempt.findUnique({ where: { packageId_userId: { packageId: pkg.id, userId: claims.u } }, select: { cmiJson: true } });
+    const attempt = await prisma.scormAttempt.findUnique({
+      where: { packageId_userId: { packageId: pkg.id, userId: claims.u } },
+      select: { cmiJson: true },
+    });
     const saved = (attempt?.cmiJson ?? {}) as Record<string, string>;
     res.setHeader('Cache-Control', 'no-store');
     return res.json({ cmi: { ...defaults(pkg.version), ...saved, ...(await readOnlyValues(pkg.version, claims.u, !!attempt)) } });
@@ -142,23 +180,46 @@ router.post(
     const where = { packageId_userId: { packageId: pkg.id, userId: claims.u } };
     await prisma.scormAttempt.upsert({
       where,
-      create: { tenantId: claims.t, packageId: pkg.id, userId: claims.u, cmiJson: cmi, status: summary.status, scorePercent: summary.scorePercent },
+      create: {
+        tenantId: claims.t,
+        packageId: pkg.id,
+        userId: claims.u,
+        cmiJson: cmi,
+        status: summary.status,
+        scorePercent: summary.scorePercent,
+      },
       update: { cmiJson: cmi, status: summary.status, scorePercent: summary.scorePercent },
     });
     // Claimed atomically, so two saves arriving together finish the lessons (and notify) once.
     const firstCompletion =
       summary.completed &&
-      (await prisma.scormAttempt.updateMany({ where: { packageId: pkg.id, userId: claims.u, completedAt: null }, data: { completedAt: new Date() } })).count === 1;
+      (
+        await prisma.scormAttempt.updateMany({
+          where: { packageId: pkg.id, userId: claims.u, completedAt: null },
+          data: { completedAt: new Date() },
+        })
+      ).count === 1;
     const attempt = await prisma.scormAttempt.findUnique({ where, select: { completedAt: true } });
     const completedAt = attempt?.completedAt ?? null;
 
     // The first time the package reports completion, its lessons count as finished for an enrolled learner.
     if (firstCompletion) {
-      const enrolled = await prisma.enrollment.findUnique({ where: { courseId_userId: { courseId: pkg.courseId, userId: claims.u } }, select: { status: true } });
+      const enrolled = await prisma.enrollment.findUnique({
+        where: { courseId_userId: { courseId: pkg.courseId, userId: claims.u } },
+        select: { status: true },
+      });
       if (enrolled && enrolled.status !== 'DROPPED') {
-        const lessons = await prisma.lesson.findMany({ where: { scormPackageId: pkg.id, module: { courseId: pkg.courseId } }, select: { id: true } });
+        const lessons = await prisma.lesson.findMany({
+          where: { scormPackageId: pkg.id, module: { courseId: pkg.courseId } },
+          select: { id: true },
+        });
         if (lessons.length) {
-          await recordLessonsDone(claims.t, pkg.courseId, claims.u, lessons.map((l) => l.id)).catch((err) => logger.warn({ err, packageId: pkg.id }, 'Could not record SCORM completion'));
+          await recordLessonsDone(
+            claims.t,
+            pkg.courseId,
+            claims.u,
+            lessons.map((l) => l.id)
+          ).catch((err) => logger.warn({ err, packageId: pkg.id }, 'Could not record SCORM completion'));
         }
       }
     }
@@ -194,7 +255,10 @@ router.get(
 );
 
 /** JSON for embedding in a <script>: "<" is escaped so the data can never close the tag. */
-const js = (v: unknown) => JSON.stringify(v).replace(/</g, '\\u003c').replace(/[\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16)}`);
+const js = (v: unknown) =>
+  JSON.stringify(v)
+    .replace(/</g, '\\u003c')
+    .replace(/[\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16)}`);
 const html = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /**

@@ -29,16 +29,32 @@ beforeAll(async () => {
 
   // Two organisations, each with queued work: the counts must add them up although row-level security hides
   // each organisation's rows from the other.
-  for (const [id, slug] of [['t-a', 'acme'], ['t-b', 'beta']]) {
+  for (const [id, slug] of [
+    ['t-a', 'acme'],
+    ['t-b', 'beta'],
+  ]) {
     await admin.tenant.create({ data: { id, slug, name: slug } });
-    await admin.user.create({ data: { id: `u-${id}`, tenantId: id, email: `${id}@x.edu`, firstName: 'A', lastName: 'B', role: 'STUDENT', passwordHash: 'x', emailVerified: true } });
+    await admin.user.create({
+      data: {
+        id: `u-${id}`,
+        tenantId: id,
+        email: `${id}@x.edu`,
+        firstName: 'A',
+        lastName: 'B',
+        role: 'STUDENT',
+        passwordHash: 'x',
+        emailVerified: true,
+      },
+    });
     await admin.notification.createMany({
       data: [
         { tenantId: id, userId: `u-${id}`, category: 'SYSTEM', title: 'one', emailStatus: 'PENDING' },
         { tenantId: id, userId: `u-${id}`, category: 'SYSTEM', title: 'two', emailStatus: 'SENT' },
       ],
     });
-    const endpoint = await admin.webhookEndpoint.create({ data: { tenantId: id, url: 'https://hooks.example/x', secret: 's', events: ['*'] } });
+    const endpoint = await admin.webhookEndpoint.create({
+      data: { tenantId: id, url: 'https://hooks.example/x', secret: 's', events: ['*'] },
+    });
     await admin.webhookDelivery.createMany({
       data: [
         { tenantId: id, endpointId: endpoint.id, event: 'e', nextAttemptAt: new Date(Date.now() + 60_000) },

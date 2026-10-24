@@ -14,10 +14,24 @@ let app: import('express').Express;
 const pw = (slug: string) => `${PASSWORD}-${slug}`;
 
 async function seed() {
-  await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', ferpaCompliant: true, coppaCompliant: false, dataRegion: 'eu-west-1' } });
+  await admin.tenant.create({
+    data: { id: 't-h', slug: 'harvard', name: 'Harvard', ferpaCompliant: true, coppaCompliant: false, dataRegion: 'eu-west-1' },
+  });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT' } });
   const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true, ...extra } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+        ...extra,
+      },
+    });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('admin2', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
@@ -43,7 +57,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: pw(tenant) });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: pw(tenant) });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -73,11 +90,19 @@ describe('campuses and departments', () => {
 
     expect((await a.post('/api/v1/admin/campuses').send({ name: 'Other', code: 'CAM-01' })).status).toBe(409);
     expect((await a.post('/api/v1/admin/campuses').send({ name: 'Other', code: 'cam-01' })).status).toBe(409); // case-insensitive
-    for (const bad of [{ name: 'x', code: 'AB' }, { name: 'Okay', code: 'a' }, { name: 'Okay', code: 'bad code!' }, { name: 'Okay', code: '-AB' }, {}]) {
+    for (const bad of [
+      { name: 'x', code: 'AB' },
+      { name: 'Okay', code: 'a' },
+      { name: 'Okay', code: 'bad code!' },
+      { name: 'Okay', code: '-AB' },
+      {},
+    ]) {
       expect((await a.post('/api/v1/admin/campuses').send(bad)).status, JSON.stringify(bad)).toBe(400);
     }
     // The same code is fine in another tenant.
-    expect((await (await as('m-admin', 'mit')).post('/api/v1/admin/campuses').send({ name: 'Another Cam', code: 'CAM-01' })).status).toBe(201);
+    expect((await (await as('m-admin', 'mit')).post('/api/v1/admin/campuses').send({ name: 'Another Cam', code: 'CAM-01' })).status).toBe(
+      201
+    );
   });
 
   it('creates departments with a code unique within the campus', async () => {
@@ -89,7 +114,9 @@ describe('campuses and departments', () => {
     expect((await a.post(`/api/v1/admin/campuses/${campusId}/departments`).send({ name: 'Duplicate', code: 'CS' })).status).toBe(409);
 
     const second = await a.post('/api/v1/admin/campuses').send({ name: 'Boston Campus', code: 'BOS-01' });
-    expect((await a.post(`/api/v1/admin/campuses/${second.body.data.id}/departments`).send({ name: 'Computer Science', code: 'CS' })).status).toBe(201);
+    expect(
+      (await a.post(`/api/v1/admin/campuses/${second.body.data.id}/departments`).send({ name: 'Computer Science', code: 'CS' })).status
+    ).toBe(201);
     expect((await a.post('/api/v1/admin/campuses/missing/departments').send({ name: 'Nope', code: 'NO' })).status).toBe(404);
   });
 
@@ -137,8 +164,18 @@ describe('campuses and departments', () => {
   });
 
   it('audits every change', async () => {
-    const actions = (await admin.auditLog.findMany({ where: { tenantId: 't-h', resourceType: { in: ['CAMPUS', 'DEPARTMENT'] } } })).map((l) => l.action);
-    for (const x of ['CAMPUS_CREATED', 'CAMPUS_UPDATED', 'CAMPUS_DELETED', 'DEPARTMENT_CREATED', 'DEPARTMENT_UPDATED', 'DEPARTMENT_DELETED']) expect(actions, x).toContain(x);
+    const actions = (await admin.auditLog.findMany({ where: { tenantId: 't-h', resourceType: { in: ['CAMPUS', 'DEPARTMENT'] } } })).map(
+      (l) => l.action
+    );
+    for (const x of [
+      'CAMPUS_CREATED',
+      'CAMPUS_UPDATED',
+      'CAMPUS_DELETED',
+      'DEPARTMENT_CREATED',
+      'DEPARTMENT_UPDATED',
+      'DEPARTMENT_DELETED',
+    ])
+      expect(actions, x).toContain(x);
   });
 });
 
@@ -186,9 +223,13 @@ describe('compliance report', () => {
   });
 
   it('reflects SSO being configured, per tenant', async () => {
-    await admin.ssoConnection.create({ data: { tenantId: 't-h', issuer: 'https://idp.example', clientId: 'c', clientSecretEnc: 'x', enabled: true } });
+    await admin.ssoConnection.create({
+      data: { tenantId: 't-h', issuer: 'https://idp.example', clientId: 'c', clientSecretEnc: 'x', enabled: true },
+    });
     expect(check(await get(), 'sso').detail).toMatch(/Enabled: OpenID Connect./);
-    await admin.samlConnection.create({ data: { tenantId: 't-h', entryPoint: 'https://idp.example/sso', idpIssuer: 'idp', idpCert: 'x'.repeat(40), enabled: true } });
+    await admin.samlConnection.create({
+      data: { tenantId: 't-h', entryPoint: 'https://idp.example/sso', idpIssuer: 'idp', idpCert: 'x'.repeat(40), enabled: true },
+    });
     expect(check(await get(), 'sso').detail).toMatch(/OpenID Connect and SAML 2.0/);
     const mit = (await (await as('m-admin', 'mit')).get('/api/v1/admin/compliance')).body.data;
     expect(check(mit, 'sso').detail).toMatch(/Not configured/);

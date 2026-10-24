@@ -21,9 +21,7 @@ router.get(
   route('Failed to retrieve cohort analytics', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const user = req.user!;
-    const courseWhere = isAdminRole(user.role)
-      ? { tenantId }
-      : { tenantId, instructors: { some: { userId: user.id } } };
+    const courseWhere = isAdminRole(user.role) ? { tenantId } : { tenantId, instructors: { some: { userId: user.id } } };
     const courses = await prisma.course.findMany({ where: courseWhere, select: { id: true } });
     const courseIds = courses.map((c) => c.id);
     const inCourses = { tenantId, courseId: { in: courseIds } };
@@ -36,7 +34,10 @@ router.get(
       prisma.xapiStatement.groupBy({ by: ['actorUserId'], where: { tenantId, timestamp: { gte: weekAgo }, actorUserId: { not: null } } }),
       prisma.quiz.findMany({
         where: { courseId: { in: courseIds } },
-        select: { questions: { select: { id: true, questionText: true, questionType: true, bloomLevel: true } }, submissions: { where: { submittedAt: { not: null } }, select: { answersJson: true } } },
+        select: {
+          questions: { select: { id: true, questionText: true, questionType: true, bloomLevel: true } },
+          submissions: { where: { submittedAt: { not: null } }, select: { answersJson: true } },
+        },
       }),
     ]);
 
@@ -51,7 +52,9 @@ router.get(
             .map((s) => (s.answersJson as any)?.grading?.[question.id])
             .filter((r) => r && !r.needsManualGrading && r.maxPoints > 0);
           if (results.length === 0) return null;
-          const pct = (results.reduce((a: number, r: any) => a + r.awardedPoints, 0) / results.reduce((a: number, r: any) => a + r.maxPoints, 0)) * 100;
+          const pct =
+            (results.reduce((a: number, r: any) => a + r.awardedPoints, 0) / results.reduce((a: number, r: any) => a + r.maxPoints, 0)) *
+            100;
           return {
             questionId: question.id,
             concept: question.questionText.slice(0, 120),
@@ -59,7 +62,12 @@ router.get(
             attempts: results.length,
             averageScorePercent: Math.round(pct),
             status: pct < 55 ? 'FLAGGED_HIGH_DIFFICULTY' : pct < 70 ? 'ATTENTION_NEEDED' : 'NORMAL',
-            recommendation: pct < 55 ? 'Review this topic in class; most learners missed it' : pct < 70 ? 'Consider reinforcing this concept' : 'Strong cohort comprehension',
+            recommendation:
+              pct < 55
+                ? 'Review this topic in class; most learners missed it'
+                : pct < 70
+                  ? 'Consider reinforcing this concept'
+                  : 'Strong cohort comprehension',
           };
         })
       )
@@ -95,7 +103,11 @@ router.get(
   route('Failed to load mastery', async (req, res) => {
     const userId = req.user!.id;
     const quizzes = await prisma.quiz.findMany({
-      where: { tenantId: tenantIdOf(req), questions: { some: { bloomLevel: { not: null } } }, submissions: { some: { userId, submittedAt: { not: null } } } },
+      where: {
+        tenantId: tenantIdOf(req),
+        questions: { some: { bloomLevel: { not: null } } },
+        submissions: { some: { userId, submittedAt: { not: null } } },
+      },
       select: {
         questions: { select: { id: true, bloomLevel: true } },
         submissions: { where: { userId, submittedAt: { not: null } }, select: { answersJson: true } },

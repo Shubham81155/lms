@@ -50,18 +50,43 @@ beforeEach(() => {
 });
 
 function user(id: string, tenantId: string, role: any) {
-  return admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+  return admin.user.create({
+    data: {
+      id,
+      tenantId,
+      email: `${id}@x.edu`,
+      firstName: id,
+      lastName: 'L',
+      role,
+      passwordHash: bcrypt.hashSync(PASSWORD, 4),
+      emailVerified: true,
+    },
+  });
 }
 
 async function as(who: string, tenant: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
 
-const tenantRow = (id: string) => admin.tenant.findUniqueOrThrow({ where: { id }, select: { status: true, trialEndsAt: true, trialExpiredAt: true, trialRemindersSent: true } });
-const newOrg = (slug: string, over: object = {}) => ({ name: `College ${slug}`, slug, adminFirstName: 'Ann', adminLastName: 'Lee', adminEmail: `ann@${slug}.edu`, ...over });
+const tenantRow = (id: string) =>
+  admin.tenant.findUniqueOrThrow({
+    where: { id },
+    select: { status: true, trialEndsAt: true, trialExpiredAt: true, trialRemindersSent: true },
+  });
+const newOrg = (slug: string, over: object = {}) => ({
+  name: `College ${slug}`,
+  slug,
+  adminFirstName: 'Ann',
+  adminLastName: 'Lee',
+  adminEmail: `ann@${slug}.edu`,
+  ...over,
+});
 
 describe('new organisations', () => {
   it('start active without trialDays (ORG_TRIAL_DAYS is 0) or with 0, and on a trial with N days', async () => {
@@ -91,8 +116,16 @@ describe('new organisations', () => {
     const pending = (slug: string) =>
       admin.organizationRequest.create({
         data: {
-          organizationName: `Request ${slug}`, slug, institutionType: 'COLLEGE', contactFirstName: 'Bo', contactLastName: 'Ng', contactEmail: `bo@${slug}.edu`,
-          status: 'PENDING', verifiedAt: new Date(), holdsSlug: true, holdExpiresAt: new Date(Date.now() + 30 * DAY),
+          organizationName: `Request ${slug}`,
+          slug,
+          institutionType: 'COLLEGE',
+          contactFirstName: 'Bo',
+          contactLastName: 'Ng',
+          contactEmail: `bo@${slug}.edu`,
+          status: 'PENDING',
+          verifiedAt: new Date(),
+          holdsSlug: true,
+          holdExpiresAt: new Date(Date.now() + 30 * DAY),
         },
       });
     const a = await pending('req-trial');
@@ -115,7 +148,12 @@ describe('operator trial actions', () => {
     expect((await hAdmin.get('/api/v1/operator/trial-settings')).status).toBe(403);
 
     const op = await as('operator', 'ops');
-    for (const [method, path] of [['post', 'trial'], ['patch', 'trial'], ['post', 'trial/end'], ['post', 'trial/convert']] as const) {
+    for (const [method, path] of [
+      ['post', 'trial'],
+      ['patch', 'trial'],
+      ['post', 'trial/end'],
+      ['post', 'trial/convert'],
+    ] as const) {
       const res = await op[method](`/api/v1/operator/tenants/t-op/${path}`).send(path === 'trial' ? { days: 7 } : {});
       expect(res.status, `${method} ${path}`).toBe(409);
     }
@@ -145,14 +183,20 @@ describe('operator trial actions', () => {
     const ended = await op.post(`${base}/end`);
     expect(ended.status).toBe(200);
     expect(ended.body.data.trialExpiredAt).not.toBeNull();
-    expect(new Date(ended.body.data.readOnlyUntil).getTime()).toBeCloseTo(new Date(ended.body.data.trialExpiredAt).getTime() + 14 * DAY, -3);
+    expect(new Date(ended.body.data.readOnlyUntil).getTime()).toBeCloseTo(
+      new Date(ended.body.data.trialExpiredAt).getTime() + 14 * DAY,
+      -3
+    );
     expect((await op.post(`${base}/end`)).status).toBe(409);
 
     const converted = await op.post(`${base}/convert`);
     expect(converted.status).toBe(200);
     expect(converted.body.data).toMatchObject({ status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null, readOnlyUntil: null });
 
-    const actions = async (tenantId: string) => (await admin.auditLog.findMany({ where: { tenantId, resourceId: 't-h', action: { startsWith: 'TRIAL_' } } })).map((l) => l.action).sort();
+    const actions = async (tenantId: string) =>
+      (await admin.auditLog.findMany({ where: { tenantId, resourceId: 't-h', action: { startsWith: 'TRIAL_' } } }))
+        .map((l) => l.action)
+        .sort();
     const expected = ['TRIAL_CONVERTED', 'TRIAL_ENDED', 'TRIAL_EXTENDED', 'TRIAL_STARTED'];
     expect(await actions('t-h')).toEqual(expected);
     expect(await actions('t-op')).toEqual(expected);
@@ -162,7 +206,10 @@ describe('operator trial actions', () => {
 describe('the trial job', () => {
   it('reminds 7 days and 1 day before the end once each, then makes the organisation read-only, then suspends it', async () => {
     const t0 = new Date();
-    await admin.tenant.update({ where: { id: 't-y' }, data: { status: 'TRIAL', trialEndsAt: new Date(t0.getTime() + 5 * DAY), trialExpiredAt: null, trialRemindersSent: 0 } });
+    await admin.tenant.update({
+      where: { id: 't-y' },
+      data: { status: 'TRIAL', trialEndsAt: new Date(t0.getTime() + 5 * DAY), trialExpiredAt: null, trialRemindersSent: 0 },
+    });
     const toYale = () => outbox.filter((m) => m.to === 'y-admin@x.edu');
 
     // Five days left: the week's reminder, once.
@@ -230,7 +277,13 @@ describe('the trial job', () => {
     expect(converted.body.data).toMatchObject({ status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null });
     expect(await tenantRow('t-y')).toMatchObject({ status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null, trialRemindersSent: 0 });
     expect((await yAdmin.get('/api/v1/auth/me')).status).toBe(200);
-    expect((await yAdmin.get('/api/v1/trial')).body.data).toEqual({ state: 'NONE', trialEndsAt: null, daysLeft: null, readOnlyUntil: null, paymentLapsed: false });
+    expect((await yAdmin.get('/api/v1/trial')).body.data).toEqual({
+      state: 'NONE',
+      trialEndsAt: null,
+      daysLeft: null,
+      readOnlyUntil: null,
+      paymentLapsed: false,
+    });
     expect((await yAdmin.patch('/api/v1/admin/tenant').send({ primaryColor: '#112233' })).status).not.toBe(402);
   });
 

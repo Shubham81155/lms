@@ -9,13 +9,7 @@ import { authenticateJWT, tenantIdOf } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
 import { assertAttachable, linkOrUpload } from '../lib/stored-files';
 import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
-import {
-  CourseAccess,
-  canSeeAllCourses,
-  requireContentAccess,
-  requireCourseEditor,
-  requireCourseStaff,
-} from '../lib/access';
+import { CourseAccess, canSeeAllCourses, requireContentAccess, requireCourseEditor, requireCourseStaff } from '../lib/access';
 import { config } from '../config';
 import { commitGrade, resolveGradeInput } from '../lib/assignment-grade';
 import { validateQuestion, withOptionIds } from '../lib/questions';
@@ -50,9 +44,15 @@ const quizFields = {
   dueAt: z.coerce.date().nullable().optional(),
   reviewPolicy: z.enum(REVIEW_POLICIES).optional(),
 };
-const windowInOrder = (q: { availableFrom?: Date | null; dueAt?: Date | null }) => !q.availableFrom || !q.dueAt || q.availableFrom < q.dueAt;
-export const createQuizSchema = z.object(quizFields).refine(windowInOrder, { message: 'The quiz must open before it closes', path: ['dueAt'] });
-export const updateQuizSchema = z.object(quizFields).partial().refine(windowInOrder, { message: 'The quiz must open before it closes', path: ['dueAt'] });
+const windowInOrder = (q: { availableFrom?: Date | null; dueAt?: Date | null }) =>
+  !q.availableFrom || !q.dueAt || q.availableFrom < q.dueAt;
+export const createQuizSchema = z
+  .object(quizFields)
+  .refine(windowInOrder, { message: 'The quiz must open before it closes', path: ['dueAt'] });
+export const updateQuizSchema = z
+  .object(quizFields)
+  .partial()
+  .refine(windowInOrder, { message: 'The quiz must open before it closes', path: ['dueAt'] });
 
 const optionSchema = z.object({
   id: idSchema.optional(),
@@ -93,9 +93,15 @@ const assignmentFields = {
   /** Late work is accepted until this time (null: always accepted, flagged as late after the due date). */
   acceptLateUntil: z.coerce.date().nullable().optional(),
 };
-const cutoffAfterDue = (a: { dueDate?: Date | null; acceptLateUntil?: Date | null }) => !a.acceptLateUntil || !a.dueDate || a.acceptLateUntil >= a.dueDate;
-export const createAssignmentSchema = z.object(assignmentFields).refine(cutoffAfterDue, { message: 'Late work must be accepted until a time after the due date', path: ['acceptLateUntil'] });
-export const updateAssignmentSchema = z.object(assignmentFields).partial().refine(cutoffAfterDue, { message: 'Late work must be accepted until a time after the due date', path: ['acceptLateUntil'] });
+const cutoffAfterDue = (a: { dueDate?: Date | null; acceptLateUntil?: Date | null }) =>
+  !a.acceptLateUntil || !a.dueDate || a.acceptLateUntil >= a.dueDate;
+export const createAssignmentSchema = z
+  .object(assignmentFields)
+  .refine(cutoffAfterDue, { message: 'Late work must be accepted until a time after the due date', path: ['acceptLateUntil'] });
+export const updateAssignmentSchema = z
+  .object(assignmentFields)
+  .partial()
+  .refine(cutoffAfterDue, { message: 'Late work must be accepted until a time after the due date', path: ['acceptLateUntil'] });
 
 export const assignmentSubmissionSchema = z
   .object({
@@ -237,9 +243,7 @@ router.get(
       questionType: q.questionType,
       points: q.points,
       orderIndex: q.orderIndex,
-      options: Array.isArray(q.optionsJson)
-        ? (q.optionsJson as any[]).map((o) => ({ id: o?.id, text: o?.text }))
-        : q.optionsJson,
+      options: Array.isArray(q.optionsJson) ? (q.optionsJson as any[]).map((o) => ({ id: o?.id, text: o?.text })) : q.optionsJson,
     }));
 
     return res.status(200).json({
@@ -372,7 +376,7 @@ router.patch(
         questionType: input.questionType,
         points: input.points,
         orderIndex: input.orderIndex,
-        optionsJson: input.optionsJson === undefined ? undefined : withOptionIds(input.optionsJson) ?? undefined,
+        optionsJson: input.optionsJson === undefined ? undefined : (withOptionIds(input.optionsJson) ?? undefined),
         correctAnswer: input.correctAnswer,
         explanation: input.explanation,
         bloomLevel: input.bloomLevel,
@@ -560,11 +564,21 @@ const submitQuiz = route('Failed to submit and grade quiz', async (req: Request,
       user: { id: userId, email: req.user!.email },
       verb: grade.pendingManual.length > 0 ? VERBS.attempted : passed ? VERBS.passed : VERBS.failed,
       object: { id: `${config.APP_URL}/xapi/quizzes/${quiz.id}`, name: quiz.title, type: 'http://adlnet.gov/expapi/activities/assessment' },
-      result: { score: { raw: grade.score, max: grade.maxScore, scaled: grade.maxScore > 0 ? grade.score / grade.maxScore : 0 }, success: passed },
+      result: {
+        score: { raw: grade.score, max: grade.maxScore, scaled: grade.maxScore > 0 ? grade.score / grade.maxScore : 0 },
+        success: passed,
+      },
     }),
   ]);
   // Not awaited: a slow receiver must not hold up the learner's response.
-  void dispatchWebhook(tenantId, 'quiz.submitted', { quizId: quiz.id, submissionId, userId, score: grade.score, maxScore: grade.maxScore, passed });
+  void dispatchWebhook(tenantId, 'quiz.submitted', {
+    quizId: quiz.id,
+    submissionId,
+    userId,
+    score: grade.score,
+    maxScore: grade.maxScore,
+    passed,
+  });
 
   await logAuditEvent({
     tenantId,
@@ -659,7 +673,11 @@ router.get(
     const closesAt = personalDue(quiz.dueAt, await extensionFor(sub.userId, { quizId: quiz.id }));
     const policy = staff ? 'ANSWERS' : quiz.reviewPolicy;
     const reveal = staff || answersRevealed(quiz.reviewPolicy, quiz.maxAttempts - used, closesAt);
-    const stored = (sub.answersJson ?? {}) as { submittedAnswers?: Record<string, unknown>; grading?: Record<string, any>; pendingManual?: string[] };
+    const stored = (sub.answersJson ?? {}) as {
+      submittedAnswers?: Record<string, unknown>;
+      grading?: Record<string, any>;
+      pendingManual?: string[];
+    };
 
     const questions =
       policy === 'SCORE_ONLY'
@@ -811,7 +829,11 @@ router.get(
     });
     const extended = new Map(extensions.map((e) => [e.assignmentId!, e.dueAt]));
     return res.status(200).json({
-      data: assignments.map(({ _count, ...a }) => ({ ...a, myDueAt: personalDue(a.dueDate, extended.get(a.id) ?? null), extended: extended.has(a.id) })),
+      data: assignments.map(({ _count, ...a }) => ({
+        ...a,
+        myDueAt: personalDue(a.dueDate, extended.get(a.id) ?? null),
+        extended: extended.has(a.id),
+      })),
     });
   })
 );
@@ -914,10 +936,22 @@ const submitAssignment = route('Failed to submit assignment', async (req: Reques
       create: { assignmentId: assignment.id, userId, ...data },
       update: data,
     });
-    const last = await tx.assignmentSubmissionVersion.findFirst({ where: { submissionId: submission.id }, orderBy: { version: 'desc' }, select: { version: true } });
+    const last = await tx.assignmentSubmissionVersion.findFirst({
+      where: { submissionId: submission.id },
+      orderBy: { version: 'desc' },
+      select: { version: true },
+    });
     const version = (last?.version ?? 0) + 1;
     await tx.assignmentSubmissionVersion.create({
-      data: { tenantId, submissionId: submission.id, version, fileUrl: data.fileUrl, submissionText: data.submissionText, submittedAt: now, isLate },
+      data: {
+        tenantId,
+        submissionId: submission.id,
+        version,
+        fileUrl: data.fileUrl,
+        submissionText: data.submissionText,
+        submittedAt: now,
+        isLate,
+      },
     });
     return { submission, version };
   });
@@ -975,7 +1009,11 @@ router.get(
     const assignment = await loadAssignment(req, String(req.params.id));
     const access = await requireContentAccess(req, assignment.courseId);
     const submission = await prisma.assignmentSubmission.findFirst({
-      where: { id: idSchema.parse(req.params.subId), assignmentId: assignment.id, ...(seesAnswerKeys(req, access) ? {} : { userId: req.user!.id }) },
+      where: {
+        id: idSchema.parse(req.params.subId),
+        assignmentId: assignment.id,
+        ...(seesAnswerKeys(req, access) ? {} : { userId: req.user!.id }),
+      },
       select: { id: true },
     });
     if (!submission) throw new HttpError(404, 'Submission not found');

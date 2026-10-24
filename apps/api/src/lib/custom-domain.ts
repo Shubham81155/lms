@@ -108,7 +108,12 @@ export async function checkTxt(domain: string, token: string): Promise<TxtCheck>
     // A long TXT value can arrive split into several strings: they form one value.
     records = (await lookup((r) => r.resolveTxt(name))).map((chunks) => chunks.join('').trim());
   } catch (err: any) {
-    if (NOT_FOUND.has(err?.code)) return { ok: false, definite: true, error: `No TXT record found at ${name}. DNS changes can take a while to appear; check again later.` };
+    if (NOT_FOUND.has(err?.code))
+      return {
+        ok: false,
+        definite: true,
+        error: `No TXT record found at ${name}. DNS changes can take a while to appear; check again later.`,
+      };
     if (err?.code === 'ETIMEOUT') return { ok: false, definite: false, error: 'The DNS lookup timed out. Try again in a few minutes.' };
     return { ok: false, definite: false, error: `The DNS lookup failed${err?.code ? ` (${err.code})` : ''}. Try again in a few minutes.` };
   }
@@ -144,23 +149,49 @@ export async function routingHint(domain: string): Promise<RoutingHint> {
     quiet(lookup((r) => r.resolve6(target))),
   ]);
   const theirs = new Set([...theirs4, ...theirs6]);
-  if ([...mine4, ...mine6].some((a) => theirs.has(a))) return { target, pointsAtPlatform: true, detail: `${domain} resolves to the platform's addresses.` };
-  if (!cnames.length && !mine4.length && !mine6.length) return { target, pointsAtPlatform: false, detail: `${domain} does not resolve yet. Add a CNAME record pointing at ${target}.` };
-  return { target, pointsAtPlatform: false, detail: `${domain} does not point at ${target} yet. Add a CNAME record pointing at ${target} (replacing other records for it).` };
+  if ([...mine4, ...mine6].some((a) => theirs.has(a)))
+    return { target, pointsAtPlatform: true, detail: `${domain} resolves to the platform's addresses.` };
+  if (!cnames.length && !mine4.length && !mine6.length)
+    return { target, pointsAtPlatform: false, detail: `${domain} does not resolve yet. Add a CNAME record pointing at ${target}.` };
+  return {
+    target,
+    pointsAtPlatform: false,
+    detail: `${domain} does not point at ${target} yet. Add a CNAME record pointing at ${target} (replacing other records for it).`,
+  };
 }
 
 // --------------------------------------------------------------------------- state
 
 const select = {
-  id: true, slug: true, status: true, customDomain: true, customDomainVerifiedAt: true,
-  pendingCustomDomain: true, customDomainToken: true, customDomainRequestedAt: true, customDomainCheckedAt: true, customDomainError: true,
-  customDomainLiveToken: true, customDomainRecheckedAt: true, customDomainRecheckError: true, customDomainFailingSince: true,
+  id: true,
+  slug: true,
+  status: true,
+  customDomain: true,
+  customDomainVerifiedAt: true,
+  pendingCustomDomain: true,
+  customDomainToken: true,
+  customDomainRequestedAt: true,
+  customDomainCheckedAt: true,
+  customDomainError: true,
+  customDomainLiveToken: true,
+  customDomainRecheckedAt: true,
+  customDomainRecheckError: true,
+  customDomainFailingSince: true,
 } as const;
 
 type DomainRow = {
-  slug: string; customDomain: string | null; customDomainVerifiedAt: Date | null; pendingCustomDomain: string | null; customDomainToken: string | null;
-  customDomainRequestedAt: Date | null; customDomainCheckedAt: Date | null; customDomainError: string | null;
-  customDomainLiveToken: string | null; customDomainRecheckedAt: Date | null; customDomainRecheckError: string | null; customDomainFailingSince: Date | null;
+  slug: string;
+  customDomain: string | null;
+  customDomainVerifiedAt: Date | null;
+  pendingCustomDomain: string | null;
+  customDomainToken: string | null;
+  customDomainRequestedAt: Date | null;
+  customDomainCheckedAt: Date | null;
+  customDomainError: string | null;
+  customDomainLiveToken: string | null;
+  customDomainRecheckedAt: Date | null;
+  customDomainRecheckError: string | null;
+  customDomainFailingSince: Date | null;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -168,7 +199,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const removalDate = (failingSince: Date) => new Date(failingSince.getTime() + config.CUSTOM_DOMAIN_RECHECK_GRACE_DAYS * DAY_MS);
 
 /** Fields that reset the re-check state of the live domain (it changed, or was removed). */
-export const clearedRecheck = { customDomainRecheckedAt: null, customDomainRecheckError: null, customDomainFailingSince: null, customDomainWarnedAt: null } as const;
+export const clearedRecheck = {
+  customDomainRecheckedAt: null,
+  customDomainRecheckError: null,
+  customDomainFailingSince: null,
+  customDomainWarnedAt: null,
+} as const;
 
 /** What the admin area and the platform console show: the live domain, the one waiting and the exact TXT record. */
 export function domainView(t: DomainRow) {
@@ -235,10 +271,13 @@ export interface DomainActor {
 /** Audited in the organisation's trail and, when the platform operator acts, in the operator's too. */
 async function audit(targetId: string, actor: DomainActor, action: string, diffJson: Record<string, unknown>) {
   const entry = { action, resourceType: 'TENANT', resourceId: targetId, ipAddress: actor.ipAddress, userAgent: actor.userAgent, diffJson };
-  if (actor.tenantId === targetId) return void (await runWithTenant(targetId, () => logAuditEvent({ ...entry, tenantId: targetId, userId: actor.userId })));
+  if (actor.tenantId === targetId)
+    return void (await runWithTenant(targetId, () => logAuditEvent({ ...entry, tenantId: targetId, userId: actor.userId })));
   await runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId }));
   // The operator's user id is not one of the organisation's users.
-  await runWithTenant(targetId, () => logAuditEvent({ ...entry, tenantId: targetId, userId: undefined, diffJson: { ...diffJson, by: 'PLATFORM_OPERATOR' } }));
+  await runWithTenant(targetId, () =>
+    logAuditEvent({ ...entry, tenantId: targetId, userId: undefined, diffJson: { ...diffJson, by: 'PLATFORM_OPERATOR' } })
+  );
 }
 
 /** The secret part of the TXT record value. */
@@ -270,30 +309,62 @@ export async function requestCustomDomain(tenantId: string, domain: string, acto
     if (!lapsed) throw new HttpError(409, 'Another organisation is verifying that domain. Ask your platform operator if it is yours.');
     const released = await basePrisma.tenant.updateMany({
       where: { id: holder.id, pendingCustomDomain: domain },
-      data: { pendingCustomDomain: null, customDomainToken: null, customDomainRequestedAt: null, customDomainCheckedAt: null, customDomainError: null },
+      data: {
+        pendingCustomDomain: null,
+        customDomainToken: null,
+        customDomainRequestedAt: null,
+        customDomainCheckedAt: null,
+        customDomainError: null,
+      },
     });
-    if (released.count) await runWithTenant(holder.id, () => logAuditEvent({ tenantId: holder.id, action: 'CUSTOM_DOMAIN_REQUEST_LAPSED', resourceType: 'TENANT', resourceId: holder.id, diffJson: { pending: domain, reason: 'requested by another organisation after a week unverified' } }));
+    if (released.count)
+      await runWithTenant(holder.id, () =>
+        logAuditEvent({
+          tenantId: holder.id,
+          action: 'CUSTOM_DOMAIN_REQUEST_LAPSED',
+          resourceType: 'TENANT',
+          resourceId: holder.id,
+          diffJson: { pending: domain, reason: 'requested by another organisation after a week unverified' },
+        })
+      );
   }
 
   let saved;
   try {
     saved = await basePrisma.tenant.update({
       where: { id: tenantId },
-      data: { pendingCustomDomain: domain, customDomainToken: newDomainToken(), customDomainRequestedAt: new Date(), customDomainCheckedAt: null, customDomainError: null },
+      data: {
+        pendingCustomDomain: domain,
+        customDomainToken: newDomainToken(),
+        customDomainRequestedAt: new Date(),
+        customDomainCheckedAt: null,
+        customDomainError: null,
+      },
       select,
     });
   } catch (err) {
     if (isUniqueViolation(err)) throw new HttpError(409, TAKEN);
     throw err;
   }
-  await audit(tenantId, actor, 'CUSTOM_DOMAIN_REQUESTED', { tenant: t.slug, live: t.customDomain, before: t.pendingCustomDomain, pending: domain });
+  await audit(tenantId, actor, 'CUSTOM_DOMAIN_REQUESTED', {
+    tenant: t.slug,
+    live: t.customDomain,
+    before: t.pendingCustomDomain,
+    pending: domain,
+  });
   return domainView(saved);
 }
 
 async function cancelPending(t: Awaited<ReturnType<typeof load>>, actor: DomainActor) {
   const saved = await basePrisma.tenant.update({
     where: { id: t.id },
-    data: { pendingCustomDomain: null, customDomainToken: null, customDomainRequestedAt: null, customDomainCheckedAt: null, customDomainError: null },
+    data: {
+      pendingCustomDomain: null,
+      customDomainToken: null,
+      customDomainRequestedAt: null,
+      customDomainCheckedAt: null,
+      customDomainError: null,
+    },
     select,
   });
   await audit(t.id, actor, 'CUSTOM_DOMAIN_REQUEST_CANCELLED', { tenant: t.slug, pending: t.pendingCustomDomain, live: t.customDomain });
@@ -328,8 +399,16 @@ export async function verifyCustomDomain(tenantId: string, actor: DomainActor) {
       const moved = await basePrisma.tenant.updateMany({
         where: same,
         data: {
-          customDomain: domain, customDomainVerifiedAt: now, customDomainLiveToken: token, ...clearedRecheck, customDomainRecheckedAt: now,
-          pendingCustomDomain: null, customDomainToken: null, customDomainRequestedAt: null, customDomainCheckedAt: now, customDomainError: null,
+          customDomain: domain,
+          customDomainVerifiedAt: now,
+          customDomainLiveToken: token,
+          ...clearedRecheck,
+          customDomainRecheckedAt: now,
+          pendingCustomDomain: null,
+          customDomainToken: null,
+          customDomainRequestedAt: null,
+          customDomainCheckedAt: now,
+          customDomainError: null,
         },
       });
       if (moved.count) await audit(tenantId, actor, 'CUSTOM_DOMAIN_VERIFIED', { tenant: t.slug, before: t.customDomain, after: domain });
@@ -350,8 +429,15 @@ export async function removeCustomDomain(tenantId: string, scope: 'all' | 'pendi
   const saved = await basePrisma.tenant.update({
     where: { id: tenantId },
     data: {
-      customDomain: null, customDomainVerifiedAt: null, customDomainLiveToken: null, ...clearedRecheck,
-      pendingCustomDomain: null, customDomainToken: null, customDomainRequestedAt: null, customDomainCheckedAt: null, customDomainError: null,
+      customDomain: null,
+      customDomainVerifiedAt: null,
+      customDomainLiveToken: null,
+      ...clearedRecheck,
+      pendingCustomDomain: null,
+      customDomainToken: null,
+      customDomainRequestedAt: null,
+      customDomainCheckedAt: null,
+      customDomainError: null,
     },
     select,
   });

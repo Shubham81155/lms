@@ -6,19 +6,20 @@ import { prisma, basePrisma } from './prisma';
 import { logger } from './logger';
 import { config } from '../config';
 
-export const WEBHOOK_EVENTS = [
-  'enrollment.completed',
-  'certificate.issued',
-  'quiz.submitted',
-  'user.provisioned',
-  'webhook.test',
-] as const;
+export const WEBHOOK_EVENTS = ['enrollment.completed', 'certificate.issued', 'quiz.submitted', 'user.provisioned', 'webhook.test'] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
 const PRIVATE_V4 = [
-  /^10\./, /^127\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[01])\./, /^192\.168\./, /^0\./,
+  /^10\./,
+  /^127\./,
+  /^169\.254\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^192\.168\./,
+  /^0\./,
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // carrier-grade NAT 100.64.0.0/10
-  /^192\.0\.0\./, /^198\.1[89]\./, /^2(2[4-9]|[3-5]\d)\./, // IETF protocol, benchmarking, multicast and reserved
+  /^192\.0\.0\./,
+  /^198\.1[89]\./,
+  /^2(2[4-9]|[3-5]\d)\./, // IETF protocol, benchmarking, multicast and reserved
 ];
 
 /** True for an address no tenant-supplied URL may reach: loopback, private, link-local, unspecified, mapped forms of those. */
@@ -36,7 +37,14 @@ export function isBlockedIp(ip: string): boolean {
   }
   const groups = host.split(':');
   const allZeroExceptLast = /^[0:]*$/.test(host.replace(/:[0-9a-f]{1,4}$/, '')) || host === '::';
-  return host === '::' || host === '::1' || (allZeroExceptLast && groups.length > 2) || /^f[cd]/.test(host) || /^fe[89ab]/.test(host) || host.startsWith('ff');
+  return (
+    host === '::' ||
+    host === '::1' ||
+    (allZeroExceptLast && groups.length > 2) ||
+    /^f[cd]/.test(host) ||
+    /^fe[89ab]/.test(host) ||
+    host.startsWith('ff')
+  );
 }
 
 /**

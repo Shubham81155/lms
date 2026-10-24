@@ -40,9 +40,25 @@ const WEEKDAYS: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 
 export function localParts(at: Date, timeZone: string): { day: number; hour: number; weekday: number } {
   let fmt: Intl.DateTimeFormat;
   try {
-    fmt = new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', weekday: 'short' });
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      weekday: 'short',
+    });
   } catch {
-    fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', weekday: 'short' });
+    fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      weekday: 'short',
+    });
   }
   const p = Object.fromEntries(fmt.formatToParts(at).map((x) => [x.type, x.value]));
   // Days since the epoch of the local date: comparable across month ends, no time of day in it.
@@ -74,7 +90,8 @@ export function digestDue(s: DigestSchedule, now: Date): boolean {
 
 // --------------------------------------------------------------------------- unsubscribe links
 
-const tokenMac = (payload: string) => crypto.createHmac('sha256', config.JWT_SECRET).update(`digest-unsubscribe:${payload}`).digest('base64url');
+const tokenMac = (payload: string) =>
+  crypto.createHmac('sha256', config.JWT_SECRET).update(`digest-unsubscribe:${payload}`).digest('base64url');
 
 /**
  * A link token that turns one person's digests off without signing in. It has no expiry (an old e-mail must keep
@@ -117,12 +134,21 @@ export interface DigestInput {
   oneClickUrl: string;
 }
 
-const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const oneLine = (s: string) => s.replace(/[\r\n]+/g, ' ').trim();
 
 function when(d: Date, timeZone: string): string {
   try {
-    return new Intl.DateTimeFormat('en-GB', { timeZone, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d);
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(d);
   } catch {
     return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
   }
@@ -143,24 +169,59 @@ interface Block {
 export function buildDigest(i: DigestInput): { subject: string; text: string; html: string; items: number } | null {
   const on = (s: DigestSection) => i.sections.includes(s);
   const fromNotes = (category: string): Line[] =>
-    i.notifications.filter((n) => n.category === category).map((n) => ({ title: oneLine(n.title), detail: n.body ? oneLine(n.body).slice(0, 160) : undefined, url: absoluteLink(n.link, i.base) }));
-  const other = i.notifications.filter((n) => !['GRADE', 'FORUM', 'LIVE'].includes(n.category)).map((n) => ({ title: oneLine(n.title), detail: n.body ? oneLine(n.body).slice(0, 160) : undefined, url: absoluteLink(n.link, i.base) }));
+    i.notifications
+      .filter((n) => n.category === category)
+      .map((n) => ({
+        title: oneLine(n.title),
+        detail: n.body ? oneLine(n.body).slice(0, 160) : undefined,
+        url: absoluteLink(n.link, i.base),
+      }));
+  const other = i.notifications
+    .filter((n) => !['GRADE', 'FORUM', 'LIVE'].includes(n.category))
+    .map((n) => ({
+      title: oneLine(n.title),
+      detail: n.body ? oneLine(n.body).slice(0, 160) : undefined,
+      url: absoluteLink(n.link, i.base),
+    }));
 
   const raw: { heading: string; lines: Line[] }[] = [
     {
       heading: 'Due in the next 7 days',
-      lines: on('deadlines') ? [...i.deadlines].sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime()).map((d) => ({ title: `${d.kind}: ${oneLine(d.title)}`, detail: `${oneLine(d.courseTitle)} · due ${when(d.dueAt, i.timezone)}`, url: absoluteLink(d.link, i.base) })) : [],
+      lines: on('deadlines')
+        ? [...i.deadlines]
+            .sort((a, b) => a.dueAt.getTime() - b.dueAt.getTime())
+            .map((d) => ({
+              title: `${d.kind}: ${oneLine(d.title)}`,
+              detail: `${oneLine(d.courseTitle)} · due ${when(d.dueAt, i.timezone)}`,
+              url: absoluteLink(d.link, i.base),
+            }))
+        : [],
     },
     { heading: 'New grades', lines: on('grades') ? fromNotes('GRADE') : [] },
-    { heading: 'New announcements', lines: on('announcements') ? i.announcements.map((a) => ({ title: oneLine(a.title), detail: oneLine(a.courseTitle), url: absoluteLink(a.link, i.base) })) : [] },
+    {
+      heading: 'New announcements',
+      lines: on('announcements')
+        ? i.announcements.map((a) => ({ title: oneLine(a.title), detail: oneLine(a.courseTitle), url: absoluteLink(a.link, i.base) }))
+        : [],
+    },
     { heading: 'Discussion replies', lines: on('forum') ? fromNotes('FORUM') : [] },
     {
       heading: 'Live classes this week',
-      lines: on('live') ? [...i.liveSessions].sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime()).map((l) => ({ title: oneLine(l.title), detail: `${oneLine(l.courseTitle)} · ${when(l.scheduledAt, i.timezone)}`, url: absoluteLink(l.link, i.base) })) : [],
+      lines: on('live')
+        ? [...i.liveSessions]
+            .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())
+            .map((l) => ({
+              title: oneLine(l.title),
+              detail: `${oneLine(l.courseTitle)} · ${when(l.scheduledAt, i.timezone)}`,
+              url: absoluteLink(l.link, i.base),
+            }))
+        : [],
     },
     { heading: 'Other updates', lines: other },
   ];
-  const blocks: Block[] = raw.filter((b) => b.lines.length > 0).map((b) => ({ heading: b.heading, lines: b.lines.slice(0, PER_SECTION), more: Math.max(0, b.lines.length - PER_SECTION) }));
+  const blocks: Block[] = raw
+    .filter((b) => b.lines.length > 0)
+    .map((b) => ({ heading: b.heading, lines: b.lines.slice(0, PER_SECTION), more: Math.max(0, b.lines.length - PER_SECTION) }));
   const items = raw.reduce((n, b) => n + b.lines.length, 0);
   if (items === 0) return null;
 
@@ -194,7 +255,10 @@ export function buildDigest(i: DigestInput): { subject: string; text: string; ht
         (b) =>
           `<h3 style="margin:20px 0 6px;font-size:15px">${escapeHtml(b.heading)}</h3><ul style="margin:0;padding-left:20px">` +
           b.lines
-            .map((l) => `<li style="margin:4px 0">${l.url ? `<a href="${escapeHtml(l.url)}">${escapeHtml(l.title)}</a>` : escapeHtml(l.title)}${l.detail ? `<br><span style="color:#666;font-size:13px">${escapeHtml(l.detail)}</span>` : ''}</li>`)
+            .map(
+              (l) =>
+                `<li style="margin:4px 0">${l.url ? `<a href="${escapeHtml(l.url)}">${escapeHtml(l.title)}</a>` : escapeHtml(l.title)}${l.detail ? `<br><span style="color:#666;font-size:13px">${escapeHtml(l.detail)}</span>` : ''}</li>`
+            )
             .join('') +
           (b.more ? `<li style="color:#666">…and ${b.more} more</li>` : '') +
           `</ul>`
@@ -239,18 +303,35 @@ async function gather(tenant: TenantRow, user: Recipient, pref: Pref, since: Dat
     // A deadline is looked at through the person's extension, so the course-wide date may be past already.
     const [assignments, quizzes] = await Promise.all([
       prisma.assignment.findMany({
-        where: { courseId: { in: courseIds }, dueDate: { not: null, lte: horizon }, OR: [{ dueDate: { gt: now } }, { extensions: { some: { userId: user.id, dueAt: { gt: now } } } }] },
-        select: { id: true, title: true, courseId: true, dueDate: true, extensions: { where: { userId: user.id }, select: { dueAt: true } } },
+        where: {
+          courseId: { in: courseIds },
+          dueDate: { not: null, lte: horizon },
+          OR: [{ dueDate: { gt: now } }, { extensions: { some: { userId: user.id, dueAt: { gt: now } } } }],
+        },
+        select: {
+          id: true,
+          title: true,
+          courseId: true,
+          dueDate: true,
+          extensions: { where: { userId: user.id }, select: { dueAt: true } },
+        },
         take: 100,
       }),
       prisma.quiz.findMany({
-        where: { courseId: { in: courseIds }, dueAt: { not: null, lte: horizon }, OR: [{ dueAt: { gt: now } }, { extensions: { some: { userId: user.id, dueAt: { gt: now } } } }] },
+        where: {
+          courseId: { in: courseIds },
+          dueAt: { not: null, lte: horizon },
+          OR: [{ dueAt: { gt: now } }, { extensions: { some: { userId: user.id, dueAt: { gt: now } } } }],
+        },
         select: { id: true, title: true, courseId: true, dueAt: true, extensions: { where: { userId: user.id }, select: { dueAt: true } } },
         take: 100,
       }),
     ]);
     const [handedIn, attempted] = await Promise.all([
-      prisma.assignmentSubmission.findMany({ where: { userId: user.id, assignmentId: { in: assignments.map((a) => a.id) } }, select: { assignmentId: true } }),
+      prisma.assignmentSubmission.findMany({
+        where: { userId: user.id, assignmentId: { in: assignments.map((a) => a.id) } },
+        select: { assignmentId: true },
+      }),
       prisma.quizSubmission.findMany({ where: { userId: user.id, quizId: { in: quizzes.map((q) => q.id) } }, select: { quizId: true } }),
     ]);
     const doneA = new Set(handedIn.map((s) => s.assignmentId));
@@ -258,17 +339,38 @@ async function gather(tenant: TenantRow, user: Recipient, pref: Pref, since: Dat
     const within = (d: Date | null) => !!d && d > now && d <= horizon;
     for (const a of assignments) {
       const due = personalDue(a.dueDate, a.extensions[0]?.dueAt ?? null);
-      if (!doneA.has(a.id) && within(due)) deadlines.push({ kind: 'Assignment', title: a.title, courseTitle: courseTitle.get(a.courseId) ?? '', dueAt: due!, link: `/courses/${a.courseId}/assignments` });
+      if (!doneA.has(a.id) && within(due))
+        deadlines.push({
+          kind: 'Assignment',
+          title: a.title,
+          courseTitle: courseTitle.get(a.courseId) ?? '',
+          dueAt: due!,
+          link: `/courses/${a.courseId}/assignments`,
+        });
     }
     for (const q of quizzes) {
       const due = personalDue(q.dueAt, q.extensions[0]?.dueAt ?? null);
-      if (!doneQ.has(q.id) && within(due)) deadlines.push({ kind: 'Quiz', title: q.title, courseTitle: courseTitle.get(q.courseId) ?? '', dueAt: due!, link: `/quizzes/${q.id}` });
+      if (!doneQ.has(q.id) && within(due))
+        deadlines.push({
+          kind: 'Quiz',
+          title: q.title,
+          courseTitle: courseTitle.get(q.courseId) ?? '',
+          dueAt: due!,
+          link: `/quizzes/${q.id}`,
+        });
     }
   }
 
   const announcements =
     sections.includes('announcements') && courseIds.length
-      ? (await prisma.announcement.findMany({ where: { courseId: { in: courseIds }, createdAt: { gt: since } }, orderBy: { createdAt: 'desc' }, take: 50, select: { title: true, courseId: true, createdAt: true } })).map((a) => ({
+      ? (
+          await prisma.announcement.findMany({
+            where: { courseId: { in: courseIds }, createdAt: { gt: since } },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+            select: { title: true, courseId: true, createdAt: true },
+          })
+        ).map((a) => ({
           title: a.title,
           courseTitle: courseTitle.get(a.courseId) ?? '',
           createdAt: a.createdAt,
@@ -278,7 +380,14 @@ async function gather(tenant: TenantRow, user: Recipient, pref: Pref, since: Dat
 
   const liveSessions =
     sections.includes('live') && courseIds.length
-      ? (await prisma.liveSession.findMany({ where: { courseId: { in: courseIds }, status: 'SCHEDULED', scheduledAt: { gt: now, lte: horizon } }, orderBy: { scheduledAt: 'asc' }, take: 50, select: { title: true, courseId: true, scheduledAt: true } })).map((l) => ({
+      ? (
+          await prisma.liveSession.findMany({
+            where: { courseId: { in: courseIds }, status: 'SCHEDULED', scheduledAt: { gt: now, lte: horizon } },
+            orderBy: { scheduledAt: 'asc' },
+            take: 50,
+            select: { title: true, courseId: true, scheduledAt: true },
+          })
+        ).map((l) => ({
           title: l.title,
           courseTitle: courseTitle.get(l.courseId) ?? '',
           scheduledAt: l.scheduledAt,
@@ -329,7 +438,12 @@ async function processTenant(tenant: TenantRow, now: Date, budget: { left: numbe
         erasedAt: null,
         OR: [
           { notificationPref: null },
-          { notificationPref: { digestFrequency: { not: 'OFF' }, OR: [{ lastDigestAt: null }, { lastDigestAt: { lt: new Date(now.getTime() - 20 * 3_600_000) } }] } },
+          {
+            notificationPref: {
+              digestFrequency: { not: 'OFF' },
+              OR: [{ lastDigestAt: null }, { lastDigestAt: { lt: new Date(now.getTime() - 20 * 3_600_000) } }],
+            },
+          },
         ],
         ...(cursor ? { id: { gt: cursor } } : {}),
       },
@@ -345,11 +459,19 @@ async function processTenant(tenant: TenantRow, now: Date, budget: { left: numbe
       if (budget.left <= 0) return;
       try {
         let pref = u.notificationPref;
-        if (!pref) pref = await prisma.notificationPreference.upsert({ where: { userId: u.id }, create: { tenantId: tenant.id, userId: u.id }, update: {} });
+        if (!pref)
+          pref = await prisma.notificationPreference.upsert({
+            where: { userId: u.id },
+            create: { tenantId: tenant.id, userId: u.id },
+            update: {},
+          });
         if (!digestDue(pref, now)) continue;
 
         // Claim the period: only one instance moves lastDigestAt from the value read here.
-        const claimed = await prisma.notificationPreference.updateMany({ where: { userId: u.id, digestFrequency: pref.digestFrequency, lastDigestAt: pref.lastDigestAt }, data: { lastDigestAt: now } });
+        const claimed = await prisma.notificationPreference.updateMany({
+          where: { userId: u.id, digestFrequency: pref.digestFrequency, lastDigestAt: pref.lastDigestAt },
+          data: { lastDigestAt: now },
+        });
         if (claimed.count !== 1) continue;
 
         const since = pref.lastDigestAt ?? new Date(now.getTime() - (pref.digestFrequency === 'DAILY' ? DAY_MS : 7 * DAY_MS));

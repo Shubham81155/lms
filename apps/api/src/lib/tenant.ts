@@ -32,4 +32,3 @@ export async function lookupTenant(hints: string[] | undefined): Promise<Resolve
   }
   return null;
 }
-

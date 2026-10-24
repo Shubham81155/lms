@@ -23,7 +23,15 @@ describe('sso origin selection', () => {
   });
 
   it('falls back to the platform address for anything it does not own', () => {
-    for (const host of [undefined, '', 'evil.example', 'learn.example.edu:8443', 'learn.example.edu.', 'sub.learn.example.edu', 'example.edu']) {
+    for (const host of [
+      undefined,
+      '',
+      'evil.example',
+      'learn.example.edu:8443',
+      'learn.example.edu.',
+      'sub.learn.example.edu',
+      'example.edu',
+    ]) {
       expect(originFor(custom, host), String(host)).toBe(APP);
     }
     expect(originFor(plain, 'learn.example.edu')).toBe(APP); // a tenant without a custom domain has none to use

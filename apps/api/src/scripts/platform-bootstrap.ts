@@ -26,7 +26,9 @@ async function main() {
   const password = arg('password');
   const name = arg('name')?.trim() || 'Platform operator';
   if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !firstName || !lastName) {
-    throw new Error('Usage: --email <address> --first <first name> --last <last name> [--password <password>] [--name <organisation name>]');
+    throw new Error(
+      'Usage: --email <address> --first <first name> --last <last name> [--password <password>] [--name <organisation name>]'
+    );
   }
   if (password !== undefined && (password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH)) {
     throw new Error(`The password must be ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} characters.`);
@@ -34,7 +36,10 @@ async function main() {
 
   let tenant = await basePrisma.tenant.findUnique({ where: { slug }, select: { id: true, status: true } });
   if (!tenant) {
-    tenant = await basePrisma.tenant.create({ data: { id: crypto.randomUUID(), slug, name, tier: 'ENTERPRISE', status: 'ACTIVE' }, select: { id: true, status: true } });
+    tenant = await basePrisma.tenant.create({
+      data: { id: crypto.randomUUID(), slug, name, tier: 'ENTERPRISE', status: 'ACTIVE' },
+      select: { id: true, status: true },
+    });
     console.log(`Created the operator organisation "${slug}".`);
   } else {
     console.log(`The operator organisation "${slug}" already exists.`);
@@ -46,13 +51,24 @@ async function main() {
   const user = await runInTenantTransaction(tenantId, async (tx) => {
     const existing = await tx.user.findFirst({ where: { tenantId, email }, select: { id: true, status: true } });
     const data = {
-      firstName, lastName, role: 'SUPER_ADMIN' as const,
+      firstName,
+      lastName,
+      role: 'SUPER_ADMIN' as const,
       ...(passwordHash ? { passwordHash, status: 'ACTIVE' as const, emailVerified: true } : {}),
     };
     return existing
-      ? tx.user.update({ where: { id: existing.id }, data, select: { id: true, email: true, firstName: true, tenantId: true, status: true } })
+      ? tx.user.update({
+          where: { id: existing.id },
+          data,
+          select: { id: true, email: true, firstName: true, tenantId: true, status: true },
+        })
       : tx.user.create({
-          data: { tenantId, email, ...data, ...(passwordHash ? {} : { status: 'INVITED' as const, passwordHash: null, emailVerified: false }) },
+          data: {
+            tenantId,
+            email,
+            ...data,
+            ...(passwordHash ? {} : { status: 'INVITED' as const, passwordHash: null, emailVerified: false }),
+          },
           select: { id: true, email: true, firstName: true, tenantId: true, status: true },
         });
   });

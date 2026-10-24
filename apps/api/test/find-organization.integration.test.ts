@@ -19,7 +19,8 @@ beforeAll(async () => {
   process.env.FIND_ORG_RATE_LIMIT_MAX = '100';
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
-  const tenant = (id: string, slug: string, name: string, extra: object = {}) => admin.tenant.create({ data: { id, slug, name, ...extra } });
+  const tenant = (id: string, slug: string, name: string, extra: object = {}) =>
+    admin.tenant.create({ data: { id, slug, name, ...extra } });
   await tenant('t-op', 'ops', 'Operator');
   await tenant('t-h', 'harvard', 'Harvard', { customDomain: 'learn.harvard.edu' });
   await tenant('t-y', 'yale', 'Yale');
@@ -29,7 +30,9 @@ beforeAll(async () => {
   await tenant('t-o', 'other-college', 'Other College');
   let n = 0;
   const user = (tenantId: string, email: string, status: any = 'ACTIVE') =>
-    admin.user.create({ data: { id: `u${++n}`, tenantId, email, firstName: 'Ann', lastName: 'Lee', role: 'STUDENT', status, emailVerified: true } });
+    admin.user.create({
+      data: { id: `u${++n}`, tenantId, email, firstName: 'Ann', lastName: 'Lee', role: 'STUDENT', status, emailVerified: true },
+    });
   await user('t-op', 'ann@example.edu');
   await user('t-h', 'ann@example.edu');
   await user('t-y', 'ann@example.edu', 'INVITED');
@@ -122,7 +125,9 @@ describe('the database function behind it', () => {
     }
   };
   const tenantsFor = (c: import('pg').Client, email: string) =>
-    c.query<{ tenant_id: string }>('SELECT tenant_id FROM find_tenants_for_email($1)', [email]).then((r) => r.rows.map((x) => x.tenant_id).sort());
+    c
+      .query<{ tenant_id: string }>('SELECT tenant_id FROM find_tenants_for_email($1)', [email])
+      .then((r) => r.rows.map((x) => x.tenant_id).sort());
 
   it('returns only organisation ids, for active and invited accounts, whatever the case of the address', async () => {
     await asApp(async (c) => {

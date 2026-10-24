@@ -16,29 +16,56 @@ let RESPONSES: typeof import('../src/openapi/responses/learning.js').RESPONSES;
 const pw = (slug: string) => `${PASSWORD}-${slug}`;
 
 async function seed() {
-  for (const [id, slug] of [['t-h', 'harvard'], ['t-m', 'mit']]) {
+  for (const [id, slug] of [
+    ['t-h', 'harvard'],
+    ['t-m', 'mit'],
+  ]) {
     await admin.tenant.create({ data: { id, slug, name: `${slug} University` } });
   }
   const user = (id: string, tenantId: string, slug: string, role: any) =>
     admin.user.create({
-      data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'Lastname', role, passwordHash: bcrypt.hashSync(pw(slug), 4), emailVerified: true },
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'Lastname',
+        role,
+        passwordHash: bcrypt.hashSync(pw(slug), 4),
+        emailVerified: true,
+      },
     });
   await user('admin', 't-h', 'harvard', 'TENANT_ADMIN');
   await user('auditor', 't-h', 'harvard', 'AUDITOR');
   await user('teacher', 't-h', 'harvard', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 's3', 's4', 's5']) await user(s, 't-h', 'harvard', 'STUDENT');
 
-  await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course c1', status: 'PUBLISHED', allowSelfEnroll: true } });
+  await admin.course.create({
+    data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course c1', status: 'PUBLISHED', allowSelfEnroll: true },
+  });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  for (const [id, userId, progress] of [['e-s1', 's1', 10], ['e-s3', 's3', 20], ['e-s4', 's4', 0]] as const) {
-    await admin.enrollment.create({ data: { id, tenantId: 't-h', courseId: 'c1', userId, status: progress ? 'IN_PROGRESS' : 'ENROLLED', progressPercent: progress } });
+  for (const [id, userId, progress] of [
+    ['e-s1', 's1', 10],
+    ['e-s3', 's3', 20],
+    ['e-s4', 's4', 0],
+  ] as const) {
+    await admin.enrollment.create({
+      data: { id, tenantId: 't-h', courseId: 'c1', userId, status: progress ? 'IN_PROGRESS' : 'ENROLLED', progressPercent: progress },
+    });
   }
-  await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', dueDate: new Date(Date.now() + 86_400_000) } });
+  await admin.assignment.create({
+    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', dueDate: new Date(Date.now() + 86_400_000) },
+  });
   await admin.quiz.create({ data: { id: 'q1', tenantId: 't-h', courseId: 'c1', title: 'Quiz', maxAttempts: 2 } });
   await admin.quizQuestion.create({ data: { id: 'qq1', quizId: 'q1', questionText: 'Q?', bloomLevel: 'REMEMBER', points: 1 } });
   await admin.quizSubmission.create({
     data: {
-      quizId: 'q1', userId: 's1', score: 1, maxScore: 1, passed: true, submittedAt: new Date(),
+      quizId: 'q1',
+      userId: 's1',
+      score: 1,
+      maxScore: 1,
+      passed: true,
+      submittedAt: new Date(),
       answersJson: { grading: { qq1: { awardedPoints: 1, maxPoints: 1 } } },
     },
   });
@@ -60,7 +87,10 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: pw('harvard') });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: pw('harvard') });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -124,12 +154,16 @@ describe('contract: courses', () => {
 
   it('announcements: staff post and learners are notified and can read them', async () => {
     const teacher = await as('teacher');
-    const posted = await teacher.post('/api/v1/courses/c1/announcements').send({ title: 'Week 2', body: 'Read chapter 3 before Monday.', pinned: true });
+    const posted = await teacher
+      .post('/api/v1/courses/c1/announcements')
+      .send({ title: 'Week 2', body: 'Read chapter 3 before Monday.', pinned: true });
     expect(posted.status).toBe(201);
     check('POST /api/v1/courses/:courseId/announcements', posted);
     expect(posted.body.notified).toBe(3); // s1, s3 and s4 are enrolled in c1
     expect(await admin.notification.count({ where: { userId: 's1', title: 'C1: Week 2' } })).toBe(1);
-    const quiet = await teacher.post('/api/v1/courses/c1/announcements').send({ title: 'Typo fixed', body: 'No action needed.', notify: false });
+    const quiet = await teacher
+      .post('/api/v1/courses/c1/announcements')
+      .send({ title: 'Typo fixed', body: 'No action needed.', notify: false });
     expect(quiet.body.notified).toBe(0);
 
     const s1 = await as('s1');
@@ -155,7 +189,9 @@ describe('contract: courses', () => {
   });
 
   it('GET /enrollments/grades shows a learner their own results', async () => {
-    await admin.assignmentSubmission.create({ data: { assignmentId: 'a1', userId: 's3', submissionText: 'x', grade: 80, feedback: 'Good', gradedAt: new Date() } });
+    await admin.assignmentSubmission.create({
+      data: { assignmentId: 'a1', userId: 's3', submissionText: 'x', grade: 80, feedback: 'Good', gradedAt: new Date() },
+    });
     const res = await (await as('s3')).get('/api/v1/enrollments/grades');
     expect(res.status).toBe(200);
     check('GET /api/v1/enrollments/grades', res);
@@ -171,7 +207,11 @@ describe('contract: courses', () => {
   });
 
   it('POST /users/import (dry run)', async () => {
-    const res = await (await as('admin')).post('/api/v1/users/import').send({ csv: 'email,first_name,last_name\nnew@x.edu,New,Person\ns1@x.edu,S,One\n' });
+    const res = await (
+      await as('admin')
+    )
+      .post('/api/v1/users/import')
+      .send({ csv: 'email,first_name,last_name\nnew@x.edu,New,Person\ns1@x.edu,S,One\n' });
     expect(res.status).toBe(200);
     check('POST /api/v1/users/import', res);
     expect(res.body.data.summary).toMatchObject({ rows: 2, toCreate: 1, existing: 1, created: 0 });
@@ -202,7 +242,9 @@ describe('contract: courses', () => {
     const m2 = await t.post(`/api/v1/courses/${teacherCourse}/modules`).send({ title: 'Two' });
     moduleB = m2.body.data.id;
 
-    const l = await t.post(`/api/v1/courses/${teacherCourse}/modules/${moduleA}/lessons`).send({ title: 'Lesson', bodyContent: 'text', mediaUrl: 'https://example.com/v.mp4' });
+    const l = await t
+      .post(`/api/v1/courses/${teacherCourse}/modules/${moduleA}/lessons`)
+      .send({ title: 'Lesson', bodyContent: 'text', mediaUrl: 'https://example.com/v.mp4' });
     expect(l.status).toBe(201);
     check('POST /api/v1/courses/:id/modules/:moduleId/lessons', l);
     lesson = l.body.data.id;
@@ -293,7 +335,25 @@ describe('contract: enrollments, users, certificates', () => {
     check('GET /api/v1/users', list);
     for (const u of list.body.data) {
       expect(keys(u)).toEqual(
-        ['_count', 'avatarUrl', 'createdAt', 'email', 'emailVerified', 'enrollmentCount', 'firstName', 'id', 'idpProvider', 'lastLoginAt', 'lastName', 'mfaEnabled', 'role', 'status', 'teachingCourseCount', 'tenantId', 'updatedAt'].sort()
+        [
+          '_count',
+          'avatarUrl',
+          'createdAt',
+          'email',
+          'emailVerified',
+          'enrollmentCount',
+          'firstName',
+          'id',
+          'idpProvider',
+          'lastLoginAt',
+          'lastName',
+          'mfaEnabled',
+          'role',
+          'status',
+          'teachingCourseCount',
+          'tenantId',
+          'updatedAt',
+        ].sort()
       );
     }
     expect(JSON.stringify(list.body)).not.toMatch(/passwordHash|tokenVersion|mfaSecret/i);
@@ -301,7 +361,23 @@ describe('contract: enrollments, users, certificates', () => {
     const one = await a.get('/api/v1/users/s1');
     expect(one.status).toBe(200);
     check('GET /api/v1/users/:id', one);
-    expect(keys(one.body.data)).toEqual(['_count', 'avatarUrl', 'createdAt', 'email', 'emailVerified', 'firstName', 'id', 'idpProvider', 'lastLoginAt', 'lastName', 'mfaEnabled', 'role', 'status', 'tenantId', 'updatedAt']);
+    expect(keys(one.body.data)).toEqual([
+      '_count',
+      'avatarUrl',
+      'createdAt',
+      'email',
+      'emailVerified',
+      'firstName',
+      'id',
+      'idpProvider',
+      'lastLoginAt',
+      'lastName',
+      'mfaEnabled',
+      'role',
+      'status',
+      'tenantId',
+      'updatedAt',
+    ]);
 
     const own = await (await as('s1')).get('/api/v1/users/s1');
     check('GET /api/v1/users/:id', own);
@@ -309,7 +385,22 @@ describe('contract: enrollments, users, certificates', () => {
     const patched = await a.patch('/api/v1/users/s5').send({ firstName: 'Five', avatarUrl: 'https://example.com/a.png' });
     expect(patched.status).toBe(200);
     check('PATCH /api/v1/users/:id', patched);
-    expect(keys(patched.body.data)).toEqual(['avatarUrl', 'createdAt', 'email', 'emailVerified', 'firstName', 'id', 'idpProvider', 'lastLoginAt', 'lastName', 'mfaEnabled', 'role', 'status', 'tenantId', 'updatedAt']);
+    expect(keys(patched.body.data)).toEqual([
+      'avatarUrl',
+      'createdAt',
+      'email',
+      'emailVerified',
+      'firstName',
+      'id',
+      'idpProvider',
+      'lastLoginAt',
+      'lastName',
+      'mfaEnabled',
+      'role',
+      'status',
+      'tenantId',
+      'updatedAt',
+    ]);
   });
 
   it('GET /users/:id/enrollments', async () => {
@@ -335,7 +426,15 @@ describe('contract: calendar', () => {
     const soon = new Date(Date.now() + 3_600_000).toISOString();
     const later = new Date(Date.now() + 7_200_000).toISOString();
 
-    const c = await t.post('/api/v1/calendar/events').send({ title: 'Exam, part 1', description: 'Line;1', category: 'EXAM', startsAt: soon, endsAt: later, courseId: 'c1', timezone: 'Asia/Kolkata' });
+    const c = await t.post('/api/v1/calendar/events').send({
+      title: 'Exam, part 1',
+      description: 'Line;1',
+      category: 'EXAM',
+      startsAt: soon,
+      endsAt: later,
+      courseId: 'c1',
+      timezone: 'Asia/Kolkata',
+    });
     expect(c.status).toBe(201);
     check('POST /api/v1/calendar/events', c);
     courseEvent = c.body.data.id;
@@ -349,7 +448,12 @@ describe('contract: calendar', () => {
     expect(list.status).toBe(200);
     check('GET /api/v1/calendar/events', list);
     expect(list.body.data.filter((e: any) => e.source === 'EVENT')).toHaveLength(2);
-    expect(list.body.data.find((e: any) => e.source === 'ASSIGNMENT')).toMatchObject({ id: 'assignment-a1', itemId: 'a1', category: 'DEADLINE', completed: false });
+    expect(list.body.data.find((e: any) => e.source === 'ASSIGNMENT')).toMatchObject({
+      id: 'assignment-a1',
+      itemId: 'a1',
+      category: 'DEADLINE',
+      completed: false,
+    });
     expect(list.body.nextDeadline.id).toBe(courseEvent);
     const none = await (await as('s5')).get('/api/v1/calendar/events').query({ from: '2000-01-01', to: '2000-01-02' });
     check('GET /api/v1/calendar/events', none);

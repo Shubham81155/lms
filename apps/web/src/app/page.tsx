@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   ShieldCheck,
   ArrowRight,
@@ -15,93 +15,93 @@ import {
   Video,
   ScrollText,
   CheckCircle2,
-} from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { BrandLogo } from "@/components/BrandLogo";
+} from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { BrandLogo } from '@/components/BrandLogo';
 
-const STANDARDS = ["xAPI LRS", "LTI 1.3 Advantage", "SCIM 2.0", "OIDC & SAML SSO", "FERPA", "GDPR"];
+const STANDARDS = ['xAPI LRS', 'LTI 1.3 Advantage', 'SCIM 2.0', 'OIDC & SAML SSO', 'FERPA', 'GDPR'];
 
 const ROLES = [
   {
     icon: BookOpen,
-    title: "Students",
-    body: "Pick up lessons where you left off, take quizzes, submit assignments, join live classes and earn certificates.",
-    accent: "text-brand-fg bg-brand/10 border-brand/20",
-    tint: "from-brand/15",
+    title: 'Students',
+    body: 'Pick up lessons where you left off, take quizzes, submit assignments, join live classes and earn certificates.',
+    accent: 'text-brand-fg bg-brand/10 border-brand/20',
+    tint: 'from-brand/15',
   },
   {
     icon: ClipboardCheck,
-    title: "Faculty",
+    title: 'Faculty',
     body: "Build courses, grade with rubrics, see plagiarism check status on every text submission and follow each cohort's progress.",
-    accent: "text-success bg-success/10 border-success/20",
-    tint: "from-success/15",
+    accent: 'text-success bg-success/10 border-success/20',
+    tint: 'from-success/15',
   },
   {
     icon: Building2,
-    title: "Administrators",
-    body: "Onboard tenants, manage users and roles, review audit trails and answer data-subject requests from one console.",
-    accent: "text-accent bg-accent/10 border-accent/20",
-    tint: "from-accent/15",
+    title: 'Administrators',
+    body: 'Onboard tenants, manage users and roles, review audit trails and answer data-subject requests from one console.',
+    accent: 'text-accent bg-accent/10 border-accent/20',
+    tint: 'from-accent/15',
   },
 ];
 
 const FEATURES = [
   {
     icon: BookOpen,
-    title: "Standards-based delivery",
-    body: "An xAPI Learning Record Store, LTI 1.3 Advantage tool launches and SCIM 2.0 provisioning with OIDC or SAML single sign-on.",
+    title: 'Standards-based delivery',
+    body: 'An xAPI Learning Record Store, LTI 1.3 Advantage tool launches and SCIM 2.0 provisioning with OIDC or SAML single sign-on.',
   },
   {
     icon: Lock,
-    title: "Isolated by default",
-    body: "PostgreSQL Row-Level Security separates every tenant; sensitive fields are encrypted with AES-256-GCM.",
+    title: 'Isolated by default',
+    body: 'PostgreSQL Row-Level Security separates every tenant; sensitive fields are encrypted with AES-256-GCM.',
   },
   {
     icon: ScrollText,
-    title: "Immutable audit trail",
-    body: "Write-once audit logging records who did what and when, ready for accreditation and compliance reviews.",
+    title: 'Immutable audit trail',
+    body: 'Write-once audit logging records who did what and when, ready for accreditation and compliance reviews.',
   },
   {
     icon: Award,
-    title: "Verifiable certificates",
-    body: "Every course certificate carries a unique number that employers and other institutions can check publicly.",
+    title: 'Verifiable certificates',
+    body: 'Every course certificate carries a unique number that employers and other institutions can check publicly.',
   },
   {
     icon: FileSearch,
-    title: "Academic integrity",
-    body: "Text submissions go to a plagiarism provider over signed, retried requests, with results shown at grading time.",
+    title: 'Academic integrity',
+    body: 'Text submissions go to a plagiarism provider over signed, retried requests, with results shown at grading time.',
   },
   {
     icon: Video,
-    title: "Live classrooms",
-    body: "Run real-time sessions alongside course content, with an academic calendar and notifications to match.",
+    title: 'Live classrooms',
+    body: 'Run real-time sessions alongside course content, with an academic calendar and notifications to match.',
   },
 ];
 
 const PRIVACY = [
   "Export of a person's data on request",
-  "Directory opt-out for students",
-  "Erasure that keeps academic records intact",
-  "Field-level encryption at rest",
+  'Directory opt-out for students',
+  'Erasure that keeps academic records intact',
+  'Field-level encryption at rest',
 ];
 
 function greetingFor(hour: number) {
-  if (hour >= 5 && hour < 12) return "Good morning";
-  if (hour >= 12 && hour < 17) return "Good afternoon";
-  if (hour >= 17 && hour < 22) return "Good evening";
-  return "Welcome back";
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  if (hour >= 17 && hour < 22) return 'Good evening';
+  return 'Welcome back';
 }
 
 // Decorative product preview for the hero; not interactive.
 function PortalPreview() {
   // Set after mount from the visitor's clock; the server's time zone would be wrong and would not hydrate.
-  const [greeting, setGreeting] = useState("Welcome back");
+  const [greeting, setGreeting] = useState('Welcome back');
   useEffect(() => setGreeting(greetingFor(new Date().getHours())), []);
   const courses = [
-    { name: "Organic Chemistry II", progress: 72, bar: "bg-brand-hover" },
-    { name: "Data Structures", progress: 45, bar: "bg-success" },
-    { name: "Academic Writing", progress: 90, bar: "bg-accent" },
+    { name: 'Organic Chemistry II', progress: 72, bar: 'bg-brand-hover' },
+    { name: 'Data Structures', progress: 45, bar: 'bg-success' },
+    { name: 'Academic Writing', progress: 90, bar: 'bg-accent' },
   ];
   return (
     <div aria-hidden="true" className="relative">
@@ -176,10 +176,7 @@ export default function Home() {
               Privacy
             </a>
             <ThemeToggle />
-            <Link
-              href="/register"
-              className="hidden sm:inline text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors"
-            >
+            <Link href="/register" className="hidden sm:inline text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors">
               Register your organisation
             </Link>
             <Link
@@ -196,7 +193,10 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative overflow-hidden">
-          <div aria-hidden="true" className="absolute top-0 left-1/2 -translate-x-1/2 h-[480px] w-[960px] max-w-full rounded-full bg-brand/15 blur-3xl" />
+          <div
+            aria-hidden="true"
+            className="absolute top-0 left-1/2 -translate-x-1/2 h-[480px] w-[960px] max-w-full rounded-full bg-brand/15 blur-3xl"
+          />
           <div aria-hidden="true" className="absolute top-40 right-0 h-[320px] w-[320px] rounded-full bg-accent/10 blur-3xl" />
           <div className="relative max-w-6xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28 grid gap-14 lg:grid-cols-[1.1fr_1fr] items-center">
             <div className="space-y-7">
@@ -208,8 +208,8 @@ export default function Home() {
                 One learning platform for your whole institution, <span className="text-brand-fg">secure by design.</span>
               </h1>
               <p className="text-base md:text-lg text-ink-muted leading-relaxed max-w-xl">
-                Courses, assessments, live classes and verifiable certificates for students, faculty and administrators,
-                with every tenant&apos;s data isolated and every action audited.
+                Courses, assessments, live classes and verifiable certificates for students, faculty and administrators, with every
+                tenant&apos;s data isolated and every action audited.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link
@@ -228,12 +228,17 @@ export default function Home() {
                 </Link>
               </div>
               <p className="text-xs text-ink-subtle">
-                New to ApexLMS? Register your college, school or company; our team reviews each request and e-mails your
-                administrator a link to get started. <a href="#platform" className="text-brand-fg hover:underline underline-offset-2">Explore the platform</a>
+                New to ApexLMS? Register your college, school or company; our team reviews each request and e-mails your administrator a
+                link to get started.{' '}
+                <a href="#platform" className="text-brand-fg hover:underline underline-offset-2">
+                  Explore the platform
+                </a>
               </p>
               <p className="text-xs text-ink-subtle">
-                Already have an account but not sure of your organisation&apos;s address?{" "}
-                <Link href="/find-organisation" className="text-brand-fg hover:underline underline-offset-2">Find my organisation</Link>
+                Already have an account but not sure of your organisation&apos;s address?{' '}
+                <Link href="/find-organisation" className="text-brand-fg hover:underline underline-offset-2">
+                  Find my organisation
+                </Link>
               </p>
             </div>
             <PortalPreview />
@@ -263,7 +268,10 @@ export default function Home() {
           </div>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {ROLES.map(({ icon: Icon, title, body, accent, tint }) => (
-              <div key={title} className={`bg-surface bg-gradient-to-br ${tint} via-surface to-surface border border-line rounded-3xl p-7 space-y-4 shadow-sm hover:shadow-lg hover:border-brand/40 transition-all`}>
+              <div
+                key={title}
+                className={`bg-surface bg-gradient-to-br ${tint} via-surface to-surface border border-line rounded-3xl p-7 space-y-4 shadow-sm hover:shadow-lg hover:border-brand/40 transition-all`}
+              >
                 <div className={`h-11 w-11 rounded-xl border flex items-center justify-center ${accent}`}>
                   <Icon className="h-5 w-5" />
                 </div>
@@ -279,11 +287,16 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-6 py-20 md:py-24">
             <div className="max-w-2xl space-y-3">
               <p className="text-xs uppercase tracking-wider font-bold text-brand-fg">Platform</p>
-              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-ink text-balance">Everything teaching needs, nothing it doesn&apos;t</h2>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-ink text-balance">
+                Everything teaching needs, nothing it doesn&apos;t
+              </h2>
             </div>
             <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {FEATURES.map(({ icon: Icon, title, body }) => (
-                <div key={title} className="bg-surface border border-line rounded-2xl p-6 space-y-3 shadow-sm hover:border-brand/40 hover:shadow-md transition-all">
+                <div
+                  key={title}
+                  className="bg-surface border border-line rounded-2xl p-6 space-y-3 shadow-sm hover:border-brand/40 hover:shadow-md transition-all"
+                >
                   <div className="h-10 w-10 rounded-xl bg-brand/10 text-brand-fg flex items-center justify-center">
                     <Icon className="h-5 w-5" />
                   </div>
@@ -302,14 +315,20 @@ export default function Home() {
               <div className="h-11 w-11 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center">
                 <ShieldCheck className="h-5 w-5" />
               </div>
-              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-ink text-balance">Student privacy, built into the platform</h2>
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-ink text-balance">
+                Student privacy, built into the platform
+              </h2>
               <p className="text-ink-muted leading-relaxed">
-                GDPR and FERPA rights are handled by the platform itself: data export, directory opt-out and erasure run through audited privacy endpoints, not manual database work.
+                GDPR and FERPA rights are handled by the platform itself: data export, directory opt-out and erasure run through audited
+                privacy endpoints, not manual database work.
               </p>
             </div>
             <ul className="space-y-3">
               {PRIVACY.map((item) => (
-                <li key={item} className="flex items-center gap-3 bg-canvas border border-line rounded-2xl px-4 py-3.5 text-sm font-semibold text-ink">
+                <li
+                  key={item}
+                  className="flex items-center gap-3 bg-canvas border border-line rounded-2xl px-4 py-3.5 text-sm font-semibold text-ink"
+                >
                   <CheckCircle2 className="h-[18px] w-[18px] shrink-0 text-success" />
                   {item}
                 </li>

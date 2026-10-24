@@ -16,7 +16,10 @@ import { commitGrade, resolveGradeInput } from '../lib/assignment-grade';
 // editor decides it.
 
 const router = Router();
-router.use(['/assignments/:id/rubric', '/assignments/:id/submissions/:subId/appeal', '/courses/:courseId/appeals', '/appeals'], authenticateJWT);
+router.use(
+  ['/assignments/:id/rubric', '/assignments/:id/submissions/:subId/appeal', '/courses/:courseId/appeals', '/appeals'],
+  authenticateJWT
+);
 
 export const APPEAL_WINDOW_DAYS = 14;
 
@@ -41,8 +44,12 @@ export const resolveSchema = z
     grade: z.number().min(0).optional(),
     criteria: z.record(z.string().max(64), z.number().min(0).max(10_000)).optional(),
   })
-  .refine((d) => d.decision === 'UPHELD' || (d.grade === undefined && d.criteria === undefined), { message: 'A denied appeal cannot change the grade' })
-  .refine((d) => d.decision === 'DENIED' || (d.grade === undefined) !== (d.criteria === undefined), { message: 'An upheld appeal needs the corrected grade (or criterion scores)' });
+  .refine((d) => d.decision === 'UPHELD' || (d.grade === undefined && d.criteria === undefined), {
+    message: 'A denied appeal cannot change the grade',
+  })
+  .refine((d) => d.decision === 'DENIED' || (d.grade === undefined) !== (d.criteria === undefined), {
+    message: 'An upheld appeal needs the corrected grade (or criterion scores)',
+  });
 
 async function loadAssignment(tenantId: string, id: string) {
   const a = await prisma.assignment.findFirst({ where: { id, tenantId } });
@@ -79,8 +86,14 @@ router.put(
       data: normalised ? { rubricJson: normalised as any, maxPoints: rubricTotal(normalised) } : { rubricJson: Prisma.DbNull },
     });
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: criteria === null ? 'ASSIGNMENT_RUBRIC_REMOVED' : 'ASSIGNMENT_RUBRIC_SET', resourceType: 'ASSIGNMENT', resourceId: assignment.id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { criteria: criteria?.length ?? 0, maxPoints: updated.maxPoints },
+      tenantId,
+      userId: req.user!.id,
+      action: criteria === null ? 'ASSIGNMENT_RUBRIC_REMOVED' : 'ASSIGNMENT_RUBRIC_SET',
+      resourceType: 'ASSIGNMENT',
+      resourceId: assignment.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { criteria: criteria?.length ?? 0, maxPoints: updated.maxPoints },
     });
     return res.json({ data: { rubric: updated.rubricJson, maxPoints: updated.maxPoints } });
   })
@@ -92,7 +105,9 @@ router.post(
   route('Failed to submit appeal', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const assignment = await loadAssignment(tenantId, idSchema.parse(req.params.id));
-    const submission = await prisma.assignmentSubmission.findFirst({ where: { id: idSchema.parse(req.params.subId), assignmentId: assignment.id } });
+    const submission = await prisma.assignmentSubmission.findFirst({
+      where: { id: idSchema.parse(req.params.subId), assignmentId: assignment.id },
+    });
     // Someone else's submission is indistinguishable from a missing one.
     if (!submission || submission.userId !== req.user!.id) throw new HttpError(404, 'Submission not found');
     const access = await requireContentAccess(req, assignment.courseId);
@@ -108,10 +123,25 @@ router.post(
       });
       await Promise.all(
         access.course.instructorIds.map((userId) =>
-          notify({ tenantId, userId, category: 'GRADE', title: `Grade appeal on "${assignment.title}"`, body: reason.slice(0, 140), link: `/courses/${assignment.courseId}/appeals` })
+          notify({
+            tenantId,
+            userId,
+            category: 'GRADE',
+            title: `Grade appeal on "${assignment.title}"`,
+            body: reason.slice(0, 140),
+            link: `/courses/${assignment.courseId}/appeals`,
+          })
         )
       );
-      await logAuditEvent({ tenantId, userId: req.user!.id, action: 'GRADE_APPEAL_FILED', resourceType: 'GRADE_APPEAL', resourceId: appeal.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+      await logAuditEvent({
+        tenantId,
+        userId: req.user!.id,
+        action: 'GRADE_APPEAL_FILED',
+        resourceType: 'GRADE_APPEAL',
+        resourceId: appeal.id,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
       return res.status(201).json({ data: appeal });
     } catch (e: any) {
       if (e?.code === 'P2002') throw new HttpError(409, 'This grade has already been appealed');
@@ -132,7 +162,11 @@ router.get(
       include: {
         submission: {
           select: {
-            id: true, grade: true, feedback: true, rubricScoresJson: true, submissionText: true,
+            id: true,
+            grade: true,
+            feedback: true,
+            rubricScoresJson: true,
+            submissionText: true,
             assignment: { select: { id: true, title: true, maxPoints: true, rubricJson: true } },
             user: { select: { firstName: true, lastName: true } },
           },
@@ -141,10 +175,18 @@ router.get(
     });
     return res.json({
       data: rows.map((a) => ({
-        id: a.id, status: a.status, reason: a.reason, response: a.response, createdAt: a.createdAt, respondedAt: a.respondedAt,
+        id: a.id,
+        status: a.status,
+        reason: a.reason,
+        response: a.response,
+        createdAt: a.createdAt,
+        respondedAt: a.respondedAt,
         student: all ? `${a.submission.user.firstName} ${a.submission.user.lastName}` : undefined,
         submission: {
-          id: a.submission.id, grade: a.submission.grade, feedback: a.submission.feedback, rubricScores: a.submission.rubricScoresJson,
+          id: a.submission.id,
+          grade: a.submission.grade,
+          feedback: a.submission.feedback,
+          rubricScores: a.submission.rubricScoresJson,
           ...(all ? { text: a.submission.submissionText } : {}),
         },
         assignment: a.submission.assignment,
@@ -185,15 +227,34 @@ router.post(
     let courseGradeReopened = false;
     if (resolved) {
       ({ courseGradeReopened } = await commitGrade({
-        req, tenantId, assignment, submission, resolved, feedback: submission.feedback, action: 'GRADE_CHANGED_ON_APPEAL',
+        req,
+        tenantId,
+        assignment,
+        submission,
+        resolved,
+        feedback: submission.feedback,
+        action: 'GRADE_CHANGED_ON_APPEAL',
         note: `Your appeal was upheld. New grade: ${resolved.grade} / ${assignment.maxPoints}. ${body.response}`,
       }));
     } else {
-      await notify({ tenantId, userId: appeal.userId, category: 'GRADE', title: `Your appeal on "${assignment.title}" was decided`, body: `Not upheld. ${body.response}`, link: `/assignments/${assignment.id}` });
+      await notify({
+        tenantId,
+        userId: appeal.userId,
+        category: 'GRADE',
+        title: `Your appeal on "${assignment.title}" was decided`,
+        body: `Not upheld. ${body.response}`,
+        link: `/assignments/${assignment.id}`,
+      });
     }
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: `GRADE_APPEAL_${body.decision}`, resourceType: 'GRADE_APPEAL', resourceId: appeal.id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { previousGrade: submission.grade, newGrade: resolved?.grade ?? submission.grade, courseGradeReopened },
+      tenantId,
+      userId: req.user!.id,
+      action: `GRADE_APPEAL_${body.decision}`,
+      resourceType: 'GRADE_APPEAL',
+      resourceId: appeal.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { previousGrade: submission.grade, newGrade: resolved?.grade ?? submission.grade, courseGradeReopened },
     });
     return res.json({ data: { id: appeal.id, status: body.decision, courseGradeReopened } });
   })

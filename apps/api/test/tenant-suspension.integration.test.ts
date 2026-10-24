@@ -19,7 +19,18 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   const user = (id: string, tenantId: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('operator', 't-op', 'SUPER_ADMIN');
   await user('h-admin', 't-h', 'TENANT_ADMIN');
   await user('h-student', 't-h', 'STUDENT');
@@ -36,7 +47,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -58,7 +72,10 @@ describe('a suspended organisation', () => {
     await admin.tenant.update({ where: { id: 't-h' }, data: { status: 'ARCHIVED' } });
     expect((await student.get('/api/v1/auth/me')).status).toBe(403);
     // No new sessions either.
-    expect((await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'h-student@x.edu', password: PASSWORD })).status).not.toBe(200);
+    expect(
+      (await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'h-student@x.edu', password: PASSWORD }))
+        .status
+    ).not.toBe(200);
 
     await setStatus('ACTIVE');
     expect((await student.get('/api/v1/auth/me')).status).toBe(200);
@@ -69,7 +86,10 @@ describe('a suspended organisation', () => {
     const config = await request(app).get('/api/v1/tenant/config').set('x-tenant-id', 'harvard');
     expect(config.status).toBe(403);
     expect(config.body).toEqual({ error: expect.stringContaining('suspended'), code: 'TENANT_SUSPENDED' });
-    const login = await request(app).post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: 'h-student@x.edu', password: PASSWORD });
+    const login = await request(app)
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', 'harvard')
+      .send({ email: 'h-student@x.edu', password: PASSWORD });
     expect(login.status).toBe(403);
     expect(login.body.code).toBe('TENANT_SUSPENDED');
 
@@ -100,7 +120,9 @@ describe('seat quota', () => {
       [1, 2, 3, 4, 5].map((n) =>
         withSeat('t-h', async (tx) => {
           await new Promise((r) => setTimeout(r, 100)); // widen the gap between the seat check and the insert
-          return tx.user.create({ data: { tenantId: 't-h', email: `race${n}@x.edu`, firstName: 'R', lastName: 'L', role: 'STUDENT', status: 'ACTIVE' } });
+          return tx.user.create({
+            data: { tenantId: 't-h', email: `race${n}@x.edu`, firstName: 'R', lastName: 'L', role: 'STUDENT', status: 'ACTIVE' },
+          });
         })
       )
     );

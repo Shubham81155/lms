@@ -62,10 +62,25 @@ export async function loadSession(userId: string, tenantId: string, fresh = fals
   if (hit && hit.expires > Date.now()) return hit.state;
 
   const row = await runWithTenant(tenantId, () =>
-    prisma.user.findFirst({ where: { id: userId }, select: { role: true, status: true, tokenVersion: true, tenant: { select: { status: true, trialExpiredAt: true, trialRemindersSent: true } } } })
+    prisma.user.findFirst({
+      where: { id: userId },
+      select: {
+        role: true,
+        status: true,
+        tokenVersion: true,
+        tenant: { select: { status: true, trialExpiredAt: true, trialRemindersSent: true } },
+      },
+    })
   );
   const state = row
-    ? { role: String(row.role), status: String(row.status), tokenVersion: row.tokenVersion ?? 0, tenantStatus: String(row.tenant.status), tenantTrialExpiredAt: row.tenant.trialExpiredAt ?? null, tenantTrialRemindersSent: row.tenant.trialRemindersSent }
+    ? {
+        role: String(row.role),
+        status: String(row.status),
+        tokenVersion: row.tokenVersion ?? 0,
+        tenantStatus: String(row.tenant.status),
+        tenantTrialExpiredAt: row.tenant.trialExpiredAt ?? null,
+        tenantTrialRemindersSent: row.tenant.trialRemindersSent,
+      }
     : null;
   if (TTL_MS > 0) {
     if (cache.size > 10_000) cache.clear();

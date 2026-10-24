@@ -14,7 +14,11 @@ export class Sustained {
   private fired = false;
   private lastFire = -Infinity;
 
-  constructor(private readonly minMs: number, private readonly gapMs: number, private readonly cooldownMs = 0) {}
+  constructor(
+    private readonly minMs: number,
+    private readonly gapMs: number,
+    private readonly cooldownMs = 0
+  ) {}
 
   /** Feed one reading taken at `t` (ms); true when this reading completes an episode worth reporting. */
   update(t: number, active: boolean): boolean {
@@ -42,7 +46,7 @@ export class Sustained {
   }
 }
 
-export type MediaEvent = "FACE_NOT_DETECTED" | "MULTIPLE_FACES" | "AUDIO_SPIKE";
+export type MediaEvent = 'FACE_NOT_DETECTED' | 'MULTIPLE_FACES' | 'AUDIO_SPIKE';
 
 /** Face-count readings (about every 500 ms) → events: no face for 5 s, or more than one face for 3 s. */
 export class FaceWatch {
@@ -51,8 +55,8 @@ export class FaceWatch {
 
   update(t: number, faces: number): MediaEvent[] {
     const out: MediaEvent[] = [];
-    if (this.missing.update(t, faces === 0)) out.push("FACE_NOT_DETECTED");
-    if (this.crowd.update(t, faces > 1)) out.push("MULTIPLE_FACES");
+    if (this.missing.update(t, faces === 0)) out.push('FACE_NOT_DETECTED');
+    if (this.crowd.update(t, faces > 1)) out.push('MULTIPLE_FACES');
     return out;
   }
 }
@@ -94,6 +98,6 @@ export class SoundWatch {
     }
     const isLoud = level > this.threshold();
     if (!isLoud) this.background = this.background * 0.98 + level * 0.02;
-    return this.loud.update(t, isLoud) ? ["AUDIO_SPIKE"] : [];
+    return this.loud.update(t, isLoud) ? ['AUDIO_SPIKE'] : [];
   }
 }

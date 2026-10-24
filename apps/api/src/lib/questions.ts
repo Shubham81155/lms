@@ -37,4 +37,3 @@ export function validateQuestion(q: QuestionInput) {
 
 export const withOptionIds = (options: { id?: string; text: string; isCorrect: boolean }[] | null | undefined) =>
   options ? options.map((o) => ({ ...o, id: o.id ?? randomUUID() })) : options;
-

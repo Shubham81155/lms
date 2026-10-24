@@ -21,11 +21,7 @@ describe('loadConfig', () => {
   it.each([
     ['too short', { JWT_SECRET: 'short' }, /at least 32/],
     ['the CHANGE_ME placeholder', { JWT_SECRET: 'CHANGE_ME'.padEnd(40, 'x') }, /placeholder/],
-    [
-      'a previously committed default',
-      { JWT_SECRET: 'super-secure-enterprise-jwt-secret-key-change-in-prod' },
-      /publicly known/,
-    ],
+    ['a previously committed default', { JWT_SECRET: 'super-secure-enterprise-jwt-secret-key-change-in-prod' }, /publicly known/],
     [
       'the known example encryption key',
       { PII_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' },

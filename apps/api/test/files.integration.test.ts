@@ -22,15 +22,29 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('teacher', 'INSTRUCTOR');
   await user('other-teacher', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 'outsider']) await user(s, 'STUDENT');
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course', status: 'PUBLISHED' } });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  for (const s of ['s1', 's2']) await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
+  for (const s of ['s1', 's2'])
+    await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
   await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write' } });
-  await admin.module.create({ data: { id: 'm1', courseId: 'c1', title: 'Week 1', lessons: { create: [{ id: 'l1', title: 'Reading', contentType: 'PDF_DOCUMENT' }] } } });
+  await admin.module.create({
+    data: { id: 'm1', courseId: 'c1', title: 'Week 1', lessons: { create: [{ id: 'l1', title: 'Reading', contentType: 'PDF_DOCUMENT' }] } },
+  });
 
   dir = await mkdtemp(path.join(os.tmpdir(), 'lms-files-test-'));
   process.env.UPLOAD_MAX_MB = '1';
@@ -48,7 +62,10 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -99,7 +116,9 @@ describe('downloading', () => {
     expect(own.status).toBe(200);
     expect(Buffer.compare(own.body, PDF)).toBe(0);
     expect(own.headers['content-type']).toContain('application/pdf');
-    expect(own.headers['content-disposition']).toBe(`inline; filename="My essay _.pdf"; filename*=UTF-8''${encodeURIComponent('My essay ✓.pdf')}`);
+    expect(own.headers['content-disposition']).toBe(
+      `inline; filename="My essay _.pdf"; filename*=UTF-8''${encodeURIComponent('My essay ✓.pdf')}`
+    );
     expect(own.headers['x-content-type-options']).toBe('nosniff');
     expect(own.headers['cache-control']).toBe('private, no-store');
 
@@ -147,7 +166,9 @@ describe('erasure', () => {
   it('removes the learner’s uploaded files and their bytes', async () => {
     const before = await admin.storedFile.findMany({ where: { ownerId: 's1' } });
     expect(before.length).toBeGreaterThan(0);
-    expect((await (await as('s1')).post('/api/v1/privacy/me/erase').send({ confirmEmail: 's1@x.edu', password: PASSWORD })).status).toBe(200);
+    expect((await (await as('s1')).post('/api/v1/privacy/me/erase').send({ confirmEmail: 's1@x.edu', password: PASSWORD })).status).toBe(
+      200
+    );
     expect(await admin.storedFile.count({ where: { id: { in: before.map((f) => f.id) } } })).toBe(0);
     const left = await readdir(path.join(dir, 't-h'));
     for (const f of before) expect(left).not.toContain(f.storageKey.split('/')[1]);

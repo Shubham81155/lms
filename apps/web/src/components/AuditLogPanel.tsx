@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { Download, ChevronDown, ChevronRight } from "lucide-react";
-import { downloadFile, errorMessage, useApiData } from "@/hooks/useApiData";
+import React, { useState } from 'react';
+import { Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { downloadFile, errorMessage, useApiData } from '@/hooks/useApiData';
 
 interface AuditEntry {
   id: string;
@@ -22,8 +22,8 @@ interface Filters {
   endDate: string;
 }
 
-const field = "bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:border-brand";
-const EMPTY: Filters = { action: "", actor: "", startDate: "", endDate: "" };
+const field = 'bg-canvas border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:border-brand';
+const EMPTY: Filters = { action: '', actor: '', startDate: '', endDate: '' };
 const PAGE = 50;
 
 /** The dates are whole days in the viewer's time zone; the API takes instants. */
@@ -43,8 +43,12 @@ export const AuditLogPanel: React.FC = () => {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const actions = useApiData<{ data: { action: string; count: number }[] }>("/api/v1/admin/audit-logs/actions");
-  const logs = useApiData<{ data: AuditEntry[]; pagination: { total: number; totalPages: number } }>("/api/v1/admin/audit-logs", { ...params(filters), page, limit: PAGE });
+  const actions = useApiData<{ data: { action: string; count: number }[] }>('/api/v1/admin/audit-logs/actions');
+  const logs = useApiData<{ data: AuditEntry[]; pagination: { total: number; totalPages: number } }>('/api/v1/admin/audit-logs', {
+    ...params(filters),
+    page,
+    limit: PAGE,
+  });
   const total = logs.data?.pagination.total ?? 0;
   const pages = logs.data?.pagination.totalPages ?? 1;
 
@@ -59,9 +63,12 @@ export const AuditLogPanel: React.FC = () => {
     setExportError(null);
     try {
       const qs = new URLSearchParams(Object.entries(params(filters)).filter(([, v]) => v) as [string, string][]).toString();
-      await downloadFile(`/api/v1/admin/audit-logs/export.csv${qs ? `?${qs}` : ""}`, `audit-log-${new Date().toISOString().slice(0, 10)}.csv`);
+      await downloadFile(
+        `/api/v1/admin/audit-logs/export.csv${qs ? `?${qs}` : ''}`,
+        `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
+      );
     } catch (e) {
-      setExportError(errorMessage(e, "The export failed."));
+      setExportError(errorMessage(e, 'The export failed.'));
     } finally {
       setExporting(false);
     }
@@ -71,12 +78,18 @@ export const AuditLogPanel: React.FC = () => {
     <section className="space-y-4" aria-labelledby="audit-h">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 id="audit-h" className="font-bold text-base text-ink">Audit log</h3>
+          <h3 id="audit-h" className="font-bold text-base text-ink">
+            Audit log
+          </h3>
           <p className="text-xs text-ink-muted">Append-only: the application can add entries but cannot change or delete them.</p>
         </div>
-        <button onClick={exportCsv} disabled={exporting} className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold disabled:opacity-50 flex items-center gap-1.5">
+        <button
+          onClick={exportCsv}
+          disabled={exporting}
+          className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold disabled:opacity-50 flex items-center gap-1.5"
+        >
           <Download className="h-3.5 w-3.5" />
-          {exporting ? "Exporting…" : "Export CSV"}
+          {exporting ? 'Exporting…' : 'Export CSV'}
         </button>
       </div>
 
@@ -94,11 +107,22 @@ export const AuditLogPanel: React.FC = () => {
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
           <span className="block">Person (e-mail)</span>
-          <input className={field} value={draft.actor} onChange={(e) => setDraft({ ...draft, actor: e.target.value })} placeholder="name@university.edu" maxLength={254} />
+          <input
+            className={field}
+            value={draft.actor}
+            onChange={(e) => setDraft({ ...draft, actor: e.target.value })}
+            placeholder="name@university.edu"
+            maxLength={254}
+          />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
           <span className="block">From</span>
-          <input type="date" className={field} value={draft.startDate} onChange={(e) => setDraft({ ...draft, startDate: e.target.value })} />
+          <input
+            type="date"
+            className={field}
+            value={draft.startDate}
+            onChange={(e) => setDraft({ ...draft, startDate: e.target.value })}
+          />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
           <span className="block">To</span>
@@ -120,7 +144,11 @@ export const AuditLogPanel: React.FC = () => {
         )}
       </form>
 
-      {(logs.error || exportError) && <p role="alert" className="text-xs text-danger">{logs.error || exportError}</p>}
+      {(logs.error || exportError) && (
+        <p role="alert" className="text-xs text-danger">
+          {logs.error || exportError}
+        </p>
+      )}
 
       <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full text-xs">
@@ -156,7 +184,12 @@ export const AuditLogPanel: React.FC = () => {
                   <tr className="border-t border-line align-top">
                     <td className="px-3 py-2">
                       {l.diffJson ? (
-                        <button onClick={() => setExpanded(open ? null : l.id)} aria-expanded={open} aria-label="Show details" className="text-ink-muted hover:text-ink">
+                        <button
+                          onClick={() => setExpanded(open ? null : l.id)}
+                          aria-expanded={open}
+                          aria-label="Show details"
+                          className="text-ink-muted hover:text-ink"
+                        >
                           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                         </button>
                       ) : null}
@@ -171,19 +204,21 @@ export const AuditLogPanel: React.FC = () => {
                       {l.user ? (
                         <>
                           {l.user.email}
-                          <span className="block text-[10px] text-ink-subtle">{l.user.role.replace(/_/g, " ").toLowerCase()}</span>
+                          <span className="block text-[10px] text-ink-subtle">{l.user.role.replace(/_/g, ' ').toLowerCase()}</span>
                         </>
                       ) : (
                         <span className="text-ink-subtle">system</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 font-mono text-ink-muted">{l.ipAddress ?? ""}</td>
+                    <td className="px-3 py-2 font-mono text-ink-muted">{l.ipAddress ?? ''}</td>
                   </tr>
                   {open && (
                     <tr className="bg-canvas">
                       <td />
                       <td colSpan={5} className="px-3 py-2">
-                        <pre className="whitespace-pre-wrap break-all font-mono text-[11px] text-ink">{JSON.stringify(l.diffJson, null, 2)}</pre>
+                        <pre className="whitespace-pre-wrap break-all font-mono text-[11px] text-ink">
+                          {JSON.stringify(l.diffJson, null, 2)}
+                        </pre>
                       </td>
                     </tr>
                   )}
@@ -197,13 +232,21 @@ export const AuditLogPanel: React.FC = () => {
       <div className="flex items-center justify-between text-xs text-ink-muted">
         <span>{total.toLocaleString()} entries</span>
         <div className="flex items-center gap-2">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-2.5 py-1 rounded-lg border border-line disabled:opacity-40">
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="px-2.5 py-1 rounded-lg border border-line disabled:opacity-40"
+          >
             Previous
           </button>
           <span>
             Page {page} of {Math.max(1, pages)}
           </span>
-          <button disabled={page >= pages} onClick={() => setPage((p) => p + 1)} className="px-2.5 py-1 rounded-lg border border-line disabled:opacity-40">
+          <button
+            disabled={page >= pages}
+            onClick={() => setPage((p) => p + 1)}
+            className="px-2.5 py-1 rounded-lg border border-line disabled:opacity-40"
+          >
             Next
           </button>
         </div>

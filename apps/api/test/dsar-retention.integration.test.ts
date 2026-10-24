@@ -64,12 +64,26 @@ beforeEach(() => {
 });
 
 function user(id: string, tenantId: string, role: any) {
-  return admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+  return admin.user.create({
+    data: {
+      id,
+      tenantId,
+      email: `${id}@x.edu`,
+      firstName: id,
+      lastName: 'L',
+      role,
+      passwordHash: bcrypt.hashSync(PASSWORD, 4),
+      emailVerified: true,
+    },
+  });
 }
 
 async function as(who: string, tenant: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -91,7 +105,13 @@ describe('data-subject requests', () => {
     const res = await s1.post('/api/v1/privacy/requests').send({ kind: 'ACCESS', details: 'Please send me everything.' });
     expect(res.status).toBe(201);
     matchesDocs('POST /api/v1/privacy/requests', res.body);
-    expect(res.body.data).toMatchObject({ kind: 'ACCESS', status: 'OPEN', details: 'Please send me everything.', overdue: false, exportAttached: false });
+    expect(res.body.data).toMatchObject({
+      kind: 'ACCESS',
+      status: 'OPEN',
+      details: 'Please send me everything.',
+      overdue: false,
+      exportAttached: false,
+    });
     const due = new Date(res.body.data.dueAt).getTime();
     expect(due).toBeGreaterThanOrEqual(before + 30 * DAY);
     expect(due).toBeLessThanOrEqual(Date.now() + 30 * DAY);
@@ -103,7 +123,8 @@ describe('data-subject requests', () => {
 
     expect((await s1.post('/api/v1/privacy/requests').send({ kind: 'ACCESS' })).status).toBe(409); // same kind still open
     expect((await s1.post('/api/v1/privacy/requests').send({ kind: 'NONSENSE' })).status).toBe(400);
-    for (const kind of ['CORRECTION', 'RESTRICTION', 'OBJECTION', 'OTHER']) expect((await s1.post('/api/v1/privacy/requests').send({ kind, details: 'x' })).status).toBe(201);
+    for (const kind of ['CORRECTION', 'RESTRICTION', 'OBJECTION', 'OTHER'])
+      expect((await s1.post('/api/v1/privacy/requests').send({ kind, details: 'x' })).status).toBe(201);
     expect((await s1.post('/api/v1/privacy/requests').send({ kind: 'ERASURE' })).status).toBe(409); // five open at most
 
     const mine = await s1.get('/api/v1/privacy/requests/mine');
@@ -151,7 +172,9 @@ describe('data-subject requests', () => {
     expect((await a.patch(`/api/v1/privacy/requests/${access.id}`).send({ assignedToId: 's2' })).status).toBe(400); // not an administrator
     expect((await a.patch(`/api/v1/privacy/requests/${access.id}`).send({ assignedToId: 'nobody' })).status).toBe(400);
 
-    const taken = await a2.patch(`/api/v1/privacy/requests/${access.id}`).send({ assignedToId: 'a-admin2', notes: 'Checked identity by phone.' });
+    const taken = await a2
+      .patch(`/api/v1/privacy/requests/${access.id}`)
+      .send({ assignedToId: 'a-admin2', notes: 'Checked identity by phone.' });
     expect(taken.status).toBe(200);
     matchesDocs('PATCH /api/v1/privacy/requests/:id', taken.body);
     expect(taken.body.data).toMatchObject({ status: 'IN_PROGRESS', assignedToId: 'a-admin2', notes: 'Checked identity by phone.' });
@@ -314,9 +337,15 @@ describe('data retention', () => {
   const seed = async () => {
     await admin.course.create({ data: { id: 'c1', tenantId: 't-a', code: 'C1', title: 'C1', status: 'PUBLISHED' } });
     await admin.quiz.create({ data: { id: 'q1', tenantId: 't-a', courseId: 'c1', title: 'Exam' } });
-    await admin.quizSubmission.create({ data: { id: 'sub1', quizId: 'q1', userId: 's1', maxScore: 10, score: 7, answersJson: {}, submittedAt: old(200) } });
+    await admin.quizSubmission.create({
+      data: { id: 'sub1', quizId: 'q1', userId: 's1', maxScore: 10, score: 7, answersJson: {}, submittedAt: old(200) },
+    });
     // Notifications: two old, one recent.
-    for (const [id, days] of [['n-old1', 100], ['n-old2', 61], ['n-new', 5]] as const)
+    for (const [id, days] of [
+      ['n-old1', 100],
+      ['n-old2', 61],
+      ['n-new', 5],
+    ] as const)
       await admin.notification.create({ data: { id, tenantId: 't-a', userId: 's1', category: 'SYSTEM', title: id, createdAt: old(days) } });
     // Tokens: used long ago, expired long ago, still valid, expired a day ago.
     const tok = (id: string, over: object) => ({ id, tenantId: 't-a', userId: 's1', tokenHash: `h-${id}`, expiresAt: old(-10), ...over });
@@ -326,32 +355,92 @@ describe('data retention', () => {
     await admin.emailVerificationToken.create({ data: tok('e-expired', { expiresAt: old(40) }) });
     await admin.emailVerificationToken.create({ data: tok('e-recent', { expiresAt: old(1) }) });
     // Proctoring evidence, old and recent.
-    await admin.proctoringLog.create({ data: { id: 'pl-old', submissionId: 'sub1', eventType: 'FACE_NOT_DETECTED', severity: 'HIGH', timestamp: old(100), snapshotUrl: 'https://cdn.example/s1.png', metadataJson: { score: 0.1 } } });
-    await admin.proctoringLog.create({ data: { id: 'pl-new', submissionId: 'sub1', eventType: 'TAB_SWITCH', severity: 'LOW', timestamp: old(2), snapshotUrl: 'https://cdn.example/s2.png', metadataJson: { n: 1 } } });
+    await admin.proctoringLog.create({
+      data: {
+        id: 'pl-old',
+        submissionId: 'sub1',
+        eventType: 'FACE_NOT_DETECTED',
+        severity: 'HIGH',
+        timestamp: old(100),
+        snapshotUrl: 'https://cdn.example/s1.png',
+        metadataJson: { score: 0.1 },
+      },
+    });
+    await admin.proctoringLog.create({
+      data: {
+        id: 'pl-new',
+        submissionId: 'sub1',
+        eventType: 'TAB_SWITCH',
+        severity: 'LOW',
+        timestamp: old(2),
+        snapshotUrl: 'https://cdn.example/s2.png',
+        metadataJson: { n: 1 },
+      },
+    });
     // Support passes: ended long ago, ended lately, still running.
-    const pass = (id: string, over: object) => ({ id, tenantId: 't-a', reason: 'Help', grantedByEmail: 'a@x.edu', expiresAt: old(-1), ...over });
+    const pass = (id: string, over: object) => ({
+      id,
+      tenantId: 't-a',
+      reason: 'Help',
+      grantedByEmail: 'a@x.edu',
+      expiresAt: old(-1),
+      ...over,
+    });
     await admin.supportPass.create({ data: pass('sp-old', { expiresAt: old(200) }) });
     await admin.supportPass.create({ data: pass('sp-revoked', { expiresAt: old(-1), revokedAt: old(150) }) });
     await admin.supportPass.create({ data: pass('sp-new', { expiresAt: old(20) }) });
     await admin.supportPass.create({ data: pass('sp-live', {}) });
-    await admin.supportHandoff.create({ data: { id: 'sh-old', tenantId: 't-a', passId: 'sp-old', tokenHash: 'hh-old', operatorEmail: 'op@x.edu', expiresAt: old(200) } });
+    await admin.supportHandoff.create({
+      data: { id: 'sh-old', tenantId: 't-a', passId: 'sp-old', tokenHash: 'hh-old', operatorEmail: 'op@x.edu', expiresAt: old(200) },
+    });
     // Infected and clean uploads, with bytes in storage.
     const { storage } = await import('../src/lib/storage.js');
-    for (const [id, scanStatus, scannedAt] of [['f-bad-old', 'INFECTED', old(40)], ['f-bad-new', 'INFECTED', old(1)], ['f-clean', 'CLEAN', old(300)]] as const) {
+    for (const [id, scanStatus, scannedAt] of [
+      ['f-bad-old', 'INFECTED', old(40)],
+      ['f-bad-new', 'INFECTED', old(1)],
+      ['f-clean', 'CLEAN', old(300)],
+    ] as const) {
       const temp = path.join(os.tmpdir(), `retention-${id}`);
       fs.writeFileSync(temp, id);
       keys[id] = `t-a/${randomUUID()}`;
       await storage().putFile(keys[id], temp, 'text/plain');
-      await admin.storedFile.create({ data: { id, tenantId: 't-a', courseId: 'c1', purpose: 'LESSON_MEDIA', storageKey: keys[id], filename: id, contentType: 'text/plain', sizeBytes: id.length, sha256: 'x', scanStatus, scannedAt } });
+      await admin.storedFile.create({
+        data: {
+          id,
+          tenantId: 't-a',
+          courseId: 'c1',
+          purpose: 'LESSON_MEDIA',
+          storageKey: keys[id],
+          filename: id,
+          contentType: 'text/plain',
+          sizeBytes: id.length,
+          sha256: 'x',
+          scanStatus,
+          scannedAt,
+        },
+      });
     }
     // What is never touched: a grade, a certificate-bearing enrolment, an old audit entry.
     await admin.auditLog.create({ data: { tenantId: 't-a', action: 'OLD_EVENT', resourceType: 'X', createdAt: old(3000) } });
     // Another organisation's old data stays out of reach of acme's policy.
-    await admin.notification.create({ data: { id: 'n-b-old', tenantId: 't-b', userId: 'b-student', category: 'SYSTEM', title: 'b', createdAt: old(500) } });
+    await admin.notification.create({
+      data: { id: 'n-b-old', tenantId: 't-b', userId: 'b-student', category: 'SYSTEM', title: 'b', createdAt: old(500) },
+    });
   };
 
-  const policy = { enabled: true, dryRun: true, notificationsDays: 60, tokensDays: 30, proctoringDays: 90, supportAccessDays: 120, infectedFilesDays: 30 };
-  const has = async (model: 'notification' | 'passwordResetToken' | 'emailVerificationToken' | 'supportPass' | 'supportHandoff' | 'storedFile', id: string) => !!(await (admin as any)[model].findUnique({ where: { id } }));
+  const policy = {
+    enabled: true,
+    dryRun: true,
+    notificationsDays: 60,
+    tokensDays: 30,
+    proctoringDays: 90,
+    supportAccessDays: 120,
+    infectedFilesDays: 30,
+  };
+  const has = async (
+    model: 'notification' | 'passwordResetToken' | 'emailVerificationToken' | 'supportPass' | 'supportHandoff' | 'storedFile',
+    id: string
+  ) => !!(await (admin as any)[model].findUnique({ where: { id } }));
 
   it('is off by default and validates what it is given', async () => {
     const a = await as('a-admin', 'acme');
@@ -359,7 +448,13 @@ describe('data retention', () => {
     expect(def.status).toBe(200);
     matchesDocs('GET /api/v1/privacy/retention', def.body);
     expect(def.body.data).toMatchObject({ enabled: false, dryRun: true, notificationsDays: null, lastRun: null, rowCap: 5000 });
-    expect(def.body.data.classes.map((c: any) => c.key)).toEqual(['notifications', 'tokens', 'proctoring', 'supportAccess', 'infectedFiles']);
+    expect(def.body.data.classes.map((c: any) => c.key)).toEqual([
+      'notifications',
+      'tokens',
+      'proctoring',
+      'supportAccess',
+      'infectedFiles',
+    ]);
 
     expect((await a.post('/api/v1/privacy/retention/run').send({})).status).toBe(409); // no policy yet
     expect((await a.put('/api/v1/privacy/retention').send({ ...policy, notificationsDays: 5 })).status).toBe(400); // under the minimum
@@ -448,23 +543,50 @@ describe('data retention', () => {
   });
 
   it('a run is capped per class and the next run carries on', async () => {
-    for (let i = 0; i < 5; i++) await admin.notification.create({ data: { id: `cap-${i}`, tenantId: 't-a', userId: 's2', category: 'SYSTEM', title: 'c', createdAt: old(100 + i) } });
+    for (let i = 0; i < 5; i++)
+      await admin.notification.create({
+        data: { id: `cap-${i}`, tenantId: 't-a', userId: 's2', category: 'SYSTEM', title: 'c', createdAt: old(100 + i) },
+      });
     const a = await as('a-admin', 'acme');
-    await a.put('/api/v1/privacy/retention').send({ enabled: true, dryRun: false, notificationsDays: 60, tokensDays: null, proctoringDays: null, supportAccessDays: null, infectedFilesDays: null });
+    await a.put('/api/v1/privacy/retention').send({
+      enabled: true,
+      dryRun: false,
+      notificationsDays: 60,
+      tokensDays: null,
+      proctoringDays: null,
+      supportAccessDays: null,
+      infectedFilesDays: null,
+    });
     const { runWithTenant } = await import('@enterprise-lms/database');
-    const capped = await runWithTenant('t-a', () => retention.applyRetention('t-a', { notificationsDays: 60, tokensDays: null, proctoringDays: null, supportAccessDays: null, infectedFilesDays: null }, { dryRun: false, cap: 2 }));
+    const capped = await runWithTenant('t-a', () =>
+      retention.applyRetention(
+        't-a',
+        { notificationsDays: 60, tokensDays: null, proctoringDays: null, supportAccessDays: null, infectedFilesDays: null },
+        { dryRun: false, cap: 2 }
+      )
+    );
     expect(capped.counts.notifications).toBe(2);
     expect(capped.remaining.notifications).toBe(3);
     expect(await admin.notification.count({ where: { tenantId: 't-a', id: { startsWith: 'cap-' } } })).toBe(3);
-    const rest = await runWithTenant('t-a', () => retention.applyRetention('t-a', { notificationsDays: 60, tokensDays: null, proctoringDays: null, supportAccessDays: null, infectedFilesDays: null }, { dryRun: false, cap: 10 }));
+    const rest = await runWithTenant('t-a', () =>
+      retention.applyRetention(
+        't-a',
+        { notificationsDays: 60, tokensDays: null, proctoringDays: null, supportAccessDays: null, infectedFilesDays: null },
+        { dryRun: false, cap: 10 }
+      )
+    );
     expect(rest.counts.notifications).toBe(3);
     expect(rest.remaining.notifications).toBe(0);
   });
 
   it('the daily job runs enabled policies once a day and skips the rest', async () => {
     await admin.retentionPolicy.deleteMany({});
-    await admin.notification.create({ data: { id: 'job-old', tenantId: 't-a', userId: 's2', category: 'SYSTEM', title: 'j', createdAt: old(100) } });
-    await admin.notification.create({ data: { id: 'job-old-b', tenantId: 't-b', userId: 'b-student', category: 'SYSTEM', title: 'j', createdAt: old(100) } });
+    await admin.notification.create({
+      data: { id: 'job-old', tenantId: 't-a', userId: 's2', category: 'SYSTEM', title: 'j', createdAt: old(100) },
+    });
+    await admin.notification.create({
+      data: { id: 'job-old-b', tenantId: 't-b', userId: 'b-student', category: 'SYSTEM', title: 'j', createdAt: old(100) },
+    });
     const p = { notificationsDays: 60, dryRun: false };
     await admin.retentionPolicy.create({ data: { tenantId: 't-a', enabled: true, ...p } });
     await admin.retentionPolicy.create({ data: { tenantId: 't-b', enabled: false, ...p } }); // not enabled: left alone
@@ -474,12 +596,17 @@ describe('data retention', () => {
     expect(await has('notification', 'job-old')).toBe(false);
     expect(await has('notification', 'job-old-b')).toBe(true);
     expect(await audits('RETENTION_RUN')).toBeGreaterThanOrEqual(2);
-    const entry = await admin.auditLog.findFirstOrThrow({ where: { tenantId: 't-a', action: 'RETENTION_RUN' }, orderBy: { createdAt: 'desc' } });
+    const entry = await admin.auditLog.findFirstOrThrow({
+      where: { tenantId: 't-a', action: 'RETENTION_RUN' },
+      orderBy: { createdAt: 'desc' },
+    });
     expect(entry.userId).toBeNull();
     expect(entry.diffJson).toMatchObject({ by: 'SCHEDULE' });
 
     // Within a day it does not run again; a day later it does.
-    await admin.notification.create({ data: { id: 'job-old2', tenantId: 't-a', userId: 's2', category: 'SYSTEM', title: 'j', createdAt: old(100) } });
+    await admin.notification.create({
+      data: { id: 'job-old2', tenantId: 't-a', userId: 's2', category: 'SYSTEM', title: 'j', createdAt: old(100) },
+    });
     expect(await retention.runRetentionJob(new Date(now.getTime() + 2 * 60 * 60 * 1000))).toEqual({ organisations: 0, removed: 0 });
     expect(await has('notification', 'job-old2')).toBe(true);
     expect(await retention.runRetentionJob(new Date(now.getTime() + 25 * 60 * 60 * 1000))).toEqual({ organisations: 1, removed: 1 });

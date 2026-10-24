@@ -24,10 +24,7 @@ const getBaseUrl = (): string => {
   return '';
 };
 
-export async function apiClient<T>(
-  path: string,
-  options: RequestOptions = {}
-): Promise<T> {
+export async function apiClient<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const baseUrl = getBaseUrl();
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 

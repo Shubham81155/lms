@@ -15,8 +15,16 @@ import { generateOneTimeToken, hashOneTimeToken } from '../lib/one-time-token';
 import { rateLimitStore } from '../lib/rate-limit-store';
 import { tenantUrl } from '../lib/tenant-url';
 import {
-  MAX_OPEN_REQUESTS_PER_EMAIL, PENDING_HOLD_MS, SLUG_PROBLEM_MESSAGE, VERIFY_WINDOW_MS,
-  openRequestsFor, operatorTenant, operatorUserIds, releaseLapsedHolds, requestedAddress, slugProblem,
+  MAX_OPEN_REQUESTS_PER_EMAIL,
+  PENDING_HOLD_MS,
+  SLUG_PROBLEM_MESSAGE,
+  VERIFY_WINDOW_MS,
+  openRequestsFor,
+  operatorTenant,
+  operatorUserIds,
+  releaseLapsedHolds,
+  requestedAddress,
+  slugProblem,
 } from '../lib/organizations';
 
 // Mounted at /api/v1/organizations. Public: institutions ask for an organisation here, and the login page
@@ -79,7 +87,13 @@ router.get(
   })
 );
 
-const optionalText = (max: number) => z.string().trim().max(max).optional().transform((v) => v || undefined);
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .transform((v) => v || undefined);
 
 /** No web addresses in names: they end up in e-mails and in the operator's queue. */
 const noLinks = (v: string) => !v.includes('://') && !/www\./i.test(v);
@@ -107,7 +121,10 @@ export const organizationRequestSchema = z.object({
   slug: z.string().trim().toLowerCase().max(100),
   institutionType: z.enum(INSTITUTION_TYPES),
   country: optionalText(80),
-  website: httpUrl.refine((u) => u.startsWith('https://'), 'The website must start with https://').refine((u) => u.length <= 300, 'Too long').optional(),
+  website: httpUrl
+    .refine((u) => u.startsWith('https://'), 'The website must start with https://')
+    .refine((u) => u.length <= 300, 'Too long')
+    .optional(),
   expectedLearners: z.number().int().min(1).max(1_000_000).optional(),
   contactFirstName: personName,
   contactLastName: personName,
@@ -147,9 +164,13 @@ router.post(
     const problem = await slugProblem(input.slug);
     if (problem === 'invalid') throw new HttpError(400, SLUG_PROBLEM_MESSAGE.invalid);
     if (problem) throw new HttpError(409, SLUG_PROBLEM_MESSAGE[problem]);
-    if (!mailDelivers()) throw new HttpError(503, 'This server cannot send e-mail, so a request cannot be confirmed. Please contact us instead.');
+    if (!mailDelivers())
+      throw new HttpError(503, 'This server cannot send e-mail, so a request cannot be confirmed. Please contact us instead.');
     if ((await openRequestsFor(input.contactEmail)) >= MAX_OPEN_REQUESTS_PER_EMAIL) {
-      throw new HttpError(429, 'This e-mail address already has several open requests. Wait for them to be decided, or for unconfirmed ones to expire.');
+      throw new HttpError(
+        429,
+        'This e-mail address already has several open requests. Wait for them to be decided, or for unconfirmed ones to expire.'
+      );
     }
 
     const { token, tokenHash } = generateOneTimeToken();
@@ -160,8 +181,13 @@ router.post(
       await releaseLapsedHolds(input.slug);
       request = await basePrisma.organizationRequest.create({
         data: {
-          ...fields, status: 'UNVERIFIED', ipAddress: req.ip ?? null,
-          verificationTokenHash: tokenHash, verificationExpiresAt: expiresAt, holdsSlug: true, holdExpiresAt: expiresAt,
+          ...fields,
+          status: 'UNVERIFIED',
+          ipAddress: req.ip ?? null,
+          verificationTokenHash: tokenHash,
+          verificationExpiresAt: expiresAt,
+          holdsSlug: true,
+          holdExpiresAt: expiresAt,
         },
       });
     } catch (err: any) {
@@ -184,7 +210,13 @@ router.post(
     }
 
     return res.status(201).json({
-      data: { status: 'UNVERIFIED', slug: request.slug, contactEmail: request.contactEmail, url: tenantUrl({ slug: request.slug }), confirmBy: expiresAt.toISOString() },
+      data: {
+        status: 'UNVERIFIED',
+        slug: request.slug,
+        contactEmail: request.contactEmail,
+        url: tenantUrl({ slug: request.slug }),
+        confirmBy: expiresAt.toISOString(),
+      },
     });
   })
 );
@@ -204,7 +236,15 @@ router.post(
     const request = await basePrisma.organizationRequest.findUnique({ where: { verificationTokenHash: hashOneTimeToken(token) } });
     if (!request) throw new HttpError(400, 'This confirmation link is not valid');
     const answer = (r: { status: string; slug: string; organizationName: string; contactEmail: string }) =>
-      res.json({ data: { status: r.status, slug: r.slug, organizationName: r.organizationName, contactEmail: r.contactEmail, url: tenantUrl({ slug: r.slug }) } });
+      res.json({
+        data: {
+          status: r.status,
+          slug: r.slug,
+          organizationName: r.organizationName,
+          contactEmail: r.contactEmail,
+          url: tenantUrl({ slug: r.slug }),
+        },
+      });
     if (request.verifiedAt) return answer(request);
     if (request.status !== 'UNVERIFIED') throw new HttpError(409, 'This request is closed. Send a new request.');
     if (!request.verificationExpiresAt || request.verificationExpiresAt <= new Date()) {
@@ -214,7 +254,12 @@ router.post(
     if (problem) {
       await basePrisma.organizationRequest.updateMany({
         where: { id: request.id, status: 'UNVERIFIED' },
-        data: { status: 'REJECTED', holdsSlug: false, decidedAt: new Date(), decisionNote: 'The address was no longer available when the e-mail was confirmed.' },
+        data: {
+          status: 'REJECTED',
+          holdsSlug: false,
+          decidedAt: new Date(),
+          decisionNote: 'The address was no longer available when the e-mail was confirmed.',
+        },
       });
       throw new HttpError(409, `${SLUG_PROBLEM_MESSAGE[problem]}. Send a new request with another address.`);
     }
@@ -252,9 +297,18 @@ router.post(
           )
         );
         await logAuditEvent({
-          tenantId: op.id, action: 'ORGANIZATION_REQUESTED', resourceType: 'ORGANIZATION_REQUEST', resourceId: saved.id,
-          ipAddress: req.ip, userAgent: req.headers['user-agent'],
-          diffJson: { organizationName: saved.organizationName, slug: saved.slug, contactEmail: saved.contactEmail, requestedFrom: saved.ipAddress },
+          tenantId: op.id,
+          action: 'ORGANIZATION_REQUESTED',
+          resourceType: 'ORGANIZATION_REQUEST',
+          resourceId: saved.id,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          diffJson: {
+            organizationName: saved.organizationName,
+            slug: saved.slug,
+            contactEmail: saved.contactEmail,
+            requestedFrom: saved.ipAddress,
+          },
         });
       });
     }

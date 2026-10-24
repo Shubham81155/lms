@@ -58,7 +58,8 @@ export const planView = (p: PlanRow) => ({
   yearlyPaise: p.yearlyPaise,
 });
 
-export const listActivePlans = () => basePrisma.plan.findMany({ where: { active: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
+export const listActivePlans = () =>
+  basePrisma.plan.findMany({ where: { active: true }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] });
 
 const planFields = {
   name: z.string().trim().min(1).max(80),
@@ -72,7 +73,18 @@ const planFields = {
   sortOrder: z.number().int().min(0).max(1000),
 };
 export const createPlanSchema = z
-  .object({ code: z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{1,31}$/), ...planFields, courseLimit: planFields.courseLimit.default(null), storageGb: planFields.storageGb.default(null), active: planFields.active.default(true), sortOrder: planFields.sortOrder.default(0) })
+  .object({
+    code: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z0-9][a-z0-9-]{1,31}$/),
+    ...planFields,
+    courseLimit: planFields.courseLimit.default(null),
+    storageGb: planFields.storageGb.default(null),
+    active: planFields.active.default(true),
+    sortOrder: planFields.sortOrder.default(0),
+  })
   .strict();
 export const updatePlanSchema = z
   .object({ ...planFields })
@@ -82,11 +94,27 @@ export const updatePlanSchema = z
 
 // --------------------------------------------------------------------------- audit
 
-async function auditBilling(tenantId: string, action: string, diffJson: Record<string, unknown>, actor?: Actor, resourceId?: string): Promise<void> {
-  const entry = { action, resourceType: 'BILLING', resourceId: resourceId ?? tenantId, ipAddress: actor?.ipAddress, userAgent: actor?.userAgent, diffJson };
+async function auditBilling(
+  tenantId: string,
+  action: string,
+  diffJson: Record<string, unknown>,
+  actor?: Actor,
+  resourceId?: string
+): Promise<void> {
+  const entry = {
+    action,
+    resourceType: 'BILLING',
+    resourceId: resourceId ?? tenantId,
+    ipAddress: actor?.ipAddress,
+    userAgent: actor?.userAgent,
+    diffJson,
+  };
   try {
-    await runWithTenant(tenantId, () => logAuditEvent({ ...entry, tenantId, userId: actor?.tenantId === tenantId ? actor.userId : undefined }));
-    if (actor && actor.tenantId !== tenantId) await runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId }));
+    await runWithTenant(tenantId, () =>
+      logAuditEvent({ ...entry, tenantId, userId: actor?.tenantId === tenantId ? actor.userId : undefined })
+    );
+    if (actor && actor.tenantId !== tenantId)
+      await runWithTenant(actor.tenantId, () => logAuditEvent({ ...entry, tenantId: actor.tenantId, userId: actor.userId }));
   } catch (err) {
     logger.warn({ err, tenantId, action }, 'could not write a billing audit entry');
   }
@@ -110,7 +138,9 @@ async function limitsOf(tenantId: string) {
   const sub = await runWithTenant(tenantId, () => prisma.subscription.findUnique({ where: { tenantId } }));
   if (!sub || (sub.status !== 'ACTIVE' && sub.status !== 'PAST_DUE')) return null;
   const plan = await basePrisma.plan.findUnique({ where: { id: sub.planId } });
-  return plan ? { seatLimit: sub.seats, courseLimit: plan.courseLimit, storageBytes: plan.storageGb == null ? null : plan.storageGb * 1024 ** 3 } : null;
+  return plan
+    ? { seatLimit: sub.seats, courseLimit: plan.courseLimit, storageBytes: plan.storageGb == null ? null : plan.storageGb * 1024 ** 3 }
+    : null;
 }
 
 /** 402 when creating one more course would pass the plan's course limit. */
@@ -118,7 +148,8 @@ export async function assertCourseAllowed(tenantId: string): Promise<void> {
   const limits = await limitsOf(tenantId);
   if (limits?.courseLimit == null) return;
   const { courses } = await usageOf(tenantId);
-  if (courses >= limits.courseLimit) throw new HttpError(402, `Your plan allows ${limits.courseLimit} courses and all are in use. Archive a course or upgrade the plan.`);
+  if (courses >= limits.courseLimit)
+    throw new HttpError(402, `Your plan allows ${limits.courseLimit} courses and all are in use. Archive a course or upgrade the plan.`);
 }
 
 /** 402 when storing `addBytes` more would pass the plan's storage limit. */
@@ -126,7 +157,8 @@ export async function assertStorageAllowed(tenantId: string, addBytes: number): 
   const limits = await limitsOf(tenantId);
   if (limits?.storageBytes == null) return;
   const { storageBytes } = await usageOf(tenantId);
-  if (storageBytes + addBytes > limits.storageBytes) throw new HttpError(402, 'Your plan\'s storage is full. Delete files or upgrade the plan.');
+  if (storageBytes + addBytes > limits.storageBytes)
+    throw new HttpError(402, "Your plan's storage is full. Delete files or upgrade the plan.");
 }
 
 // --------------------------------------------------------------------------- the organisation's view
@@ -158,7 +190,9 @@ export async function billingOverview(tenantId: string) {
       storageBytes: usage.storageBytes,
       storageLimitBytes: inForce && plan?.storageGb != null ? plan.storageGb * 1024 ** 3 : null,
     },
-    profile: profile ? { legalName: profile.legalName, gstin: profile.gstin, address: profile.address, stateCode: profile.stateCode } : null,
+    profile: profile
+      ? { legalName: profile.legalName, gstin: profile.gstin, address: profile.address, stateCode: profile.stateCode }
+      : null,
     razorpayKeyId: razorpayConfigured() ? (config.RAZORPAY_KEY_ID ?? null) : null,
     configured: razorpayConfigured(),
   };
@@ -179,12 +213,20 @@ export const profileSchema = z
     stateCode: z.string().trim().regex(GST_STATE_CODE, 'Use the two-digit GST state code, e.g. 27'),
   })
   .strict()
-  .refine((v) => !v.gstin || v.gstin.slice(0, 2) === v.stateCode, { message: 'The first two digits of the GSTIN are the state code', path: ['gstin'] });
+  .refine((v) => !v.gstin || v.gstin.slice(0, 2) === v.stateCode, {
+    message: 'The first two digits of the GSTIN are the state code',
+    path: ['gstin'],
+  });
 
 export async function saveProfile(tenantId: string, input: z.infer<typeof profileSchema>, actor: Actor) {
   const data = { legalName: input.legalName, gstin: input.gstin, address: input.address, stateCode: input.stateCode };
   await runWithTenant(tenantId, () => prisma.billingProfile.upsert({ where: { tenantId }, create: { tenantId, ...data }, update: data }));
-  await auditBilling(tenantId, 'BILLING_PROFILE_UPDATED', { legalName: data.legalName, gstin: data.gstin, stateCode: data.stateCode }, actor);
+  await auditBilling(
+    tenantId,
+    'BILLING_PROFILE_UPDATED',
+    { legalName: data.legalName, gstin: data.gstin, stateCode: data.stateCode },
+    actor
+  );
 }
 
 // --------------------------------------------------------------------------- subscribing
@@ -193,12 +235,22 @@ export const subscribeSchema = z
   .object({ planId: z.string().min(1).max(64), interval: z.enum(['MONTH', 'YEAR']), seats: z.number().int().min(1).max(10_000_000) })
   .strict();
 
-async function razorpayPlanFor(plan: Awaited<ReturnType<typeof basePrisma.plan.findUniqueOrThrow>>, interval: 'MONTH' | 'YEAR'): Promise<string> {
+async function razorpayPlanFor(
+  plan: Awaited<ReturnType<typeof basePrisma.plan.findUniqueOrThrow>>,
+  interval: 'MONTH' | 'YEAR'
+): Promise<string> {
   const have = interval === 'MONTH' ? plan.razorpayMonthlyPlanId : plan.razorpayYearlyPlanId;
   if (have) return have;
   const amountPaise = interval === 'MONTH' ? plan.monthlyPaise : plan.yearlyPaise;
-  const created = await razorpay().createPlan({ name: `${plan.name} (${interval === 'MONTH' ? 'monthly' : 'yearly'}, per seat)`, interval, amountPaise });
-  await basePrisma.plan.update({ where: { id: plan.id }, data: interval === 'MONTH' ? { razorpayMonthlyPlanId: created.id } : { razorpayYearlyPlanId: created.id } });
+  const created = await razorpay().createPlan({
+    name: `${plan.name} (${interval === 'MONTH' ? 'monthly' : 'yearly'}, per seat)`,
+    interval,
+    amountPaise,
+  });
+  await basePrisma.plan.update({
+    where: { id: plan.id },
+    data: interval === 'MONTH' ? { razorpayMonthlyPlanId: created.id } : { razorpayYearlyPlanId: created.id },
+  });
   return created.id;
 }
 
@@ -214,13 +266,33 @@ export async function subscribe(tenantId: string, input: z.infer<typeof subscrib
   ]);
   if (!profile) throw new HttpError(409, 'Add your billing details first: they go on the invoice');
   if (input.seats < used) throw new HttpError(409, `${used} seats are in use, so at least ${used} are needed`);
-  if (existing && (existing.status === 'ACTIVE' || existing.status === 'PAST_DUE')) throw new HttpError(409, 'This organisation is already subscribed. Cancel the subscription before choosing another plan');
+  if (existing && (existing.status === 'ACTIVE' || existing.status === 'PAST_DUE'))
+    throw new HttpError(409, 'This organisation is already subscribed. Cancel the subscription before choosing another plan');
 
   const planId = await razorpayPlanFor(plan, input.interval);
-  const created = await razorpay().createSubscription({ planId, quantity: input.seats, totalCount: input.interval === 'MONTH' ? 120 : 10, notes: { tenantId } });
-  const data = { planId: plan.id, interval: input.interval, seats: input.seats, status: 'PENDING', razorpaySubscriptionId: created.id, currentPeriodEnd: null, cancelAtPeriodEnd: false, pastDueSince: null };
+  const created = await razorpay().createSubscription({
+    planId,
+    quantity: input.seats,
+    totalCount: input.interval === 'MONTH' ? 120 : 10,
+    notes: { tenantId },
+  });
+  const data = {
+    planId: plan.id,
+    interval: input.interval,
+    seats: input.seats,
+    status: 'PENDING',
+    razorpaySubscriptionId: created.id,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    pastDueSince: null,
+  };
   await runWithTenant(tenantId, () => prisma.subscription.upsert({ where: { tenantId }, create: { tenantId, ...data }, update: data }));
-  await auditBilling(tenantId, 'SUBSCRIPTION_STARTED', { plan: plan.code, interval: input.interval, seats: input.seats, razorpaySubscriptionId: created.id }, actor);
+  await auditBilling(
+    tenantId,
+    'SUBSCRIPTION_STARTED',
+    { plan: plan.code, interval: input.interval, seats: input.seats, razorpaySubscriptionId: created.id },
+    actor
+  );
   return { subscriptionId: created.id, razorpayKeyId: config.RAZORPAY_KEY_ID ?? null, shortUrl: created.shortUrl };
 }
 
@@ -263,7 +335,11 @@ async function applyPlan(tx: Tx, tenantId: string, plan: { tier: string }, seats
   const reopen = t.status === 'TRIAL' || (t.status === 'SUSPENDED' && !!t.trialExpiredAt);
   await tx.tenant.update({
     where: { id: tenantId },
-    data: { tier: plan.tier as any, seatQuota: seats, ...(reopen ? { status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null, trialRemindersSent: 0 } : {}) },
+    data: {
+      tier: plan.tier as any,
+      seatQuota: seats,
+      ...(reopen ? { status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null, trialRemindersSent: 0 } : {}),
+    },
   });
   return reopen;
 }
@@ -272,13 +348,20 @@ async function applyPlan(tx: Tx, tenantId: string, plan: { tier: string }, seats
 async function lapseTenant(tx: Tx, tenantId: string, now: Date): Promise<boolean> {
   const t = await tx.tenant.findUnique({ where: { id: tenantId }, select: { status: true, slug: true } });
   if (!t || t.status !== 'ACTIVE' || (config.PLATFORM_OPERATOR_TENANT && t.slug === config.PLATFORM_OPERATOR_TENANT)) return false;
-  await tx.tenant.update({ where: { id: tenantId }, data: { status: 'TRIAL', trialEndsAt: now, trialExpiredAt: now, trialRemindersSent: 3 | PAYMENT_LAPSED } });
+  await tx.tenant.update({
+    where: { id: tenantId },
+    data: { status: 'TRIAL', trialEndsAt: now, trialExpiredAt: now, trialRemindersSent: 3 | PAYMENT_LAPSED },
+  });
   return true;
 }
 
 // --------------------------------------------------------------------------- invoices
 
-export async function issueInvoice(tx: Tx, tenantId: string, input: { totalPaise: number; description: string; paymentId: string | null; now: Date }) {
+export async function issueInvoice(
+  tx: Tx,
+  tenantId: string,
+  input: { totalPaise: number; description: string; paymentId: string | null; now: Date }
+) {
   const profile = await tx.billingProfile.findUnique({ where: { tenantId } });
   const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { name: true } });
   const seller = sellerParty();
@@ -288,13 +371,32 @@ export async function issueInvoice(tx: Tx, tenantId: string, input: { totalPaise
   const split = computeGst(input.totalPaise, buyer.stateCode, seller.stateCode);
   const { number, financialYear } = await nextInvoiceNumber(tx, input.now);
   return tx.invoice.create({
-    data: { tenantId, number, financialYear, issuedAt: input.now, razorpayPaymentId: input.paymentId, description: input.description, ...split, buyerJson: buyer as any, sellerJson: seller as any },
+    data: {
+      tenantId,
+      number,
+      financialYear,
+      issuedAt: input.now,
+      razorpayPaymentId: input.paymentId,
+      description: input.description,
+      ...split,
+      buyerJson: buyer as any,
+      sellerJson: seller as any,
+    },
   });
 }
 
 export async function listInvoices(tenantId: string) {
-  const rows = await runWithTenant(tenantId, () => prisma.invoice.findMany({ where: { tenantId }, orderBy: { issuedAt: 'desc' }, take: 200 }));
-  return rows.map((i) => ({ id: i.id, number: i.number, issuedAt: i.issuedAt, amountPaise: i.totalPaise, taxPaise: i.cgstPaise + i.sgstPaise + i.igstPaise, status: i.status }));
+  const rows = await runWithTenant(tenantId, () =>
+    prisma.invoice.findMany({ where: { tenantId }, orderBy: { issuedAt: 'desc' }, take: 200 })
+  );
+  return rows.map((i) => ({
+    id: i.id,
+    number: i.number,
+    issuedAt: i.issuedAt,
+    amountPaise: i.totalPaise,
+    taxPaise: i.cgstPaise + i.sgstPaise + i.igstPaise,
+    status: i.status,
+  }));
 }
 
 export async function invoicePdfFor(tenantId: string, id: string): Promise<{ number: string; pdf: Buffer }> {
@@ -335,7 +437,12 @@ interface RzpPayment {
  * `eventId` is the X-Razorpay-Event-Id header. Throws HttpError 400 for a bad signature or body, 503 when the
  * webhook secret is not set. An event already handled is acknowledged without changing anything.
  */
-export async function handleWebhook(rawBody: string, signature: string | undefined, eventId: string | undefined, now = new Date()): Promise<WebhookResult> {
+export async function handleWebhook(
+  rawBody: string,
+  signature: string | undefined,
+  eventId: string | undefined,
+  now = new Date()
+): Promise<WebhookResult> {
   const secret = config.RAZORPAY_WEBHOOK_SECRET;
   if (!secret) throw new HttpError(503, 'Webhooks are not set up');
   if (!validWebhookSignature(secret, rawBody, signature)) throw new HttpError(400, 'Invalid signature');
@@ -369,7 +476,10 @@ export async function handleWebhook(rawBody: string, signature: string | undefin
       case 'subscription.activated':
       case 'subscription.charged':
       case 'subscription.resumed': {
-        await tx.subscription.update({ where: { tenantId }, data: { status: 'ACTIVE', seats, currentPeriodEnd: periodEnd, pastDueSince: null } });
+        await tx.subscription.update({
+          where: { tenantId },
+          data: { status: 'ACTIVE', seats, currentPeriodEnd: periodEnd, pastDueSince: null },
+        });
         if (plan) sessions = (await applyPlan(tx, tenantId, plan, seats)) || sessions;
         if (type === 'subscription.charged' && payment?.id && plan) {
           const already = await tx.invoice.findUnique({ where: { razorpayPaymentId: payment.id } });
@@ -415,11 +525,17 @@ export async function assignPlan(tenantId: string, input: { planId: string | nul
   if (!tenant) throw new HttpError(404, 'Organisation not found');
   if (tenantId === actor.tenantId) throw new HttpError(409, 'The platform operator organisation has no plan');
   const existing = await runWithTenant(tenantId, () => prisma.subscription.findUnique({ where: { tenantId } }));
-  if (existing?.razorpaySubscriptionId && (existing.status === 'ACTIVE' || existing.status === 'PAST_DUE')) throw new HttpError(409, 'This organisation pays through Razorpay: the subscription has to be cancelled first');
+  if (existing?.razorpaySubscriptionId && (existing.status === 'ACTIVE' || existing.status === 'PAST_DUE'))
+    throw new HttpError(409, 'This organisation pays through Razorpay: the subscription has to be cancelled first');
 
   if (input.planId === null) {
     if (existing) await runWithTenant(tenantId, () => prisma.subscription.delete({ where: { tenantId } }));
-    await auditBilling(tenantId, 'PLAN_UNASSIGNED', { tenant: tenant.slug, before: existing ? { planId: existing.planId, seats: existing.seats } : null }, actor);
+    await auditBilling(
+      tenantId,
+      'PLAN_UNASSIGNED',
+      { tenant: tenant.slug, before: existing ? { planId: existing.planId, seats: existing.seats } : null },
+      actor
+    );
     return;
   }
   const plan = await basePrisma.plan.findUnique({ where: { id: input.planId } });
@@ -428,7 +544,16 @@ export async function assignPlan(tenantId: string, input: { planId: string | nul
   if (seats > plan.seatLimit) throw new HttpError(400, `The ${plan.name} plan has at most ${plan.seatLimit} seats`);
   const { seats: used } = await usageOf(tenantId);
   if (seats < used) throw new HttpError(409, `${used} seats are in use, so at least ${used} are needed`);
-  const data = { planId: plan.id, interval: 'MONTH', seats, status: 'ACTIVE', razorpaySubscriptionId: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, pastDueSince: null };
+  const data = {
+    planId: plan.id,
+    interval: 'MONTH',
+    seats,
+    status: 'ACTIVE',
+    razorpaySubscriptionId: null,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    pastDueSince: null,
+  };
   const reopened = await runInTenantTransaction(tenantId, async (tx) => {
     await tx.subscription.upsert({ where: { tenantId }, create: { tenantId, ...data }, update: data });
     return applyPlan(tx, tenantId, plan, seats);
@@ -450,13 +575,19 @@ export async function runBillingJob(now = new Date()): Promise<number> {
   let lapsed = 0;
   for (const t of tenants) {
     try {
-      const overdue = await runWithTenant(t.id, () => prisma.subscription.findFirst({ where: { tenantId: t.id, status: 'PAST_DUE', pastDueSince: { not: null, lte: cutoff } } }));
+      const overdue = await runWithTenant(t.id, () =>
+        prisma.subscription.findFirst({ where: { tenantId: t.id, status: 'PAST_DUE', pastDueSince: { not: null, lte: cutoff } } })
+      );
       if (!overdue) continue;
       const did = await runInTenantTransaction(t.id, (tx) => lapseTenant(tx, t.id, now));
       if (!did) continue;
       invalidateTenantSessions(t.id);
       lapsed++;
-      await auditBilling(t.id, 'BILLING_LAPSED', { tenant: t.slug, pastDueSince: overdue.pastDueSince, graceDays: config.BILLING_GRACE_DAYS });
+      await auditBilling(t.id, 'BILLING_LAPSED', {
+        tenant: t.slug,
+        pastDueSince: overdue.pastDueSince,
+        graceDays: config.BILLING_GRACE_DAYS,
+      });
     } catch (err) {
       logger.error({ err, tenantId: t.id }, 'billing job failed for an organisation');
     }

@@ -7,7 +7,18 @@ import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../l
 import { logAuditEvent } from '../lib/audit';
 import { verifyPassword } from '../lib/password';
 import { buildUserExport, eraseUser, erasureBlocker } from '../lib/privacy';
-import { cancelRequest, fileRequest, fulfilRequest, listRequests, myRequests, rejectRequest, REQUEST_KINDS, REQUEST_STATUSES, requestView, updateRequest } from '../lib/data-requests';
+import {
+  cancelRequest,
+  fileRequest,
+  fulfilRequest,
+  listRequests,
+  myRequests,
+  rejectRequest,
+  REQUEST_KINDS,
+  REQUEST_STATUSES,
+  requestView,
+  updateRequest,
+} from '../lib/data-requests';
 import { loadPolicy, policyView, retentionPolicySchema, runRetention, savePolicy } from '../lib/retention';
 
 // Mounted at /api/v1/privacy: personal-data export, FERPA directory opt-out, erasure, the data-subject request queue
@@ -58,15 +69,24 @@ async function sendExport(req: any, res: any, userId: string, actorId: string) {
   const data = await buildUserExport(userId, tenantId);
   if (!data) throw new HttpError(404, 'User not found');
   await logAuditEvent({
-    tenantId, userId: actorId, action: 'PERSONAL_DATA_EXPORTED', resourceType: 'USER', resourceId: userId,
-    ipAddress: req.ip, userAgent: req.headers['user-agent'],
+    tenantId,
+    userId: actorId,
+    action: 'PERSONAL_DATA_EXPORTED',
+    resourceType: 'USER',
+    resourceId: userId,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
   });
   res.setHeader('Content-Disposition', `attachment; filename="personal-data-${userId}.json"`);
   return res.status(200).json(data);
 }
 
 /** GET /api/v1/privacy/me/export - everything held about the caller, as a JSON download */
-router.get('/me/export', authenticateJWT, route('Failed to export personal data', (req, res) => sendExport(req, res, req.user!.id, req.user!.id)));
+router.get(
+  '/me/export',
+  authenticateJWT,
+  route('Failed to export personal data', (req, res) => sendExport(req, res, req.user!.id, req.user!.id))
+);
 
 /** GET /api/v1/privacy/users/:id/export - the same for any person in the tenant (administrators answering a request) */
 router.get(
@@ -95,8 +115,14 @@ router.put(
     const { optOut } = parseBody(req, directorySchema);
     await prisma.user.update({ where: { id: req.user!.id }, data: { directoryOptOut: optOut } });
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: 'DIRECTORY_OPT_OUT_CHANGED', resourceType: 'USER', resourceId: req.user!.id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { optOut },
+      tenantId,
+      userId: req.user!.id,
+      action: 'DIRECTORY_OPT_OUT_CHANGED',
+      resourceType: 'USER',
+      resourceId: req.user!.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { optOut },
     });
     return res.json({ data: { optOut } });
   })
@@ -109,19 +135,30 @@ router.post(
   route('Failed to erase account', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const input = parseBody(req, selfEraseSchema);
-    const me = await prisma.user.findFirst({ where: { id: req.user!.id, tenantId }, select: { id: true, email: true, passwordHash: true } });
+    const me = await prisma.user.findFirst({
+      where: { id: req.user!.id, tenantId },
+      select: { id: true, email: true, passwordHash: true },
+    });
     if (!me) throw new HttpError(404, 'User not found');
-    if (input.confirmEmail.trim().toLowerCase() !== me.email.toLowerCase()) throw new HttpError(400, 'confirmEmail does not match this account');
+    if (input.confirmEmail.trim().toLowerCase() !== me.email.toLowerCase())
+      throw new HttpError(400, 'confirmEmail does not match this account');
     if (me.passwordHash) {
-      if (!input.password || !(await verifyPassword(input.password, me.passwordHash)).valid) throw new HttpError(403, 'Password is incorrect');
+      if (!input.password || !(await verifyPassword(input.password, me.passwordHash)).valid)
+        throw new HttpError(403, 'Password is incorrect');
     }
     const blocker = await erasureBlocker(me.id, tenantId);
     if (blocker) throw new HttpError(409, blocker);
 
     await eraseUser(me.id, tenantId);
     await logAuditEvent({
-      tenantId, userId: me.id, action: 'USER_ERASED', resourceType: 'USER', resourceId: me.id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { requestedBy: 'self' },
+      tenantId,
+      userId: me.id,
+      action: 'USER_ERASED',
+      resourceType: 'USER',
+      resourceId: me.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { requestedBy: 'self' },
     });
     return res.json({ status: 'erased', userId: me.id });
   })
@@ -138,14 +175,21 @@ router.post(
     if (id === req.user!.id) throw new HttpError(400, 'Use POST /privacy/me/erase to erase your own account');
     const target = await prisma.user.findFirst({ where: { id, tenantId }, select: { role: true } });
     if (!target) throw new HttpError(404, 'User not found');
-    if (target.role === 'SUPER_ADMIN' && req.user!.role !== 'SUPER_ADMIN') throw new HttpError(403, 'Only a super administrator can erase a super administrator');
+    if (target.role === 'SUPER_ADMIN' && req.user!.role !== 'SUPER_ADMIN')
+      throw new HttpError(403, 'Only a super administrator can erase a super administrator');
     const blocker = await erasureBlocker(id, tenantId);
     if (blocker) throw new HttpError(409, blocker);
 
     await eraseUser(id, tenantId);
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: 'USER_ERASED', resourceType: 'USER', resourceId: id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { requestedBy: 'administrator' },
+      tenantId,
+      userId: req.user!.id,
+      action: 'USER_ERASED',
+      resourceType: 'USER',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { requestedBy: 'administrator' },
     });
     return res.json({ status: 'erased', userId: id });
   })
@@ -163,7 +207,10 @@ router.post(
   route('Failed to file the request', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const input = parseBody(req, fileRequestSchema);
-    const me = await prisma.user.findFirst({ where: { id: req.user!.id, tenantId, erasedAt: null }, select: { id: true, email: true, firstName: true } });
+    const me = await prisma.user.findFirst({
+      where: { id: req.user!.id, tenantId, erasedAt: null },
+      select: { id: true, email: true, firstName: true },
+    });
     if (!me) throw new HttpError(404, 'User not found');
     const r = await fileRequest(tenantId, me, input, ctxOf(req));
     return res.status(201).json({ data: requestView(r) });
@@ -195,9 +242,12 @@ router.get(
   '/requests/:id/export',
   authenticateJWT,
   route('Failed to export personal data', async (req, res) => {
-    const r = await prisma.dataRequest.findFirst({ where: { id: String(req.params.id), tenantId: tenantIdOf(req), requesterId: req.user!.id } });
+    const r = await prisma.dataRequest.findFirst({
+      where: { id: String(req.params.id), tenantId: tenantIdOf(req), requesterId: req.user!.id },
+    });
     if (!r) throw new HttpError(404, 'Request not found');
-    if (r.kind !== 'ACCESS' || r.status !== 'FULFILLED' || !r.exportAttached) throw new HttpError(409, 'No data is attached to this request');
+    if (r.kind !== 'ACCESS' || r.status !== 'FULFILLED' || !r.exportAttached)
+      throw new HttpError(409, 'No data is attached to this request');
     return sendExport(req, res, req.user!.id, req.user!.id);
   })
 );
@@ -209,7 +259,11 @@ router.get(
   route('Failed to load the requests', async (req, res) => {
     const q = parseQuery(req, requestsQuerySchema);
     const out = await listRequests(tenantIdOf(req), { ...q, overdue: q.overdue === 'true' });
-    return res.json({ data: out.rows, pagination: pageMeta(q.page, q.limit, out.total), summary: { open: out.open, overdue: out.overdue } });
+    return res.json({
+      data: out.rows,
+      pagination: pageMeta(q.page, q.limit, out.total),
+      summary: { open: out.open, overdue: out.overdue },
+    });
   })
 );
 

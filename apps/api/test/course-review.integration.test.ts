@@ -19,7 +19,18 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('dean', 'TENANT_ADMIN');
   await user('teacher', 'INSTRUCTOR');
   await user('other-teacher', 'INSTRUCTOR');
@@ -40,7 +51,10 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -61,7 +75,9 @@ const statusOf = async (id: string) => (await admin.course.findUniqueOrThrow({ w
 describe('publishing review', () => {
   it('is off by default: instructors publish, and cannot submit for review', async () => {
     const t = await as('teacher');
-    expect(check('GET /api/v1/admin/course-approval', await (await as('dean')).get('/api/v1/admin/course-approval'), 200).data).toEqual({ required: false });
+    expect(check('GET /api/v1/admin/course-approval', await (await as('dean')).get('/api/v1/admin/course-approval'), 200).data).toEqual({
+      required: false,
+    });
     expect((await t.get('/api/v1/courses/c-open')).body.data.publishNeedsApproval).toBe(false);
     expect((await t.post('/api/v1/courses/c-new/review/submit').send({})).status).toBe(409);
     expect((await t.put('/api/v1/courses/c-open').send({ status: 'PUBLISHED' })).status).toBe(200);
@@ -70,7 +86,13 @@ describe('publishing review', () => {
 
   it('is switched on by administrators only', async () => {
     expect((await (await as('teacher')).put('/api/v1/admin/course-approval').send({ required: true })).status).toBe(403);
-    expect(check('PUT /api/v1/admin/course-approval', await (await as('dean')).put('/api/v1/admin/course-approval').send({ required: true }), 200).data).toEqual({ required: true });
+    expect(
+      check(
+        'PUT /api/v1/admin/course-approval',
+        await (await as('dean')).put('/api/v1/admin/course-approval').send({ required: true }),
+        200
+      ).data
+    ).toEqual({ required: true });
     expect(await admin.auditLog.count({ where: { action: 'COURSE_APPROVAL_SETTING_CHANGED' } })).toBe(1);
   });
 
@@ -80,7 +102,9 @@ describe('publishing review', () => {
     const direct = await t.put('/api/v1/courses/c-new').send({ status: 'PUBLISHED' });
     expect(direct.status).toBe(403);
     expect(direct.body.error).toMatch(/submit this course for review/);
-    expect((await t.post('/api/v1/courses').send({ code: 'NEW-PUB', title: 'Straight to learners', status: 'PUBLISHED' })).status).toBe(403);
+    expect((await t.post('/api/v1/courses').send({ code: 'NEW-PUB', title: 'Straight to learners', status: 'PUBLISHED' })).status).toBe(
+      403
+    );
     // An already published course stays editable, and can be taken down.
     expect((await t.put('/api/v1/courses/c-open').send({ title: 'Course c-open, renamed' })).status).toBe(200);
     expect((await (await as('dean')).get('/api/v1/courses/c-new')).body.data.publishNeedsApproval).toBe(false);
@@ -90,7 +114,11 @@ describe('publishing review', () => {
     // Not their course: a draft they cannot see does not exist for them.
     expect((await (await as('other-teacher')).post('/api/v1/courses/c-new/review/submit').send({})).status).toBe(404);
     const t = await as('teacher');
-    check('POST /api/v1/courses/:id/review/submit', await t.post('/api/v1/courses/c-new/review/submit').send({ message: 'Ready for spring' }), 200);
+    check(
+      'POST /api/v1/courses/:id/review/submit',
+      await t.post('/api/v1/courses/c-new/review/submit').send({ message: 'Ready for spring' }),
+      200
+    );
     expect((await t.post('/api/v1/courses/c-new/review/submit').send({})).status).toBe(409);
     expect((await t.post('/api/v1/courses/c-open/review/submit').send({})).status).toBe(409); // published, not a draft
     expect(await admin.notification.count({ where: { userId: 'dean', title: 'C-NEW is waiting for review' } })).toBe(1);
@@ -102,11 +130,22 @@ describe('publishing review', () => {
 
   it('sends a course back with reasons, and the instructors resubmit', async () => {
     const dean = await as('dean');
-    expect((await (await as('teacher')).post('/api/v1/courses/c-new/review/request-changes').send({ note: 'Add a syllabus' })).status).toBe(403);
+    expect((await (await as('teacher')).post('/api/v1/courses/c-new/review/request-changes').send({ note: 'Add a syllabus' })).status).toBe(
+      403
+    );
     expect((await dean.post('/api/v1/courses/c-new/review/request-changes').send({ note: 'x' })).status).toBe(400);
-    const back = check('POST /api/v1/courses/:id/review/request-changes', await dean.post('/api/v1/courses/c-new/review/request-changes').send({ note: 'Add a syllabus' }), 200);
+    const back = check(
+      'POST /api/v1/courses/:id/review/request-changes',
+      await dean.post('/api/v1/courses/c-new/review/request-changes').send({ note: 'Add a syllabus' }),
+      200
+    );
     expect(back.data.note).toBe('Add a syllabus');
-    expect(await admin.course.findUniqueOrThrow({ where: { id: 'c-new' } })).toMatchObject({ status: 'DRAFT', reviewStatus: 'CHANGES_REQUESTED', reviewNote: 'Add a syllabus', reviewedById: 'dean' });
+    expect(await admin.course.findUniqueOrThrow({ where: { id: 'c-new' } })).toMatchObject({
+      status: 'DRAFT',
+      reviewStatus: 'CHANGES_REQUESTED',
+      reviewNote: 'Add a syllabus',
+      reviewedById: 'dean',
+    });
     expect(await admin.notification.count({ where: { userId: 'teacher', title: 'Changes requested for C-NEW' } })).toBe(1);
     expect((await dean.get('/api/v1/course-reviews')).body.data).toEqual([]);
     expect((await dean.post('/api/v1/courses/c-new/review/approve')).status).toBe(409); // not waiting any more
@@ -118,10 +157,19 @@ describe('publishing review', () => {
     const dean = await as('dean');
     expect((await (await as('teacher')).post('/api/v1/courses/c-new/review/approve')).status).toBe(403);
     check('POST /api/v1/courses/:id/review/approve', await dean.post('/api/v1/courses/c-new/review/approve'), 200);
-    expect(await admin.course.findUniqueOrThrow({ where: { id: 'c-new' } })).toMatchObject({ status: 'PUBLISHED', reviewStatus: null, reviewedById: 'dean' });
+    expect(await admin.course.findUniqueOrThrow({ where: { id: 'c-new' } })).toMatchObject({
+      status: 'PUBLISHED',
+      reviewStatus: null,
+      reviewedById: 'dean',
+    });
     expect(await admin.notification.count({ where: { userId: 'teacher', title: 'C-NEW was approved and published' } })).toBe(1);
     const actions = (await admin.auditLog.findMany({ where: { resourceId: 'c-new' }, orderBy: { createdAt: 'asc' } })).map((a) => a.action);
-    expect(actions).toEqual(['COURSE_REVIEW_SUBMITTED', 'COURSE_REVIEW_CHANGES_REQUESTED', 'COURSE_REVIEW_SUBMITTED', 'COURSE_REVIEW_APPROVED']);
+    expect(actions).toEqual([
+      'COURSE_REVIEW_SUBMITTED',
+      'COURSE_REVIEW_CHANGES_REQUESTED',
+      'COURSE_REVIEW_SUBMITTED',
+      'COURSE_REVIEW_APPROVED',
+    ]);
   });
 
   it('still lets administrators publish directly', async () => {

@@ -75,7 +75,10 @@ async function recordPlagiarismResult(
     alerted = staff.length;
   }
   await logAuditEvent({
-    tenantId, action: 'PLAGIARISM_RESULT_RECORDED', resourceType: 'ASSIGNMENT_SUBMISSION', resourceId: submission.id,
+    tenantId,
+    action: 'PLAGIARISM_RESULT_RECORDED',
+    resourceType: 'ASSIGNMENT_SUBMISSION',
+    resourceId: submission.id,
     diffJson: { score },
   });
   return alerted;
@@ -87,48 +90,44 @@ async function recordPlagiarismResult(
  * Records the score and report link on the assignment submission and alerts the course staff when
  * the similarity is high. Answers 404 for anything it cannot match, so it reveals nothing.
  */
-router.post(
-  '/plagiarism/:tenantSlug',
-  express.raw({ type: '*/*', limit: '256kb' }),
-  async (req: Request, res: Response) => {
-    const fail = (status: number, error: string) => res.status(status).json({ error, requestId: req.id });
-    try {
-      const secret = config.PLAGIARISM_WEBHOOK_SECRET;
-      if (!secret) return fail(503, 'Plagiarism callbacks are not configured');
+router.post('/plagiarism/:tenantSlug', express.raw({ type: '*/*', limit: '256kb' }), async (req: Request, res: Response) => {
+  const fail = (status: number, error: string) => res.status(status).json({ error, requestId: req.id });
+  try {
+    const secret = config.PLAGIARISM_WEBHOOK_SECRET;
+    if (!secret) return fail(503, 'Plagiarism callbacks are not configured');
 
-      const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
-      const ts = String(req.headers['x-lms-timestamp'] ?? '');
-      const sig = String(req.headers['x-lms-signature'] ?? '');
-      const age = Math.abs(Date.now() / 1000 - Number(ts));
-      if (!/^\d{9,12}$/.test(ts) || age > MAX_SKEW_SECONDS || !sig || !validSignature(secret, ts, raw, sig)) {
-        return fail(401, 'Invalid signature');
-      }
-
-      let parsed: z.infer<typeof bodySchema>;
-      try {
-        parsed = bodySchema.parse(JSON.parse(raw));
-      } catch {
-        return fail(400, 'Invalid callback payload');
-      }
-
-      const tenant = await basePrisma.tenant.findUnique({ where: { slug: String(req.params.tenantSlug) }, select: { id: true } });
-      if (!tenant) return fail(404, 'Not found');
-
-      return await runWithTenant(tenant.id, async () => {
-        const submission = await prisma.assignmentSubmission.findFirst({
-          where: { id: parsed.submissionId, assignment: { tenantId: tenant.id } },
-          select: SUBMISSION_FOR_RESULT,
-        });
-        if (!submission) return fail(404, 'Not found');
-
-        const alerted = await recordPlagiarismResult(tenant.id, submission, parsed.score, parsed.reportUrl ?? null);
-        return res.json({ status: 'recorded', alerted: alerted ?? 0 });
-      });
-    } catch (err) {
-      return fail(500, 'Failed to process callback');
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
+    const ts = String(req.headers['x-lms-timestamp'] ?? '');
+    const sig = String(req.headers['x-lms-signature'] ?? '');
+    const age = Math.abs(Date.now() / 1000 - Number(ts));
+    if (!/^\d{9,12}$/.test(ts) || age > MAX_SKEW_SECONDS || !sig || !validSignature(secret, ts, raw, sig)) {
+      return fail(401, 'Invalid signature');
     }
+
+    let parsed: z.infer<typeof bodySchema>;
+    try {
+      parsed = bodySchema.parse(JSON.parse(raw));
+    } catch {
+      return fail(400, 'Invalid callback payload');
+    }
+
+    const tenant = await basePrisma.tenant.findUnique({ where: { slug: String(req.params.tenantSlug) }, select: { id: true } });
+    if (!tenant) return fail(404, 'Not found');
+
+    return await runWithTenant(tenant.id, async () => {
+      const submission = await prisma.assignmentSubmission.findFirst({
+        where: { id: parsed.submissionId, assignment: { tenantId: tenant.id } },
+        select: SUBMISSION_FOR_RESULT,
+      });
+      if (!submission) return fail(404, 'Not found');
+
+      const alerted = await recordPlagiarismResult(tenant.id, submission, parsed.score, parsed.reportUrl ?? null);
+      return res.json({ status: 'recorded', alerted: alerted ?? 0 });
+    });
+  } catch (err) {
+    return fail(500, 'Failed to process callback');
   }
-);
+});
 
 const copyleaksBodySchema = z.object({
   scannedDocument: z.object({ scanId: z.string().min(1).max(64) }),
@@ -179,11 +178,21 @@ router.post(
           return res.json({ status: 'recorded', alerted });
         }
         if (status === 'error') {
-          const written = await prisma.assignmentSubmission.updateMany({ where: { ...open, id: submission.id }, data: { plagiarismStatus: 'FAILED', plagiarismNextAttemptAt: null } });
+          const written = await prisma.assignmentSubmission.updateMany({
+            where: { ...open, id: submission.id },
+            data: { plagiarismStatus: 'FAILED', plagiarismNextAttemptAt: null },
+          });
           if (written.count !== 1) return res.json({ status: 'ignored', reason: 'already settled' });
           await logAuditEvent({
-            tenantId: tenant.id, action: 'PLAGIARISM_CHECK_FAILED', resourceType: 'ASSIGNMENT_SUBMISSION', resourceId: submission.id,
-            diffJson: { provider: 'copyleaks', code: parsed.data.error?.code ?? null, message: parsed.data.error?.message?.slice(0, 200) ?? null },
+            tenantId: tenant.id,
+            action: 'PLAGIARISM_CHECK_FAILED',
+            resourceType: 'ASSIGNMENT_SUBMISSION',
+            resourceId: submission.id,
+            diffJson: {
+              provider: 'copyleaks',
+              code: parsed.data.error?.code ?? null,
+              message: parsed.data.error?.message?.slice(0, 200) ?? null,
+            },
           });
           return res.json({ status: 'failed' });
         }
@@ -221,7 +230,9 @@ router.post('/livekit', express.raw({ type: '*/*', limit: '256kb' }), async (req
     const when = Number.isNaN(at.getTime()) ? new Date() : at;
 
     return await runWithTenant(room.tenantId, async () => {
-      const session = await prisma.liveSession.findFirst({ where: { id: room.sessionId, tenantId: room.tenantId, roomName: event.room!.name! } });
+      const session = await prisma.liveSession.findFirst({
+        where: { id: room.sessionId, tenantId: room.tenantId, roomName: event.room!.name! },
+      });
       if (!session) return res.json({ ok: true, ignored: 'unknown session' });
       const userId = event.participant?.identity;
 
@@ -230,7 +241,10 @@ router.post('/livekit', express.raw({ type: '*/*', limit: '256kb' }), async (req
         if (known) {
           // Active from now; the join count was recorded when the token was issued.
           const a = await prisma.liveAttendance.findUnique({ where: { sessionId_userId: { sessionId: session.id, userId } } });
-          if (!a) await prisma.liveAttendance.create({ data: { tenantId: room.tenantId, sessionId: session.id, userId, firstJoinedAt: when, activeSince: when } });
+          if (!a)
+            await prisma.liveAttendance.create({
+              data: { tenantId: room.tenantId, sessionId: session.id, userId, firstJoinedAt: when, activeSince: when },
+            });
           else if (!a.activeSince) await prisma.liveAttendance.update({ where: { id: a.id }, data: { activeSince: when } });
         }
       } else if (event.event === 'participant_left' && userId) {
@@ -243,7 +257,10 @@ router.post('/livekit', express.raw({ type: '*/*', limit: '256kb' }), async (req
           });
         }
       } else if (event.event === 'room_finished') {
-        const ended = await prisma.liveSession.updateMany({ where: { id: session.id, status: 'LIVE' }, data: { status: 'ENDED', endedAt: when } });
+        const ended = await prisma.liveSession.updateMany({
+          where: { id: session.id, status: 'LIVE' },
+          data: { status: 'ENDED', endedAt: when },
+        });
         const open = await prisma.liveAttendance.findMany({ where: { sessionId: session.id, activeSince: { not: null } } });
         for (const a of open) {
           await prisma.liveAttendance.updateMany({
@@ -251,7 +268,14 @@ router.post('/livekit', express.raw({ type: '*/*', limit: '256kb' }), async (req
             data: { totalSeconds: a.totalSeconds + secondsBetween(a.activeSince!, when), activeSince: null },
           });
         }
-        if (ended.count === 1) await logAuditEvent({ tenantId: room.tenantId, action: 'LIVE_SESSION_ENDED', resourceType: 'LIVE_SESSION', resourceId: session.id, diffJson: { by: 'media server' } });
+        if (ended.count === 1)
+          await logAuditEvent({
+            tenantId: room.tenantId,
+            action: 'LIVE_SESSION_ENDED',
+            resourceType: 'LIVE_SESSION',
+            resourceId: session.id,
+            diffJson: { by: 'media server' },
+          });
       }
       return res.json({ ok: true });
     });

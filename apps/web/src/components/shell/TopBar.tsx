@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Bell, ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
-import clsx from "clsx";
-import { BrandLogo } from "@/components/BrandLogo";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { NotificationCenter } from "@/components/NotificationCenter";
-import { useNotifications } from "@/hooks/useNotifications";
-import { AREA_LABEL, type Area } from "@/lib/navigation";
-import { LanguageSwitcher, useT } from "@/lib/i18n";
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Bell, ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import clsx from 'clsx';
+import { BrandLogo } from '@/components/BrandLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationCenter } from '@/components/NotificationCenter';
+import { useNotifications } from '@/hooks/useNotifications';
+import { AREA_LABEL, type Area } from '@/lib/navigation';
+import { LanguageSwitcher, useT } from '@/lib/i18n';
 
 export interface TopBarSearch {
   placeholder: string;
@@ -31,9 +31,17 @@ interface TopBarProps {
 }
 
 /** What stays across the top once navigation lives in the sidebar: where you are, search, alerts, theme. */
-export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, drawerOpen, onOpenMenu, sidebarCollapsed, onToggleSidebar }) => {
+export const TopBar: React.FC<TopBarProps> = ({
+  area,
+  search,
+  currentLabel,
+  drawerOpen,
+  onOpenMenu,
+  sidebarCollapsed,
+  onToggleSidebar,
+}) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const notifications = useNotifications();
   const router = useRouter();
   const t = useT();
@@ -43,7 +51,7 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
       <button
         type="button"
         onClick={onOpenMenu}
-        aria-label={t("shell.openNavigation")}
+        aria-label={t('shell.openNavigation')}
         aria-expanded={drawerOpen}
         aria-controls="app-drawer"
         className="rounded-xl border border-line bg-surface p-2 text-ink-muted outline-none transition-colors hover:bg-raised hover:text-ink focus-visible:ring-2 focus-visible:ring-brand lg:hidden"
@@ -56,8 +64,8 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
       <button
         type="button"
         onClick={onToggleSidebar}
-        aria-label={sidebarCollapsed ? t("shell.expandSidebar") : t("shell.collapseSidebar")}
-        title={sidebarCollapsed ? t("shell.expandSidebar") : t("shell.collapseSidebar")}
+        aria-label={sidebarCollapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
+        title={sidebarCollapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
         aria-expanded={!sidebarCollapsed}
         aria-controls="app-sidebar"
         className="hidden rounded-xl border border-line bg-surface p-2 text-ink-muted outline-none transition-colors hover:bg-raised hover:text-ink focus-visible:ring-2 focus-visible:ring-brand lg:inline-flex"
@@ -65,7 +73,7 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
         {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
       </button>
 
-      <nav aria-label={t("shell.breadcrumb")} className="hidden items-center gap-1.5 text-sm lg:flex">
+      <nav aria-label={t('shell.breadcrumb')} className="hidden items-center gap-1.5 text-sm lg:flex">
         <span className="text-ink-muted">{t.dyn(`nav.area.${area}`, AREA_LABEL[area])}</span>
         <ChevronRight className="h-4 w-4 text-ink-subtle" aria-hidden="true" />
         <span aria-current="page" className="font-semibold text-ink">
@@ -100,17 +108,26 @@ export const TopBar: React.FC<TopBarProps> = ({ area, search, currentLabel, draw
           <button
             type="button"
             onClick={() => setShowNotifications(!showNotifications)}
-            aria-label={notifications.unreadCount > 0 ? t("shell.notificationsUnread", { count: notifications.unreadCount }) : t("shell.notifications")}
+            aria-label={
+              notifications.unreadCount > 0
+                ? t('shell.notificationsUnread', { count: notifications.unreadCount })
+                : t('shell.notifications')
+            }
             aria-expanded={showNotifications}
             className={clsx(
-              "relative rounded-xl border p-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand",
-              showNotifications ? "border-brand bg-brand text-on-brand shadow-md shadow-brand/20" : "border-line bg-surface text-ink-muted hover:bg-raised hover:text-ink",
+              'relative rounded-xl border p-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-brand',
+              showNotifications
+                ? 'border-brand bg-brand text-on-brand shadow-md shadow-brand/20'
+                : 'border-line bg-surface text-ink-muted hover:bg-raised hover:text-ink'
             )}
           >
             <Bell className="h-4 w-4" />
             {notifications.unreadCount > 0 && (
-              <span aria-hidden="true" className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-hover px-1 text-[9px] font-bold text-on-brand ring-2 ring-canvas">
-                {notifications.unreadCount > 9 ? "9+" : notifications.unreadCount}
+              <span
+                aria-hidden="true"
+                className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-hover px-1 text-[9px] font-bold text-on-brand ring-2 ring-canvas"
+              >
+                {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
               </span>
             )}
           </button>

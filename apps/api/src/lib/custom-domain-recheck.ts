@@ -40,23 +40,41 @@ export interface RecheckResult {
 }
 
 type Live = {
-  id: string; slug: string; name: string; customDomain: string; customDomainLiveToken: string;
-  customDomainFailingSince: Date | null; customDomainWarnedAt: Date | null;
+  id: string;
+  slug: string;
+  name: string;
+  customDomain: string;
+  customDomainLiveToken: string;
+  customDomainFailingSince: Date | null;
+  customDomainWarnedAt: Date | null;
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function mailAdmins(tenantId: string, subject: string, text: string) {
   const admins = await runWithTenant(tenantId, () =>
-    prisma.user.findMany({ where: { tenantId, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: 'ACTIVE', erasedAt: null }, select: { email: true } })
+    prisma.user.findMany({
+      where: { tenantId, role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] }, status: 'ACTIVE', erasedAt: null },
+      select: { email: true },
+    })
   );
   for (const a of admins) {
-    await sendMail({ to: a.email, subject, text }).catch((err) => logger.warn({ err, tenantId }, 'could not e-mail an administrator about the custom domain'));
+    await sendMail({ to: a.email, subject, text }).catch((err) =>
+      logger.warn({ err, tenantId }, 'could not e-mail an administrator about the custom domain')
+    );
   }
 }
 
 const audit = (t: Live, action: string, diffJson: Record<string, unknown>) =>
-  runWithTenant(t.id, () => logAuditEvent({ tenantId: t.id, action, resourceType: 'TENANT', resourceId: t.id, diffJson: { tenant: t.slug, live: t.customDomain, by: 'SYSTEM', ...diffJson } }));
+  runWithTenant(t.id, () =>
+    logAuditEvent({
+      tenantId: t.id,
+      action,
+      resourceType: 'TENANT',
+      resourceId: t.id,
+      diffJson: { tenant: t.slug, live: t.customDomain, by: 'SYSTEM', ...diffJson },
+    })
+  );
 
 const adminLink = (t: { slug: string; customDomain: string | null }) => `${tenantUrl(t)}/admin#admin-domain`;
 const days = (ms: number) => Math.max(1, Math.ceil(ms / DAY_MS));
@@ -70,7 +88,8 @@ async function recheckOne(t: Live, now: Date, result: RecheckResult) {
   if (check.ok) {
     result.ok++;
     const saved = await basePrisma.tenant.updateMany({ where: same, data: { ...clearedRecheck, customDomainRecheckedAt: now } });
-    if (saved.count && t.customDomainFailingSince) await audit(t, 'CUSTOM_DOMAIN_RECHECK_RECOVERED', { failingSince: t.customDomainFailingSince });
+    if (saved.count && t.customDomainFailingSince)
+      await audit(t, 'CUSTOM_DOMAIN_RECHECK_RECOVERED', { failingSince: t.customDomainFailingSince });
     return;
   }
   if (!check.definite) {
@@ -101,10 +120,16 @@ async function recheckOne(t: Live, now: Date, result: RecheckResult) {
     return;
   }
 
-  await basePrisma.tenant.updateMany({ where: same, data: { customDomainRecheckedAt: now, customDomainRecheckError: check.error, customDomainFailingSince: failingSince } });
+  await basePrisma.tenant.updateMany({
+    where: same,
+    data: { customDomainRecheckedAt: now, customDomainRecheckError: check.error, customDomainFailingSince: failingSince },
+  });
   if (t.customDomainWarnedAt) return;
   // Claimed before sending, so the warning goes out once whatever else runs.
-  const claimed = await basePrisma.tenant.updateMany({ where: { ...same, customDomainWarnedAt: null }, data: { customDomainWarnedAt: now } });
+  const claimed = await basePrisma.tenant.updateMany({
+    where: { ...same, customDomainWarnedAt: null },
+    data: { customDomainWarnedAt: now },
+  });
   if (!claimed.count) return;
   result.warned++;
   const left = days(removesAt.getTime() - now.getTime());
@@ -138,7 +163,15 @@ export async function recheckCustomDomains(opts: RecheckOptions = {}): Promise<R
         id: { notIn: [...seen] },
         OR: [{ customDomainRecheckedAt: null }, { customDomainRecheckedAt: { lte: dueBefore } }],
       },
-      select: { id: true, slug: true, name: true, customDomain: true, customDomainLiveToken: true, customDomainFailingSince: true, customDomainWarnedAt: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        customDomain: true,
+        customDomainLiveToken: true,
+        customDomainFailingSince: true,
+        customDomainWarnedAt: true,
+      },
       orderBy: [{ customDomainRecheckedAt: { sort: 'asc', nulls: 'first' } }, { id: 'asc' }],
       take: batchSize,
     })) as Live[];

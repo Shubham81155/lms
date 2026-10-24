@@ -1,20 +1,21 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { LifeBuoy, LogIn } from "lucide-react";
-import { api } from "@/lib/api";
-import { useAction, useApiData } from "@/hooks/useApiData";
+import React, { useState } from 'react';
+import { LifeBuoy, LogIn } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAction, useApiData } from '@/hooks/useApiData';
 
 // The platform operator's side of support access: the passes organisations have granted and that are still in
 // force. "Enter" asks the API for a one-time link and follows it to the organisation's own address, where it
 // becomes a support session (read-only or full, as the organisation chose). Organisations can revoke at any time.
 
-const ghost = "inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50";
+const ghost =
+  'inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
 
 export interface OperatorSupportPass {
   id: string;
   organization: { id: string; slug: string; name: string; status: string };
-  scope: "READ_ONLY" | "FULL";
+  scope: 'READ_ONLY' | 'FULL';
   reason: string;
   grantedByEmail: string;
   createdAt: string;
@@ -23,10 +24,10 @@ export interface OperatorSupportPass {
   lastEnteredByEmail: string | null;
 }
 
-const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 export const SupportPassesPanel: React.FC = () => {
-  const { data, isLoading, error, reload } = useApiData<{ data: OperatorSupportPass[] }>("/api/v1/operator/support-passes");
+  const { data, isLoading, error, reload } = useApiData<{ data: OperatorSupportPass[] }>('/api/v1/operator/support-passes');
   const { busy, error: actionError, run } = useAction();
   const [entering, setEntering] = useState<string | null>(null);
   const passes = data?.data ?? [];
@@ -51,15 +52,19 @@ export const SupportPassesPanel: React.FC = () => {
         </button>
       </div>
       <p className="text-xs text-ink-muted">
-        Organisations that have let support in. Entering opens the organisation at its own address in this tab; everything you do there
-        is in its audit trail.
+        Organisations that have let support in. Entering opens the organisation at its own address in this tab; everything you do there is
+        in its audit trail.
       </p>
-      {(error || actionError) && <p role="alert" className="text-xs text-danger">{error || actionError}</p>}
+      {(error || actionError) && (
+        <p role="alert" className="text-xs text-danger">
+          {error || actionError}
+        </p>
+      )}
       {isLoading && !data && <p className="text-xs text-ink-subtle">Loading…</p>}
       {data && passes.length === 0 && <p className="text-xs text-ink-muted">No organisation has granted support access right now.</p>}
       <ul className="divide-y divide-line">
         {passes.map((p) => {
-          const blocked = p.organization.status === "SUSPENDED" || p.organization.status === "ARCHIVED";
+          const blocked = p.organization.status === 'SUSPENDED' || p.organization.status === 'ARCHIVED';
           return (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5 text-xs">
               <div className="min-w-0 space-y-0.5">
@@ -67,22 +72,22 @@ export const SupportPassesPanel: React.FC = () => {
                   <span className="font-semibold text-ink">{p.organization.name}</span>
                   <span
                     className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-                      p.scope === "FULL" ? "border-danger/40 bg-danger/10 text-danger" : "border-line bg-canvas text-ink-muted"
+                      p.scope === 'FULL' ? 'border-danger/40 bg-danger/10 text-danger' : 'border-line bg-canvas text-ink-muted'
                     }`}
                   >
-                    {p.scope === "FULL" ? "Full access" : "Read-only"}
+                    {p.scope === 'FULL' ? 'Full access' : 'Read-only'}
                   </span>
                   {blocked && <span className="text-[10px] font-semibold text-danger">{p.organization.status.toLowerCase()}</span>}
                 </div>
                 <div className="text-ink-muted">{p.reason}</div>
                 <div className="text-[11px] text-ink-subtle">
                   Granted by {p.grantedByEmail} · ends {when(p.expiresAt)}
-                  {p.lastEnteredAt ? ` · last entered by ${p.lastEnteredByEmail}, ${when(p.lastEnteredAt)}` : ""}
+                  {p.lastEnteredAt ? ` · last entered by ${p.lastEnteredByEmail}, ${when(p.lastEnteredAt)}` : ''}
                 </div>
               </div>
               <button type="button" className={ghost} disabled={busy || blocked} onClick={() => enter(p.id)}>
                 <LogIn className="h-3.5 w-3.5" aria-hidden="true" />
-                {entering === p.id ? "Entering…" : "Enter"}
+                {entering === p.id ? 'Entering…' : 'Enter'}
               </button>
             </li>
           );

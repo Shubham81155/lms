@@ -17,11 +17,17 @@ describe('videoSource', () => {
 
   it('turns Vimeo pages into the Vimeo player', () => {
     expect(videoSource('https://vimeo.com/76979871')).toEqual({ kind: 'vimeo', src: 'https://player.vimeo.com/video/76979871' });
-    expect(videoSource('https://player.vimeo.com/video/76979871?h=abc')).toEqual({ kind: 'vimeo', src: 'https://player.vimeo.com/video/76979871' });
+    expect(videoSource('https://player.vimeo.com/video/76979871?h=abc')).toEqual({
+      kind: 'vimeo',
+      src: 'https://player.vimeo.com/video/76979871',
+    });
   });
 
   it('plays media files directly and links everything else', () => {
-    expect(videoSource('https://cdn.example.edu/lectures/week1.mp4')).toEqual({ kind: 'file', src: 'https://cdn.example.edu/lectures/week1.mp4' });
+    expect(videoSource('https://cdn.example.edu/lectures/week1.mp4')).toEqual({
+      kind: 'file',
+      src: 'https://cdn.example.edu/lectures/week1.mp4',
+    });
     expect(videoSource('https://cdn.example.edu/a.webm?token=1')?.kind).toBe('file');
     expect(videoSource('https://stream.example.edu/watch/123')).toEqual({ kind: 'link', src: 'https://stream.example.edu/watch/123' });
     expect(videoSource('https://www.youtube.com/watch?v=')?.kind).toBe('link');

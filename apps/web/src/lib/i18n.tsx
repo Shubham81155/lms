@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   DEFAULT_LOCALE,
   LOCALES,
@@ -16,7 +16,7 @@ import {
   type Locale,
   type MessageKey,
   type Vars,
-} from "@/lib/i18n-core";
+} from '@/lib/i18n-core';
 
 // Language of the interface. The layout picks the first language on the server (cookie, else the browser's
 // Accept-Language) and passes it in, so server and browser render the same text. A person's choice is kept in a
@@ -93,7 +93,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   const { locale, setLocale, t } = useLocale();
   return (
     <label className={className}>
-      <span className="sr-only">{t("language.label")}</span>
+      <span className="sr-only">{t('language.label')}</span>
       <select
         value={locale}
         onChange={(e) => isLocale(e.target.value) && setLocale(e.target.value)}
@@ -113,7 +113,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
 export function RichText({ text }: { text: string }) {
   return (
     <>
-      {text.split("**").map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : <React.Fragment key={i}>{part}</React.Fragment>))}
+      {text.split('**').map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : <React.Fragment key={i}>{part}</React.Fragment>))}
     </>
   );
 }

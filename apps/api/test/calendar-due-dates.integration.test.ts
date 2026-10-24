@@ -20,26 +20,58 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('teacher', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 'outsider']) await user(s, 'STUDENT');
-  for (const c of ['c1', 'c2']) await admin.course.create({ data: { id: c, tenantId: 't-h', code: c.toUpperCase(), title: c, status: 'PUBLISHED' } });
+  for (const c of ['c1', 'c2'])
+    await admin.course.create({ data: { id: c, tenantId: 't-h', code: c.toUpperCase(), title: c, status: 'PUBLISHED' } });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  for (const s of ['s1', 's2']) await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
+  for (const s of ['s1', 's2'])
+    await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
   await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c2', userId: 'outsider', status: 'IN_PROGRESS' } });
 
-  const question = { questionText: '2 + 2?', questionType: 'MULTIPLE_CHOICE' as const, points: 1, optionsJson: [{ id: 'o4', text: '4', isCorrect: true }] };
-  await admin.quiz.create({ data: { id: 'q1', tenantId: 't-h', courseId: 'c1', title: 'Midterm', dueAt: at(3 * DAY), questions: { create: [question] } } });
+  const question = {
+    questionText: '2 + 2?',
+    questionType: 'MULTIPLE_CHOICE' as const,
+    points: 1,
+    optionsJson: [{ id: 'o4', text: '4', isCorrect: true }],
+  };
+  await admin.quiz.create({
+    data: { id: 'q1', tenantId: 't-h', courseId: 'c1', title: 'Midterm', dueAt: at(3 * DAY), questions: { create: [question] } },
+  });
   // No questions yet: not ready, so not on the calendar.
   await admin.quiz.create({ data: { id: 'q-empty', tenantId: 't-h', courseId: 'c1', title: 'Draft quiz', dueAt: at(3 * DAY) } });
-  await admin.quiz.create({ data: { id: 'q-undated', tenantId: 't-h', courseId: 'c1', title: 'Practice', questions: { create: [question] } } });
-  await admin.assignment.create({ data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', dueDate: at(DAY) } });
-  await admin.assignment.create({ data: { id: 'a-far', tenantId: 't-h', courseId: 'c1', title: 'Project', instructions: 'Build', dueDate: at(60 * DAY) } });
-  await admin.assignment.create({ data: { id: 'a-other', tenantId: 't-h', courseId: 'c2', title: 'Other course', instructions: 'Write', dueDate: at(DAY) } });
+  await admin.quiz.create({
+    data: { id: 'q-undated', tenantId: 't-h', courseId: 'c1', title: 'Practice', questions: { create: [question] } },
+  });
+  await admin.assignment.create({
+    data: { id: 'a1', tenantId: 't-h', courseId: 'c1', title: 'Essay', instructions: 'Write', dueDate: at(DAY) },
+  });
+  await admin.assignment.create({
+    data: { id: 'a-far', tenantId: 't-h', courseId: 'c1', title: 'Project', instructions: 'Build', dueDate: at(60 * DAY) },
+  });
+  await admin.assignment.create({
+    data: { id: 'a-other', tenantId: 't-h', courseId: 'c2', title: 'Other course', instructions: 'Write', dueDate: at(DAY) },
+  });
 
   // s2 has a week's extension on the essay and has already taken the midterm (its only attempt).
-  await admin.deadlineExtension.create({ data: { tenantId: 't-h', userId: 's2', assignmentId: 'a1', dueAt: at(7 * DAY), grantedById: 'teacher' } });
-  await admin.quizSubmission.create({ data: { quizId: 'q1', userId: 's2', score: 1, maxScore: 1, passed: true, submittedAt: new Date(), answersJson: {} } });
+  await admin.deadlineExtension.create({
+    data: { tenantId: 't-h', userId: 's2', assignmentId: 'a1', dueAt: at(7 * DAY), grantedById: 'teacher' },
+  });
+  await admin.quizSubmission.create({
+    data: { quizId: 'q1', userId: 's2', score: 1, maxScore: 1, passed: true, submittedAt: new Date(), answersJson: {} },
+  });
 
   process.env.DATABASE_URL = db.appUrl;
   app = (await import('../src/server.js')).app;
@@ -52,7 +84,10 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -67,7 +102,16 @@ describe('due dates on the calendar', () => {
   it('lists dated, ready quizzes and assignments from the learner’s courses, soonest first', async () => {
     const { data, nextDeadline } = await calendar('s1');
     expect(data.map((e) => e.id)).toEqual(['assignment-a1', 'quiz-q1', 'assignment-a-far']);
-    expect(data[0]).toMatchObject({ source: 'ASSIGNMENT', itemId: 'a1', courseId: 'c1', category: 'DEADLINE', title: 'C1: Essay due', createdById: null, extended: false, completed: false });
+    expect(data[0]).toMatchObject({
+      source: 'ASSIGNMENT',
+      itemId: 'a1',
+      courseId: 'c1',
+      category: 'DEADLINE',
+      title: 'C1: Essay due',
+      createdById: null,
+      extended: false,
+      completed: false,
+    });
     expect(data[0].startsAt).toBe(data[0].endsAt);
     expect(data[1]).toMatchObject({ source: 'QUIZ', category: 'EXAM', title: 'C1: Midterm due' });
     expect(nextDeadline.id).toBe('assignment-a1');

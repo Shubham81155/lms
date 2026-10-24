@@ -28,11 +28,11 @@ const PASSWORD = 'CorrectHorse1!';
 const TENANT = { id: 'ten_1', status: 'ACTIVE' };
 
 const tokenFor = (over: Record<string, unknown> = {}, secret = SECRET, opts: jwt.SignOptions = {}) =>
-  jwt.sign(
-    { id: 'u1', role: 'STUDENT', email: 'a@x.edu', tenantId: 'ten_1', ...over },
-    secret,
-    { algorithm: 'HS256', expiresIn: '1h', ...opts }
-  );
+  jwt.sign({ id: 'u1', role: 'STUDENT', email: 'a@x.edu', tenantId: 'ten_1', ...over }, secret, {
+    algorithm: 'HS256',
+    expiresIn: '1h',
+    ...opts,
+  });
 
 async function userRecord(over: Record<string, unknown> = {}) {
   return {
@@ -65,19 +65,13 @@ beforeEach(() => {
 });
 
 describe('authentication cannot be bypassed', () => {
-  it.each([
-    ['/api/v1/courses'],
-    ['/api/v1/admin/stats'],
-    ['/api/v1/users'],
-    ['/api/v1/auth/me'],
-  ])('rejects forged x-user-* headers on %s', async (path) => {
-    const res = await request(app)
-      .get(path)
-      .set('x-user-role', 'SUPER_ADMIN')
-      .set('x-user-id', 'anyone')
-      .set('x-tenant-id', 'ten_1');
-    expect(res.status).toBe(401);
-  });
+  it.each([['/api/v1/courses'], ['/api/v1/admin/stats'], ['/api/v1/users'], ['/api/v1/auth/me']])(
+    'rejects forged x-user-* headers on %s',
+    async (path) => {
+      const res = await request(app).get(path).set('x-user-role', 'SUPER_ADMIN').set('x-user-id', 'anyone').set('x-tenant-id', 'ten_1');
+      expect(res.status).toBe(401);
+    }
+  );
 
   it('rejects a token signed with a different secret', async () => {
     const forged = tokenFor({ role: 'SUPER_ADMIN' }, 'attacker-secret-attacker-secret-attacker');
@@ -88,7 +82,10 @@ describe('authentication cannot be bypassed', () => {
   it('rejects an unsigned (alg=none) token', async () => {
     const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
     const none = `${b64({ alg: 'none', typ: 'JWT' })}.${b64({
-      id: 'u1', role: 'SUPER_ADMIN', email: 'a@x.edu', tenantId: 'ten_1',
+      id: 'u1',
+      role: 'SUPER_ADMIN',
+      email: 'a@x.edu',
+      tenantId: 'ten_1',
     })}.`;
     const res = await request(app).get('/api/v1/admin/stats').set('Authorization', `Bearer ${none}`);
     expect(res.status).toBe(401);
@@ -112,7 +109,9 @@ describe('authentication cannot be bypassed', () => {
 
     it('accepts a token whose version still matches', async () => {
       session({ tokenVersion: 3 });
-      const res = await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${tokenFor({ tv: 3 })}`);
+      const res = await request(app)
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${tokenFor({ tv: 3 })}`);
       expect(res.status).not.toBe(401);
     });
 
@@ -132,7 +131,9 @@ describe('authentication cannot be bypassed', () => {
 
     it('uses the role stored in the database, not the one in the token', async () => {
       session({ role: 'STUDENT' });
-      const res = await request(app).get('/api/v1/admin/stats').set('Authorization', `Bearer ${tokenFor({ role: 'SUPER_ADMIN' })}`);
+      const res = await request(app)
+        .get('/api/v1/admin/stats')
+        .set('Authorization', `Bearer ${tokenFor({ role: 'SUPER_ADMIN' })}`);
       expect(res.status).toBe(403);
     });
 
@@ -152,18 +153,13 @@ describe('authentication cannot be bypassed', () => {
 
   it('enforces roles: a student token cannot reach admin routes', async () => {
     fake.user.findFirst.mockResolvedValue({ role: 'STUDENT', status: 'ACTIVE', tokenVersion: 0, tenant: { status: 'ACTIVE' } });
-    const res = await request(app)
-      .get('/api/v1/admin/stats')
-      .set('Authorization', `Bearer ${tokenFor()}`);
+    const res = await request(app).get('/api/v1/admin/stats').set('Authorization', `Bearer ${tokenFor()}`);
     expect(res.status).toBe(403);
   });
 
   it('takes the tenant from the token, ignoring the x-tenant-id header', async () => {
     fake.user.findFirst.mockResolvedValue(await userRecord());
-    await request(app)
-      .get('/api/v1/auth/me')
-      .set('Authorization', `Bearer ${tokenFor()}`)
-      .set('x-tenant-id', 'some-other-tenant');
+    await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${tokenFor()}`).set('x-tenant-id', 'some-other-tenant');
     expect(fake.user.findFirst.mock.calls.map((c: any) => c[0].where).find((w: any) => w.tenantId)).toMatchObject({ tenantId: 'ten_1' });
   });
 
@@ -216,9 +212,7 @@ describe('POST /auth/login', () => {
   it('resolves the tenant through the database, not by trusting the hint as an id', async () => {
     fake.user.findFirst.mockResolvedValue(await userRecord());
     await login({ email: 'a@x.edu', password: PASSWORD });
-    expect(fake.tenant.findFirst.mock.calls[0][0].where.OR).toEqual(
-      expect.arrayContaining([{ slug: 'harvard' }])
-    );
+    expect(fake.tenant.findFirst.mock.calls[0][0].where.OR).toEqual(expect.arrayContaining([{ slug: 'harvard' }]));
     expect(fake.user.findFirst.mock.calls[0][0].where.tenantId).toBe('ten_1');
   });
 
@@ -236,10 +230,7 @@ describe('POST /auth/login', () => {
 
   it('does not treat an IP address host as a tenant subdomain', async () => {
     fake.tenant.findFirst.mockResolvedValue(null);
-    await request(app)
-      .post('/api/v1/auth/login')
-      .set('Host', '10.0.0.5:4000')
-      .send({ email: 'a@x.edu', password: PASSWORD });
+    await request(app).post('/api/v1/auth/login').set('Host', '10.0.0.5:4000').send({ email: 'a@x.edu', password: PASSWORD });
     const hints = fake.tenant.findFirst.mock.calls.map((c: any) => c[0].where.OR[0].id);
     expect(hints).toEqual(['harvard']);
   });
@@ -284,18 +275,14 @@ describe('POST /auth/login', () => {
   });
 
   it('refuses a locked account even with the correct password', async () => {
-    fake.user.findFirst.mockResolvedValue(
-      await userRecord({ lockedUntil: new Date(Date.now() + 60_000) })
-    );
+    fake.user.findFirst.mockResolvedValue(await userRecord({ lockedUntil: new Date(Date.now() + 60_000) }));
     const res = await login({ email: 'a@x.edu', password: PASSWORD });
     expect(res.status).toBe(423);
     expect(res.headers['set-cookie']).toBeUndefined();
   });
 
   it('allows sign-in again after the lock expires and clears it', async () => {
-    fake.user.findFirst.mockResolvedValue(
-      await userRecord({ lockedUntil: new Date(Date.now() - 1000), failedLoginCount: 0 })
-    );
+    fake.user.findFirst.mockResolvedValue(await userRecord({ lockedUntil: new Date(Date.now() - 1000), failedLoginCount: 0 }));
     const res = await login({ email: 'a@x.edu', password: PASSWORD });
     expect(res.status).toBe(200);
     expect(fake.user.update.mock.calls[0][0].data).toMatchObject({ lockedUntil: null, failedLoginCount: 0 });
@@ -312,9 +299,7 @@ describe('POST /auth/login', () => {
 
   it('does not look an e-mail up across organisations: one that exists only elsewhere gets the generic 401', async () => {
     // The user exists in another organisation, but the tenant-scoped lookup finds nobody.
-    fake.user.findFirst.mockImplementation(async (args: any) =>
-      args?.where?.tenantId === 'ten_other' ? await userRecord() : null
-    );
+    fake.user.findFirst.mockImplementation(async (args: any) => (args?.where?.tenantId === 'ten_other' ? await userRecord() : null));
     const unknown = await login({ email: 'nobody@x.edu', password: PASSWORD });
     const elsewhere = await login({ email: 'a@x.edu', password: PASSWORD });
     expect(elsewhere.status).toBe(401);
@@ -467,7 +452,9 @@ describe('email verification', () => {
       usedAt: null,
       expiresAt: new Date(Date.now() + 60_000),
     });
-    const res = await request(app).post('/api/v1/auth/verify-email').send({ token: 'x'.repeat(43) });
+    const res = await request(app)
+      .post('/api/v1/auth/verify-email')
+      .send({ token: 'x'.repeat(43) });
     expect(res.status).toBe(200);
     expect(fake.user.update.mock.calls[0][0].data).toEqual({ emailVerified: true });
   });
@@ -479,7 +466,9 @@ describe('email verification', () => {
       usedAt: null,
       expiresAt: new Date(Date.now() - 1000),
     });
-    const res = await request(app).post('/api/v1/auth/verify-email').send({ token: 'x'.repeat(43) });
+    const res = await request(app)
+      .post('/api/v1/auth/verify-email')
+      .send({ token: 'x'.repeat(43) });
     expect(res.status).toBe(400);
   });
 });
@@ -492,7 +481,10 @@ describe('health endpoints', () => {
   });
 
   it('reports ready only when the database answers', async () => {
-    (fake as any).$queryRaw = vi.fn().mockResolvedValueOnce([{ '?column?': 1 }]).mockRejectedValueOnce(new Error('down'));
+    (fake as any).$queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([{ '?column?': 1 }])
+      .mockRejectedValueOnce(new Error('down'));
     expect((await request(app).get('/ready')).status).toBe(200);
     expect((await request(app).get('/ready')).status).toBe(503);
   });
@@ -511,8 +503,13 @@ describe('CORS', () => {
 describe('GET /tenant/config', () => {
   it('is public and backed by the database', async () => {
     fake.tenant.findUnique.mockResolvedValue({
-      id: 'ten_1', slug: 'harvard', name: 'Harvard University',
-      logoUrl: null, faviconUrl: null, primaryColor: '#a51c30', secondaryColor: '#111111',
+      id: 'ten_1',
+      slug: 'harvard',
+      name: 'Harvard University',
+      logoUrl: null,
+      faviconUrl: null,
+      primaryColor: '#a51c30',
+      secondaryColor: '#111111',
     });
     const res = await request(app).get('/api/v1/tenant/config');
     expect(res.status).toBe(200);

@@ -1,4 +1,4 @@
-import { DeepLink } from "@/components/DeepLink";
+import { DeepLink } from '@/components/DeepLink';
 
 export default function Page() {
   return <DeepLink />;

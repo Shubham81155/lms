@@ -42,7 +42,14 @@ async function seedTenant(id: string, slug: string) {
   await mk('student', 'STUDENT');
   await mk('unverified', 'STUDENT', { emailVerified: false });
   const course = await admin.course.create({
-    data: { id: COURSE_ID[slug as 'harvard' | 'mit'], tenantId: id, code: 'CS-101', title: `${slug} course`, status: 'PUBLISHED', allowSelfEnroll: true },
+    data: {
+      id: COURSE_ID[slug as 'harvard' | 'mit'],
+      tenantId: id,
+      code: 'CS-101',
+      title: `${slug} course`,
+      status: 'PUBLISHED',
+      allowSelfEnroll: true,
+    },
   });
   await admin.courseInstructor.create({ data: { courseId: course.id, userId: `${slug}-teacher`, isPrimary: true } });
   await admin.enrollment.create({ data: { tenantId: id, courseId: course.id, userId: `${slug}-student` } });
@@ -184,10 +191,7 @@ describe('lockout against the real database', () => {
 describe('password reset, end to end', () => {
   it('emails a link, sets a new password once, and the old one stops working', async () => {
     mails.length = 0;
-    const res = await request(app)
-      .post('/api/v1/auth/forgot-password')
-      .set('x-tenant-id', 'harvard')
-      .send({ email: 'student@x.edu' });
+    const res = await request(app).post('/api/v1/auth/forgot-password').set('x-tenant-id', 'harvard').send({ email: 'student@x.edu' });
     expect(res.status).toBe(200);
     expect(mails).toHaveLength(1);
     expect(mails[0].to).toBe('student@x.edu');
@@ -212,10 +216,7 @@ describe('password reset, end to end', () => {
 
   it('sends nothing for an unknown email, with the same response', async () => {
     mails.length = 0;
-    const res = await request(app)
-      .post('/api/v1/auth/forgot-password')
-      .set('x-tenant-id', 'harvard')
-      .send({ email: 'nobody@x.edu' });
+    const res = await request(app).post('/api/v1/auth/forgot-password').set('x-tenant-id', 'harvard').send({ email: 'nobody@x.edu' });
     expect(res.status).toBe(200);
     expect(mails).toHaveLength(0);
   });

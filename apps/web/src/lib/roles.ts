@@ -1,21 +1,14 @@
-export type Role =
-  | "SUPER_ADMIN"
-  | "TENANT_ADMIN"
-  | "INSTRUCTOR"
-  | "TEACHING_ASSISTANT"
-  | "STUDENT"
-  | "PARENT_GUARDIAN"
-  | "AUDITOR";
+export type Role = 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'INSTRUCTOR' | 'TEACHING_ASSISTANT' | 'STUDENT' | 'PARENT_GUARDIAN' | 'AUDITOR';
 
 const AREAS: { prefix: string; roles: Role[] }[] = [
-  { prefix: "/admin", roles: ["TENANT_ADMIN", "SUPER_ADMIN"] },
-  { prefix: "/teacher", roles: ["INSTRUCTOR", "TEACHING_ASSISTANT"] },
-  { prefix: "/audit", roles: ["AUDITOR"] },
-  { prefix: "/student", roles: ["STUDENT", "PARENT_GUARDIAN"] },
+  { prefix: '/admin', roles: ['TENANT_ADMIN', 'SUPER_ADMIN'] },
+  { prefix: '/teacher', roles: ['INSTRUCTOR', 'TEACHING_ASSISTANT'] },
+  { prefix: '/audit', roles: ['AUDITOR'] },
+  { prefix: '/student', roles: ['STUDENT', 'PARENT_GUARDIAN'] },
 ];
 
 /** The platform console. Only platform operators use it, and they use nothing else. */
-export const PLATFORM_HOME = "/platform";
+export const PLATFORM_HOME = '/platform';
 
 /**
  * Who is looking: the role inside their organisation, and whether that organisation is the platform team.
@@ -32,7 +25,7 @@ const inArea = (pathname: string, prefix: string) => pathname === prefix || path
 /** Landing page for a role inside an organisation. */
 export function routeForRole(role: string): string {
   const area = AREAS.find((a) => a.roles.includes(role as Role));
-  return area ? area.prefix : "/student";
+  return area ? area.prefix : '/student';
 }
 
 /** Landing page for a signed-in person. */
@@ -54,4 +47,18 @@ export function canView(viewer: Viewer, pathname: string): boolean {
 }
 
 /** Pages where a signed-out visitor is welcome. */
-export const PUBLIC_PATHS = ["/", "/login", "/register", "/find-organisation", "/forgot-password", "/reset-password", "/verify-email", "/unsubscribe", "/privacy", "/guardian-consent", "/guardian-consent/withdraw", "/verify", "/support/enter"];
+export const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/register',
+  '/find-organisation',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/unsubscribe',
+  '/privacy',
+  '/guardian-consent',
+  '/guardian-consent/withdraw',
+  '/verify',
+  '/support/enter',
+];

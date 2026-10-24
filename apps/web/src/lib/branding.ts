@@ -7,7 +7,7 @@
 export type Rgb = [number, number, number];
 
 export function hexToRgb(hex: string | null | undefined): Rgb | null {
-  const m = /^#?([0-9a-f]{6})$/i.exec((hex ?? "").trim());
+  const m = /^#?([0-9a-f]{6})$/i.exec((hex ?? '').trim());
   if (!m) return null;
   const n = parseInt(m[1], 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -32,14 +32,14 @@ export function shade([r, g, b]: Rgb, amount: number): Rgb {
 }
 
 const WHITE: Rgb = [255, 255, 255];
-export const CANVAS: Record<"dark" | "light", Rgb> = { dark: [8, 11, 24], light: [236, 238, 252] };
+export const CANVAS: Record<'dark' | 'light', Rgb> = { dark: [8, 11, 24], light: [236, 238, 252] };
 
 /** The brand and hover colours as "r g b" token values, or null to keep the default palette. */
-export function brandTokens(hex: string | null | undefined, theme: "dark" | "light"): { brand: string; hover: string } | null {
+export function brandTokens(hex: string | null | undefined, theme: 'dark' | 'light'): { brand: string; hover: string } | null {
   const rgb = hexToRgb(hex);
   if (!rgb) return null;
   if (contrast(rgb, WHITE) < 4.5 || contrast(rgb, CANVAS[theme]) < 2) return null;
-  const hover = theme === "dark" ? shade(rgb, 0.12) : shade(rgb, -0.12);
+  const hover = theme === 'dark' ? shade(rgb, 0.12) : shade(rgb, -0.12);
   const hoverOk = contrast(hover, WHITE) >= 4.5 ? hover : shade(rgb, -0.12);
-  return { brand: rgb.join(" "), hover: hoverOk.join(" ") };
+  return { brand: rgb.join(' '), hover: hoverOk.join(' ') };
 }

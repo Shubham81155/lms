@@ -63,17 +63,19 @@ const TABLE = {
   },
   'POST /api/v1/support/enter': {
     summary:
-      "Public: exchange the one-time handoff token of /support/enter?token= (valid once, for two minutes) for a support session in the pass's organisation, as its \"Platform support\" account. Sets the session cookie. 410 when the link was used, expired or its pass is no longer in force; 403 when the organisation is suspended. Audited.",
+      'Public: exchange the one-time handoff token of /support/enter?token= (valid once, for two minutes) for a support session in the pass\'s organisation, as its "Platform support" account. Sets the session cookie. 410 when the link was used, expired or its pass is no longer in force; 403 when the organisation is suspended. Audited.',
     body: enterSchema,
     response: ok(z.object({ data: SupportSession })),
     errors: [400, 403, 410, 429],
   },
   'GET /api/v1/support/session': {
-    summary: 'The current support session (scope, operator e-mail, when it ends), or null for an ordinary session. A READ_ONLY support session gets 403 with code SUPPORT_READ_ONLY for any change.',
+    summary:
+      'The current support session (scope, operator e-mail, when it ends), or null for an ordinary session. A READ_ONLY support session gets 403 with code SUPPORT_READ_ONLY for any change.',
     response: ok(z.object({ data: SupportSession.nullable() })),
   },
   'POST /api/v1/support/exit': {
-    summary: "End the support session (the pass stays in force until it expires or is revoked). Answers where to go next: the platform console. 409 for an ordinary session. Audited.",
+    summary:
+      'End the support session (the pass stays in force until it expires or is revoked). Answers where to go next: the platform console. 409 for an ordinary session. Audited.',
     response: ok(z.object({ data: z.object({ redirect: z.string() }) })),
     errors: [409],
   },

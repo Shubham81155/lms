@@ -24,7 +24,12 @@ import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 
 const router = Router();
 
-const actorOf = (req: Request): Actor => ({ tenantId: tenantIdOf(req), userId: req.user!.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+const actorOf = (req: Request): Actor => ({
+  tenantId: tenantIdOf(req),
+  userId: req.user!.id,
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
+});
 
 router.use(authenticateJWT, requireRole('TENANT_ADMIN', 'SUPER_ADMIN'));
 
@@ -107,7 +112,11 @@ billingWebhookRouter.post(
   route('Failed to handle the webhook', async (req, res) => {
     const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
     const eventId = req.headers['x-razorpay-event-id'];
-    const result = await handleWebhook(raw, String(req.headers['x-razorpay-signature'] ?? ''), typeof eventId === 'string' ? eventId : undefined);
+    const result = await handleWebhook(
+      raw,
+      String(req.headers['x-razorpay-signature'] ?? ''),
+      typeof eventId === 'string' ? eventId : undefined
+    );
     return res.json({ data: result });
   })
 );

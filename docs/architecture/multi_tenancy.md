@@ -7,10 +7,10 @@ implemented.
 
 ## 1. Where the tenant comes from
 
-| Request | Tenant source |
-|---|---|
-| Authenticated | The `tenantId` claim of the verified JWT. **Never** a header, host or body field. |
-| Login, password reset, `GET /tenant/config` | A *hint*, resolved to a tenant row in the database. |
+| Request                                     | Tenant source                                                                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------- |
+| Authenticated                               | The `tenantId` claim of the verified JWT. **Never** a header, host or body field. |
+| Login, password reset, `GET /tenant/config` | A _hint_, resolved to a tenant row in the database.                               |
 
 Hints are tried in order and may each be a tenant id, slug or custom domain:
 
@@ -22,7 +22,7 @@ Hints are tried in order and may each be a tenant id, slug or custom domain:
 `X-Forwarded-Host` replaces the host only when `TRUST_PROXY` > 0. Suspended and archived tenants
 never resolve. After resolution only the tenant `id` is used.
 
-Hints affect *which tenant a user signs in to*, nothing else: the password must still match that
+Hints affect _which tenant a user signs in to_, nothing else: the password must still match that
 tenant's account. Emails are unique per tenant, so the same address can exist in several tenants.
 
 ## 2. How isolation is enforced
@@ -36,17 +36,17 @@ flowchart LR
     Ext --> PG[("PostgreSQL RLS policies")]
 ```
 
-* `packages/database/src/index.ts` exposes `runWithTenant()`, a Prisma client extension that wraps
+- `packages/database/src/index.ts` exposes `runWithTenant()`, a Prisma client extension that wraps
   every query in a transaction that first sets `app.current_tenant_id` (transaction-local, so it
   cannot leak across pooled connections), and `runInTenantTransaction()` for multi-statement work.
-* Migration `*_row_level_security` enables **and forces** RLS:
-  * tables with a `tenantId` column: `User`, `Campus`, `Course`, `Enrollment`, `Quiz`,
+- Migration `*_row_level_security` enables **and forces** RLS:
+  - tables with a `tenantId` column: `User`, `Campus`, `Course`, `Enrollment`, `Quiz`,
     `Assignment`, `AuditLog`, `LtiDeployment`;
-  * child tables (`Department`, `CourseInstructor`, `Module`, `Lesson`, `Certificate`,
+  - child tables (`Department`, `CourseInstructor`, `Module`, `Lesson`, `Certificate`,
     `QuizQuestion`, `QuizSubmission`, `ProctoringLog`, `AssignmentSubmission`, `UserGuardian`):
     visible only if their parent is, so isolation chains down to the tenant root.
-* **Fail closed:** with no tenant set, tenant tables return no rows and reject writes.
-* `WITH CHECK` means a tenant cannot insert rows for another tenant or attach children to another
+- **Fail closed:** with no tenant set, tenant tables return no rows and reject writes.
+- `WITH CHECK` means a tenant cannot insert rows for another tenant or attach children to another
   tenant's parent.
 
 Deliberately outside RLS: `Tenant` (must be readable to resolve a tenant at login) and the
@@ -61,10 +61,10 @@ inside the tenant first); composite foreign keys are a possible hardening.
 
 RLS is **silently skipped** for superusers and roles with `BYPASSRLS`. Use two roles:
 
-| Role | Used for | Setting |
-|---|---|---|
-| `lms_app` | the running API | `DATABASE_URL`; `NOSUPERUSER NOBYPASSRLS`, not the table owner |
-| a privileged role | migrations and the dev seed | `DIRECT_URL` |
+| Role              | Used for                    | Setting                                                        |
+| ----------------- | --------------------------- | -------------------------------------------------------------- |
+| `lms_app`         | the running API             | `DATABASE_URL`; `NOSUPERUSER NOBYPASSRLS`, not the table owner |
+| a privileged role | migrations and the dev seed | `DIRECT_URL`                                                   |
 
 At startup the API checks the role it connected with. In production it exits if RLS would be
 bypassed; in development it logs a warning.
@@ -85,6 +85,7 @@ npm run db:seed -w @enterprise-lms/database
 Create `lms_app` **before** `db:deploy` so the migration can grant it privileges.
 
 ### Existing database created with `prisma db push`
+
 It has no migration history and lacks the new columns (`Quiz.tenantId`, `Assignment.tenantId`,
 the token tables). For a disposable dev database, drop and recreate it, then run the steps above
 (`prisma migrate reset` also does this and **erases all data**). If it holds data you need, back it

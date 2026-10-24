@@ -28,7 +28,19 @@ async function storeFile(tenantId: string, id: string, courseId: string, filenam
   const temp = path.join(os.tmpdir(), `offboarding-test-${id}`);
   fs.writeFileSync(temp, body);
   await storage().putFile(key, temp, 'text/plain');
-  await admin.storedFile.create({ data: { id, tenantId, courseId, purpose: 'LESSON_MEDIA', storageKey: key, filename, contentType: 'text/plain', sizeBytes: body.length, sha256: 'x' } });
+  await admin.storedFile.create({
+    data: {
+      id,
+      tenantId,
+      courseId,
+      purpose: 'LESSON_MEDIA',
+      storageKey: key,
+      filename,
+      contentType: 'text/plain',
+      sizeBytes: body.length,
+      sha256: 'x',
+    },
+  });
   return key;
 }
 
@@ -39,7 +51,18 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-y', slug: 'yale', name: 'Yale', tier: 'ENTERPRISE' } });
   const user = (id: string, tenantId: string, role: any) =>
-    admin.user.create({ data: { id, tenantId, email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('operator', 't-op', 'SUPER_ADMIN');
   await user('h-admin', 't-h', 'TENANT_ADMIN');
   await user('h-student', 't-h', 'STUDENT');
@@ -47,18 +70,34 @@ beforeAll(async () => {
   await user('y-student', 't-y', 'STUDENT');
   for (const t of ['t-h', 't-y']) {
     // A term: Course -> Term is ON DELETE RESTRICT, which the deletion must cope with.
-    await admin.term.create({ data: { id: `${t}-term`, tenantId: t, name: 'Fall', startsOn: new Date('2026-09-01'), endsOn: new Date('2026-12-20') } });
-    await admin.course.create({ data: { id: `${t}-c1`, tenantId: t, termId: `${t}-term`, code: 'C1', title: `Course of ${t}`, status: 'PUBLISHED' } });
+    await admin.term.create({
+      data: { id: `${t}-term`, tenantId: t, name: 'Fall', startsOn: new Date('2026-09-01'), endsOn: new Date('2026-12-20') },
+    });
+    await admin.course.create({
+      data: { id: `${t}-c1`, tenantId: t, termId: `${t}-term`, code: 'C1', title: `Course of ${t}`, status: 'PUBLISHED' },
+    });
     await admin.module.create({ data: { id: `${t}-m1`, courseId: `${t}-c1`, title: 'Week 1', orderIndex: 0 } });
     await admin.enrollment.create({ data: { tenantId: t, courseId: `${t}-c1`, userId: t === 't-h' ? 'h-student' : 'y-student' } });
     await admin.auditLog.create({ data: { tenantId: t, action: 'SOMETHING', resourceType: 'TEST' } });
   }
   // Support access: tenant tables without a foreign key to Tenant.
   for (const t of ['t-h', 't-y']) {
-    const pass = await admin.supportPass.create({ data: { tenantId: t, reason: 'Help', grantedByEmail: 'x@x.edu', expiresAt: new Date(Date.now() + 86_400_000) } });
-    await admin.supportHandoff.create({ data: { tenantId: t, passId: pass.id, tokenHash: `handoff-hash-${t}`, operatorEmail: 'operator@x.edu', expiresAt: new Date(Date.now() + 60_000) } });
+    const pass = await admin.supportPass.create({
+      data: { tenantId: t, reason: 'Help', grantedByEmail: 'x@x.edu', expiresAt: new Date(Date.now() + 86_400_000) },
+    });
+    await admin.supportHandoff.create({
+      data: {
+        tenantId: t,
+        passId: pass.id,
+        tokenHash: `handoff-hash-${t}`,
+        operatorEmail: 'operator@x.edu',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
   }
-  await admin.webhookEndpoint.create({ data: { tenantId: 't-h', url: 'https://hooks.example.com/x', secret: WEBHOOK_SECRET, events: ['course.published'] } });
+  await admin.webhookEndpoint.create({
+    data: { tenantId: 't-h', url: 'https://hooks.example.com/x', secret: WEBHOOK_SECRET, events: ['course.published'] },
+  });
 
   process.env.PLATFORM_OPERATOR_TENANT = 'ops';
   process.env.DATABASE_URL = db.appUrl;
@@ -66,7 +105,11 @@ beforeAll(async () => {
   storageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lms-offboarding-'));
   const storage = await import('../src/lib/storage.js');
   storage.setStorageDriver(storage.localDriver(storageDir));
-  (await import('../src/lib/mailer.js')).setMailer({ async send(m) { outbox.push(m); } });
+  (await import('../src/lib/mailer.js')).setMailer({
+    async send(m) {
+      outbox.push(m);
+    },
+  });
   jobs = await import('../src/lib/offboarding.js');
   tenantExport = await import('../src/lib/tenant-export.js');
   await storeFile('t-h', '11111111-1111-4111-8111-111111111111', 't-h-c1', 'syllabus.txt', 'Harvard syllabus bytes');
@@ -81,7 +124,10 @@ afterAll(async () => {
 
 async function as(who: string, tenant: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', tenant).send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', tenant)
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -163,7 +209,9 @@ describe('full export', () => {
     expect(all).not.toContain('y-student@x.edu');
     expect(all).not.toContain('Yale notes bytes');
 
-    const audited = await admin.auditLog.findMany({ where: { tenantId: 't-h', action: { in: ['TENANT_EXPORT_REQUESTED', 'TENANT_EXPORT_DOWNLOADED'] } } });
+    const audited = await admin.auditLog.findMany({
+      where: { tenantId: 't-h', action: { in: ['TENANT_EXPORT_REQUESTED', 'TENANT_EXPORT_DOWNLOADED'] } },
+    });
     expect(audited.map((a) => a.action).sort()).toEqual(['TENANT_EXPORT_DOWNLOADED', 'TENANT_EXPORT_REQUESTED']);
   });
 
@@ -171,7 +219,13 @@ describe('full export', () => {
     expect(tenantExport.exportedFields('User')).not.toContain('passwordHash');
     expect(tenantExport.exportedFields('User')).not.toContain('mfaSecret');
     expect(tenantExport.exportedFields('SsoConnection')).not.toContain('clientSecretEnc');
-    const leaks = tenantExport.tablePlans().flatMap((p) => p.fields.filter((f) => tenantExport.SECRET_LIKE.test(f) && `${p.model}.${f}` !== 'LtiDeployment.authTokensUrl').map((f) => `${p.model}.${f}`));
+    const leaks = tenantExport
+      .tablePlans()
+      .flatMap((p) =>
+        p.fields
+          .filter((f) => tenantExport.SECRET_LIKE.test(f) && `${p.model}.${f}` !== 'LtiDeployment.authTokensUrl')
+          .map((f) => `${p.model}.${f}`)
+      );
     expect(leaks).toEqual([]);
     expect(tenantExport.tablePlans().map((p) => p.model)).not.toContain('PasswordResetToken');
   });
@@ -200,7 +254,9 @@ describe('scheduled deletion', () => {
   it('needs the slug typed, e-mails the administrators, and can be cancelled by them', async () => {
     const h = await as('h-admin', 'harvard');
     expect((await h.post('/api/v1/admin/offboarding/deletion').send({ confirmSlug: 'yale' })).status).toBe(400);
-    expect((await (await as('h-student', 'harvard')).post('/api/v1/admin/offboarding/deletion').send({ confirmSlug: 'harvard' })).status).toBe(403);
+    expect(
+      (await (await as('h-student', 'harvard')).post('/api/v1/admin/offboarding/deletion').send({ confirmSlug: 'harvard' })).status
+    ).toBe(403);
 
     outbox.length = 0;
     const scheduled = await h.post('/api/v1/admin/offboarding/deletion').send({ confirmSlug: 'harvard' });
@@ -216,11 +272,13 @@ describe('scheduled deletion', () => {
     const cancelled = await h.delete('/api/v1/admin/offboarding/deletion');
     expect(cancelled.status).toBe(200);
     expect(cancelled.body.data.deletion).toBeNull();
-    const actions = (await admin.auditLog.findMany({ where: { tenantId: 't-h', action: { startsWith: 'TENANT_DELETION' } } })).map((a) => a.action).sort();
+    const actions = (await admin.auditLog.findMany({ where: { tenantId: 't-h', action: { startsWith: 'TENANT_DELETION' } } }))
+      .map((a) => a.action)
+      .sort();
     expect(actions).toEqual(['TENANT_DELETION_CANCELLED', 'TENANT_DELETION_SCHEDULED']);
   });
 
-  it("scheduled by the operator, only the operator can cancel it", async () => {
+  it('scheduled by the operator, only the operator can cancel it', async () => {
     const op = await as('operator', 'ops');
     expect((await op.post('/api/v1/operator/tenants/t-h/deletion').send({ confirmSlug: 'harvard' })).status).toBe(200);
     const h = await as('h-admin', 'harvard');
@@ -287,7 +345,9 @@ describe('scheduled deletion', () => {
     // The address cannot be taken again yet.
     const avail = await request(app).get('/api/v1/organizations/availability').query({ slug: 'yale' });
     expect(avail.body.data).toMatchObject({ available: false, reason: 'taken' });
-    const create = await op.post('/api/v1/operator/tenants').send({ name: 'Yale again', slug: 'yale', adminFirstName: 'A', adminLastName: 'B', adminEmail: 'a@yale.edu' });
+    const create = await op
+      .post('/api/v1/operator/tenants')
+      .send({ name: 'Yale again', slug: 'yale', adminFirstName: 'A', adminLastName: 'B', adminEmail: 'a@yale.edu' });
     expect(create.status).toBe(409);
   });
 });

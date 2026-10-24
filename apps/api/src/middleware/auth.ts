@@ -89,10 +89,18 @@ export function extractToken(req: Request): string | null {
 
 export function verifyToken(token: string): (AuthUser & { tv: number; sp?: string; op?: string }) | null {
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as Partial<AuthUser> & { tv?: number; sp?: string; op?: string };
+    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as Partial<AuthUser> & {
+      tv?: number;
+      sp?: string;
+      op?: string;
+    };
     if (!decoded.id || !decoded.role || !decoded.tenantId || !decoded.email) return null;
     return {
-      id: decoded.id, role: decoded.role, email: decoded.email, tenantId: decoded.tenantId, tv: decoded.tv ?? 0,
+      id: decoded.id,
+      role: decoded.role,
+      email: decoded.email,
+      tenantId: decoded.tenantId,
+      tv: decoded.tv ?? 0,
       // A platform-operator support session (lib/support-access.ts): its pass, and the operator's e-mail.
       ...(typeof decoded.sp === 'string' ? { sp: decoded.sp, op: typeof decoded.op === 'string' ? decoded.op : '' } : {}),
     };

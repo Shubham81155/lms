@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
-import { isOpenIntent, type OpenIntent } from "@/lib/deeplink";
+import { useEffect, useRef } from 'react';
+import { isOpenIntent, type OpenIntent } from '@/lib/deeplink';
 
 /**
  * Opens the panel named by `?open=` once the page is ready (see lib/deeplink), then removes the query
@@ -13,9 +13,9 @@ export function useOpenIntent(ready: boolean, handlers: Partial<Record<OpenInten
     if (!ready || done.current) return;
     done.current = true;
     const params = new URLSearchParams(window.location.search);
-    const open = params.get("open");
+    const open = params.get('open');
     if (!isOpenIntent(open)) return;
-    handlers[open]?.(params.get("course"));
-    window.history.replaceState(null, "", window.location.pathname + window.location.hash);
+    handlers[open]?.(params.get('course'));
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
   });
 }

@@ -18,7 +18,11 @@ export interface ConsentContext {
 
 export const purposeInputSchema = z.object({
   /** Short stable name, lower case (e.g. "marketing"); it identifies the purpose in the API and in records. */
-  key: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9_-]{1,39}$/, 'Use 2-40 lower-case letters, digits, "-" or "_", starting with a letter'),
+  key: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z][a-z0-9_-]{1,39}$/, 'Use 2-40 lower-case letters, digits, "-" or "_", starting with a letter'),
   title: z.string().trim().min(2).max(120),
   /** What the data is used for, in words the person understands. */
   description: z.string().trim().min(10).max(2000),
@@ -27,7 +31,9 @@ export const purposeInputSchema = z.object({
   required: z.boolean().default(false),
   active: z.boolean().default(true),
 });
-export const savePurposesSchema = z.object({ purposes: z.array(purposeInputSchema).min(1).max(30) }).refine((b) => new Set(b.purposes.map((p) => p.key)).size === b.purposes.length, { message: 'Each key may appear once' });
+export const savePurposesSchema = z
+  .object({ purposes: z.array(purposeInputSchema).min(1).max(30) })
+  .refine((b) => new Set(b.purposes.map((p) => p.key)).size === b.purposes.length, { message: 'Each key may appear once' });
 export type PurposeInput = z.infer<typeof purposeInputSchema>;
 
 type Purpose = NonNullable<Awaited<ReturnType<typeof prisma.consentPurpose.findFirst>>>;
@@ -43,11 +49,30 @@ export const purposeView = (p: Purpose, admin: boolean) => ({
 
 const snapshotOf = (p: { title: string; description: string }) => `${p.title}\n\n${p.description}`;
 
-const audit = (tenantId: string, userId: string | null, action: string, resourceId: string, diffJson: Record<string, unknown>, ctx: ConsentContext = {}) =>
-  logAuditEvent({ tenantId, userId, action, resourceType: 'CONSENT_PURPOSE', resourceId, ipAddress: ctx.ipAddress, userAgent: ctx.userAgent, diffJson });
+const audit = (
+  tenantId: string,
+  userId: string | null,
+  action: string,
+  resourceId: string,
+  diffJson: Record<string, unknown>,
+  ctx: ConsentContext = {}
+) =>
+  logAuditEvent({
+    tenantId,
+    userId,
+    action,
+    resourceType: 'CONSENT_PURPOSE',
+    resourceId,
+    ipAddress: ctx.ipAddress,
+    userAgent: ctx.userAgent,
+    diffJson,
+  });
 
 export const listPurposes = (tenantId: string, includeInactive: boolean) =>
-  prisma.consentPurpose.findMany({ where: { tenantId, ...(includeInactive ? {} : { active: true }) }, orderBy: [{ createdAt: 'asc' }, { key: 'asc' }] });
+  prisma.consentPurpose.findMany({
+    where: { tenantId, ...(includeInactive ? {} : { active: true }) },
+    orderBy: [{ createdAt: 'asc' }, { key: 'asc' }],
+  });
 
 /**
  * Creates or updates purposes by key (purposes not in the list are left alone; switch one off with active: false).
@@ -58,7 +83,9 @@ export async function savePurposes(tenantId: string, admin: { id: string }, inpu
     const existing = await prisma.consentPurpose.findUnique({ where: { tenantId_key: { tenantId, key: p.key } } });
     const lawfulBasis = p.lawfulBasis?.trim() || null;
     if (!existing) {
-      const created = await prisma.consentPurpose.create({ data: { tenantId, key: p.key, title: p.title, description: p.description, lawfulBasis, required: p.required, active: p.active } });
+      const created = await prisma.consentPurpose.create({
+        data: { tenantId, key: p.key, title: p.title, description: p.description, lawfulBasis, required: p.required, active: p.active },
+      });
       await audit(tenantId, admin.id, 'CONSENT_PURPOSE_CREATED', created.id, { key: p.key, required: p.required, active: p.active }, ctx);
       continue;
     }
@@ -66,13 +93,27 @@ export async function savePurposes(tenantId: string, admin: { id: string }, inpu
     if (!wordingChanged && existing.active === p.active && existing.lawfulBasis === lawfulBasis) continue;
     const updated = await prisma.consentPurpose.update({
       where: { id: existing.id },
-      data: { title: p.title, description: p.description, lawfulBasis, required: p.required, active: p.active, ...(wordingChanged ? { version: { increment: 1 } } : {}) },
+      data: {
+        title: p.title,
+        description: p.description,
+        lawfulBasis,
+        required: p.required,
+        active: p.active,
+        ...(wordingChanged ? { version: { increment: 1 } } : {}),
+      },
     });
-    await audit(tenantId, admin.id, 'CONSENT_PURPOSE_UPDATED', existing.id, {
-      key: p.key,
-      before: { title: existing.title, required: existing.required, active: existing.active, version: existing.version },
-      after: { title: updated.title, required: updated.required, active: updated.active, version: updated.version },
-    }, ctx);
+    await audit(
+      tenantId,
+      admin.id,
+      'CONSENT_PURPOSE_UPDATED',
+      existing.id,
+      {
+        key: p.key,
+        before: { title: existing.title, required: existing.required, active: existing.active, version: existing.version },
+        after: { title: updated.title, required: updated.required, active: updated.active, version: updated.version },
+      },
+      ctx
+    );
   }
   return listPurposes(tenantId, true);
 }
@@ -103,7 +144,11 @@ function myView(p: Purpose, last?: { version: number; granted: boolean; createdA
 /** The organisation's active purposes with the caller's answer to each. */
 export async function myConsents(tenantId: string, userId: string) {
   const purposes = await listPurposes(tenantId, false);
-  const latest = await latestFor(tenantId, userId, purposes.map((p) => p.key));
+  const latest = await latestFor(
+    tenantId,
+    userId,
+    purposes.map((p) => p.key)
+  );
   return purposes.map((p) => myView(p, latest.get(p.key)));
 }
 
@@ -124,8 +169,26 @@ export async function setConsent(tenantId: string, user: { id: string }, key: st
   const last = (await latestFor(tenantId, user.id, [key])).get(key);
   const unchanged = last && last.granted === granted && (!granted || last.version === purpose.version);
   if (!unchanged) {
-    await prisma.consentRecord.create({ data: { tenantId, userId: user.id, purposeId: purpose.id, purposeKey: key, version: purpose.version, granted, textSnapshot: snapshotOf(purpose), source: 'USER' } });
-    await audit(tenantId, user.id, granted ? 'CONSENT_GRANTED' : 'CONSENT_WITHDRAWN', purpose.id, { key, version: purpose.version, required: purpose.required }, ctx);
+    await prisma.consentRecord.create({
+      data: {
+        tenantId,
+        userId: user.id,
+        purposeId: purpose.id,
+        purposeKey: key,
+        version: purpose.version,
+        granted,
+        textSnapshot: snapshotOf(purpose),
+        source: 'USER',
+      },
+    });
+    await audit(
+      tenantId,
+      user.id,
+      granted ? 'CONSENT_GRANTED' : 'CONSENT_WITHDRAWN',
+      purpose.id,
+      { key, version: purpose.version, required: purpose.required },
+      ctx
+    );
   }
   const now = (await latestFor(tenantId, user.id, [key])).get(key);
   return { purpose: myView(purpose, now), consequence: !granted && purpose.required ? REQUIRED_WITHDRAWAL_CONSEQUENCE : null };
@@ -133,13 +196,19 @@ export async function setConsent(tenantId: string, user: { id: string }, key: st
 
 /** The person's full consent history, for the personal-data export. */
 export const consentHistory = (tenantId: string, userId: string) =>
-  prisma.consentRecord.findMany({ where: { tenantId, userId }, orderBy: { createdAt: 'asc' }, select: { purposeKey: true, version: true, granted: true, textSnapshot: true, source: true, createdAt: true } });
+  prisma.consentRecord.findMany({
+    where: { tenantId, userId },
+    orderBy: { createdAt: 'asc' },
+    select: { purposeKey: true, version: true, granted: true, textSnapshot: true, source: true, createdAt: true },
+  });
 
 /** Per purpose and version: how many people last granted, last withdrew, and (for the current version) never answered. */
 export async function consentReport(tenantId: string) {
   const purposes = await listPurposes(tenantId, true);
-  const rows = await runInTenantTransaction(tenantId, (tx) =>
-    tx.$queryRaw<{ purposeKey: string; version: number; granted: boolean; n: bigint }[]>`
+  const rows = await runInTenantTransaction(
+    tenantId,
+    (tx) =>
+      tx.$queryRaw<{ purposeKey: string; version: number; granted: boolean; n: bigint }[]>`
       SELECT "purposeKey", "version", "granted", COUNT(*) AS n FROM (
         SELECT DISTINCT ON ("userId", "purposeKey") "userId", "purposeKey", "version", "granted"
         FROM "ConsentRecord" WHERE "tenantId" = ${tenantId} ORDER BY "userId", "purposeKey", "createdAt" DESC
@@ -148,7 +217,8 @@ export async function consentReport(tenantId: string) {
   const people = await prisma.user.count({ where: { tenantId, erasedAt: null, status: { in: ['ACTIVE', 'INVITED'] } } });
   return purposes.map((p) => {
     const mine = rows.filter((r) => r.purposeKey === p.key);
-    const count = (granted: boolean, version?: number) => mine.filter((r) => r.granted === granted && (version === undefined || r.version === version)).reduce((a, r) => a + Number(r.n), 0);
+    const count = (granted: boolean, version?: number) =>
+      mine.filter((r) => r.granted === granted && (version === undefined || r.version === version)).reduce((a, r) => a + Number(r.n), 0);
     const versions = [...new Set(mine.map((r) => r.version))].sort((a, b) => a - b);
     const answered = mine.reduce((a, r) => a + Number(r.n), 0);
     return {

@@ -1,25 +1,25 @@
 // Data-subject requests and data retention (API: /api/v1/privacy/requests, /api/v1/privacy/retention).
 
-export const REQUEST_KINDS = ["ACCESS", "ERASURE", "CORRECTION", "RESTRICTION", "OBJECTION", "FERPA_OPT_OUT", "OTHER"] as const;
+export const REQUEST_KINDS = ['ACCESS', 'ERASURE', 'CORRECTION', 'RESTRICTION', 'OBJECTION', 'FERPA_OPT_OUT', 'OTHER'] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
-export type RequestStatus = "OPEN" | "IN_PROGRESS" | "FULFILLED" | "REJECTED" | "CANCELLED";
+export type RequestStatus = 'OPEN' | 'IN_PROGRESS' | 'FULFILLED' | 'REJECTED' | 'CANCELLED';
 
 export const KIND_LABEL: Record<RequestKind, string> = {
-  ACCESS: "Get a copy of my data",
-  ERASURE: "Erase my data",
-  CORRECTION: "Correct my data",
-  RESTRICTION: "Restrict how my data is used",
-  OBJECTION: "Object to how my data is used",
-  FERPA_OPT_OUT: "Hide my name from classmates",
-  OTHER: "Something else",
+  ACCESS: 'Get a copy of my data',
+  ERASURE: 'Erase my data',
+  CORRECTION: 'Correct my data',
+  RESTRICTION: 'Restrict how my data is used',
+  OBJECTION: 'Object to how my data is used',
+  FERPA_OPT_OUT: 'Hide my name from classmates',
+  OTHER: 'Something else',
 };
 
 export const STATUS_LABEL: Record<RequestStatus, string> = {
-  OPEN: "Open",
-  IN_PROGRESS: "Being handled",
-  FULFILLED: "Done",
-  REJECTED: "Declined",
-  CANCELLED: "Cancelled",
+  OPEN: 'Open',
+  IN_PROGRESS: 'Being handled',
+  FULFILLED: 'Done',
+  REJECTED: 'Declined',
+  CANCELLED: 'Cancelled',
 };
 
 /** A request as its requester sees it. */
@@ -47,16 +47,16 @@ export interface QueueRequest extends MyRequest {
   closedById: string | null;
 }
 
-export const isOpen = (r: { status: RequestStatus }) => r.status === "OPEN" || r.status === "IN_PROGRESS";
+export const isOpen = (r: { status: RequestStatus }) => r.status === 'OPEN' || r.status === 'IN_PROGRESS';
 
-export const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+export const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** "Due in 3 days", "Due today", "2 days overdue". */
 export function dueText(daysLeft: number | null): string {
-  if (daysLeft === null) return "";
-  if (daysLeft < 0) return `${-daysLeft} day${daysLeft === -1 ? "" : "s"} overdue`;
-  if (daysLeft === 0) return "Due today";
-  return `Due in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
+  if (daysLeft === null) return '';
+  if (daysLeft < 0) return `${-daysLeft} day${daysLeft === -1 ? '' : 's'} overdue`;
+  if (daysLeft === 0) return 'Due today';
+  return `Due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
 }
 
 /** Administrators are warned this many days ahead; the badge turns amber at the same point. */
@@ -68,7 +68,7 @@ export interface RetentionClassInfo {
   /** Fewest days the class may be kept for. */
   min: number;
   /** The policy field holding its days. */
-  field: "notificationsDays" | "tokensDays" | "proctoringDays" | "supportAccessDays" | "infectedFilesDays";
+  field: 'notificationsDays' | 'tokensDays' | 'proctoringDays' | 'supportAccessDays' | 'infectedFilesDays';
   what: string;
 }
 
@@ -95,7 +95,7 @@ export interface RetentionPolicy {
 /** Whole days from the text of a field: "" is "keep" (null), anything not a whole number of at least `min` is invalid (undefined). */
 export function parseDays(text: string, min: number): number | null | undefined {
   const t = text.trim();
-  if (t === "") return null;
+  if (t === '') return null;
   if (!/^\d{1,4}$/.test(t)) return undefined;
   const n = Number(t);
   return n >= min && n <= 3650 ? n : undefined;

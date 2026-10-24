@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { api, ApiError } from '@/lib/api';
@@ -15,13 +15,11 @@ export function useMyEnrollments() {
     setError(null);
     try {
       const response = await api.get<any>('/api/v1/enrollments/my');
-      const list: Enrollment[] = Array.isArray(response)
-        ? response
-        : response.enrollments || response.data || [];
+      const list: Enrollment[] = Array.isArray(response) ? response : response.enrollments || response.data || [];
       setEnrollments(list);
       setData(list);
     } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to fetch enrollments');
+      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch enrollments';
       setError(message);
       setEnrollments([]);
       setData([]);
@@ -58,7 +56,7 @@ export function useEnrollmentStats() {
       setStats(statsData);
       setData(statsData);
     } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : (err?.message || 'Failed to fetch enrollment stats');
+      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch enrollment stats';
       setError(message);
       setStats(null);
       setData(null);

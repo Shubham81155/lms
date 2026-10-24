@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MicOff, MonitorUp, PhoneOff, Send, Video, VideoOff } from "lucide-react";
-import { ConnectionState, Participant, RemoteTrack, Room, RoomEvent, Track } from "livekit-client";
-import { ChatMessage, decodeChat, encodeChat, MAX_CHAT_LENGTH } from "@/lib/live";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Mic, MicOff, MonitorUp, PhoneOff, Send, Video, VideoOff } from 'lucide-react';
+import { ConnectionState, Participant, RemoteTrack, Room, RoomEvent, Track } from 'livekit-client';
+import { ChatMessage, decodeChat, encodeChat, MAX_CHAT_LENGTH } from '@/lib/live';
 
 export interface JoinInfo {
   url: string;
   token: string;
-  role: "HOST" | "ASSISTANT" | "LEARNER";
+  role: 'HOST' | 'ASSISTANT' | 'LEARNER';
   canPublish: boolean;
 }
 
@@ -19,7 +19,7 @@ interface Tile {
   isLocal: boolean;
 }
 
-const btn = "p-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50";
+const btn = 'p-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50';
 
 /** Plays one participant's video. The track is attached to and detached from the element. */
 const VideoTile: React.FC<{ tile: Tile }> = ({ tile }) => {
@@ -38,9 +38,14 @@ const VideoTile: React.FC<{ tile: Tile }> = ({ tile }) => {
       {tile.video ? (
         <video ref={ref} autoPlay playsInline muted={tile.isLocal} className="h-full w-full object-cover" />
       ) : (
-        <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-ink-subtle">{tile.name.charAt(0).toUpperCase()}</div>
+        <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-ink-subtle">
+          {tile.name.charAt(0).toUpperCase()}
+        </div>
       )}
-      <span className="absolute bottom-2 left-2 text-[11px] font-semibold bg-canvas/80 text-ink px-2 py-0.5 rounded-md">{tile.name}{tile.isLocal ? " (you)" : ""}</span>
+      <span className="absolute bottom-2 left-2 text-[11px] font-semibold bg-canvas/80 text-ink px-2 py-0.5 rounded-md">
+        {tile.name}
+        {tile.isLocal ? ' (you)' : ''}
+      </span>
     </div>
   );
 };
@@ -53,11 +58,11 @@ const VideoTile: React.FC<{ tile: Tile }> = ({ tile }) => {
 export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => void }> = ({ title, join, onLeave }) => {
   const roomRef = useRef<Room | null>(null);
   const audioHost = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState<"connecting" | "connected" | "failed">("connecting");
+  const [state, setState] = useState<'connecting' | 'connected' | 'failed'>('connecting');
   const [error, setError] = useState<string | null>(null);
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [chat, setChat] = useState<ChatMessage[]>([]);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState('');
   const [mic, setMic] = useState(false);
   const [cam, setCam] = useState(false);
   const [screen, setScreen] = useState(false);
@@ -90,8 +95,14 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
       audioHost.current.appendChild(t.attach());
     };
     room
-      .on(RoomEvent.TrackSubscribed, (t) => { attachAudio(t); refresh(); })
-      .on(RoomEvent.TrackUnsubscribed, (t) => { t.detach().forEach((el) => el.remove()); refresh(); })
+      .on(RoomEvent.TrackSubscribed, (t) => {
+        attachAudio(t);
+        refresh();
+      })
+      .on(RoomEvent.TrackUnsubscribed, (t) => {
+        t.detach().forEach((el) => el.remove());
+        refresh();
+      })
       .on(RoomEvent.ParticipantConnected, refresh)
       .on(RoomEvent.ParticipantDisconnected, refresh)
       .on(RoomEvent.LocalTrackPublished, refresh)
@@ -111,13 +122,13 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
       .connect(join.url, join.token)
       .then(() => {
         if (cancelled) return;
-        setState("connected");
+        setState('connected');
         refresh();
       })
       .catch(() => {
         if (cancelled) return;
-        setState("failed");
-        setError("Could not connect to the live class server. Check your connection and try again.");
+        setState('failed');
+        setError('Could not connect to the live class server. Check your connection and try again.');
       });
 
     return () => {
@@ -130,17 +141,26 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [join.token, join.url]);
 
-  const toggle = async (kind: "mic" | "cam" | "screen") => {
+  const toggle = async (kind: 'mic' | 'cam' | 'screen') => {
     const room = roomRef.current;
     if (!room || !join.canPublish || room.state !== ConnectionState.Connected) return;
     setError(null);
     try {
-      if (kind === "mic") { await room.localParticipant.setMicrophoneEnabled(!mic); setMic(!mic); }
-      if (kind === "cam") { await room.localParticipant.setCameraEnabled(!cam); setCam(!cam); }
-      if (kind === "screen") { await room.localParticipant.setScreenShareEnabled(!screen); setScreen(!screen); }
+      if (kind === 'mic') {
+        await room.localParticipant.setMicrophoneEnabled(!mic);
+        setMic(!mic);
+      }
+      if (kind === 'cam') {
+        await room.localParticipant.setCameraEnabled(!cam);
+        setCam(!cam);
+      }
+      if (kind === 'screen') {
+        await room.localParticipant.setScreenShareEnabled(!screen);
+        setScreen(!screen);
+      }
       refresh();
     } catch {
-      setError("Could not start that. Check that your browser has permission to use the device.");
+      setError('Could not start that. Check that your browser has permission to use the device.');
     }
   };
 
@@ -150,10 +170,10 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
     if (!data || !room) return;
     try {
       await room.localParticipant.publishData(data, { reliable: true });
-      setChat((c) => [...c.slice(-199), { from: "You", text: draft.trim().slice(0, MAX_CHAT_LENGTH), at: Date.now() }]);
-      setDraft("");
+      setChat((c) => [...c.slice(-199), { from: 'You', text: draft.trim().slice(0, MAX_CHAT_LENGTH), at: Date.now() }]);
+      setDraft('');
     } catch {
-      setError("Your message could not be sent.");
+      setError('Your message could not be sent.');
     }
   };
 
@@ -166,20 +186,38 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
         <div>
           <h3 className="text-sm font-bold text-ink">{title}</h3>
           <p className="text-[11px] text-ink-subtle">
-            {state === "connecting" ? "Connecting…" : state === "failed" ? "Not connected" : `${tiles.length} in the room`}
+            {state === 'connecting' ? 'Connecting…' : state === 'failed' ? 'Not connected' : `${tiles.length} in the room`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {join.canPublish && (
             <>
-              <button className={`${btn} ${mic ? "bg-brand border-brand text-on-brand" : "bg-surface border-line text-ink"}`} onClick={() => toggle("mic")} disabled={state !== "connected"} aria-pressed={mic} aria-label={mic ? "Mute microphone" : "Unmute microphone"}>
+              <button
+                className={`${btn} ${mic ? 'bg-brand border-brand text-on-brand' : 'bg-surface border-line text-ink'}`}
+                onClick={() => toggle('mic')}
+                disabled={state !== 'connected'}
+                aria-pressed={mic}
+                aria-label={mic ? 'Mute microphone' : 'Unmute microphone'}
+              >
                 {mic ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
               </button>
-              <button className={`${btn} ${cam ? "bg-brand border-brand text-on-brand" : "bg-surface border-line text-ink"}`} onClick={() => toggle("cam")} disabled={state !== "connected"} aria-pressed={cam} aria-label={cam ? "Turn camera off" : "Turn camera on"}>
+              <button
+                className={`${btn} ${cam ? 'bg-brand border-brand text-on-brand' : 'bg-surface border-line text-ink'}`}
+                onClick={() => toggle('cam')}
+                disabled={state !== 'connected'}
+                aria-pressed={cam}
+                aria-label={cam ? 'Turn camera off' : 'Turn camera on'}
+              >
                 {cam ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
               </button>
-              {join.role !== "LEARNER" && (
-                <button className={`${btn} ${screen ? "bg-brand border-brand text-on-brand" : "bg-surface border-line text-ink"}`} onClick={() => toggle("screen")} disabled={state !== "connected"} aria-pressed={screen} aria-label={screen ? "Stop sharing screen" : "Share screen"}>
+              {join.role !== 'LEARNER' && (
+                <button
+                  className={`${btn} ${screen ? 'bg-brand border-brand text-on-brand' : 'bg-surface border-line text-ink'}`}
+                  onClick={() => toggle('screen')}
+                  disabled={state !== 'connected'}
+                  aria-pressed={screen}
+                  aria-label={screen ? 'Stop sharing screen' : 'Share screen'}
+                >
                   <MonitorUp className="h-4 w-4" />
                 </button>
               )}
@@ -192,16 +230,22 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
         </div>
       </div>
 
-      {error && <div role="alert" className="bg-danger/10 border-b border-danger/30 px-5 py-2 text-xs text-danger">{error}</div>}
+      {error && (
+        <div role="alert" className="bg-danger/10 border-b border-danger/30 px-5 py-2 text-xs text-danger">
+          {error}
+        </div>
+      )}
 
       <div className="flex-1 flex min-h-0">
         <div className="flex-1 p-4 overflow-y-auto">
-          {state === "failed" ? (
+          {state === 'failed' ? (
             <div className="h-full flex items-center justify-center text-sm text-ink-muted">The room could not be opened.</div>
           ) : (
-            <div className={`grid gap-3 ${shown.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 max-w-4xl mx-auto"}`}>
-              {shown.map((t) => <VideoTile key={t.id} tile={t} />)}
-              {state === "connected" && active.length === 0 && (
+            <div className={`grid gap-3 ${shown.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-4xl mx-auto'}`}>
+              {shown.map((t) => (
+                <VideoTile key={t.id} tile={t} />
+              ))}
+              {state === 'connected' && active.length === 0 && (
                 <p className="text-center text-xs text-ink-subtle md:col-span-2">Waiting for the instructor to share video.</p>
               )}
             </div>
@@ -212,7 +256,12 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
         <aside className="w-72 border-l border-line flex flex-col" aria-label="Chat and participants">
           <div className="p-3 border-b border-line text-[11px] text-ink-muted space-y-1 max-h-40 overflow-y-auto">
             <div className="font-bold uppercase tracking-wider text-ink-subtle">In the room</div>
-            {tiles.map((t) => <div key={t.id} className="text-ink">{t.name}{t.isLocal ? " (you)" : ""}</div>)}
+            {tiles.map((t) => (
+              <div key={t.id} className="text-ink">
+                {t.name}
+                {t.isLocal ? ' (you)' : ''}
+              </div>
+            ))}
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2" aria-live="polite">
             {chat.length === 0 && <p className="text-[11px] text-ink-subtle">No messages yet.</p>}
@@ -222,7 +271,13 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
               </div>
             ))}
           </div>
-          <form className="p-3 border-t border-line flex gap-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
+          <form
+            className="p-3 border-t border-line flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void send();
+            }}
+          >
             <input
               className="flex-1 bg-surface border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-brand"
               aria-label="Chat message"
@@ -230,9 +285,13 @@ export const LiveRoom: React.FC<{ title: string; join: JoinInfo; onLeave: () => 
               maxLength={MAX_CHAT_LENGTH}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              disabled={state !== "connected"}
+              disabled={state !== 'connected'}
             />
-            <button className="px-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl" disabled={state !== "connected" || !draft.trim()} aria-label="Send message">
+            <button
+              className="px-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl"
+              disabled={state !== 'connected' || !draft.trim()}
+              aria-label="Send message"
+            >
               <Send className="h-4 w-4" />
             </button>
           </form>

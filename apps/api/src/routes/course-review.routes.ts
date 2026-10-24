@@ -35,7 +35,16 @@ export async function assertMayPublish(req: Request, next: CourseStatus | undefi
 }
 
 const audit = (req: Request, action: string, courseId: string, diffJson?: unknown) =>
-  logAuditEvent({ tenantId: tenantIdOf(req), userId: req.user!.id, action, resourceType: 'COURSE', resourceId: courseId, ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson });
+  logAuditEvent({
+    tenantId: tenantIdOf(req),
+    userId: req.user!.id,
+    action,
+    resourceType: 'COURSE',
+    resourceId: courseId,
+    ipAddress: req.ip,
+    userAgent: req.headers['user-agent'],
+    diffJson,
+  });
 
 const nameOf = (u: { firstName: string; lastName: string } | null | undefined) => (u ? `${u.firstName} ${u.lastName}` : null);
 
@@ -55,7 +64,16 @@ router.put(
   route('Failed to change the setting', async (req, res) => {
     const { required } = parseBody(req, approvalSettingSchema);
     await prisma.tenant.update({ where: { id: tenantIdOf(req) }, data: { requireCourseApproval: required } });
-    await logAuditEvent({ tenantId: tenantIdOf(req), userId: req.user!.id, action: 'COURSE_APPROVAL_SETTING_CHANGED', resourceType: 'TENANT', resourceId: tenantIdOf(req), ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { required } });
+    await logAuditEvent({
+      tenantId: tenantIdOf(req),
+      userId: req.user!.id,
+      action: 'COURSE_APPROVAL_SETTING_CHANGED',
+      resourceType: 'TENANT',
+      resourceId: tenantIdOf(req),
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { required },
+    });
     return res.json({ data: { required } });
   })
 );
@@ -70,7 +88,12 @@ router.get(
       where: { tenantId, reviewStatus: 'PENDING' },
       orderBy: { reviewSubmittedAt: 'asc' },
       select: {
-        id: true, code: true, title: true, reviewNote: true, reviewSubmittedAt: true, reviewSubmittedById: true,
+        id: true,
+        code: true,
+        title: true,
+        reviewNote: true,
+        reviewSubmittedAt: true,
+        reviewSubmittedById: true,
         term: { select: { name: true } },
         _count: { select: { modules: true, quizzes: true, assignments: true } },
       },
@@ -109,18 +132,38 @@ router.post(
     const access = await requireCourseEditor(req, idSchema.parse(req.params.id));
     const { message } = parseBody(req, submitReviewSchema);
     if (!(await approvalRequired(tenantId))) throw new HttpError(409, 'Courses do not need approval here; publish it from its settings');
-    const course = await prisma.course.findUniqueOrThrow({ where: { id: access.course.id }, select: { id: true, code: true, title: true, status: true, reviewStatus: true } });
+    const course = await prisma.course.findUniqueOrThrow({
+      where: { id: access.course.id },
+      select: { id: true, code: true, title: true, status: true, reviewStatus: true },
+    });
     if (course.status !== CourseStatus.DRAFT) throw new HttpError(409, 'Only a draft course can be submitted for review');
     if (course.reviewStatus === 'PENDING') throw new HttpError(409, 'This course is already waiting for review');
 
     const now = new Date();
     await prisma.course.update({
       where: { id: course.id },
-      data: { reviewStatus: 'PENDING', reviewNote: message || null, reviewSubmittedById: req.user!.id, reviewSubmittedAt: now, reviewedById: null, reviewedAt: null },
+      data: {
+        reviewStatus: 'PENDING',
+        reviewNote: message || null,
+        reviewSubmittedById: req.user!.id,
+        reviewSubmittedAt: now,
+        reviewedById: null,
+        reviewedAt: null,
+      },
     });
-    const admins = await prisma.user.findMany({ where: { tenantId, status: 'ACTIVE', role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] } }, select: { id: true } });
+    const admins = await prisma.user.findMany({
+      where: { tenantId, status: 'ACTIVE', role: { in: ['TENANT_ADMIN', 'SUPER_ADMIN'] } },
+      select: { id: true },
+    });
     await notifyMany(
-      admins.map((a) => ({ tenantId, userId: a.id, category: 'COURSE', title: `${course.code} is waiting for review`, body: message || `${course.title} was submitted for publishing.`, link: '/admin#courses' }))
+      admins.map((a) => ({
+        tenantId,
+        userId: a.id,
+        category: 'COURSE',
+        title: `${course.code} is waiting for review`,
+        body: message || `${course.title} was submitted for publishing.`,
+        link: '/admin#courses',
+      }))
     );
     await audit(req, 'COURSE_REVIEW_SUBMITTED', course.id, { message: message || null });
     return res.json({ data: { id: course.id, reviewStatus: 'PENDING', submittedAt: now } });
@@ -133,7 +176,10 @@ router.post(
   requireRole('TENANT_ADMIN', 'SUPER_ADMIN'),
   route('Failed to approve the course', async (req, res) => {
     const tenantId = tenantIdOf(req);
-    const course = await prisma.course.findFirst({ where: { id: idSchema.parse(req.params.id), tenantId }, select: { id: true, code: true, title: true, reviewStatus: true, reviewSubmittedById: true } });
+    const course = await prisma.course.findFirst({
+      where: { id: idSchema.parse(req.params.id), tenantId },
+      select: { id: true, code: true, title: true, reviewStatus: true, reviewSubmittedById: true },
+    });
     if (!course) throw new HttpError(404, 'Course not found');
     if (course.reviewStatus !== 'PENDING') throw new HttpError(409, 'This course is not waiting for review');
     const now = new Date();
@@ -142,7 +188,16 @@ router.post(
       data: { status: CourseStatus.PUBLISHED, reviewStatus: null, reviewNote: null, reviewedById: req.user!.id, reviewedAt: now },
     });
     const team = await courseTeam(course.id, course.reviewSubmittedById);
-    await notifyMany(team.map((userId) => ({ tenantId, userId, category: 'COURSE', title: `${course.code} was approved and published`, body: `${course.title} is now open to learners.`, link: '/teacher' })));
+    await notifyMany(
+      team.map((userId) => ({
+        tenantId,
+        userId,
+        category: 'COURSE',
+        title: `${course.code} was approved and published`,
+        body: `${course.title} is now open to learners.`,
+        link: '/teacher',
+      }))
+    );
     await audit(req, 'COURSE_REVIEW_APPROVED', course.id);
     return res.json({ data: { id: course.id, status: 'PUBLISHED', reviewedAt: now } });
   })
@@ -155,13 +210,28 @@ router.post(
   route('Failed to send the course back', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const { note } = parseBody(req, requestChangesSchema);
-    const course = await prisma.course.findFirst({ where: { id: idSchema.parse(req.params.id), tenantId }, select: { id: true, code: true, reviewStatus: true, reviewSubmittedById: true } });
+    const course = await prisma.course.findFirst({
+      where: { id: idSchema.parse(req.params.id), tenantId },
+      select: { id: true, code: true, reviewStatus: true, reviewSubmittedById: true },
+    });
     if (!course) throw new HttpError(404, 'Course not found');
     if (course.reviewStatus !== 'PENDING') throw new HttpError(409, 'This course is not waiting for review');
     const now = new Date();
-    await prisma.course.update({ where: { id: course.id }, data: { reviewStatus: 'CHANGES_REQUESTED', reviewNote: note, reviewedById: req.user!.id, reviewedAt: now } });
+    await prisma.course.update({
+      where: { id: course.id },
+      data: { reviewStatus: 'CHANGES_REQUESTED', reviewNote: note, reviewedById: req.user!.id, reviewedAt: now },
+    });
     const team = await courseTeam(course.id, course.reviewSubmittedById);
-    await notifyMany(team.map((userId) => ({ tenantId, userId, category: 'COURSE', title: `Changes requested for ${course.code}`, body: note, link: '/teacher' })));
+    await notifyMany(
+      team.map((userId) => ({
+        tenantId,
+        userId,
+        category: 'COURSE',
+        title: `Changes requested for ${course.code}`,
+        body: note,
+        link: '/teacher',
+      }))
+    );
     await audit(req, 'COURSE_REVIEW_CHANGES_REQUESTED', course.id, { note });
     return res.json({ data: { id: course.id, reviewStatus: 'CHANGES_REQUESTED', note, reviewedAt: now } });
   })

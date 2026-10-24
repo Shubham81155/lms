@@ -89,13 +89,19 @@ async function handleUpload(req: Request, res: Response) {
       try {
         result = await scanner.scan(createReadStream(tempPath));
       } catch (e) {
-        if (e instanceof ScanUnavailableError) throw new HttpError(503, 'Files cannot be checked for viruses right now. Try again in a few minutes.');
+        if (e instanceof ScanUnavailableError)
+          throw new HttpError(503, 'Files cannot be checked for viruses right now. Try again in a few minutes.');
         throw e;
       }
       if (result.infected) {
         await logAuditEvent({
-          tenantId, userId: req.user!.id, action: 'FILE_MALWARE_BLOCKED', resourceType: 'FILE',
-          ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { purpose, courseId, contentType, sizeBytes, sha256, signature: result.signature },
+          tenantId,
+          userId: req.user!.id,
+          action: 'FILE_MALWARE_BLOCKED',
+          resourceType: 'FILE',
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          diffJson: { purpose, courseId, contentType, sizeBytes, sha256, signature: result.signature },
         });
         throw new HttpError(422, 'This file contains a virus or other malware and was not uploaded.');
       }
@@ -139,7 +145,16 @@ async function handleUpload(req: Request, res: Response) {
     diffJson: { purpose, courseId, contentType, sizeBytes },
   });
   return res.status(201).json({
-    data: { id: file.id, url: fileLink(file.id), filename: file.filename, contentType, sizeBytes, sha256, scanStatus: file.scanStatus, createdAt: file.createdAt },
+    data: {
+      id: file.id,
+      url: fileLink(file.id),
+      filename: file.filename,
+      contentType,
+      sizeBytes,
+      sha256,
+      scanStatus: file.scanStatus,
+      createdAt: file.createdAt,
+    },
   });
 }
 

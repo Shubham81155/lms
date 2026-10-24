@@ -14,7 +14,10 @@ export async function extensionFor(userId: string, item: { quizId: string } | { 
   const row =
     'quizId' in item
       ? await prisma.deadlineExtension.findUnique({ where: { quizId_userId: { quizId: item.quizId, userId } }, select: { dueAt: true } })
-      : await prisma.deadlineExtension.findUnique({ where: { assignmentId_userId: { assignmentId: item.assignmentId, userId } }, select: { dueAt: true } });
+      : await prisma.deadlineExtension.findUnique({
+          where: { assignmentId_userId: { assignmentId: item.assignmentId, userId } },
+          select: { dueAt: true },
+        });
   return row?.dueAt ?? null;
 }
 

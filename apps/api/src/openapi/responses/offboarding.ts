@@ -44,7 +44,14 @@ const OffboardingState = z.object({
 
 const OffboardingOverview = z.object({
   scheduled: z.array(
-    z.object({ tenantId: z.string(), slug: z.string(), name: z.string(), scheduledAt: z.string(), requestedBy: z.string().nullable(), byOperator: z.boolean() })
+    z.object({
+      tenantId: z.string(),
+      slug: z.string(),
+      name: z.string(),
+      scheduledAt: z.string(),
+      requestedBy: z.string().nullable(),
+      byOperator: z.boolean(),
+    })
   ),
   deleted: z.array(
     z.object({
@@ -63,7 +70,12 @@ const OffboardingOverview = z.object({
   ),
 });
 
-const zip = { status: 200, contentType: 'application/zip', schema: z.string(), description: 'The ZIP (attachment). With S3 storage the answer is instead a 302 to a link valid for 5 minutes.' };
+const zip = {
+  status: 200,
+  contentType: 'application/zip',
+  schema: z.string(),
+  description: 'The ZIP (attachment). With S3 storage the answer is instead a 302 to a link valid for 5 minutes.',
+};
 
 export const OFFBOARDING_DOCS: Record<string, OperationDoc> = {
   'GET /api/v1/admin/offboarding': {
@@ -72,28 +84,32 @@ export const OFFBOARDING_DOCS: Record<string, OperationDoc> = {
     errors: [404],
   },
   'POST /api/v1/admin/offboarding/export': {
-    summary: 'Administrators: queue a full export: a ZIP of every table of the organisation (JSON lines) and its stored files, without passwords, tokens, secrets or keys. A background job builds it; it can be downloaded for 7 days. Audited. 409 while one is already being prepared.',
+    summary:
+      'Administrators: queue a full export: a ZIP of every table of the organisation (JSON lines) and its stored files, without passwords, tokens, secrets or keys. A background job builds it; it can be downloaded for 7 days. Audited. 409 while one is already being prepared.',
     response: ok(z.object({ data: TenantExportJob }), 202),
     errors: [404, 409],
   },
   'GET /api/v1/admin/offboarding/export/:id/download': {
-    summary: "Administrators: download a ready export of their organisation. Audited. 409 while it is being built, 410 once expired.",
+    summary: 'Administrators: download a ready export of their organisation. Audited. 409 while it is being built, 410 once expired.',
     response: zip,
     errors: [404, 409, 410],
   },
   'POST /api/v1/admin/offboarding/deletion': {
-    summary: "Administrators: schedule the organisation and all its data for deletion in ORG_DELETION_GRACE_DAYS (30 by default). `confirmSlug` must be the organisation's address. It stays usable until then and the administrators are e-mailed; a final export is taken before the deletion. Not the platform operator's organisation (409). Audited.",
+    summary:
+      "Administrators: schedule the organisation and all its data for deletion in ORG_DELETION_GRACE_DAYS (30 by default). `confirmSlug` must be the organisation's address. It stays usable until then and the administrators are e-mailed; a final export is taken before the deletion. Not the platform operator's organisation (409). Audited.",
     body: deletionSchema,
     response: ok(z.object({ data: OffboardingState })),
     errors: [400, 404, 409],
   },
   'DELETE /api/v1/admin/offboarding/deletion': {
-    summary: 'Administrators: cancel the scheduled deletion (403 when the platform operator scheduled it). Administrators are e-mailed. Audited.',
+    summary:
+      'Administrators: cancel the scheduled deletion (403 when the platform operator scheduled it). Administrators are e-mailed. Audited.',
     response: ok(z.object({ data: OffboardingState })),
     errors: [404, 409],
   },
   'GET /api/v1/operator/offboarding': {
-    summary: 'Platform operator: organisations scheduled for deletion, and the deleted ones with their final export and how long their address stays reserved.',
+    summary:
+      'Platform operator: organisations scheduled for deletion, and the deleted ones with their final export and how long their address stays reserved.',
     response: ok(z.object({ data: OffboardingOverview })),
   },
   'GET /api/v1/operator/tenants/:id/offboarding': {
@@ -107,7 +123,8 @@ export const OFFBOARDING_DOCS: Record<string, OperationDoc> = {
     errors: [404, 409],
   },
   'POST /api/v1/operator/tenants/:id/deletion': {
-    summary: "Platform operator: schedule an organisation's deletion (as POST /admin/offboarding/deletion); only the operator can cancel it. Never the operator's own organisation. Audited in both trails.",
+    summary:
+      "Platform operator: schedule an organisation's deletion (as POST /admin/offboarding/deletion); only the operator can cancel it. Never the operator's own organisation. Audited in both trails.",
     body: deletionSchema,
     response: ok(z.object({ data: OffboardingState })),
     errors: [400, 404, 409],

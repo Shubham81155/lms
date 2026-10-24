@@ -48,7 +48,8 @@ export const fromBankSchema = z.object({ itemIds: z.array(idSchema).min(1).max(5
 /** Only instructors and administrators author questions; TAs and learners never see the bank. */
 function assertAuthor(req: Request) {
   const role = req.user!.role;
-  if (role !== 'INSTRUCTOR' && !isAdminRole(role)) throw new HttpError(403, 'Forbidden: the question bank is for instructors and administrators');
+  if (role !== 'INSTRUCTOR' && !isAdminRole(role))
+    throw new HttpError(403, 'Forbidden: the question bank is for instructors and administrators');
 }
 
 async function taughtCourseIds(req: Request): Promise<string[]> {
@@ -217,8 +218,14 @@ router.post(
       );
     }
     await logAuditEvent({
-      tenantId, userId: req.user!.id, action: 'QUIZ_QUESTIONS_ADDED_FROM_BANK', resourceType: 'QUIZ', resourceId: quiz.id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { count: created.length },
+      tenantId,
+      userId: req.user!.id,
+      action: 'QUIZ_QUESTIONS_ADDED_FROM_BANK',
+      resourceType: 'QUIZ',
+      resourceId: quiz.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { count: created.length },
     });
     return res.status(201).json({ data: created });
   })

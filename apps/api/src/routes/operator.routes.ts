@@ -12,7 +12,16 @@ import { createOrganization, mailApplicant, orgSlugSchema, requestedAddress } fr
 import { logger } from '../lib/logger';
 import { invalidateTenantSessions } from '../lib/session';
 import { convertTrial, endTrial, extendTrial, readOnlyUntil, startTrial } from '../lib/trial';
-import { customDomainSchema, domainCheckLimiter, getDomainState, removeCustomDomain, removeDomainQuery, requestCustomDomain, setDomainSchema, verifyCustomDomain } from '../lib/custom-domain';
+import {
+  customDomainSchema,
+  domainCheckLimiter,
+  getDomainState,
+  removeCustomDomain,
+  removeDomainQuery,
+  requestCustomDomain,
+  setDomainSchema,
+  verifyCustomDomain,
+} from '../lib/custom-domain';
 
 // Mounted at /api/v1/operator. The platform operator decides organisation registration requests, creates and
 // suspends organisations, verifies their custom domains, and manages every organisation's plan: tier, feature overrides and seat quota. Organisations' own administrators can read their plan but not change it.
@@ -37,9 +46,23 @@ router.use(authenticateJWT, requireRole('SUPER_ADMIN'), requireOperator);
 const TIERS = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
 
 /** Seats in use: active and invited accounts. Users are tenant-scoped, so count inside that tenant's context. */
-const seatsUsed = (tenantId: string) => runWithTenant(tenantId, () => prisma.user.count({ where: { tenantId, status: { in: ['ACTIVE', 'INVITED'] } } }));
+const seatsUsed = (tenantId: string) =>
+  runWithTenant(tenantId, () => prisma.user.count({ where: { tenantId, status: { in: ['ACTIVE', 'INVITED'] } } }));
 
-export const view = async (t: { id: string; slug: string; name: string; tier: string; status: string; seatQuota: number | null; featureFlags: unknown; customDomain: string | null; pendingCustomDomain: string | null; customDomainFailingSince: Date | null; trialEndsAt: Date | null; trialExpiredAt: Date | null }) => ({
+export const view = async (t: {
+  id: string;
+  slug: string;
+  name: string;
+  tier: string;
+  status: string;
+  seatQuota: number | null;
+  featureFlags: unknown;
+  customDomain: string | null;
+  pendingCustomDomain: string | null;
+  customDomainFailingSince: Date | null;
+  trialEndsAt: Date | null;
+  trialExpiredAt: Date | null;
+}) => ({
   id: t.id,
   slug: t.slug,
   name: t.name,
@@ -59,10 +82,25 @@ export const view = async (t: { id: string; slug: string; name: string; tier: st
   seatsUsed: await seatsUsed(t.id),
   features: resolveFeatures(t.tier, t.featureFlags),
   /** Features set explicitly for this organisation, overriding the tier's defaults. */
-  overrides: Object.fromEntries(FEATURE_KEYS.flatMap((k) => (typeof (t.featureFlags as any)?.[k] === 'boolean' ? [[k, (t.featureFlags as any)[k]]] : []))),
+  overrides: Object.fromEntries(
+    FEATURE_KEYS.flatMap((k) => (typeof (t.featureFlags as any)?.[k] === 'boolean' ? [[k, (t.featureFlags as any)[k]]] : []))
+  ),
 });
 
-const tenantSelect = { id: true, slug: true, name: true, tier: true, status: true, seatQuota: true, featureFlags: true, customDomain: true, pendingCustomDomain: true, customDomainFailingSince: true, trialEndsAt: true, trialExpiredAt: true } as const;
+const tenantSelect = {
+  id: true,
+  slug: true,
+  name: true,
+  tier: true,
+  status: true,
+  seatQuota: true,
+  featureFlags: true,
+  customDomain: true,
+  pendingCustomDomain: true,
+  customDomainFailingSince: true,
+  trialEndsAt: true,
+  trialExpiredAt: true,
+} as const;
 
 /** GET /api/v1/operator/tenants: every organisation with its plan and seat use. */
 router.get(
@@ -80,7 +118,12 @@ export const planSchema = z
     seatQuota: z.number().int().min(1).max(10_000_000).nullable().optional(),
     /** true/false overrides the tier's default; null goes back to the default. */
     features: z
-      .object(Object.fromEntries(FEATURE_KEYS.map((k) => [k, z.boolean().nullable().optional()])) as Record<(typeof FEATURE_KEYS)[number], z.ZodOptional<z.ZodNullable<z.ZodBoolean>>>)
+      .object(
+        Object.fromEntries(FEATURE_KEYS.map((k) => [k, z.boolean().nullable().optional()])) as Record<
+          (typeof FEATURE_KEYS)[number],
+          z.ZodOptional<z.ZodNullable<z.ZodBoolean>>
+        >
+      )
       .strict()
       .optional(),
   })
@@ -110,7 +153,11 @@ router.patch(
     }
     const updated = await prisma.tenant.update({
       where: { id },
-      data: { tier: input.tier, ...(input.seatQuota !== undefined ? { seatQuota: input.seatQuota } : {}), ...(featureFlags ? { featureFlags } : {}) },
+      data: {
+        tier: input.tier,
+        ...(input.seatQuota !== undefined ? { seatQuota: input.seatQuota } : {}),
+        ...(featureFlags ? { featureFlags } : {}),
+      },
       select: tenantSelect,
     });
 
@@ -119,7 +166,15 @@ router.patch(
       before: { tier: before.tier, seatQuota: before.seatQuota, featureFlags: before.featureFlags },
       after: { tier: updated.tier, seatQuota: updated.seatQuota, featureFlags: updated.featureFlags },
     };
-    const entry = { userId: req.user!.id, action: 'TENANT_PLAN_UPDATED', resourceType: 'TENANT', resourceId: id, ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson };
+    const entry = {
+      userId: req.user!.id,
+      action: 'TENANT_PLAN_UPDATED',
+      resourceType: 'TENANT',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson,
+    };
     await logAuditEvent({ ...entry, tenantId: tenantIdOf(req) });
     // The organisation's own audit trail shows the change too; the operator's user id is not one of its users.
     if (id !== tenantIdOf(req)) await runWithTenant(id, () => logAuditEvent({ ...entry, tenantId: id, userId: undefined }));
@@ -147,7 +202,12 @@ export const createTenantSchema = z
   })
   .strict();
 
-const actorOf = (req: Request) => ({ tenantId: tenantIdOf(req), userId: req.user!.id, ipAddress: req.ip, userAgent: req.headers['user-agent'] });
+const actorOf = (req: Request) => ({
+  tenantId: tenantIdOf(req),
+  userId: req.user!.id,
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
+});
 
 /** POST /api/v1/operator/tenants: create an organisation directly; its first administrator gets an invitation. */
 router.post(
@@ -156,7 +216,11 @@ router.post(
     const input = parseBody(req, createTenantSchema);
     const { tenant, invitation } = await createOrganization(
       {
-        name: input.name, slug: input.slug, tier: input.tier, seatQuota: input.seatQuota, customDomain: input.customDomain ?? null,
+        name: input.name,
+        slug: input.slug,
+        tier: input.tier,
+        seatQuota: input.seatQuota,
+        customDomain: input.customDomain ?? null,
         trialDays: input.trialDays ?? config.ORG_TRIAL_DAYS,
         admin: { email: input.adminEmail, firstName: input.adminFirstName, lastName: input.adminLastName },
       },
@@ -186,8 +250,13 @@ router.patch(
     const updated = await prisma.tenant.update({ where: { id }, data: { status, ...trialCleared }, select: tenantSelect });
     invalidateTenantSessions(id);
     const entry = {
-      userId: req.user!.id, action: status === 'SUSPENDED' ? 'TENANT_SUSPENDED' : 'TENANT_REACTIVATED', resourceType: 'TENANT', resourceId: id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { tenant: before.slug, before: before.status, after: status },
+      userId: req.user!.id,
+      action: status === 'SUSPENDED' ? 'TENANT_SUSPENDED' : 'TENANT_REACTIVATED',
+      resourceType: 'TENANT',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { tenant: before.slug, before: before.status, after: status },
     };
     await logAuditEvent({ ...entry, tenantId: tenantIdOf(req) });
     await runWithTenant(id, () => logAuditEvent({ ...entry, tenantId: id, userId: undefined }));
@@ -203,7 +272,9 @@ router.patch(
 /** GET /api/v1/operator/trial-settings: the platform's trial defaults, for the create and approve forms. */
 router.get(
   '/trial-settings',
-  route('Failed to load the trial settings', async (_req, res) => res.json({ data: { defaultDays: config.ORG_TRIAL_DAYS, graceDays: config.ORG_TRIAL_GRACE_DAYS } }))
+  route('Failed to load the trial settings', async (_req, res) =>
+    res.json({ data: { defaultDays: config.ORG_TRIAL_DAYS, graceDays: config.ORG_TRIAL_GRACE_DAYS } })
+  )
 );
 
 export const trialDaysSchema = z.object({ days: z.number().int().min(1).max(365) }).strict();
@@ -228,10 +299,16 @@ router.patch(
 );
 
 /** POST /api/v1/operator/tenants/:id/trial/end: end a running trial now (the organisation becomes read-only). */
-router.post('/tenants/:id/trial/end', trialAction('Failed to end the trial', (id, req) => endTrial(id, actorOf(req))));
+router.post(
+  '/tenants/:id/trial/end',
+  trialAction('Failed to end the trial', (id, req) => endTrial(id, actorOf(req)))
+);
 
 /** POST /api/v1/operator/tenants/:id/trial/convert: make a trial organisation an active, paid one. */
-router.post('/tenants/:id/trial/convert', trialAction('Failed to convert the trial', (id, req) => convertTrial(id, actorOf(req))));
+router.post(
+  '/tenants/:id/trial/convert',
+  trialAction('Failed to convert the trial', (id, req) => convertTrial(id, actorOf(req)))
+);
 
 // --------------------------------------------------------------------------- custom domains
 
@@ -264,7 +341,9 @@ router.put(
 router.post(
   '/tenants/:id/custom-domain/verify',
   domainCheckLimiter,
-  route('Failed to verify the custom domain', async (req, res) => res.json({ data: await verifyCustomDomain(await domainTenant(req), actorOf(req)) }))
+  route('Failed to verify the custom domain', async (req, res) =>
+    res.json({ data: await verifyCustomDomain(await domainTenant(req), actorOf(req)) })
+  )
 );
 
 /** DELETE /api/v1/operator/tenants/:id/custom-domain?scope=all|pending */
@@ -281,19 +360,42 @@ router.delete(
 
 // Only requests whose applicant confirmed their e-mail reach the operator (UNVERIFIED ones are never listed).
 const REQUEST_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
-export const requestListQuery = z.object({ status: z.enum(REQUEST_STATUSES).default('PENDING'), ...paginationShape, limit: paginationShape.limit.default(25) });
+export const requestListQuery = z.object({
+  status: z.enum(REQUEST_STATUSES).default('PENDING'),
+  ...paginationShape,
+  limit: paginationShape.limit.default(25),
+});
 
 const requestSelect = {
-  id: true, organizationName: true, slug: true, institutionType: true, country: true, website: true, expectedLearners: true,
-  contactFirstName: true, contactLastName: true, contactEmail: true, contactPhone: true, message: true,
-  status: true, decisionNote: true, decidedAt: true, decidedByEmail: true, createdTenantId: true, createdAt: true,
-  verifiedAt: true, holdExpiresAt: true,
+  id: true,
+  organizationName: true,
+  slug: true,
+  institutionType: true,
+  country: true,
+  website: true,
+  expectedLearners: true,
+  contactFirstName: true,
+  contactLastName: true,
+  contactEmail: true,
+  contactPhone: true,
+  message: true,
+  status: true,
+  decisionNote: true,
+  decidedAt: true,
+  decidedByEmail: true,
+  createdTenantId: true,
+  createdAt: true,
+  verifiedAt: true,
+  holdExpiresAt: true,
 } as const;
 
 type RequestRow = { status: string; holdExpiresAt: Date | null } & Record<string, unknown>;
 
 /** `expired`: waiting longer than its hold on the address lasts, so it no longer keeps others from the address. */
-const requestView = <T extends RequestRow>(r: T) => ({ ...r, expired: r.status === 'PENDING' && (!r.holdExpiresAt || r.holdExpiresAt <= new Date()) });
+const requestView = <T extends RequestRow>(r: T) => ({
+  ...r,
+  expired: r.status === 'PENDING' && (!r.holdExpiresAt || r.holdExpiresAt <= new Date()),
+});
 
 /** GET /api/v1/operator/requests?status=&page=&limit=: organisation registration requests, newest first, a page at a time. */
 router.get(
@@ -302,7 +404,13 @@ router.get(
     const { status, page, limit } = parseQuery(req, requestListQuery);
     const where = { status };
     const [rows, total] = await Promise.all([
-      basePrisma.organizationRequest.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * limit, take: limit, select: requestSelect }),
+      basePrisma.organizationRequest.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: requestSelect,
+      }),
       basePrisma.organizationRequest.count({ where }),
     ]);
     return res.json({ data: rows.map(requestView), pagination: pageMeta(page, limit, total) });
@@ -318,7 +426,8 @@ export const approveSchema = z
   })
   .strict();
 
-const deciderEmail = async (req: Request) => (await prisma.user.findFirst({ where: { id: req.user!.id }, select: { email: true } }))?.email ?? null;
+const deciderEmail = async (req: Request) =>
+  (await prisma.user.findFirst({ where: { id: req.user!.id }, select: { email: true } }))?.email ?? null;
 
 /**
  * POST /api/v1/operator/requests/:id/approve: creates the organisation from the request, with the contact as
@@ -345,7 +454,10 @@ router.post(
       // Links the request to the new organisation in the same transaction, and does not throw once that committed.
       created = await createOrganization(
         {
-          name: request.organizationName, slug: request.slug, tier: input.tier, seatQuota: input.seatQuota,
+          name: request.organizationName,
+          slug: request.slug,
+          tier: input.tier,
+          seatQuota: input.seatQuota,
           trialDays: input.trialDays ?? config.ORG_TRIAL_DAYS,
           admin: { email: request.contactEmail, firstName: request.contactFirstName, lastName: request.contactLastName },
         },
@@ -367,8 +479,20 @@ router.post(
     }
     try {
       await logAuditEvent({
-        tenantId: tenantIdOf(req), userId: req.user!.id, action: 'ORGANIZATION_REQUEST_APPROVED', resourceType: 'ORGANIZATION_REQUEST', resourceId: id,
-        ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { slug: request.slug, tier: input.tier, seatQuota: input.seatQuota, tenantId: created.tenant.id, trialEndsAt: created.tenant.trialEndsAt?.toISOString() ?? null },
+        tenantId: tenantIdOf(req),
+        userId: req.user!.id,
+        action: 'ORGANIZATION_REQUEST_APPROVED',
+        resourceType: 'ORGANIZATION_REQUEST',
+        resourceId: id,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        diffJson: {
+          slug: request.slug,
+          tier: input.tier,
+          seatQuota: input.seatQuota,
+          tenantId: created.tenant.id,
+          trialEndsAt: created.tenant.trialEndsAt?.toISOString() ?? null,
+        },
       });
     } catch (err) {
       logger.error({ err, requestId: id }, 'request approved, but the audit entry failed');
@@ -400,10 +524,18 @@ router.post(
       `Hello ${request.contactFirstName},\n\nThank you for your interest. We are not able to set up ${request.organizationName} on the learning platform at this time.\n\nRequested address: ${requestedAddress(request.slug)}\n\nReason: ${reason}\n\nIf you have questions, reply to this email.`
     );
     await logAuditEvent({
-      tenantId: tenantIdOf(req), userId: req.user!.id, action: 'ORGANIZATION_REQUEST_REJECTED', resourceType: 'ORGANIZATION_REQUEST', resourceId: id,
-      ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { slug: request.slug, reason },
+      tenantId: tenantIdOf(req),
+      userId: req.user!.id,
+      action: 'ORGANIZATION_REQUEST_REJECTED',
+      resourceType: 'ORGANIZATION_REQUEST',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { slug: request.slug, reason },
     });
-    return res.json({ data: requestView(await basePrisma.organizationRequest.findUniqueOrThrow({ where: { id }, select: requestSelect })) });
+    return res.json({
+      data: requestView(await basePrisma.organizationRequest.findUniqueOrThrow({ where: { id }, select: requestSelect })),
+    });
   })
 );
 

@@ -15,9 +15,7 @@ export interface AuditLogOptions {
 
 export async function logAuditEvent(options: AuditLogOptions) {
   try {
-    const sanitizedDiff = options.diffJson
-      ? (AuditSanitizer.sanitize(options.diffJson) as any)
-      : undefined;
+    const sanitizedDiff = options.diffJson ? (AuditSanitizer.sanitize(options.diffJson) as any) : undefined;
 
     return await prisma.auditLog.create({
       data: {

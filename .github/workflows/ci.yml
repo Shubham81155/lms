@@ -48,6 +48,9 @@ jobs:
       # Each check runs even when an earlier one failed, so one run reports every problem.
       - name: Lint
         run: npm run lint
+      - name: Formatting (prettier)
+        if: success() || failure()
+        run: npm run format:check
       - name: Type check (API and packages)
         if: success() || failure()
         run: npm run typecheck

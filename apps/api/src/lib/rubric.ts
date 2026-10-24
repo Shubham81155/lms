@@ -36,7 +36,10 @@ export function normaliseCriteria(input: { id?: string; name: string; descriptio
  * the criterion's maximum or be negative, and unknown criteria are refused, so a typo can never
  * silently drop points.
  */
-export function scoreFromCriteria(criteria: Criterion[], scores: Record<string, number>): { total: number; scores: Record<string, number> } {
+export function scoreFromCriteria(
+  criteria: Criterion[],
+  scores: Record<string, number>
+): { total: number; scores: Record<string, number> } {
   const known = new Set(criteria.map((c) => c.id));
   for (const id of Object.keys(scores)) if (!known.has(id)) throw new RubricError(`Unknown criterion ${id}`);
   const out: Record<string, number> = {};

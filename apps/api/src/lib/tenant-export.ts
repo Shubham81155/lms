@@ -26,7 +26,14 @@ const PAGE = 500;
  * Tables never exported: one-time secrets (only their hashes are stored, and they are useless outside this
  * platform) and the platform's own offboarding records.
  */
-const EXCLUDED_MODELS = new Set(['PasswordResetToken', 'EmailVerificationToken', 'TenantExport', 'TenantDeletion', 'OrganizationRequest', 'RetentionPolicy']);
+const EXCLUDED_MODELS = new Set([
+  'PasswordResetToken',
+  'EmailVerificationToken',
+  'TenantExport',
+  'TenantDeletion',
+  'OrganizationRequest',
+  'RetentionPolicy',
+]);
 
 /** Secret fields, named explicitly. Anything else that looks like a secret (SECRET_LIKE) is dropped too. */
 export const DENIED_FIELDS: Record<string, readonly string[]> = {
@@ -103,7 +110,12 @@ export function tablePlans(): TablePlan[] {
  */
 export function unlinkedTenantDelegates(): string[] {
   return models()
-    .filter((m) => hasTenantId(m) && !['TenantExport', 'TenantDeletion'].includes(m.name) && !m.fields.some((f) => f.kind === 'object' && f.type === 'Tenant'))
+    .filter(
+      (m) =>
+        hasTenantId(m) &&
+        !['TenantExport', 'TenantDeletion'].includes(m.name) &&
+        !m.fields.some((f) => f.kind === 'object' && f.type === 'Tenant')
+    )
     .map((m) => m.name[0].toLowerCase() + m.name.slice(1));
 }
 
@@ -127,7 +139,10 @@ export async function storedFilesOf(tenantId: string): Promise<{ key: string; pa
   for (;;) {
     const files = await runWithTenant(tenantId, () =>
       prisma.storedFile.findMany({
-        where: { tenantId }, select: { id: true, storageKey: true, filename: true }, orderBy: { id: 'asc' }, take: PAGE,
+        where: { tenantId },
+        select: { id: true, storageKey: true, filename: true },
+        orderBy: { id: 'asc' },
+        take: PAGE,
         ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       })
     );
@@ -135,7 +150,9 @@ export async function storedFilesOf(tenantId: string): Promise<{ key: string; pa
     if (files.length < PAGE) break;
     cursor = files[files.length - 1].id;
   }
-  const packages = await runWithTenant(tenantId, () => prisma.scormPackage.findMany({ where: { tenantId }, select: { id: true, filesJson: true } }));
+  const packages = await runWithTenant(tenantId, () =>
+    prisma.scormPackage.findMany({ where: { tenantId }, select: { id: true, filesJson: true } })
+  );
   for (const p of packages) {
     for (const [file, meta] of Object.entries((p.filesJson ?? {}) as Record<string, { key?: string }>)) {
       if (meta?.key) out.push({ key: meta.key, path: `scorm/${p.id}/${file.split('/').map(safeName).join('/')}` });
@@ -146,8 +163,11 @@ export async function storedFilesOf(tenantId: string): Promise<{ key: string; pa
 
 /** A path segment safe inside a ZIP (no separators, no "..", nothing empty). */
 function safeName(name: string): string {
-  // eslint-disable-next-line no-control-regex -- control characters are exactly what is being removed
-  const clean = name.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').replace(/^\.+$/, '_').slice(0, 200);
+  const clean = name
+    // eslint-disable-next-line no-control-regex -- control characters are exactly what is being removed
+    .replace(/[\\/:*?"<>|\x00-\x1f]/g, '_')
+    .replace(/^\.+$/, '_')
+    .slice(0, 200);
   return clean || '_';
 }
 
@@ -158,7 +178,13 @@ function tableStream(tenantId: string, plan: TablePlan, counts: Record<string, n
     counts[plan.model] = 0;
     for (;;) {
       const rows: { id: string }[] = await runWithTenant(tenantId, () =>
-        delegateOf(plan).findMany({ where: plan.where(tenantId), select: select(plan.fields), orderBy: { id: 'asc' }, take: PAGE, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) })
+        delegateOf(plan).findMany({
+          where: plan.where(tenantId),
+          select: select(plan.fields),
+          orderBy: { id: 'asc' },
+          take: PAGE,
+          ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        })
       );
       counts[plan.model] += rows.length;
       if (rows.length) yield rows.map((r) => JSON.stringify(r, replacer)).join('\n') + '\n';
@@ -232,7 +258,16 @@ async function writeZip(tenantId: string, exportId: string): Promise<string> {
     }
     // Lazy, so it is written last, when the counts are known.
     zip.addReadStreamLazy('manifest.json', { mtime }, (cb) =>
-      cb(null, Readable.from([JSON.stringify({ exportId, tenantId, exportedAt: new Date().toISOString(), rowCounts: counts, files: files.length, missingFiles }, null, 2)]))
+      cb(
+        null,
+        Readable.from([
+          JSON.stringify(
+            { exportId, tenantId, exportedAt: new Date().toISOString(), rowCounts: counts, files: files.length, missingFiles },
+            null,
+            2
+          ),
+        ])
+      )
     );
     zip.end();
   }).catch(async (err) => {
@@ -247,7 +282,10 @@ async function writeZip(tenantId: string, exportId: string): Promise<string> {
  * the export was not waiting (someone else took it).
  */
 export async function buildExport(exportId: string): Promise<'READY' | 'FAILED' | null> {
-  const claimed = await basePrisma.tenantExport.updateMany({ where: { id: exportId, status: 'QUEUED' }, data: { status: 'RUNNING', startedAt: new Date(), error: null } });
+  const claimed = await basePrisma.tenantExport.updateMany({
+    where: { id: exportId, status: 'QUEUED' },
+    data: { status: 'RUNNING', startedAt: new Date(), error: null },
+  });
   if (!claimed.count) return null;
   const exp = await basePrisma.tenantExport.findUniqueOrThrow({ where: { id: exportId } });
   let tempPath: string | null = null;
@@ -260,14 +298,20 @@ export async function buildExport(exportId: string): Promise<'READY' | 'FAILED' 
     await basePrisma.tenantExport.update({
       where: { id: exp.id },
       data: {
-        status: 'READY', storageKey: key, sizeBytes: BigInt(size), completedAt: now,
+        status: 'READY',
+        storageKey: key,
+        sizeBytes: BigInt(size),
+        completedAt: now,
         expiresAt: new Date(now.getTime() + (exp.isFinal ? FINAL_EXPORT_RETENTION_DAYS : EXPORT_LINK_DAYS) * DAY_MS),
       },
     });
     return 'READY';
   } catch (err) {
     logger.error({ err, exportId, tenantId: exp.tenantId }, 'organisation export failed');
-    await basePrisma.tenantExport.update({ where: { id: exp.id }, data: { status: 'FAILED', completedAt: new Date(), error: err instanceof Error ? err.message.slice(0, 500) : 'Export failed' } });
+    await basePrisma.tenantExport.update({
+      where: { id: exp.id },
+      data: { status: 'FAILED', completedAt: new Date(), error: err instanceof Error ? err.message.slice(0, 500) : 'Export failed' },
+    });
     return 'FAILED';
   } finally {
     if (tempPath) await rm(tempPath, { force: true });

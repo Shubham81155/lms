@@ -39,14 +39,20 @@ export async function recordStatement(input: RecordInput): Promise<string | null
     object: {
       objectType: 'Activity',
       id: input.object.id,
-      definition: { ...(input.object.name ? { name: { 'en-US': input.object.name } } : {}), ...(input.object.type ? { type: input.object.type } : {}) },
+      definition: {
+        ...(input.object.name ? { name: { 'en-US': input.object.name } } : {}),
+        ...(input.object.type ? { type: input.object.type } : {}),
+      },
     },
     ...(input.result ? { result: input.result } : {}),
     timestamp: timestamp.toISOString(),
   };
   try {
     // Children's data (DPDP Act s.9(3)): no learning-activity tracking of a minor without a guardian's consent.
-    const person = await prisma.user.findFirst({ where: { id: input.user.id, tenantId: input.tenantId }, select: { isMinor: true, guardianConsentAt: true } });
+    const person = await prisma.user.findFirst({
+      where: { id: input.user.id, tenantId: input.tenantId },
+      select: { isMinor: true, guardianConsentAt: true },
+    });
     if (person?.isMinor && !person.guardianConsentAt) return null;
     await prisma.xapiStatement.create({
       data: {

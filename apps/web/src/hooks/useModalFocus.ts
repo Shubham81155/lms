@@ -1,15 +1,21 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
+import { useEffect } from 'react';
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const MODAL = '[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]';
 
 const visible = (el: HTMLElement) =>
-  typeof el.checkVisibility === "function" ? el.checkVisibility({ visibilityProperty: true }) : !el.closest("[hidden]") && getComputedStyle(el).display !== "none" && getComputedStyle(el).visibility !== "hidden";
+  typeof el.checkVisibility === 'function'
+    ? el.checkVisibility({ visibilityProperty: true })
+    : !el.closest('[hidden]') && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
 
 /** Open modals (not the always-mounted, inert navigation drawer), topmost last. */
-const openModals = () => Array.from(document.querySelectorAll<HTMLElement>(MODAL)).filter((el) => !el.closest("[inert]") && !el.hasAttribute("hidden") && visible(el));
+const openModals = () =>
+  Array.from(document.querySelectorAll<HTMLElement>(MODAL)).filter(
+    (el) => !el.closest('[inert]') && !el.hasAttribute('hidden') && visible(el)
+  );
 
 /**
  * Keyboard behaviour shared by the app's hand-written modal dialogs, without touching each of them: when a dialog
@@ -26,11 +32,12 @@ export function useModalFocus() {
       const now = openModals();
       for (const dialog of now) {
         if (openers.some((o) => o.dialog === dialog)) continue;
-        const opener = document.activeElement instanceof HTMLElement && !dialog.contains(document.activeElement) ? document.activeElement : null;
+        const opener =
+          document.activeElement instanceof HTMLElement && !dialog.contains(document.activeElement) ? document.activeElement : null;
         openers.push({ dialog, opener });
         if (!dialog.contains(document.activeElement)) {
           const first = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).find(visible);
-          if (!dialog.hasAttribute("tabindex")) dialog.setAttribute("tabindex", "-1");
+          if (!dialog.hasAttribute('tabindex')) dialog.setAttribute('tabindex', '-1');
           (first ?? dialog).focus({ preventScroll: true });
         }
       }
@@ -39,12 +46,13 @@ export function useModalFocus() {
         openers = openers.filter((o) => now.includes(o.dialog));
         // Hand focus back only when it was lost with the dialog (not when the person already moved on).
         const last = gone[gone.length - 1];
-        if (last.opener?.isConnected && (document.activeElement === document.body || !document.activeElement)) last.opener.focus({ preventScroll: true });
+        if (last.opener?.isConnected && (document.activeElement === document.body || !document.activeElement))
+          last.opener.focus({ preventScroll: true });
       }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
+      if (e.key !== 'Tab') return;
       const dialog = openModals().pop();
       if (!dialog) return;
       const els = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(visible);
@@ -73,13 +81,18 @@ export function useModalFocus() {
     const observer = new MutationObserver(() => {
       if (!frame) frame = requestAnimationFrame(() => ((frame = 0), sync()));
     });
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["inert", "hidden", "aria-modal", "role"] });
-    document.addEventListener("keydown", onKeyDown);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['inert', 'hidden', 'aria-modal', 'role'],
+    });
+    document.addEventListener('keydown', onKeyDown);
     sync();
     return () => {
       observer.disconnect();
       if (frame) cancelAnimationFrame(frame);
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener('keydown', onKeyDown);
     };
   }, []);
 }

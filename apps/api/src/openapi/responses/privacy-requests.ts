@@ -1,6 +1,13 @@
 import { z } from 'zod';
 import type { OperationDoc } from '../docs';
-import { fileRequestSchema, fulfilRequestSchema, rejectRequestSchema, requestsQuerySchema, retentionRunSchema, updateRequestSchema } from '../../routes/privacy.routes';
+import {
+  fileRequestSchema,
+  fulfilRequestSchema,
+  rejectRequestSchema,
+  requestsQuerySchema,
+  retentionRunSchema,
+  updateRequestSchema,
+} from '../../routes/privacy.routes';
 import { retentionPolicySchema } from '../../lib/retention';
 import { REQUEST_KINDS, REQUEST_STATUSES } from '../../lib/data-requests';
 
@@ -55,7 +62,8 @@ const Policy = z.object({
 
 export const DSAR_DOCS: Record<string, OperationDoc> = {
   'POST /api/v1/privacy/requests': {
-    summary: 'File a request about your own data: access, erasure, correction, restriction, objection, FERPA directory opt-out or other. It is due in DSAR_DUE_DAYS (30). At most five open requests per person and one per kind (409). You and the administrators are e-mailed. Audited.',
+    summary:
+      'File a request about your own data: access, erasure, correction, restriction, objection, FERPA directory opt-out or other. It is due in DSAR_DUE_DAYS (30). At most five open requests per person and one per kind (409). You and the administrators are e-mailed. Audited.',
     body: fileRequestSchema,
     response: ok(z.object({ data: MyRequest }), 201),
     errors: [400, 404, 409],
@@ -70,46 +78,61 @@ export const DSAR_DOCS: Record<string, OperationDoc> = {
     errors: [404, 409],
   },
   'GET /api/v1/privacy/requests/:id/export': {
-    summary: 'Download your data (attachment, same file as /privacy/me/export) once an access request of yours was fulfilled with the data attached. 409 for any other request.',
-    response: { status: 200, contentType: 'application/json', schema: z.record(z.string(), z.unknown()), description: 'Attachment (personal-data-<id>.json).' },
+    summary:
+      'Download your data (attachment, same file as /privacy/me/export) once an access request of yours was fulfilled with the data attached. 409 for any other request.',
+    response: {
+      status: 200,
+      contentType: 'application/json',
+      schema: z.record(z.string(), z.unknown()),
+      description: 'Attachment (personal-data-<id>.json).',
+    },
     errors: [404, 409],
   },
   'GET /api/v1/privacy/requests': {
-    summary: "Administrators: the organisation's request queue, most urgent first, with who filed each, filters (status, kind, overdue, assignee) and the number of open and overdue requests.",
+    summary:
+      "Administrators: the organisation's request queue, most urgent first, with who filed each, filters (status, kind, overdue, assignee) and the number of open and overdue requests.",
     query: requestsQuerySchema,
-    response: ok(z.object({ data: z.array(QueueRequest), pagination: Pagination, summary: z.object({ open: z.number(), overdue: z.number() }) })),
+    response: ok(
+      z.object({ data: z.array(QueueRequest), pagination: Pagination, summary: z.object({ open: z.number(), overdue: z.number() }) })
+    ),
     errors: [400],
   },
   'PATCH /api/v1/privacy/requests/:id': {
-    summary: 'Administrators: hand a request to an active administrator (a first assignment starts the work and tells the person; null puts it back in the queue) or edit its internal notes. Not for a request you filed yourself (403). Audited.',
+    summary:
+      'Administrators: hand a request to an active administrator (a first assignment starts the work and tells the person; null puts it back in the queue) or edit its internal notes. Not for a request you filed yourself (403). Audited.',
     body: updateRequestSchema,
     response: ok(z.object({ data: QueueRequest })),
     errors: [400, 403, 404, 409],
   },
   'POST /api/v1/privacy/requests/:id/fulfil': {
-    summary: 'Administrators: close a request as done and carry out what its kind calls for: an access request gets the data attached for download, an erasure request erases the account (409 for the only administrator), a directory opt-out is applied; other kinds are answered by the resolution text (required for OTHER). The person is e-mailed. Not for a request you filed yourself (403). Audited.',
+    summary:
+      'Administrators: close a request as done and carry out what its kind calls for: an access request gets the data attached for download, an erasure request erases the account (409 for the only administrator), a directory opt-out is applied; other kinds are answered by the resolution text (required for OTHER). The person is e-mailed. Not for a request you filed yourself (403). Audited.',
     body: fulfilRequestSchema,
     response: ok(z.object({ data: QueueRequest })),
     errors: [400, 403, 404, 409],
   },
   'POST /api/v1/privacy/requests/:id/reject': {
-    summary: 'Administrators: decline a request; the reason is shown to the person and e-mailed. Not for a request you filed yourself (403). Audited.',
+    summary:
+      'Administrators: decline a request; the reason is shown to the person and e-mailed. Not for a request you filed yourself (403). Audited.',
     body: rejectRequestSchema,
     response: ok(z.object({ data: QueueRequest })),
     errors: [400, 403, 404, 409],
   },
   'GET /api/v1/privacy/retention': {
-    summary: "Administrators: the organisation's data-retention policy (off by default), the classes it can cover with their minimum days, and what the last run did.",
+    summary:
+      "Administrators: the organisation's data-retention policy (off by default), the classes it can cover with their minimum days, and what the last run did.",
     response: ok(z.object({ data: Policy })),
   },
   'PUT /api/v1/privacy/retention': {
-    summary: 'Administrators: set how long each class of data is kept (null leaves a class alone). Grades, certificates, submissions and the audit trail are never touched. While dryRun is true a run only counts. Audited.',
+    summary:
+      'Administrators: set how long each class of data is kept (null leaves a class alone). Grades, certificates, submissions and the audit trail are never touched. While dryRun is true a run only counts. Audited.',
     body: retentionPolicySchema,
     response: ok(z.object({ data: Policy })),
     errors: [400],
   },
   'POST /api/v1/privacy/retention/run': {
-    summary: 'Administrators: run the policy now. With dryRun, or while the policy is not enabled, it only counts what it would remove. 409 until a policy has been saved. Audited with the counts.',
+    summary:
+      'Administrators: run the policy now. With dryRun, or while the policy is not enabled, it only counts what it would remove. 409 until a policy has been saved. Audited with the counts.',
     body: retentionRunSchema,
     response: ok(z.object({ data: RunSummary })),
     errors: [400, 409],

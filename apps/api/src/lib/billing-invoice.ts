@@ -15,7 +15,11 @@ export interface GstSplit {
 }
 
 /** Splits a GST-inclusive amount. A buyer without a known state is treated as in the seller's state. */
-export function computeGst(totalPaise: number, buyerStateCode: string | null | undefined, sellerStateCode = config.SELLER_STATE_CODE): GstSplit {
+export function computeGst(
+  totalPaise: number,
+  buyerStateCode: string | null | undefined,
+  sellerStateCode = config.SELLER_STATE_CODE
+): GstSplit {
   const taxablePaise = Math.round((totalPaise * 100) / (100 + GST_RATE_PERCENT));
   const tax = totalPaise - taxablePaise;
   if (!buyerStateCode || buyerStateCode === sellerStateCode) {
@@ -57,9 +61,15 @@ export interface Party {
   stateCode: string;
 }
 
-export const sellerParty = (): Party => ({ legalName: config.SELLER_LEGAL_NAME, gstin: config.SELLER_GSTIN || null, address: config.SELLER_ADDRESS, stateCode: config.SELLER_STATE_CODE });
+export const sellerParty = (): Party => ({
+  legalName: config.SELLER_LEGAL_NAME,
+  gstin: config.SELLER_GSTIN || null,
+  address: config.SELLER_ADDRESS,
+  stateCode: config.SELLER_STATE_CODE,
+});
 
-export const rupees = (paise: number) => `Rs. ${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const rupees = (paise: number) =>
+  `Rs. ${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export interface InvoiceForPdf extends GstSplit {
   number: string;
@@ -102,7 +112,12 @@ export function textPdf(lines: { text: string; size?: number; bold?: boolean }[]
   return Buffer.from(out, 'latin1');
 }
 
-const partyLines = (p: Party) => [p.legalName, ...p.address.split('\n').filter(Boolean), p.gstin ? `GSTIN: ${p.gstin}` : 'GSTIN: unregistered', `State code: ${p.stateCode}`];
+const partyLines = (p: Party) => [
+  p.legalName,
+  ...p.address.split('\n').filter(Boolean),
+  p.gstin ? `GSTIN: ${p.gstin}` : 'GSTIN: unregistered',
+  `State code: ${p.stateCode}`,
+];
 
 export function invoicePdf(inv: InvoiceForPdf): Buffer {
   const date = inv.issuedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
@@ -123,7 +138,15 @@ export function invoicePdf(inv: InvoiceForPdf): Buffer {
     { text: `Taxable value: ${rupees(inv.taxablePaise)}` },
   ];
   if (inv.igstPaise) lines.push({ text: `IGST @ ${GST_RATE_PERCENT}%: ${rupees(inv.igstPaise)}` });
-  else lines.push({ text: `CGST @ ${GST_RATE_PERCENT / 2}%: ${rupees(inv.cgstPaise)}` }, { text: `SGST @ ${GST_RATE_PERCENT / 2}%: ${rupees(inv.sgstPaise)}` });
-  lines.push({ text: `Total (paid): ${rupees(inv.totalPaise)}`, size: 12, bold: true }, { text: '' }, { text: 'Amounts are in Indian rupees and include GST. This is a computer-generated invoice.', size: 8 });
+  else
+    lines.push(
+      { text: `CGST @ ${GST_RATE_PERCENT / 2}%: ${rupees(inv.cgstPaise)}` },
+      { text: `SGST @ ${GST_RATE_PERCENT / 2}%: ${rupees(inv.sgstPaise)}` }
+    );
+  lines.push(
+    { text: `Total (paid): ${rupees(inv.totalPaise)}`, size: 12, bold: true },
+    { text: '' },
+    { text: 'Amounts are in Indian rupees and include GST. This is a computer-generated invoice.', size: 8 }
+  );
   return textPdf(lines);
 }

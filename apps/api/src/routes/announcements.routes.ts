@@ -16,7 +16,16 @@ const router = Router();
 const ACTIVE = ['ENROLLED', 'IN_PROGRESS', 'COMPLETED'] as const;
 
 const authorSelect = { author: { select: { id: true, firstName: true, lastName: true } } } as const;
-const view = (a: { id: string; courseId: string; title: string; body: string; pinned: boolean; createdAt: Date; updatedAt: Date; author: { id: string; firstName: string; lastName: string } | null }) => ({
+const view = (a: {
+  id: string;
+  courseId: string;
+  title: string;
+  body: string;
+  pinned: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  author: { id: string; firstName: string; lastName: string } | null;
+}) => ({
   id: a.id,
   courseId: a.courseId,
   title: a.title,
@@ -51,7 +60,13 @@ router.get(
     const where = { tenantId: tenantIdOf(req), courseId: access.course.id };
     const [total, rows] = await Promise.all([
       prisma.announcement.count({ where }),
-      prisma.announcement.findMany({ where, orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }], skip: (page - 1) * limit, take: limit, include: authorSelect }),
+      prisma.announcement.findMany({
+        where,
+        orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        include: authorSelect,
+      }),
     ]);
     return res.json({ data: rows.map(view), pagination: pageMeta(page, limit, total) });
   })

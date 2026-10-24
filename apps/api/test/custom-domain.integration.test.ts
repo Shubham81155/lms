@@ -33,9 +33,29 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-def', slug: 'default-tenant', name: 'Default' } });
   await admin.tenant.create({ data: { id: 't-a', slug: 'alpha', name: 'Alpha' } });
   await admin.tenant.create({ data: { id: 't-b', slug: 'beta', name: 'Beta' } });
-  await admin.tenant.create({ data: { id: 't-gone', slug: 'gone', name: 'Gone', status: 'ARCHIVED', customDomain: 'learn.gone.edu', customDomainVerifiedAt: new Date() } });
+  await admin.tenant.create({
+    data: {
+      id: 't-gone',
+      slug: 'gone',
+      name: 'Gone',
+      status: 'ARCHIVED',
+      customDomain: 'learn.gone.edu',
+      customDomainVerifiedAt: new Date(),
+    },
+  });
   const user = (id: string, tenantId: string, email: string, role: string) =>
-    admin.user.create({ data: { id, tenantId, email, firstName: 'A', lastName: 'B', role: role as any, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId,
+        email,
+        firstName: 'A',
+        lastName: 'B',
+        role: role as any,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('operator', 't-op', 'operator@x.edu', 'SUPER_ADMIN');
   await user('a-admin', 't-a', 'admin@alpha.edu', 'TENANT_ADMIN');
   await user('a-super', 't-a', 'super@alpha.edu', 'SUPER_ADMIN');
@@ -46,9 +66,11 @@ beforeAll(async () => {
   const mailer = await import('../src/lib/mailer.js');
   mailer.setMailer({ async send() {} });
   const { setDnsResolver } = await import('../src/lib/custom-domain.js');
-  const answer = <T>(v: T[] | string | undefined): Promise<T[]> => (typeof v === 'string' ? Promise.reject(dnsError(v)) : v ? Promise.resolve(v) : Promise.reject(dnsError('ENOTFOUND')));
+  const answer = <T>(v: T[] | string | undefined): Promise<T[]> =>
+    typeof v === 'string' ? Promise.reject(dnsError(v)) : v ? Promise.resolve(v) : Promise.reject(dnsError('ENOTFOUND'));
   setDnsResolver({
-    resolveTxt: (name) => answer(typeof txt[name] === 'string' ? (txt[name] as string) : (txt[name] as string[] | undefined)?.map((v) => [v])),
+    resolveTxt: (name) =>
+      answer(typeof txt[name] === 'string' ? (txt[name] as string) : (txt[name] as string[] | undefined)?.map((v) => [v])),
     resolveCname: (name) => answer(cnames[name]),
     resolve4: () => Promise.reject(dnsError('ENODATA')),
     resolve6: () => Promise.reject(dnsError('ENODATA')),
@@ -88,7 +110,12 @@ describe('an administrator verifying the organisation domain', () => {
     const res = await a.put('/api/v1/admin/custom-domain').send({ domain: 'Learn.Alpha.edu' });
     expect(res.status).toBe(200);
     const d = res.body.data;
-    expect(d).toMatchObject({ subdomain: 'alpha.lms.test', customDomain: null, target: 'edge.platform-example.com', pending: { domain: 'learn.alpha.edu', txtName: '_lms-verify.learn.alpha.edu' } });
+    expect(d).toMatchObject({
+      subdomain: 'alpha.lms.test',
+      customDomain: null,
+      target: 'edge.platform-example.com',
+      pending: { domain: 'learn.alpha.edu', txtName: '_lms-verify.learn.alpha.edu' },
+    });
     expect(d.pending.txtValue).toMatch(/^lms-verify=[0-9a-f]{32}$/);
     // Asking again keeps the token (the record may already be published).
     const again = await a.put('/api/v1/admin/custom-domain').send({ domain: 'learn.alpha.edu' });
@@ -123,7 +150,11 @@ describe('an administrator verifying the organisation domain', () => {
     cnames['learn.alpha.edu'] = ['edge.platform-example.com.'];
     const res = await a.post('/api/v1/admin/custom-domain/verify');
     expect(res.status).toBe(200);
-    expect(res.body.data.check).toMatchObject({ verified: true, error: null, routing: { target: 'edge.platform-example.com', pointsAtPlatform: true } });
+    expect(res.body.data.check).toMatchObject({
+      verified: true,
+      error: null,
+      routing: { target: 'edge.platform-example.com', pointsAtPlatform: true },
+    });
     expect(res.body.data).toMatchObject({ customDomain: 'learn.alpha.edu', pending: null });
     expect(res.body.data.verifiedAt).toBeTruthy();
     expect((await orgAt('learn.alpha.edu')).body.slug).toBe('alpha');
@@ -142,7 +173,11 @@ describe('an administrator verifying the organisation domain', () => {
 
     txt['_lms-verify.courses.alpha.edu'] = [asked.body.data.pending.txtValue];
     const res = await a.post('/api/v1/admin/custom-domain/verify');
-    expect(res.body.data).toMatchObject({ customDomain: 'courses.alpha.edu', pending: null, check: { verified: true, routing: { pointsAtPlatform: false } } });
+    expect(res.body.data).toMatchObject({
+      customDomain: 'courses.alpha.edu',
+      pending: null,
+      check: { verified: true, routing: { pointsAtPlatform: false } },
+    });
     expect((await orgAt('courses.alpha.edu')).body.slug).toBe('alpha');
     expect((await orgAt('learn.alpha.edu')).body.slug).not.toBe('alpha');
     expect((await ask('learn.alpha.edu')).status).toBe(404);
@@ -227,7 +262,14 @@ describe('other organisations and the platform operator', () => {
 
   it('creates an organisation with its custom domain waiting, not live', async () => {
     const op = await signIn('ops', 'operator@x.edu');
-    const res = await op.post('/api/v1/operator/tenants').send({ name: 'Gamma', slug: 'gamma', customDomain: 'learn.gamma.edu', adminFirstName: 'G', adminLastName: 'H', adminEmail: 'g@gamma.edu' });
+    const res = await op.post('/api/v1/operator/tenants').send({
+      name: 'Gamma',
+      slug: 'gamma',
+      customDomain: 'learn.gamma.edu',
+      adminFirstName: 'G',
+      adminLastName: 'H',
+      adminEmail: 'g@gamma.edu',
+    });
     expect(res.status).toBe(201);
     expect(res.body.data.organization).toMatchObject({ customDomain: null, pendingCustomDomain: 'learn.gamma.edu' });
     expect((await orgAt('learn.gamma.edu')).body.slug).not.toBe('gamma');

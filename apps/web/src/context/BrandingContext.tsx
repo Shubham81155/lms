@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { brandTokens } from "@/lib/branding";
-import { useTheme } from "@/context/ThemeContext";
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { brandTokens } from '@/lib/branding';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface Branding {
   name: string;
@@ -30,8 +30,20 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     let alive = true;
     api
-      .get<{ slug: string; name: string; theme: { logoUrl: string | null; faviconUrl: string | null; primaryColor: string | null } }>("/api/v1/tenant/config")
-      .then((r) => alive && setBranding({ name: r.name, slug: r.slug, logoUrl: r.theme.logoUrl, faviconUrl: r.theme.faviconUrl, primaryColor: r.theme.primaryColor }))
+      .get<{ slug: string; name: string; theme: { logoUrl: string | null; faviconUrl: string | null; primaryColor: string | null } }>(
+        '/api/v1/tenant/config'
+      )
+      .then(
+        (r) =>
+          alive &&
+          setBranding({
+            name: r.name,
+            slug: r.slug,
+            logoUrl: r.theme.logoUrl,
+            faviconUrl: r.theme.faviconUrl,
+            primaryColor: r.theme.primaryColor,
+          })
+      )
       .catch(() => alive && setBranding(null));
     return () => {
       alive = false;
@@ -40,13 +52,13 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     const root = document.documentElement;
-    const tokens = brandTokens(branding?.primaryColor, theme === "light" ? "light" : "dark");
+    const tokens = brandTokens(branding?.primaryColor, theme === 'light' ? 'light' : 'dark');
     if (tokens) {
-      root.style.setProperty("--brand", tokens.brand);
-      root.style.setProperty("--brand-hover", tokens.hover);
+      root.style.setProperty('--brand', tokens.brand);
+      root.style.setProperty('--brand-hover', tokens.hover);
     } else {
-      root.style.removeProperty("--brand");
-      root.style.removeProperty("--brand-hover");
+      root.style.removeProperty('--brand');
+      root.style.removeProperty('--brand-hover');
     }
   }, [branding?.primaryColor, theme]);
 
@@ -54,8 +66,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (!branding?.faviconUrl) return;
     let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
     if (!link) {
-      link = document.createElement("link");
-      link.rel = "icon";
+      link = document.createElement('link');
+      link.rel = 'icon';
       document.head.appendChild(link);
     }
     link.href = branding.faviconUrl;

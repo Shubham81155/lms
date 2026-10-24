@@ -11,7 +11,17 @@ import { cookiePath } from '../lib/cookie-name';
 import { appOrigin, originFor } from '../lib/sso-origin';
 import { resolveSsoUser } from '../lib/sso-user';
 import {
-  SAML_FLOW_COOKIE, SamlError, emailFromProfile, metadataXml, newRequestId, readSamlFlow, responseSucceeded, safeEqual, samlFor, signSamlFlow, subjectFromProfile,
+  SAML_FLOW_COOKIE,
+  SamlError,
+  emailFromProfile,
+  metadataXml,
+  newRequestId,
+  readSamlFlow,
+  responseSucceeded,
+  safeEqual,
+  samlFor,
+  signSamlFlow,
+  subjectFromProfile,
   namesFromProfile,
 } from '../lib/saml';
 
@@ -70,7 +80,14 @@ router.post('/acs', async (req: Request, res: Response) => {
     logger.info({ reason, requestId: req.id }, 'saml sign-in refused');
     if (flow) {
       void runWithTenant(flow.tenantId, () =>
-        logAuditEvent({ tenantId: flow.tenantId, action: 'SAML_LOGIN_FAILED', resourceType: 'USER', ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { reason } })
+        logAuditEvent({
+          tenantId: flow.tenantId,
+          action: 'SAML_LOGIN_FAILED',
+          resourceType: 'USER',
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          diffJson: { reason },
+        })
       );
     }
     // 303 turns the IdP's POST into a GET of the login page.
@@ -113,8 +130,14 @@ router.post('/acs', async (req: Request, res: Response) => {
 
       await startSession(res, { id: result.user.id, role: result.user.role, email: result.user.email, tenantId: result.user.tenantId });
       await logAuditEvent({
-        tenantId: flow.tenantId, userId: result.user.id, action: 'USER_LOGIN', resourceType: 'USER', resourceId: result.user.id,
-        ipAddress: req.ip, userAgent: req.headers['user-agent'], diffJson: { method: 'SAML' },
+        tenantId: flow.tenantId,
+        userId: result.user.id,
+        action: 'USER_LOGIN',
+        resourceType: 'USER',
+        resourceId: result.user.id,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        diffJson: { method: 'SAML' },
       });
       return res.redirect(303, `${origin}/`);
     });
@@ -127,9 +150,16 @@ router.post('/acs', async (req: Request, res: Response) => {
 /** GET /api/v1/auth/saml/metadata/:slug: what the administrator gives the IdP (public information). */
 router.get('/metadata/:slug', async (req: Request, res: Response) => {
   try {
-    const tenant = await basePrisma.tenant.findUnique({ where: { slug: String(req.params.slug) }, select: { id: true, slug: true, customDomain: true, status: true } });
-    if (!tenant || tenant.status === 'SUSPENDED' || tenant.status === 'ARCHIVED') return res.status(404).json({ error: 'Not found', requestId: req.id });
-    const exists = await runWithTenant(tenant.id, async () => !!(await prisma.samlConnection.findUnique({ where: { tenantId: tenant.id }, select: { id: true } })));
+    const tenant = await basePrisma.tenant.findUnique({
+      where: { slug: String(req.params.slug) },
+      select: { id: true, slug: true, customDomain: true, status: true },
+    });
+    if (!tenant || tenant.status === 'SUSPENDED' || tenant.status === 'ARCHIVED')
+      return res.status(404).json({ error: 'Not found', requestId: req.id });
+    const exists = await runWithTenant(
+      tenant.id,
+      async () => !!(await prisma.samlConnection.findUnique({ where: { tenantId: tenant.id }, select: { id: true } }))
+    );
     if (!exists) return res.status(404).json({ error: 'Not found', requestId: req.id });
     res.type('application/samlmetadata+xml');
     return res.send(metadataXml(originFor(tenant, req.publicHost), tenant.slug));

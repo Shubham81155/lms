@@ -19,13 +19,25 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
   const user = (id: string, role: any) =>
-    admin.user.create({ data: { id, tenantId: 't-h', email: `${id}@x.edu`, firstName: id, lastName: 'L', role, passwordHash: bcrypt.hashSync(PASSWORD, 4), emailVerified: true } });
+    admin.user.create({
+      data: {
+        id,
+        tenantId: 't-h',
+        email: `${id}@x.edu`,
+        firstName: id,
+        lastName: 'L',
+        role,
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
   await user('teacher', 'INSTRUCTOR');
   await user('other-teacher', 'INSTRUCTOR');
   for (const s of ['s1', 's2', 's3', 'outsider']) await user(s, 'STUDENT');
   await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'Course', status: 'PUBLISHED' } });
   await admin.courseInstructor.create({ data: { courseId: 'c1', userId: 'teacher', isPrimary: true } });
-  for (const s of ['s1', 's2', 's3']) await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
+  for (const s of ['s1', 's2', 's3'])
+    await admin.enrollment.create({ data: { tenantId: 't-h', courseId: 'c1', userId: s, status: 'IN_PROGRESS' } });
 
   const mc = (quizId: string) => ({
     quizId,
@@ -33,15 +45,68 @@ beforeAll(async () => {
     questionType: 'MULTIPLE_CHOICE' as const,
     points: 1,
     explanation: 'Arithmetic.',
-    optionsJson: [{ id: 'o4', text: '4', isCorrect: true }, { id: 'o5', text: '5', isCorrect: false }],
+    optionsJson: [
+      { id: 'o4', text: '4', isCorrect: true },
+      { id: 'o5', text: '5', isCorrect: false },
+    ],
   });
-  await admin.quiz.create({ data: { id: 'q-later', tenantId: 't-h', courseId: 'c1', title: 'Not yet open', availableFrom: at(DAY), questions: { create: [mc('q-later')].map(({ quizId, ...q }) => q) } } });
-  await admin.quiz.create({ data: { id: 'q-closed', tenantId: 't-h', courseId: 'c1', title: 'Closed', dueAt: at(-DAY), maxAttempts: 2, questions: { create: [mc('q-closed')].map(({ quizId, ...q }) => q) } } });
-  await admin.quiz.create({ data: { id: 'q-answers', tenantId: 't-h', courseId: 'c1', title: 'Reveal', reviewPolicy: 'ANSWERS', maxAttempts: 2, questions: { create: [mc('q-answers')].map(({ quizId, ...q }) => q) } } });
-  await admin.quiz.create({ data: { id: 'q-score', tenantId: 't-h', courseId: 'c1', title: 'Score only', reviewPolicy: 'SCORE_ONLY', questions: { create: [mc('q-score')].map(({ quizId, ...q }) => q) } } });
+  await admin.quiz.create({
+    data: {
+      id: 'q-later',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Not yet open',
+      availableFrom: at(DAY),
+      questions: { create: [mc('q-later')].map(({ quizId, ...q }) => q) },
+    },
+  });
+  await admin.quiz.create({
+    data: {
+      id: 'q-closed',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Closed',
+      dueAt: at(-DAY),
+      maxAttempts: 2,
+      questions: { create: [mc('q-closed')].map(({ quizId, ...q }) => q) },
+    },
+  });
+  await admin.quiz.create({
+    data: {
+      id: 'q-answers',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Reveal',
+      reviewPolicy: 'ANSWERS',
+      maxAttempts: 2,
+      questions: { create: [mc('q-answers')].map(({ quizId, ...q }) => q) },
+    },
+  });
+  await admin.quiz.create({
+    data: {
+      id: 'q-score',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Score only',
+      reviewPolicy: 'SCORE_ONLY',
+      questions: { create: [mc('q-score')].map(({ quizId, ...q }) => q) },
+    },
+  });
 
-  await admin.assignment.create({ data: { id: 'a-late', tenantId: 't-h', courseId: 'c1', title: 'Past due', instructions: 'Write', dueDate: at(-DAY) } });
-  await admin.assignment.create({ data: { id: 'a-cutoff', tenantId: 't-h', courseId: 'c1', title: 'Hard cutoff', instructions: 'Write', dueDate: at(-2 * DAY), acceptLateUntil: at(-DAY) } });
+  await admin.assignment.create({
+    data: { id: 'a-late', tenantId: 't-h', courseId: 'c1', title: 'Past due', instructions: 'Write', dueDate: at(-DAY) },
+  });
+  await admin.assignment.create({
+    data: {
+      id: 'a-cutoff',
+      tenantId: 't-h',
+      courseId: 'c1',
+      title: 'Hard cutoff',
+      instructions: 'Write',
+      dueDate: at(-2 * DAY),
+      acceptLateUntil: at(-DAY),
+    },
+  });
 
   process.env.DATABASE_URL = db.appUrl;
   app = (await import('../src/server.js')).app;
@@ -54,7 +119,10 @@ afterAll(async () => {
 
 async function as(who: string) {
   const agent = request.agent(app);
-  const res = await agent.post('/api/v1/auth/login').set('x-tenant-id', 'harvard').send({ email: `${who}@x.edu`, password: PASSWORD });
+  const res = await agent
+    .post('/api/v1/auth/login')
+    .set('x-tenant-id', 'harvard')
+    .send({ email: `${who}@x.edu`, password: PASSWORD });
   expect(res.status, `login as ${who}`).toBe(200);
   return agent;
 }
@@ -74,7 +142,13 @@ describe('quiz availability', () => {
   });
 
   it('lets a learner with an extension in, and only them', async () => {
-    const r = await extend('teacher', { itemType: 'QUIZ', itemId: 'q-closed', userId: 's2', dueAt: at(DAY).toISOString(), reason: 'Medical' });
+    const r = await extend('teacher', {
+      itemType: 'QUIZ',
+      itemId: 'q-closed',
+      userId: 's2',
+      dueAt: at(DAY).toISOString(),
+      reason: 'Medical',
+    });
     expect(r.status).toBe(200);
     expect((await (await as('s2')).post('/api/v1/quizzes/q-closed/start')).status).toBe(201);
     expect((await (await as('s1')).post('/api/v1/quizzes/q-closed/start')).status).toBe(403);
@@ -88,7 +162,9 @@ describe('quiz availability', () => {
     const s3 = await as('s3');
     expect((await s3.post('/api/v1/quizzes/q-answers/start')).status).toBe(201);
     await admin.quiz.update({ where: { id: 'q-answers' }, data: { dueAt: at(-60_000) } });
-    const done = await s3.post('/api/v1/quizzes/q-answers/submit').send({ answers: { [(await admin.quizQuestion.findFirstOrThrow({ where: { quizId: 'q-answers' } })).id]: 'o5' } });
+    const done = await s3
+      .post('/api/v1/quizzes/q-answers/submit')
+      .send({ answers: { [(await admin.quizQuestion.findFirstOrThrow({ where: { quizId: 'q-answers' } })).id]: 'o5' } });
     expect(done.status).toBe(201);
     await admin.quiz.update({ where: { id: 'q-answers' }, data: { dueAt: null } });
   });
@@ -107,7 +183,9 @@ describe('assignments', () => {
   });
 
   it('an extension moves both the due date and the cutoff for that learner', async () => {
-    expect((await extend('teacher', { itemType: 'ASSIGNMENT', itemId: 'a-cutoff', userId: 's2', dueAt: at(DAY).toISOString() })).status).toBe(200);
+    expect(
+      (await extend('teacher', { itemType: 'ASSIGNMENT', itemId: 'a-cutoff', userId: 's2', dueAt: at(DAY).toISOString() })).status
+    ).toBe(200);
     const ok = await (await as('s2')).post('/api/v1/assignments/a-cutoff/submit').send({ submissionText: 'on time now' });
     expect(ok.status).toBe(201);
     expect(ok.body.data.isLate).toBe(false);
@@ -184,7 +262,7 @@ describe('reviewing an attempt', () => {
     expect(r.body.data.questions[0]).toMatchObject({ correctOptionIds: ['o4'], explanation: 'Arithmetic.' });
   });
 
-  it("keeps attempts private to their owner and the course staff", async () => {
+  it('keeps attempts private to their owner and the course staff', async () => {
     const sub = await admin.quizSubmission.findFirstOrThrow({ where: { quizId: 'q-score', userId: 's1' } });
     expect((await (await as('s2')).get(`/api/v1/quizzes/q-score/submissions/${sub.id}/review`)).status).toBe(404);
     const staff = await (await as('teacher')).get(`/api/v1/quizzes/q-score/submissions/${sub.id}/review`);

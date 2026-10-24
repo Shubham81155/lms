@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { api } from '@/lib/api';
 import { Course } from '@/lib/types';
@@ -35,7 +35,9 @@ export async function createCourseWithCurriculum(draft: import('@/components/Cou
       }
     } catch (e) {
       const reason = e instanceof Error ? e.message : 'unknown error';
-      throw new Error(`The course "${draft.code}" was created, but "${mod.title}" could not be saved (${reason}). Add the missing content from the course page.`);
+      throw new Error(
+        `The course "${draft.code}" was created, but "${mod.title}" could not be saved (${reason}). Add the missing content from the course page.`
+      );
     }
   }
   return course;
