@@ -41,3 +41,14 @@ export function platformSubdomainLabels(): string[] {
     .map((h) => h.slice(0, -(base.length + 1)).split('.').pop()!)
     .filter(Boolean);
 }
+
+/**
+ * Strict-Transport-Security value for a request host. includeSubDomains only on the platform's own hosts: a
+ * customer's own domain is theirs, and pinning its other subdomains to HTTPS is not ours to decide. No preload
+ * anywhere (one-way door; the proxy policy in deploy/Caddyfile says the same).
+ */
+export function hstsHeaderFor(hostname: string): string {
+  const host = hostname.toLowerCase();
+  const own = isUnderBaseDomain(host) || platformHostnames().includes(host);
+  return own ? 'max-age=31536000; includeSubDomains' : 'max-age=31536000';
+}

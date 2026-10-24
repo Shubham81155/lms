@@ -21,14 +21,16 @@ let dir: string;
 let scan: typeof import('../src/lib/virus-scan');
 
 /** A fake clamd. It answers FOUND for anything containing the EICAR string, and refuses streams over `limit`. */
-function fakeClamd(limit = 10 * 1024 * 1024) {
+function fakeClamd(limit = 10 * 1024 * 1024, drain = false) {
   const received: Buffer[] = [];
   const server = net.createServer((socket) => {
     let buf = Buffer.alloc(0);
     let started = false;
     const body: Buffer[] = [];
     let size = 0;
+    let exceeded = false;
     socket.on('data', (d) => {
+      if (exceeded) return;
       buf = Buffer.concat([buf, d]);
       if (!started) {
         const end = buf.indexOf(0);
@@ -48,7 +50,13 @@ function fakeClamd(limit = 10 * 1024 * 1024) {
         body.push(buf.subarray(4, 4 + len));
         size += len;
         buf = buf.subarray(4 + len);
-        if (size > limit) return socket.end('INSTREAM size limit exceeded. ERROR\0');
+        // A real clamd replies and closes at once (the client may then see a reset); `drain` replies but keeps reading.
+        if (size > limit) {
+          if (!drain) return socket.end('INSTREAM size limit exceeded. ERROR\0');
+          socket.write('INSTREAM size limit exceeded. ERROR\0');
+          exceeded = true;
+          return;
+        }
       }
     });
     socket.on('error', () => undefined);
@@ -115,6 +123,18 @@ describe('the clamd client', () => {
     await expect(scan.clamdScanner('127.0.0.1', clamd.port, 5000).scan(Readable.from([Buffer.alloc(200 * 1024)]))).rejects.toBeInstanceOf(scan.ScanUnavailableError);
     await clamd.close();
     await expect(scan.clamdScanner('127.0.0.1', clamd.port, 5000).scan(Readable.from([Buffer.from('x')]))).rejects.toBeInstanceOf(scan.ScanUnavailableError);
+  });
+
+  it('rejects explicitly on "INSTREAM size limit exceeded", with a clear message, never as clean', async () => {
+    const clamd = await fakeClamd(1024, true);
+    const err = await scan.clamdScanner('127.0.0.1', clamd.port, 5000).scan(Readable.from([Buffer.alloc(200 * 1024)])).then(
+      (r) => r,
+      (e) => e
+    );
+    expect(err).toBeInstanceOf(scan.ScanLimitExceededError);
+    expect(err).toBeInstanceOf(scan.ScanUnavailableError);
+    expect(err.message).toMatch(/StreamMaxLength/);
+    await clamd.close();
   });
 });
 

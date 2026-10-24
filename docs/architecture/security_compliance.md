@@ -22,7 +22,7 @@
 ## 2. Cryptographic Security Standards
 
 ### Encryption at Rest & In Transit
-- **TLS 1.3** enforced with HSTS (HTTP Strict Transport Security, 1-year max age, includeSubDomains).
+- **TLS 1.3** enforced with HSTS (HTTP Strict Transport Security, 1-year max age; includeSubDomains only on our own domains, never on customer custom domains).
 - **Storage Tier**: All PostgreSQL volumes, Redis clusters, and S3 buckets encrypted with **AES-256**.
 - **Field-Level Encryption (FLE)**: secrets stored per user (the MFA TOTP secret) are encrypted in the application with **AES-256-GCM** before they reach the database. The key comes from `PII_ENCRYPTION_KEY`; an HSM/KMS-managed key is not wired up yet. The LMS does not collect SSNs or birth dates.
 

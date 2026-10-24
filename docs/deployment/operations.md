@@ -152,6 +152,7 @@ is set (it should not be: it can capture personal data). Logs rotate away in hou
   minutes on a small database and longer on a large one. The default 02:30 UTC is night time in India; move it with `BACKUP_AT`.
 * **Memory:** postgres 1-2 GB to start, the API 300-700 MB at rest (alert at 1.5 GiB), Prometheus + Alertmanager about 250 MB, the
   backup service is idle except during a run, ClamAV needs 2-3 GB when enabled.
+* **ClamAV and large uploads:** `deploy/clamd.conf` sets `StreamMaxLength 128M`, `MaxFileSize 128M`, `MaxScanSize 256M` and `MaxThreads 4`, which cover the default 100 MB `UPLOAD_MAX_MB`. clamd's own default (25M) would reject big uploads with `INSTREAM size limit exceeded`; the API then refuses the upload with 503 (never treats it as clean) and logs that StreamMaxLength is too low. If you raise `UPLOAD_MAX_MB`, raise these limits with it (StreamMaxLength <= MaxFileSize <= MaxScanSize) and the memory for the `clamav` service.
 * **When this stops being enough:** several hundred GB of data (dumps take hours: move to WAL archiving with
   pgBackRest/WAL-G or a managed PostgreSQL with point-in-time recovery), or more than one API replica (needs the shared
   Redis already present, and a scrape target per replica: switch `lms-api` in `prometheus.yml` from `static_configs` to `dns_sd_configs` with `names: [api]`, `type: A`, `port: 4000`).

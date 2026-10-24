@@ -24,6 +24,16 @@ export interface VirusScanner {
 /** The scanner could not give an answer (unreachable, timed out, refused the stream). The file is not trusted. */
 export class ScanUnavailableError extends Error {}
 
+/**
+ * clamd refused the stream because it is over its StreamMaxLength ("INSTREAM size limit exceeded"). The file was
+ * not scanned and is never treated as clean; raise StreamMaxLength (deploy/clamd.conf) to at least UPLOAD_MAX_MB.
+ */
+export class ScanLimitExceededError extends ScanUnavailableError {
+  constructor() {
+    super('the file is larger than the virus scanner accepts (clamd StreamMaxLength is below UPLOAD_MAX_MB)');
+  }
+}
+
 /** clamd takes the stream in chunks, each prefixed with its length; a zero length ends it. */
 const CHUNK = 64 * 1024;
 
@@ -50,7 +60,8 @@ export function clamdScanner(host: string, port: number, timeoutMs: number): Vir
           if (line === 'stream: OK') return finish(null, { infected: false });
           const found = /^stream: (.+) FOUND$/.exec(line);
           if (found) return finish(null, { infected: true, signature: found[1] });
-          finish(new ScanUnavailableError(line ? `the virus scanner replied: ${line}` : 'the virus scanner closed the connection'));
+          if (/size limit exceeded/i.test(line)) return finish(new ScanLimitExceededError());
+          finish(new ScanUnavailableError(line ?`the virus scanner replied: ${line}` : 'the virus scanner closed the connection'));
         };
 
         socket.on('error', (e) => {

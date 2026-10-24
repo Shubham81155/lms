@@ -310,6 +310,20 @@ describe('POST /auth/login', () => {
     expect(unknown.body).toEqual(wrong.body);
   });
 
+  it('does not look an e-mail up across organisations: one that exists only elsewhere gets the generic 401', async () => {
+    // The user exists in another organisation, but the tenant-scoped lookup finds nobody.
+    fake.user.findFirst.mockImplementation(async (args: any) =>
+      args?.where?.tenantId === 'ten_other' ? await userRecord() : null
+    );
+    const unknown = await login({ email: 'nobody@x.edu', password: PASSWORD });
+    const elsewhere = await login({ email: 'a@x.edu', password: PASSWORD });
+    expect(elsewhere.status).toBe(401);
+    expect(elsewhere.body).toEqual(unknown.body);
+    expect(elsewhere.body).toEqual({ error: 'Invalid email or password' });
+    expect(elsewhere.headers['set-cookie']).toBeUndefined();
+    for (const [args] of fake.user.findFirst.mock.calls) expect(args.where.tenantId).toBeDefined();
+  });
+
   it('rejects an unknown tenant', async () => {
     fake.tenant.findFirst.mockResolvedValue(null);
     const res = await login({ email: 'a@x.edu', password: PASSWORD });

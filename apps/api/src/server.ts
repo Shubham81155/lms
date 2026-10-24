@@ -12,7 +12,7 @@ import { prisma, basePrisma } from './lib/prisma';
 import { lookupTenant, resolveTenant } from './lib/tenant';
 import { TENANT_SUSPENDED_MESSAGE, tenantIsBlocked } from './lib/session';
 import { ORG_SLUG } from './lib/organizations';
-import { baseDomainHost, isUnderBaseDomain, platformHostnames } from './lib/platform-hosts';
+import { baseDomainHost, hstsHeaderFor, isUnderBaseDomain, platformHostnames } from './lib/platform-hosts';
 import { tenantFeatures } from './lib/features';
 import { rateLimitStore, redisHealthy } from './lib/rate-limit-store';
 import { httpMetrics, metricsHandler } from './lib/metrics';
@@ -63,12 +63,9 @@ app.use(
   })
 );
 
-// HSTS with includeSubDomains/preload only on the platform's own hosts. A customer's own domain is theirs: pinning
-// every subdomain of it to HTTPS would be our decision to make for their other sites.
+// HSTS with includeSubDomains only on the platform's own hosts (see hstsHeaderFor).
 app.use((req, res, next) => {
-  const host = req.hostname.toLowerCase();
-  const own = isUnderBaseDomain(host) || platformHostnames().includes(host);
-  res.setHeader('Strict-Transport-Security', own ? 'max-age=31536000; includeSubDomains; preload' : 'max-age=31536000');
+  res.setHeader('Strict-Transport-Security', hstsHeaderFor(req.hostname));
   next();
 });
 
