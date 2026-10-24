@@ -5,6 +5,9 @@ import { CheckCircle2, Copy, KeyRound, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { daysUntil } from '@/lib/forms';
+import { useT } from '@/lib/i18n';
+
+const LOCAL_DATE: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric', timeZone: undefined };
 
 const input =
   'w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
@@ -25,11 +28,12 @@ export const Banner: React.FC<{ kind: 'error' | 'ok'; children: React.ReactNode 
 
 /** A secret that is shown exactly once, with a copy button. */
 export const OnceSecret: React.FC<{ label: string; value: string; onDismiss: () => void }> = ({ label, value, onDismiss }) => {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   return (
     <div className="p-4 rounded-2xl border border-accent/60 bg-accent/10 space-y-2">
       <div className="text-xs font-bold text-accent">{label}</div>
-      <p className="text-[11px] text-accent/80">Copy it now. It cannot be shown again.</p>
+      <p className="text-[11px] text-accent/80">{t('ident.secret.once')}</p>
       <div className="flex items-center gap-2">
         <code className="flex-1 bg-canvas border border-line rounded-lg px-3 py-2 text-[11px] text-accent break-all select-all">
           {value}
@@ -46,10 +50,10 @@ export const OnceSecret: React.FC<{ label: string; value: string; onDismiss: () 
           }}
         >
           <Copy className="h-3.5 w-3.5 inline mr-1" />
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('ident.secret.copied') : t('ident.secret.copy')}
         </button>
         <button className={ghostBtn} onClick={onDismiss}>
-          Done
+          {t('ident.secret.done')}
         </button>
       </div>
     </div>
@@ -65,6 +69,7 @@ const AutoCreateToggle: React.FC<{ checked: boolean; onChange: (v: boolean) => v
   domains,
   available,
 }) => {
+  const t = useT();
   const list = splitDomains(domains);
   const usable = list.length > 0;
   return (
@@ -77,12 +82,10 @@ const AutoCreateToggle: React.FC<{ checked: boolean; onChange: (v: boolean) => v
           disabled={!available || !usable}
           className="rounded border-line bg-canvas text-brand-fg"
         />
-        Create an account at first sign-in
+        {t('ident.auto.label')}
       </label>
       <p className="pl-6 text-[11px] text-ink-subtle">
-        {usable
-          ? `Anyone with an e-mail address at ${list.join(' or ')} who signs in through your identity provider gets a learner account, counted against your seats. Make staff instructors or administrators in People afterwards.`
-          : 'List your allowed e-mail domains first. Without this, only people you have invited or imported can sign in.'}
+        {usable ? t('ident.auto.usable', { domains: list.join(` ${t('common.or')} `) }) : t('ident.auto.needDomains')}
       </p>
     </div>
   );
@@ -103,6 +106,7 @@ interface SsoView {
 }
 
 export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: SsoView | null; redirectUris: string[] }>('/api/v1/admin/sso');
   const { busy, error: actionError, run, clearError } = useAction();
   const [issuer, setIssuer] = useState('');
@@ -143,7 +147,7 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
   };
 
   const remove = () => {
-    if (!window.confirm('Remove the single sign-on connection? Users will sign in with their passwords.')) return;
+    if (!window.confirm(t('ident.sso.confirmRemove'))) return;
     run(async () => {
       await api.delete('/api/v1/admin/sso');
       setIssuer('');
@@ -158,24 +162,18 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
     <section className="space-y-4" aria-labelledby="sso-heading">
       <div>
         <h3 id="sso-heading" className="font-bold text-base text-ink">
-          OpenID Connect sign-in
+          {t('ident.sso.title')}
         </h3>
-        <p className="text-xs text-ink-muted">
-          Let people sign in with your identity provider (Okta, Microsoft Entra ID, Google Workspace and others). Only people who already
-          have an account can sign in, unless you let sign-in create learner accounts below.
-        </p>
+        <p className="text-xs text-ink-muted">{t('ident.sso.intro')}</p>
       </div>
 
-      {!available && <Banner kind="error">Single sign-on is not included in this organisation's plan.</Banner>}
+      {!available && <Banner kind="error">{t('ident.ssoNotIncluded')}</Banner>}
       {error && <Banner kind="error">{error}</Banner>}
       {actionError && <Banner kind="error">{actionError}</Banner>}
-      {saved && <Banner kind="ok">Settings saved.</Banner>}
+      {saved && <Banner kind="ok">{t('ident.settingsSaved')}</Banner>}
 
       <div className="text-[11px] text-ink-muted bg-canvas border border-line rounded-xl p-3 space-y-1">
-        <div>
-          Register {(data?.redirectUris?.length ?? 0) > 1 ? 'all of these redirect URIs' : 'this redirect URI'} at your provider
-          {(data?.redirectUris?.length ?? 0) > 1 ? ' (people sign in from either address)' : ''}:
-        </div>
+        <div>{(data?.redirectUris?.length ?? 0) > 1 ? t('ident.sso.registerMany') : t('ident.sso.registerOne')}</div>
         {(data?.redirectUris ?? []).map((u) => (
           <code key={u} className="block text-brand-fg select-all break-all">
             {u}
@@ -186,7 +184,7 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
 
       <form onSubmit={save} className="grid grid-cols-1 md:grid-cols-2 gap-4" onChange={clearError}>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Issuer URL
+          {t('ident.sso.issuer')}
           <input
             className={input}
             type="url"
@@ -198,24 +196,24 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
           />
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Client ID
+          {t('ident.sso.clientId')}
           <input className={input} required value={clientId} onChange={(e) => setClientId(e.target.value)} disabled={!available} />
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Client secret
+          {t('ident.sso.clientSecret')}
           <input
             className={input}
             type="password"
             autoComplete="new-password"
             required={!conn}
-            placeholder={conn?.hasSecret ? 'Leave blank to keep the current secret' : ''}
+            placeholder={conn?.hasSecret ? t('ident.sso.secretKeep') : ''}
             value={clientSecret}
             onChange={(e) => setClientSecret(e.target.value)}
             disabled={!available}
           />
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Allowed e-mail domains (optional)
+          {t('ident.domains')}
           <input
             className={input}
             placeholder="university.edu, partner.org"
@@ -232,22 +230,22 @@ export const SsoPanel: React.FC<{ available: boolean }> = ({ available }) => {
             disabled={!available}
             className="rounded border-line bg-canvas text-brand-fg"
           />
-          Enable single sign-on on the login page
+          {t('ident.sso.enable')}
         </label>
         <AutoCreateToggle checked={autoCreate} onChange={setAutoCreate} domains={domains} available={available} />
         <div className="md:col-span-2 flex items-center gap-3">
           <button className={primaryBtn} disabled={busy || isLoading || !available}>
-            {busy ? 'Saving…' : 'Save'}
+            {busy ? t('ident.saving') : t('ident.save')}
           </button>
           {conn && (
             <button type="button" className={ghostBtn} onClick={remove} disabled={busy}>
               <Trash2 className="h-3.5 w-3.5 inline mr-1" />
-              Remove connection
+              {t('ident.removeConnection')}
             </button>
           )}
           {conn?.enabled && (
             <span className="text-xs text-success flex items-center gap-1">
-              <CheckCircle2 className="h-4 w-4" /> Active
+              <CheckCircle2 className="h-4 w-4" /> {t('ident.active')}
             </span>
           )}
         </div>
@@ -268,6 +266,7 @@ interface ScimToken {
 }
 
 export const ScimPanel: React.FC<{ available: boolean }> = ({ available }) => {
+  const t = useT();
   const { data, error, reload } = useApiData<{ data: ScimToken[] }>('/api/v1/admin/scim-tokens');
   const { busy, error: actionError, run } = useAction();
   const [label, setLabel] = useState('');
@@ -283,10 +282,10 @@ export const ScimPanel: React.FC<{ available: boolean }> = ({ available }) => {
     });
   };
 
-  const revoke = (t: ScimToken) => {
-    if (!window.confirm(`Revoke "${t.label}"? The directory sync using it will stop working.`)) return;
+  const revoke = (tok: ScimToken) => {
+    if (!window.confirm(t('ident.scim.confirmRevoke', { label: tok.label }))) return;
     run(async () => {
-      await api.delete(`/api/v1/admin/scim-tokens/${t.id}`);
+      await api.delete(`/api/v1/admin/scim-tokens/${tok.id}`);
       await reload();
     });
   };
@@ -297,29 +296,27 @@ export const ScimPanel: React.FC<{ available: boolean }> = ({ available }) => {
     <section className="space-y-4" aria-labelledby="scim-heading">
       <div>
         <h3 id="scim-heading" className="font-bold text-base text-ink">
-          SCIM user provisioning
+          {t('ident.scim.title')}
         </h3>
-        <p className="text-xs text-ink-muted">
-          Your directory creates, updates and deactivates accounts automatically. SCIM never changes administrator accounts.
-        </p>
+        <p className="text-xs text-ink-muted">{t('ident.scim.intro')}</p>
       </div>
 
-      {!available && <Banner kind="error">SCIM is not included in this organisation's plan.</Banner>}
+      {!available && <Banner kind="error">{t('ident.scim.notIncluded')}</Banner>}
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
       <div className="text-[11px] text-ink-muted bg-canvas border border-line rounded-xl p-3">
-        SCIM base URL: <code className="text-brand-fg select-all break-all">{base}</code> (authentication: bearer token)
+        {t('ident.scim.baseUrl')} <code className="text-brand-fg select-all break-all">{base}</code> {t('ident.scim.baseUrlAuth')}
       </div>
 
-      {fresh && <OnceSecret label="New SCIM token" value={fresh} onDismiss={() => setFresh(null)} />}
+      {fresh && <OnceSecret label={t('ident.scim.newToken')} value={fresh} onDismiss={() => setFresh(null)} />}
 
       <form onSubmit={create} className="flex items-end gap-3">
         <label className="flex-1 space-y-1 text-xs text-ink-muted font-semibold">
-          Token label
+          {t('ident.scim.tokenLabel')}
           <input
             className={input}
             required
             maxLength={100}
-            placeholder="e.g. Okta production"
+            placeholder={t('ident.scim.tokenPlaceholder')}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             disabled={!available}
@@ -327,23 +324,23 @@ export const ScimPanel: React.FC<{ available: boolean }> = ({ available }) => {
         </label>
         <button className={primaryBtn} disabled={busy || !available || !label.trim()}>
           <KeyRound className="h-3.5 w-3.5 inline mr-1" />
-          Create token
+          {t('ident.scim.create')}
         </button>
       </form>
 
       <ul className="space-y-2">
-        {(data?.data ?? []).length === 0 && <li className="text-xs text-ink-subtle">No tokens yet.</li>}
-        {(data?.data ?? []).map((t) => (
-          <li key={t.id} className="bg-canvas border border-line rounded-xl p-3 flex items-center justify-between text-xs">
+        {(data?.data ?? []).length === 0 && <li className="text-xs text-ink-subtle">{t('ident.scim.none')}</li>}
+        {(data?.data ?? []).map((tok) => (
+          <li key={tok.id} className="bg-canvas border border-line rounded-xl p-3 flex items-center justify-between text-xs">
             <div>
-              <strong className="text-ink">{t.label}</strong>
-              <span className="text-ink-subtle ml-2">created {new Date(t.createdAt).toLocaleDateString()}</span>
+              <strong className="text-ink">{tok.label}</strong>
+              <span className="text-ink-subtle ml-2">{t('ident.scim.created', { date: t.date(tok.createdAt, LOCAL_DATE) })}</span>
             </div>
-            {t.revokedAt ? (
-              <span className="text-ink-subtle">Revoked</span>
+            {tok.revokedAt ? (
+              <span className="text-ink-subtle">{t('ident.scim.revoked')}</span>
             ) : (
-              <button className={ghostBtn} onClick={() => revoke(t)} disabled={busy}>
-                Revoke
+              <button className={ghostBtn} onClick={() => revoke(tok)} disabled={busy}>
+                {t('ident.scim.revoke')}
               </button>
             )}
           </li>
@@ -386,6 +383,7 @@ const CopyList: React.FC<{ label: string; values: string[] }> = ({ label, values
 );
 
 export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: SamlView | null; sp: SamlSp }>('/api/v1/admin/saml');
   const { busy, error: actionError, run, clearError } = useAction();
   const [entryPoint, setEntryPoint] = useState('');
@@ -428,7 +426,7 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
   };
 
   const remove = () => {
-    if (!window.confirm('Remove the SAML connection? People will sign in another way.')) return;
+    if (!window.confirm(t('ident.saml.confirmRemove'))) return;
     run(async () => {
       await api.delete('/api/v1/admin/saml');
       setEntryPoint('');
@@ -445,34 +443,23 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
     <section className="space-y-4" aria-labelledby="saml-h">
       <div>
         <h3 id="saml-h" className="font-bold text-base text-ink">
-          SAML 2.0 sign-in
+          {t('ident.saml.title')}
         </h3>
-        <p className="text-xs text-ink-muted">
-          For identity providers that use SAML (ADFS, Shibboleth, Okta SAML and others). Only people who already have an account can sign
-          in, unless you let sign-in create learner accounts below. Assertions must be signed by the certificate you paste here.
-        </p>
+        <p className="text-xs text-ink-muted">{t('ident.saml.intro')}</p>
       </div>
 
-      {!available && <Banner kind="error">Single sign-on is not included in this organisation's plan.</Banner>}
+      {!available && <Banner kind="error">{t('ident.ssoNotIncluded')}</Banner>}
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
-      {saved && <Banner kind="ok">Settings saved.</Banner>}
-      {left !== null && left < 0 && (
-        <Banner kind="error">The pinned certificate has expired. Sign-in will fail until you paste the new one.</Banner>
-      )}
-      {left !== null && left >= 0 && left <= 30 && (
-        <Banner kind="error">
-          The pinned certificate expires in {left} day(s). Ask your identity provider for the new one and paste it before then.
-        </Banner>
-      )}
+      {saved && <Banner kind="ok">{t('ident.settingsSaved')}</Banner>}
+      {left !== null && left < 0 && <Banner kind="error">{t('ident.saml.expired')}</Banner>}
+      {left !== null && left >= 0 && left <= 30 && <Banner kind="error">{t.plural('ident.saml.expiresSoon', left)}</Banner>}
 
       <div className="text-[11px] text-ink-muted bg-canvas border border-line rounded-xl p-3 space-y-2">
-        <div>Give these to your identity provider (or import the metadata URL):</div>
-        <CopyList label="Entity ID (audience)" values={data?.sp.entityIds ?? []} />
-        <CopyList label="Assertion consumer service URL (HTTP-POST)" values={data?.sp.acsUrls ?? []} />
-        <CopyList label="Metadata URL" values={data?.sp.metadataUrls ?? []} />
-        {(data?.sp.entityIds.length ?? 0) > 1 && (
-          <div className="text-ink-subtle">People can sign in from either address, so register both.</div>
-        )}
+        <div>{t('ident.saml.giveIdp')}</div>
+        <CopyList label={t('ident.saml.entityId')} values={data?.sp.entityIds ?? []} />
+        <CopyList label={t('ident.saml.acsUrl')} values={data?.sp.acsUrls ?? []} />
+        <CopyList label={t('ident.saml.metadataUrl')} values={data?.sp.metadataUrls ?? []} />
+        {(data?.sp.entityIds.length ?? 0) > 1 && <div className="text-ink-subtle">{t('ident.saml.bothAddresses')}</div>}
       </div>
 
       <form
@@ -484,7 +471,7 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
         }}
       >
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Identity provider sign-in URL
+          {t('ident.saml.idpUrl')}
           <input
             className={input}
             type="url"
@@ -496,16 +483,16 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
           />
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Identity provider entity ID (issuer)
+          {t('ident.saml.idpIssuer')}
           <input className={input} required value={issuer} onChange={(e) => setIssuer(e.target.value)} disabled={!available} />
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold md:col-span-2">
-          Signing certificate (PEM, or the base64 from the provider's metadata)
+          {t('ident.saml.cert')}
           <textarea
             className={`${input} font-mono`}
             rows={4}
             required={!conn}
-            placeholder={conn ? 'Leave blank to keep the pinned certificate' : '-----BEGIN CERTIFICATE-----'}
+            placeholder={conn ? t('ident.saml.certKeep') : '-----BEGIN CERTIFICATE-----'}
             value={cert}
             onChange={(e) => setCert(e.target.value)}
             disabled={!available}
@@ -513,17 +500,17 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
         </label>
         {conn?.keyFingerprint && (
           <p className="md:col-span-2 text-[11px] text-ink-subtle">
-            Pinned {conn.keyKind === 'CERTIFICATE' ? 'certificate' : 'public key'} SHA-256:{' '}
+            {conn.keyKind === 'CERTIFICATE' ? t('ident.saml.pinnedCert') : t('ident.saml.pinnedKey')}{' '}
             <span className="font-mono text-ink break-all">{conn.keyFingerprint}</span>
-            {conn.keyExpires ? ` · expires ${new Date(conn.keyExpires).toLocaleDateString()}` : ''}
+            {conn.keyExpires ? ` · ${t('ident.saml.expires', { date: t.date(conn.keyExpires, LOCAL_DATE) })}` : ''}
           </p>
         )}
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          E-mail attribute
+          {t('ident.saml.emailAttr')}
           <input className={input} value={emailAttr} onChange={(e) => setEmailAttr(e.target.value)} disabled={!available} />
         </label>
         <label className="space-y-1 text-xs text-ink-muted font-semibold">
-          Allowed e-mail domains (optional)
+          {t('ident.domains')}
           <input
             className={input}
             placeholder="university.edu, partner.org"
@@ -540,22 +527,22 @@ export const SamlPanel: React.FC<{ available: boolean }> = ({ available }) => {
             disabled={!available}
             className="rounded border-line bg-canvas text-brand-fg"
           />
-          Enable SAML sign-in on the login page
+          {t('ident.saml.enable')}
         </label>
         <AutoCreateToggle checked={autoCreate} onChange={setAutoCreate} domains={domains} available={available} />
         <div className="md:col-span-2 flex items-center gap-3">
           <button className={primaryBtn} disabled={busy || isLoading || !available}>
-            {busy ? 'Saving…' : 'Save'}
+            {busy ? t('ident.saving') : t('ident.save')}
           </button>
           {conn && (
             <button type="button" className={ghostBtn} onClick={remove} disabled={busy}>
               <Trash2 className="h-3.5 w-3.5 inline mr-1" />
-              Remove connection
+              {t('ident.removeConnection')}
             </button>
           )}
           {conn?.enabled && (
             <span className="text-xs text-success flex items-center gap-1">
-              <CheckCircle2 className="h-4 w-4" /> Active
+              <CheckCircle2 className="h-4 w-4" /> {t('ident.active')}
             </span>
           )}
         </div>

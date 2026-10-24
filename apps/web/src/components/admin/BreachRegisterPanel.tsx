@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { useT } from '@/lib/i18n';
 
 const input =
   'w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
@@ -48,11 +49,23 @@ const SEVERITY_STYLE: Record<Severity, string> = {
   HIGH: 'border-danger/30 bg-danger/10 text-danger',
   CRITICAL: 'border-danger/40 bg-danger/20 text-danger',
 };
-const STATUS_LABEL: Record<Status, string> = { DETECTED: 'Detected', CONTAINED: 'Contained', NOTIFIED: 'Board notified', CLOSED: 'Closed' };
+const STATUS_FALLBACK: Record<Status, string> = {
+  DETECTED: 'Detected',
+  CONTAINED: 'Contained',
+  NOTIFIED: 'Board notified',
+  CLOSED: 'Closed',
+};
 const NEXT: Partial<Record<Status, Status>> = { DETECTED: 'CONTAINED', CONTAINED: 'NOTIFIED', NOTIFIED: 'CLOSED' };
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+// Shown in the viewer's own time zone, as before (t.date would otherwise force UTC).
+const WHEN: Intl.DateTimeFormatOptions = {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: undefined,
+};
 /** An ISO instant as the value of a datetime-local input (local time). */
 const toLocalInput = (iso: string | null) => {
   if (!iso) return '';
@@ -64,25 +77,37 @@ const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
 const nowLocal = () => toLocalInput(new Date().toISOString());
 
 const ClockBadge: React.FC<{ b: Breach }> = ({ b }) => {
+  const t = useT();
   if (b.status === 'CLOSED')
-    return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-raised text-ink-muted border-line">Closed</span>;
+    return (
+      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-raised text-ink-muted border-line">
+        {t('ident.breach.status.CLOSED')}
+      </span>
+    );
   if (b.hoursLeft === null)
     return (
       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-success/10 text-success border-success/30">
-        Board notified
+        {t('ident.breach.status.NOTIFIED')}
       </span>
     );
   if (b.overdue)
     return (
       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-danger/10 text-danger border-danger/30">
-        Overdue by {Math.max(1, Math.abs(b.hoursLeft))} h
+        {t('ident.breach.overdueBy', { hours: t.number(Math.max(1, Math.abs(b.hoursLeft))) })}
       </span>
     );
   const cls = b.hoursLeft <= 24 ? 'bg-accent/10 text-ink border-accent/40' : 'bg-success/10 text-success border-success/30';
-  return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${cls}`}>{b.hoursLeft} h left</span>;
+  return (
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${cls}`}>
+      {t('ident.breach.hoursLeft', { hours: t.number(b.hoursLeft) })}
+    </span>
+  );
 };
 
 const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({ b, onChanged }) => {
+  const t = useT();
+  const when = (iso: string) => t.date(iso, WHEN);
+  const statusLabel = (s: Status) => t.dyn(`ident.breach.status.${s}`, STATUS_FALLBACK[s]);
   const { busy, error, run } = useAction();
   const [open, setOpen] = useState(false);
   const [containment, setContainment] = useState(b.containment ?? '');
@@ -93,7 +118,7 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
   const [consequences, setConsequences] = useState('');
   const [advice, setAdvice] = useState('');
   const [contact, setContact] = useState('');
-  const [sentNote, setSentNote] = useState('');
+  const [sentNote, setSentNote] = useState<{ sent: number; failed: number } | null>(null);
   const closed = b.status === 'CLOSED';
   const next = NEXT[b.status];
 
@@ -113,21 +138,18 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
 
   const sendNotice = () =>
     run(async () => {
-      setSentNote('');
+      setSentNote(null);
       const body = { audience: 'ALL_ACTIVE', consequences: consequences.trim(), safetyAdvice: advice.trim(), contactEmail: contact.trim() };
       const dry = await api.post<{ data: { recipients: number } }>(`/api/v1/privacy/breaches/${b.id}/notify-people`, {
         ...body,
         dryRun: true,
       });
-      if (
-        !window.confirm(`E-mail this notice to ${dry.data.recipients} address(es), including guardians of minors? It cannot be recalled.`)
-      )
-        return;
+      if (!window.confirm(t.plural('ident.breach.confirmSend', dry.data.recipients))) return;
       const res = await api.post<{ data: { sent: number; failed: number } }>(`/api/v1/privacy/breaches/${b.id}/notify-people`, {
         ...body,
         resend: !!b.peopleNotifiedAt,
       });
-      setSentNote(`Sent to ${res.data.sent} address(es)${res.data.failed ? `; ${res.data.failed} could not be sent` : ''}.`);
+      setSentNote({ sent: res.data.sent, failed: res.data.failed });
       await onChanged();
     });
 
@@ -136,15 +158,15 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
     next === 'CONTAINED'
       ? containment.trim()
         ? null
-        : 'Describe what was done to contain it.'
+        : t('ident.breach.needs.contain')
       : next === 'NOTIFIED'
         ? board
           ? null
-          : 'Record when the Data Protection Board was told.'
+          : t('ident.breach.needs.board')
         : next === 'CLOSED'
           ? board || reason.trim()
             ? null
-            : 'Record when the Board was told, or why no notification was needed.'
+            : t('ident.breach.needs.close')
           : null;
   const canClose = !closed && (board !== '' || reason.trim() !== '');
 
@@ -155,52 +177,62 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-ink">{b.title}</span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${SEVERITY_STYLE[b.severity]}`}>
-              {b.severity.toLowerCase()}
+              {t.dyn(`ident.breach.severity.${b.severity}`, b.severity.toLowerCase())}
             </span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-line bg-surface text-ink">
-              {STATUS_LABEL[b.status]}
+              {statusLabel(b.status)}
             </span>
           </div>
           <div className="text-[11px] text-ink-subtle">
-            Detected {when(b.detectedAt)} · Board to be told by {when(b.dueAt)}
-            {b.affectedEstimate != null ? ` · about ${b.affectedEstimate.toLocaleString('en-IN')} people` : ''}
-            {b.boardNotifiedAt ? ` · Board told ${when(b.boardNotifiedAt)}` : ''}
-            {b.closedAt ? ` · closed ${when(b.closedAt)}` : ''}
+            {[
+              t('ident.breach.detectedLine', { detected: when(b.detectedAt), due: when(b.dueAt) }),
+              b.affectedEstimate != null ? t('ident.breach.about', { count: t.number(b.affectedEstimate) }) : null,
+              b.boardNotifiedAt ? t('ident.breach.boardTold', { date: when(b.boardNotifiedAt) }) : null,
+              b.closedAt ? t('ident.breach.closedOn', { date: when(b.closedAt) }) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </div>
         </div>
         <ClockBadge b={b} />
       </div>
       <p className="text-xs text-ink-muted whitespace-pre-line">{b.description}</p>
-      {b.categories.length > 0 && <p className="text-[11px] text-ink-subtle">Data involved: {b.categories.join(', ')}</p>}
-      {b.containment && !open && <p className="text-[11px] text-ink-subtle whitespace-pre-line">Containment: {b.containment}</p>}
+      {b.categories.length > 0 && (
+        <p className="text-[11px] text-ink-subtle">{t('ident.breach.dataInvolved', { list: b.categories.join(', ') })}</p>
+      )}
+      {b.containment && !open && (
+        <p className="text-[11px] text-ink-subtle whitespace-pre-line">{t('ident.breach.containmentLine', { text: b.containment })}</p>
+      )}
       {b.noNotificationReason && !open && (
-        <p className="text-[11px] text-ink-subtle whitespace-pre-line">No notification needed because: {b.noNotificationReason}</p>
+        <p className="text-[11px] text-ink-subtle whitespace-pre-line">
+          {t('ident.breach.noNotifyBecause', { text: b.noNotificationReason })}
+        </p>
       )}
 
       {!closed && (
         <button className={ghostBtn} aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? 'Hide' : 'Update'}
+          {open ? t('ident.breach.hide') : t('ident.breach.update')}
         </button>
       )}
 
       {open && !closed && (
         <div className="p-3 rounded-xl border border-line bg-surface space-y-3">
           <label className="block space-y-1 text-[11px] text-ink-muted">
-            What was done to contain it
+            {t('ident.breach.containment')}
             <textarea className={input} rows={2} maxLength={5000} value={containment} onChange={(e) => setContainment(e.target.value)} />
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="space-y-1 text-[11px] text-ink-muted">
-              Data Protection Board told on
+              {t('ident.breach.boardToldOn')}
               <div className="flex gap-2">
                 <input className={input} type="datetime-local" max={nowLocal()} value={board} onChange={(e) => setBoard(e.target.value)} />
                 <button type="button" className={ghostBtn} onClick={() => setBoard(nowLocal())}>
-                  Now
+                  {t('ident.breach.now')}
                 </button>
               </div>
             </label>
             <label className="space-y-1 text-[11px] text-ink-muted">
-              Affected people told on
+              {t('ident.breach.peopleToldOn')}
               <div className="flex gap-2">
                 <input
                   className={input}
@@ -210,23 +242,20 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
                   onChange={(e) => setPeople(e.target.value)}
                 />
                 <button type="button" className={ghostBtn} onClick={() => setPeople(nowLocal())}>
-                  Now
+                  {t('ident.breach.now')}
                 </button>
               </div>
             </label>
           </div>
           <div className="space-y-2">
             <button type="button" className={ghostBtn} aria-expanded={notice} onClick={() => setNotice(!notice)}>
-              {notice ? 'Hide breach notice' : b.peopleNotifiedAt ? 'Send the breach notice again' : 'E-mail the breach notice to everyone'}
+              {notice ? t('ident.breach.noticeHide') : b.peopleNotifiedAt ? t('ident.breach.noticeAgain') : t('ident.breach.noticeSend')}
             </button>
             {notice && (
               <div className="p-3 rounded-xl border border-line bg-canvas space-y-2">
-                <p className="text-[11px] text-ink-subtle">
-                  Everyone with an active account (and the guardians of minors) gets what happened, the data involved, when it happened and
-                  what you did, plus the three things below.
-                </p>
+                <p className="text-[11px] text-ink-subtle">{t('ident.breach.noticeIntro')}</p>
                 <label className="block space-y-1 text-[11px] text-ink-muted">
-                  What this may mean for them
+                  {t('ident.breach.consequences')}
                   <textarea
                     className={input}
                     rows={2}
@@ -236,11 +265,11 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
                   />
                 </label>
                 <label className="block space-y-1 text-[11px] text-ink-muted">
-                  What they can do to protect themselves
+                  {t('ident.breach.advice')}
                   <textarea className={input} rows={2} maxLength={3000} value={advice} onChange={(e) => setAdvice(e.target.value)} />
                 </label>
                 <label className="block space-y-1 text-[11px] text-ink-muted">
-                  Contact e-mail for questions
+                  {t('ident.breach.contact')}
                   <input className={input} type="email" value={contact} onChange={(e) => setContact(e.target.value)} />
                 </label>
                 <button
@@ -249,14 +278,20 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
                   disabled={busy || !consequences.trim() || !advice.trim() || !contact.trim()}
                   onClick={sendNotice}
                 >
-                  {busy ? 'Working…' : 'Review and send'}
+                  {busy ? t('ident.working') : t('ident.breach.reviewSend')}
                 </button>
-                {sentNote && <Banner kind="ok">{sentNote}</Banner>}
+                {sentNote && (
+                  <Banner kind="ok">
+                    {sentNote.failed
+                      ? t.plural('ident.breach.sentSome', sentNote.failed, { sent: t.number(sentNote.sent) })
+                      : t.plural('ident.breach.sent', sentNote.sent)}
+                  </Banner>
+                )}
               </div>
             )}
           </div>
           <label className="block space-y-1 text-[11px] text-ink-muted">
-            Why no notification was needed (only if the Board was not told)
+            {t('ident.breach.reason')}
             <textarea className={input} rows={2} maxLength={2000} value={reason} onChange={(e) => setReason(e.target.value)} />
           </label>
           {needs && (
@@ -266,20 +301,18 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
           )}
           <div className="flex flex-wrap gap-2">
             <button className={ghostBtn} disabled={busy} onClick={() => patch()}>
-              Save details
+              {t('ident.breach.saveDetails')}
             </button>
             {next && next !== 'CLOSED' && (
               <button className={primaryBtn} disabled={busy || !!needs} onClick={() => patch(next)}>
-                {busy ? 'Working…' : `Move to ${STATUS_LABEL[next].toLowerCase()}`}
+                {busy ? t('ident.working') : t('ident.breach.moveTo', { status: statusLabel(next).toLowerCase() })}
               </button>
             )}
             <button className={next === 'CLOSED' ? primaryBtn : ghostBtn} disabled={busy || !canClose} onClick={() => patch('CLOSED')}>
-              {busy ? 'Working…' : 'Close breach'}
+              {busy ? t('ident.working') : t('ident.breach.close')}
             </button>
           </div>
-          <p className="text-[11px] text-ink-subtle">
-            Closing cannot be undone. The register records the Board&apos;s notice; filing it is your job, outside this platform.
-          </p>
+          <p className="text-[11px] text-ink-subtle">{t('ident.breach.closeNote')}</p>
         </div>
       )}
       {error && <Banner kind="error">{error}</Banner>}
@@ -288,6 +321,7 @@ const BreachRow: React.FC<{ b: Breach; onChanged: () => Promise<unknown> }> = ({
 };
 
 const NewBreach: React.FC<{ onDone: () => Promise<unknown>; onCancel: () => void }> = ({ onDone, onCancel }) => {
+  const t = useT();
   const { busy, error, run } = useAction();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -319,58 +353,56 @@ const NewBreach: React.FC<{ onDone: () => Promise<unknown>; onCancel: () => void
 
   return (
     <form onSubmit={submit} className="space-y-3 rounded-2xl border border-brand/40 bg-surface p-4">
-      <h4 className="text-sm font-bold text-ink">Log a personal-data breach</h4>
-      <p className="text-[11px] text-ink-muted">
-        The 72-hour clock for telling the Data Protection Board starts at the time it was detected.
-      </p>
+      <h4 className="text-sm font-bold text-ink">{t('ident.breach.new.title')}</h4>
+      <p className="text-[11px] text-ink-muted">{t('ident.breach.new.intro')}</p>
       {error && <Banner kind="error">{error}</Banner>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="space-y-1 text-[11px] text-ink-muted md:col-span-2">
-          Title
+          {t('ident.breach.new.name')}
           <input className={input} maxLength={160} value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted md:col-span-2">
-          What happened
+          {t('ident.breach.new.what')}
           <textarea className={input} rows={3} maxLength={5000} value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
-          Detected on
+          {t('ident.breach.new.detected')}
           <input className={input} type="datetime-local" max={nowLocal()} value={detected} onChange={(e) => setDetected(e.target.value)} />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
-          Severity
+          {t('ident.breach.new.severity')}
           <select className={input} value={severity} onChange={(e) => setSeverity(e.target.value as Severity)}>
             {SEVERITIES.map((s) => (
               <option key={s} value={s}>
-                {s.toLowerCase()}
+                {t.dyn(`ident.breach.severity.${s}`, s.toLowerCase())}
               </option>
             ))}
           </select>
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
-          Kinds of data involved (comma separated)
+          {t('ident.breach.new.categories')}
           <input
             className={input}
             value={categories}
             onChange={(e) => setCategories(e.target.value)}
-            placeholder="contact details, grades"
+            placeholder={t('ident.breach.new.categoriesPlaceholder')}
           />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
-          People affected (estimate, optional)
+          {t('ident.breach.new.affected')}
           <input className={input} inputMode="numeric" value={affected} onChange={(e) => setAffected(e.target.value.replace(/\D/g, ''))} />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted md:col-span-2">
-          What has been done to contain it (optional)
+          {t('ident.breach.new.containment')}
           <textarea className={input} rows={2} maxLength={5000} value={containment} onChange={(e) => setContainment(e.target.value)} />
         </label>
       </div>
       <div className="flex gap-2">
         <button className={primaryBtn} disabled={busy || !ready}>
-          {busy ? 'Saving…' : 'Log breach'}
+          {busy ? t('ident.breach.new.saving') : t('ident.breach.log')}
         </button>
         <button type="button" className={ghostBtn} onClick={onCancel}>
-          Cancel
+          {t('ident.breach.new.cancel')}
         </button>
       </div>
     </form>
@@ -383,6 +415,7 @@ const NewBreach: React.FC<{ onDone: () => Promise<unknown>; onCancel: () => void
  * and closing needs the Board's notice or a reason none was needed.
  */
 export const BreachRegisterPanel: React.FC = () => {
+  const t = useT();
   const [filter, setFilter] = useState('open');
   const [adding, setAdding] = useState(false);
   const list = useApiData<Register>('/api/v1/privacy/breaches', { status: filter === 'all' ? undefined : filter });
@@ -393,24 +426,24 @@ export const BreachRegisterPanel: React.FC = () => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id="breach-h" className="font-bold text-base text-ink">
-            Breach register
+            {t('ident.breach.title')}
           </h3>
-          <p className="text-xs text-ink-muted">
-            Log every personal-data breach. The Data Protection Board must be told within 72 hours of detection.
-          </p>
+          <p className="text-xs text-ink-muted">{t('ident.breach.intro')}</p>
         </div>
         <button className={ghostBtn} onClick={() => setAdding(true)} disabled={adding}>
-          <Plus className="h-3.5 w-3.5" /> Log breach
+          <Plus className="h-3.5 w-3.5" /> {t('ident.breach.log')}
         </button>
       </div>
 
       {p && (
-        <div className="flex flex-wrap gap-2 text-[11px]" aria-label="Summary">
-          <span className="px-2.5 py-1 rounded-full border border-line bg-raised font-semibold text-ink">{p.summary.open} open</span>
+        <div className="flex flex-wrap gap-2 text-[11px]" aria-label={t('ident.breach.summary')}>
+          <span className="px-2.5 py-1 rounded-full border border-line bg-raised font-semibold text-ink">
+            {t('ident.breach.openCount', { count: t.number(p.summary.open) })}
+          </span>
           <span
             className={`px-2.5 py-1 rounded-full border font-semibold ${p.summary.overdue > 0 ? 'bg-danger/10 border-danger/30 text-danger' : 'bg-success/10 border-success/30 text-success'}`}
           >
-            {p.summary.overdue} overdue
+            {t('ident.breach.overdueCount', { count: t.number(p.summary.overdue) })}
           </span>
         </div>
       )}
@@ -426,23 +459,23 @@ export const BreachRegisterPanel: React.FC = () => {
       )}
 
       <label className="block space-y-1 text-[11px] text-ink-muted w-40">
-        Show
+        {t('ident.breach.show')}
         <select className={input} value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="open">Open</option>
-          <option value="all">All</option>
+          <option value="open">{t('ident.breach.filter.open')}</option>
+          <option value="all">{t('ident.breach.filter.all')}</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {STATUS_LABEL[s]}
+              {t.dyn(`ident.breach.status.${s}`, STATUS_FALLBACK[s])}
             </option>
           ))}
         </select>
       </label>
 
       {list.error && <Banner kind="error">{list.error}</Banner>}
-      {list.isLoading && !p && <p className="text-xs text-ink-subtle">Loading…</p>}
-      {p && p.data.length === 0 && <p className="text-xs text-ink-subtle">No breaches here.</p>}
+      {list.isLoading && !p && <p className="text-xs text-ink-subtle">{t('ident.breach.loading')}</p>}
+      {p && p.data.length === 0 && <p className="text-xs text-ink-subtle">{t('ident.breach.none')}</p>}
       {p && p.data.length > 0 && (
-        <ul className="divide-y divide-line border border-line rounded-2xl overflow-hidden" aria-label="Breaches">
+        <ul className="divide-y divide-line border border-line rounded-2xl overflow-hidden" aria-label={t('ident.breach.listLabel')}>
           {p.data.map((b) => (
             <BreachRow
               key={`${b.id}-${b.status}-${b.boardNotifiedAt}-${b.peopleNotifiedAt}-${b.containment}`}

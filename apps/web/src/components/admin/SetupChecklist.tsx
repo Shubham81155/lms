@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Circle, X } from 'lucide-react';
 import { useApiData } from '@/hooks/useApiData';
+import { useT } from '@/lib/i18n';
 import { setupComplete, setupSteps, type SetupStepKey } from '@/lib/setup-checklist';
 
 const DISMISS_KEY = 'lms_setup_checklist_dismissed';
@@ -19,6 +20,7 @@ export const SetupChecklist: React.FC<{
   /** Opens the place where a step is done. */
   onGo: (step: SetupStepKey) => void;
 }> = ({ seatsUsed, courses, ssoAvailable, onGo }) => {
+  const t = useT();
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
     try {
@@ -63,17 +65,15 @@ export const SetupChecklist: React.FC<{
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 id="setup-h" className="font-bold text-base text-ink">
-            Get your organisation ready
+            {t('people.setup.title')}
           </h2>
-          <p className="text-xs text-ink-muted">
-            {done} of {steps.length} done. Each step ticks itself off once it is in place.
-          </p>
+          <p className="text-xs text-ink-muted">{t('people.setup.progress', { done: t.number(done), total: t.number(steps.length) })}</p>
         </div>
         <button
           type="button"
           onClick={dismiss}
-          aria-label="Hide the setup checklist"
-          title="Hide"
+          aria-label={t('people.setup.hideAria')}
+          title={t('people.setup.hide')}
           className="rounded-xl p-1 text-ink-muted hover:bg-raised hover:text-ink"
         >
           <X className="h-4 w-4" />
@@ -92,10 +92,10 @@ export const SetupChecklist: React.FC<{
             )}
             <div className="min-w-0 flex-1">
               <div className={`text-xs font-semibold ${s.done ? 'text-ink-muted line-through' : 'text-ink'}`}>
-                {s.title}
-                <span className="sr-only">{s.done ? ' (done)' : ' (to do)'}</span>
+                {t.dyn(`people.setup.${s.key}.title`, s.title)}
+                <span className="sr-only">{s.done ? t('people.setup.done') : t('people.setup.todo')}</span>
               </div>
-              <div className="text-[11px] text-ink-subtle">{s.hint}</div>
+              <div className="text-[11px] text-ink-subtle">{t.dyn(`people.setup.${s.key}.hint`, s.hint)}</div>
             </div>
             {!s.done && (
               <button
@@ -103,7 +103,7 @@ export const SetupChecklist: React.FC<{
                 onClick={() => onGo(s.key)}
                 className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-raised"
               >
-                Open
+                {t('people.setup.open')}
               </button>
             )}
           </li>

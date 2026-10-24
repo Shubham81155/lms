@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Download, ChevronDown, ChevronRight } from 'lucide-react';
 import { downloadFile, errorMessage, useApiData } from '@/hooks/useApiData';
+import { useT } from '@/lib/i18n';
 
 interface AuditEntry {
   id: string;
@@ -36,6 +37,7 @@ const params = (f: Filters) => ({
 
 /** Searchable, paged view of the append-only audit trail, with CSV export of the filtered rows. */
 export const AuditLogPanel: React.FC = () => {
+  const t = useT();
   const [draft, setDraft] = useState<Filters>(EMPTY);
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const [page, setPage] = useState(1);
@@ -68,7 +70,7 @@ export const AuditLogPanel: React.FC = () => {
         `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
       );
     } catch (e) {
-      setExportError(errorMessage(e, 'The export failed.'));
+      setExportError(errorMessage(e, t('ident.audit.exportFailed')));
     } finally {
       setExporting(false);
     }
@@ -79,9 +81,9 @@ export const AuditLogPanel: React.FC = () => {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id="audit-h" className="font-bold text-base text-ink">
-            Audit log
+            {t('ident.audit.title')}
           </h3>
-          <p className="text-xs text-ink-muted">Append-only: the application can add entries but cannot change or delete them.</p>
+          <p className="text-xs text-ink-muted">{t('ident.audit.intro')}</p>
         </div>
         <button
           onClick={exportCsv}
@@ -89,15 +91,15 @@ export const AuditLogPanel: React.FC = () => {
           className="px-3 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold disabled:opacity-50 flex items-center gap-1.5"
         >
           <Download className="h-3.5 w-3.5" />
-          {exporting ? 'Exporting…' : 'Export CSV'}
+          {exporting ? t('ident.audit.exporting') : t('ident.audit.export')}
         </button>
       </div>
 
       <form role="search" onSubmit={apply} className="flex flex-wrap items-end gap-2">
         <label className="space-y-1 text-[11px] text-ink-muted">
-          <span className="block">Action</span>
+          <span className="block">{t('ident.audit.action')}</span>
           <select className={field} value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })}>
-            <option value="">All actions</option>
+            <option value="">{t('ident.audit.allActions')}</option>
             {(actions.data?.data ?? []).map((a) => (
               <option key={a.action} value={a.action}>
                 {a.action} ({a.count})
@@ -106,7 +108,7 @@ export const AuditLogPanel: React.FC = () => {
           </select>
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
-          <span className="block">Person (e-mail)</span>
+          <span className="block">{t('ident.audit.person')}</span>
           <input
             className={field}
             value={draft.actor}
@@ -116,7 +118,7 @@ export const AuditLogPanel: React.FC = () => {
           />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
-          <span className="block">From</span>
+          <span className="block">{t('ident.audit.from')}</span>
           <input
             type="date"
             className={field}
@@ -125,10 +127,12 @@ export const AuditLogPanel: React.FC = () => {
           />
         </label>
         <label className="space-y-1 text-[11px] text-ink-muted">
-          <span className="block">To</span>
+          <span className="block">{t('ident.audit.to')}</span>
           <input type="date" className={field} value={draft.endDate} onChange={(e) => setDraft({ ...draft, endDate: e.target.value })} />
         </label>
-        <button className="px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-on-brand text-xs font-bold">Apply</button>
+        <button className="px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-hover text-on-brand text-xs font-bold">
+          {t('ident.audit.apply')}
+        </button>
         {(filters.action || filters.actor || filters.startDate || filters.endDate) && (
           <button
             type="button"
@@ -139,7 +143,7 @@ export const AuditLogPanel: React.FC = () => {
             }}
             className="px-3 py-1.5 rounded-lg border border-line text-xs font-semibold text-ink"
           >
-            Clear
+            {t('ident.audit.clear')}
           </button>
         )}
       </form>
@@ -154,26 +158,26 @@ export const AuditLogPanel: React.FC = () => {
         <table className="w-full text-xs">
           <thead className="bg-canvas text-left text-ink-subtle">
             <tr>
-              <th className="px-3 py-2 font-semibold w-6" aria-label="Details" />
-              <th className="px-3 py-2 font-semibold">When</th>
-              <th className="px-3 py-2 font-semibold">Action</th>
-              <th className="px-3 py-2 font-semibold">Resource</th>
-              <th className="px-3 py-2 font-semibold">Person</th>
-              <th className="px-3 py-2 font-semibold">IP address</th>
+              <th className="px-3 py-2 font-semibold w-6" aria-label={t('ident.audit.details')} />
+              <th className="px-3 py-2 font-semibold">{t('ident.audit.when')}</th>
+              <th className="px-3 py-2 font-semibold">{t('ident.audit.action')}</th>
+              <th className="px-3 py-2 font-semibold">{t('ident.audit.resource')}</th>
+              <th className="px-3 py-2 font-semibold">{t('ident.audit.personCol')}</th>
+              <th className="px-3 py-2 font-semibold">{t('ident.audit.ip')}</th>
             </tr>
           </thead>
           <tbody>
             {logs.isLoading && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-ink-subtle">
-                  Loading…
+                  {t('ident.audit.loading')}
                 </td>
               </tr>
             )}
             {!logs.isLoading && logs.data?.data.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-ink-subtle">
-                  No entries match.
+                  {t('ident.audit.empty')}
                 </td>
               </tr>
             )}
@@ -187,14 +191,16 @@ export const AuditLogPanel: React.FC = () => {
                         <button
                           onClick={() => setExpanded(open ? null : l.id)}
                           aria-expanded={open}
-                          aria-label="Show details"
+                          aria-label={t('ident.audit.showDetails')}
                           className="text-ink-muted hover:text-ink"
                         >
                           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                         </button>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-ink">{new Date(l.createdAt).toLocaleString()}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-ink">
+                      {t.date(l.createdAt, { dateStyle: 'medium', timeStyle: 'medium', timeZone: undefined })}
+                    </td>
                     <td className="px-3 py-2 font-mono text-ink">{l.action}</td>
                     <td className="px-3 py-2 text-ink-muted">
                       {l.resourceType.toLowerCase()}
@@ -204,10 +210,12 @@ export const AuditLogPanel: React.FC = () => {
                       {l.user ? (
                         <>
                           {l.user.email}
-                          <span className="block text-[10px] text-ink-subtle">{l.user.role.replace(/_/g, ' ').toLowerCase()}</span>
+                          <span className="block text-[10px] text-ink-subtle">
+                            {t.dyn(`role.${l.user.role}`, l.user.role.replace(/_/g, ' ').toLowerCase())}
+                          </span>
                         </>
                       ) : (
-                        <span className="text-ink-subtle">system</span>
+                        <span className="text-ink-subtle">{t('ident.audit.system')}</span>
                       )}
                     </td>
                     <td className="px-3 py-2 font-mono text-ink-muted">{l.ipAddress ?? ''}</td>
@@ -230,24 +238,22 @@ export const AuditLogPanel: React.FC = () => {
       </div>
 
       <div className="flex items-center justify-between text-xs text-ink-muted">
-        <span>{total.toLocaleString()} entries</span>
+        <span>{t.plural('ident.audit.entries', total)}</span>
         <div className="flex items-center gap-2">
           <button
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
             className="px-2.5 py-1 rounded-lg border border-line disabled:opacity-40"
           >
-            Previous
+            {t('ident.audit.previous')}
           </button>
-          <span>
-            Page {page} of {Math.max(1, pages)}
-          </span>
+          <span>{t('ident.audit.pageOf', { page: t.number(page), pages: t.number(Math.max(1, pages)) })}</span>
           <button
             disabled={page >= pages}
             onClick={() => setPage((p) => p + 1)}
             className="px-2.5 py-1 rounded-lg border border-line disabled:opacity-40"
           >
-            Next
+            {t('ident.audit.next')}
           </button>
         </div>
       </div>

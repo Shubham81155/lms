@@ -5,6 +5,7 @@ import { CheckCircle2, Undo2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { useT } from '@/lib/i18n';
 
 interface Pending {
   id: string;
@@ -26,6 +27,7 @@ const ghost =
 
 /** Publishing review for administrators: the on/off setting and the courses waiting for a decision. */
 export const CourseReviewPanel: React.FC<{ onDecided?: () => void }> = ({ onDecided }) => {
+  const t = useT();
   const setting = useApiData<{ data: { required: boolean } }>('/api/v1/admin/course-approval');
   const queue = useApiData<{ data: Pending[] }>('/api/v1/course-reviews');
   const { busy, error, run } = useAction();
@@ -51,11 +53,9 @@ export const CourseReviewPanel: React.FC<{ onDecided?: () => void }> = ({ onDeci
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id="review-h" className="font-bold text-base text-ink">
-            Publishing review
+            {t('people.review.title')}
           </h3>
-          <p className="text-xs text-ink-muted">
-            When on, instructors submit draft courses for review and only administrators publish them.
-          </p>
+          <p className="text-xs text-ink-muted">{t('people.review.intro')}</p>
         </div>
         <label className="flex items-center gap-2 text-xs text-ink cursor-pointer">
           <input
@@ -70,16 +70,14 @@ export const CourseReviewPanel: React.FC<{ onDecided?: () => void }> = ({ onDeci
               })
             }
           />
-          Courses need approval before they are published
+          {t('people.review.toggle')}
         </label>
       </div>
       {(error || setting.error || queue.error) && <Banner kind="error">{error || setting.error || queue.error}</Banner>}
       {done && <Banner kind="ok">{done}</Banner>}
 
       {pending.length === 0 ? (
-        <p className="text-xs text-ink-subtle">
-          {required ? 'No course is waiting for review.' : 'Review is off; instructors publish their own courses.'}
-        </p>
+        <p className="text-xs text-ink-subtle">{required ? t('people.review.emptyOn') : t('people.review.emptyOff')}</p>
       ) : (
         <ul className="space-y-2">
           {pending.map((c) => (
@@ -89,9 +87,16 @@ export const CourseReviewPanel: React.FC<{ onDecided?: () => void }> = ({ onDeci
                   <strong className="text-ink">{c.code}</strong> <span className="text-ink">{c.title}</span>
                   {c.term && <span className="text-ink-subtle"> · {c.term}</span>}
                   <div className="text-[11px] text-ink-subtle">
-                    Submitted{c.submittedBy ? ` by ${c.submittedBy}` : ''}
-                    {c.submittedAt ? ` on ${new Date(c.submittedAt).toLocaleDateString()}` : ''} · {c.counts.modules} module(s),{' '}
-                    {c.counts.quizzes} quiz(zes), {c.counts.assignments} assignment(s)
+                    {t('people.review.submitted')}
+                    {c.submittedBy ? t('people.review.by', { name: c.submittedBy }) : ''}
+                    {c.submittedAt
+                      ? t('people.review.on', {
+                          date: t.date(c.submittedAt, { timeZone: undefined, day: 'numeric', month: 'short', year: 'numeric' }),
+                        })
+                      : ''}{' '}
+                    · {t.plural('people.review.modules', c.counts.modules, { count: t.number(c.counts.modules) })},{' '}
+                    {t.plural('people.review.quizzes', c.counts.quizzes, { count: t.number(c.counts.quizzes) })},{' '}
+                    {t.plural('people.review.assignments', c.counts.assignments, { count: t.number(c.counts.assignments) })}
                   </div>
                   {c.message && <p className="mt-1 text-ink-muted">“{c.message}”</p>}
                 </div>
@@ -99,10 +104,12 @@ export const CourseReviewPanel: React.FC<{ onDecided?: () => void }> = ({ onDeci
                   <button
                     className={primary}
                     disabled={busy}
-                    onClick={() => decide(() => api.post(`/api/v1/courses/${c.id}/review/approve`, {}), `${c.code} is published.`)}
+                    onClick={() =>
+                      decide(() => api.post(`/api/v1/courses/${c.id}/review/approve`, {}), t('people.review.published', { code: c.code }))
+                    }
                   >
                     <CheckCircle2 className="h-3 w-3 inline mr-1" />
-                    Approve and publish
+                    {t('people.review.approve')}
                   </button>
                   <button
                     className={ghost}
@@ -113,7 +120,7 @@ export const CourseReviewPanel: React.FC<{ onDecided?: () => void }> = ({ onDeci
                     }}
                   >
                     <Undo2 className="h-3 w-3 inline mr-1" />
-                    Request changes
+                    {t('people.review.request')}
                   </button>
                 </div>
               </div>
@@ -124,7 +131,7 @@ export const CourseReviewPanel: React.FC<{ onDecided?: () => void }> = ({ onDeci
                     e.preventDefault();
                     decide(
                       () => api.post(`/api/v1/courses/${c.id}/review/request-changes`, { note: note.trim() }),
-                      `${c.code} was sent back to its instructors.`
+                      t('people.review.sentBack', { code: c.code })
                     );
                   }}
                 >
@@ -132,13 +139,13 @@ export const CourseReviewPanel: React.FC<{ onDecided?: () => void }> = ({ onDeci
                     className={input}
                     autoFocus
                     maxLength={2000}
-                    aria-label={`What should change in ${c.code}`}
-                    placeholder="What needs to change (shown to the instructors)"
+                    aria-label={t('people.review.noteAria', { code: c.code })}
+                    placeholder={t('people.review.notePlaceholder')}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
                   <button className={primary} disabled={busy || note.trim().length < 3}>
-                    Send back
+                    {t('people.review.sendBack')}
                   </button>
                 </form>
               )}

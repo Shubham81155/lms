@@ -5,6 +5,7 @@ import { CheckCircle2, AlertTriangle, Info, Plus, ShieldAlert, Trash2 } from 'lu
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { useT } from '@/lib/i18n';
 import { expandHex, isHexColor, isHttpUrlOrEmpty, isValidCode, normaliseCode } from '@/lib/forms';
 
 const input =
@@ -37,6 +38,7 @@ const NameCode: React.FC<{
   onSubmit: (v: { name: string; code: string }) => Promise<unknown>;
   disabled: boolean;
 }> = ({ placeholderName, submitLabel, onSubmit, disabled }) => {
+  const t = useT();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const ok = name.trim().length >= 2 && isValidCode(code);
@@ -57,7 +59,13 @@ const NameCode: React.FC<{
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <input className={`${input} w-32`} aria-label="Code" placeholder="CODE" value={code} onChange={(e) => setCode(e.target.value)} />
+      <input
+        className={`${input} w-32`}
+        aria-label={t('orgadm.code.label')}
+        placeholder={t('orgadm.code.placeholder')}
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+      />
       <button className={primary} disabled={disabled || !ok}>
         <Plus className="h-3.5 w-3.5 inline mr-1" />
         {submitLabel}
@@ -69,11 +77,12 @@ const NameCode: React.FC<{
 /** A name with a "Rename" button that turns into an input in place (no browser dialog). */
 const InlineRename: React.FC<{
   name: string;
-  what: string;
+  what: 'campus' | 'department';
   busy: boolean;
   onSave: (name: string) => void;
   children: (rename: React.ReactNode) => React.ReactNode;
 }> = ({ name, what, busy, onSave, children }) => {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const trimmed = value.trim();
@@ -84,13 +93,13 @@ const InlineRename: React.FC<{
           <button
             className={ghost}
             disabled={busy}
-            aria-label={`Rename ${what} ${name}`}
+            aria-label={t(what === 'campus' ? 'orgadm.campus.renameAria' : 'orgadm.dept.renameAria', { name })}
             onClick={() => {
               setValue(name);
               setEditing(true);
             }}
           >
-            Rename
+            {t('orgadm.rename')}
           </button>
         )}
       </>
@@ -107,23 +116,24 @@ const InlineRename: React.FC<{
     >
       <input
         className={`${input} min-w-40`}
-        aria-label={`New name for ${what} ${name}`}
+        aria-label={t(what === 'campus' ? 'orgadm.campus.newNameAria' : 'orgadm.dept.newNameAria', { name })}
         maxLength={120}
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
       />
       <button className={primary} disabled={busy || !trimmed || trimmed === name}>
-        Save
+        {t('orgadm.save')}
       </button>
       <button type="button" className={ghost} onClick={() => setEditing(false)}>
-        Cancel
+        {t('orgadm.cancel')}
       </button>
     </form>
   );
 };
 
 export const CampusPanel: React.FC = () => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: Campus[] }>('/api/v1/admin/campuses');
   const { busy, error: actionError, run } = useAction();
 
@@ -138,24 +148,22 @@ export const CampusPanel: React.FC = () => {
     <section className="space-y-4" aria-labelledby="campus-h">
       <div>
         <h3 id="campus-h" className="font-bold text-base text-ink">
-          Campuses and departments
+          {t('orgadm.campus.title')}
         </h3>
-        <p className="text-xs text-ink-muted">Courses are filed under a department. Codes are upper-case and unique.</p>
+        <p className="text-xs text-ink-muted">{t('orgadm.campus.intro')}</p>
       </div>
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
 
       <NameCode
-        placeholderName="New campus name"
-        submitLabel="Add campus"
+        placeholderName={t('orgadm.campus.nameLabel')}
+        submitLabel={t('orgadm.campus.add')}
         disabled={busy}
         onSubmit={(v) => act(() => api.post('/api/v1/admin/campuses', v))}
       />
 
-      {isLoading && <p className="text-xs text-ink-subtle">Loading…</p>}
+      {isLoading && <p className="text-xs text-ink-subtle">{t('common.loading')}</p>}
       {!isLoading && campuses.length === 0 && (
-        <p className="text-xs text-ink-subtle text-center p-8 bg-canvas border border-line rounded-2xl">
-          No campuses yet. Add your first one above.
-        </p>
+        <p className="text-xs text-ink-subtle text-center p-8 bg-canvas border border-line rounded-2xl">{t('orgadm.campus.empty')}</p>
       )}
 
       <ul className="space-y-3">
@@ -174,7 +182,7 @@ export const CampusPanel: React.FC = () => {
                       {c.name} <span className="text-[10px] font-mono text-ink-subtle ml-1">{c.code}</span>
                     </h4>
                     <p className="text-[11px] text-ink-subtle">
-                      {c.departments.length} department(s) · {c.courseCount} course(s)
+                      {t.plural('orgadm.campus.departments', c.departments.length)} · {t.plural('orgadm.campus.courses', c.courseCount)}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -182,9 +190,10 @@ export const CampusPanel: React.FC = () => {
                     <button
                       className={ghost}
                       disabled={busy}
-                      aria-label={`Delete campus ${c.name}`}
+                      aria-label={t('orgadm.campus.deleteAria', { name: c.name })}
                       onClick={() =>
-                        window.confirm(`Delete the campus "${c.name}"?`) && act(() => api.delete(`/api/v1/admin/campuses/${c.id}`))
+                        window.confirm(t('orgadm.campus.deleteConfirm', { name: c.name })) &&
+                        act(() => api.delete(`/api/v1/admin/campuses/${c.id}`))
                       }
                     >
                       <Trash2 className="h-3 w-3" />
@@ -210,13 +219,13 @@ export const CampusPanel: React.FC = () => {
                         </span>
                         <span className="flex items-center gap-3">
                           {rename}
-                          <span className="text-[11px] text-ink-subtle">{d.courseCount} course(s)</span>
+                          <span className="text-[11px] text-ink-subtle">{t.plural('orgadm.campus.courses', d.courseCount)}</span>
                           <button
                             className="text-ink-subtle hover:text-danger disabled:opacity-50"
                             disabled={busy}
-                            aria-label={`Delete department ${d.name}`}
+                            aria-label={t('orgadm.dept.deleteAria', { name: d.name })}
                             onClick={() =>
-                              window.confirm(`Delete the department "${d.name}"?`) &&
+                              window.confirm(t('orgadm.dept.deleteConfirm', { name: d.name })) &&
                               act(() => api.delete(`/api/v1/admin/departments/${d.id}`))
                             }
                           >
@@ -231,8 +240,8 @@ export const CampusPanel: React.FC = () => {
             </ul>
 
             <NameCode
-              placeholderName="New department name"
-              submitLabel="Add department"
+              placeholderName={t('orgadm.dept.nameLabel')}
+              submitLabel={t('orgadm.dept.add')}
               disabled={busy}
               onSubmit={(v) => act(() => api.post(`/api/v1/admin/campuses/${c.id}/departments`, v))}
             />
@@ -260,26 +269,29 @@ interface TenantSettings {
   dataRegion: string;
 }
 
-const Color: React.FC<{ label: string; value: string; onChange: (v: string) => void }> = ({ label, value, onChange }) => (
-  <div className="space-y-1">
-    <label className="text-xs text-ink-muted font-semibold block">{label}</label>
-    <div className="flex items-center gap-2">
-      <input
-        type="color"
-        aria-label={`${label} picker`}
-        value={isHexColor(value) ? expandHex(value) : '#000000'}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-9 w-10 rounded-lg bg-canvas border border-line p-0.5"
-      />
-      <input
-        className={`${input} font-mono ${value && !isHexColor(value) ? 'border-danger' : ''}`}
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
+const Color: React.FC<{ label: string; value: string; onChange: (v: string) => void }> = ({ label, value, onChange }) => {
+  const t = useT();
+  return (
+    <div className="space-y-1">
+      <label className="text-xs text-ink-muted font-semibold block">{label}</label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={t('orgadm.brand.picker', { label })}
+          value={isHexColor(value) ? expandHex(value) : '#000000'}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 w-10 rounded-lg bg-canvas border border-line p-0.5"
+        />
+        <input
+          className={`${input} font-mono ${value && !isHexColor(value) ? 'border-danger' : ''}`}
+          aria-label={label}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Academic terms
@@ -297,6 +309,7 @@ const day = (iso: string) => iso.slice(0, 10);
 
 /** Terms courses run in ("Fall 2026"): courses are filed under one, and copying a course moves its dates between them. */
 export const TermsPanel: React.FC = () => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: Term[] }>('/api/v1/terms');
   const { busy, error: actionError, run } = useAction();
   const [name, setName] = useState('');
@@ -316,11 +329,9 @@ export const TermsPanel: React.FC = () => {
     <section className="space-y-4" aria-labelledby="terms-h">
       <div>
         <h3 id="terms-h" className="font-bold text-base text-ink">
-          Terms
+          {t('orgadm.terms.title')}
         </h3>
-        <p className="text-xs text-ink-muted">
-          Semesters or cohorts courses run in. Copying a course into a new term moves its due dates by the gap between the terms.
-        </p>
+        <p className="text-xs text-ink-muted">{t('orgadm.terms.intro')}</p>
       </div>
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
 
@@ -338,52 +349,62 @@ export const TermsPanel: React.FC = () => {
       >
         <input
           className={`${input} flex-1 min-w-40`}
-          aria-label="New term name"
-          placeholder="e.g. Fall 2026"
+          aria-label={t('orgadm.terms.nameAria')}
+          placeholder={t('orgadm.terms.namePlaceholder')}
           maxLength={80}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <label className="text-[11px] text-ink-muted space-y-1">
-          <span className="block">Starts</span>
+          <span className="block">{t('orgadm.terms.starts')}</span>
           <input
             className={`${input} w-40`}
             type="date"
-            aria-label="Term starts on"
+            aria-label={t('orgadm.terms.startsAria')}
             value={starts}
             onChange={(e) => setStarts(e.target.value)}
           />
         </label>
         <label className="text-[11px] text-ink-muted space-y-1">
-          <span className="block">Ends</span>
-          <input className={`${input} w-40`} type="date" aria-label="Term ends on" value={ends} onChange={(e) => setEnds(e.target.value)} />
+          <span className="block">{t('orgadm.terms.ends')}</span>
+          <input
+            className={`${input} w-40`}
+            type="date"
+            aria-label={t('orgadm.terms.endsAria')}
+            value={ends}
+            onChange={(e) => setEnds(e.target.value)}
+          />
         </label>
         <button className={primary} disabled={busy || !valid(name, starts, ends)}>
           <Plus className="h-3.5 w-3.5 inline mr-1" />
-          Add term
+          {t('orgadm.terms.add')}
         </button>
       </form>
-      {starts && ends && ends <= starts && <p className="text-[11px] text-danger">The term must end after it starts.</p>}
+      {starts && ends && ends <= starts && <p className="text-[11px] text-danger">{t('orgadm.terms.endAfterStart')}</p>}
 
-      {isLoading && <p className="text-xs text-ink-subtle">Loading…</p>}
-      {!isLoading && terms.length === 0 && <p className="text-xs text-ink-subtle">No terms yet.</p>}
+      {isLoading && <p className="text-xs text-ink-subtle">{t('common.loading')}</p>}
+      {!isLoading && terms.length === 0 && <p className="text-xs text-ink-subtle">{t('orgadm.terms.empty')}</p>}
       <ul className="space-y-2">
-        {terms.map((t) =>
-          editing?.id === t.id ? (
-            <li key={t.id} className="bg-canvas border border-line rounded-xl p-3">
+        {terms.map((term) =>
+          editing?.id === term.id ? (
+            <li key={term.id} className="bg-canvas border border-line rounded-xl p-3">
               <form
                 className="flex flex-wrap items-center gap-2"
                 onSubmit={(e) => {
                   e.preventDefault();
                   act(async () => {
-                    await api.patch(`/api/v1/terms/${t.id}`, { name: editing.name.trim(), startsOn: editing.starts, endsOn: editing.ends });
+                    await api.patch(`/api/v1/terms/${term.id}`, {
+                      name: editing.name.trim(),
+                      startsOn: editing.starts,
+                      endsOn: editing.ends,
+                    });
                     setEditing(null);
                   });
                 }}
               >
                 <input
                   className={`${input} flex-1 min-w-40`}
-                  aria-label={`New name for ${t.name}`}
+                  aria-label={t('orgadm.terms.newNameAria', { name: term.name })}
                   maxLength={80}
                   value={editing.name}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
@@ -391,50 +412,51 @@ export const TermsPanel: React.FC = () => {
                 <input
                   className={`${input} w-40`}
                   type="date"
-                  aria-label={`${t.name} starts on`}
+                  aria-label={t('orgadm.terms.editStartsAria', { name: term.name })}
                   value={editing.starts}
                   onChange={(e) => setEditing({ ...editing, starts: e.target.value })}
                 />
                 <input
                   className={`${input} w-40`}
                   type="date"
-                  aria-label={`${t.name} ends on`}
+                  aria-label={t('orgadm.terms.editEndsAria', { name: term.name })}
                   value={editing.ends}
                   onChange={(e) => setEditing({ ...editing, ends: e.target.value })}
                 />
                 <button className={primary} disabled={busy || !valid(editing.name, editing.starts, editing.ends)}>
-                  Save
+                  {t('orgadm.save')}
                 </button>
                 <button type="button" className={ghost} onClick={() => setEditing(null)}>
-                  Cancel
+                  {t('orgadm.cancel')}
                 </button>
               </form>
             </li>
           ) : (
             <li
-              key={t.id}
+              key={term.id}
               className="bg-canvas border border-line rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs"
             >
               <div>
-                <strong className="text-ink">{t.name}</strong>
+                <strong className="text-ink">{term.name}</strong>
                 <span className="text-ink-subtle ml-2">
-                  {day(t.startsOn)} to {day(t.endsOn)} · {t.courseCount} course{t.courseCount === 1 ? '' : 's'}
+                  {t('orgadm.terms.range', { start: day(term.startsOn), end: day(term.endsOn) })} ·{' '}
+                  {t.plural('orgadm.terms.courses', term.courseCount)}
                 </span>
               </div>
               <div className="flex gap-2">
                 <button
                   className={ghost}
                   disabled={busy}
-                  onClick={() => setEditing({ id: t.id, name: t.name, starts: day(t.startsOn), ends: day(t.endsOn) })}
+                  onClick={() => setEditing({ id: term.id, name: term.name, starts: day(term.startsOn), ends: day(term.endsOn) })}
                 >
-                  Edit
+                  {t('orgadm.terms.edit')}
                 </button>
                 <button
                   className={ghost}
-                  disabled={busy || t.courseCount > 0}
-                  title={t.courseCount > 0 ? 'Move its courses to another term first' : undefined}
-                  aria-label={`Delete term ${t.name}`}
-                  onClick={() => act(() => api.delete(`/api/v1/terms/${t.id}`))}
+                  disabled={busy || term.courseCount > 0}
+                  title={term.courseCount > 0 ? t('orgadm.terms.deleteTitle') : undefined}
+                  aria-label={t('orgadm.terms.deleteAria', { name: term.name })}
+                  onClick={() => act(() => api.delete(`/api/v1/terms/${term.id}`))}
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -448,6 +470,7 @@ export const TermsPanel: React.FC = () => {
 };
 
 export const BrandingPanel: React.FC = () => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: TenantSettings }>('/api/v1/admin/tenant');
   const { busy, error: actionError, run, clearError } = useAction();
   const [name, setName] = useState('');
@@ -457,15 +480,15 @@ export const BrandingPanel: React.FC = () => {
   const [favicon, setFavicon] = useState('');
   const [saved, setSaved] = useState(false);
 
-  const t = data?.data;
+  const tenant = data?.data;
   useEffect(() => {
-    if (!t) return;
-    setName(t.name);
-    setPrimaryC(t.primaryColor ?? '');
-    setSecondaryC(t.secondaryColor ?? '');
-    setLogo(t.logoUrl ?? '');
-    setFavicon(t.faviconUrl ?? '');
-  }, [t]);
+    if (!tenant) return;
+    setName(tenant.name);
+    setPrimaryC(tenant.primaryColor ?? '');
+    setSecondaryC(tenant.secondaryColor ?? '');
+    setLogo(tenant.logoUrl ?? '');
+    setFavicon(tenant.faviconUrl ?? '');
+  }, [tenant]);
 
   const valid =
     name.trim().length >= 2 && isHexColor(primaryC) && isHexColor(secondaryC) && isHttpUrlOrEmpty(logo) && isHttpUrlOrEmpty(favicon);
@@ -490,15 +513,15 @@ export const BrandingPanel: React.FC = () => {
     <section className="space-y-4" aria-labelledby="brand-h">
       <div>
         <h3 id="brand-h" className="font-bold text-base text-ink">
-          White-label branding
+          {t('orgadm.brand.title')}
         </h3>
         <p className="text-xs text-ink-muted">
-          Shown on your sign-in page. Domain:{' '}
-          <span className="font-mono text-ink">{t?.customDomain ?? `${t?.slug ?? '…'} (subdomain)`}</span>
+          {t('orgadm.brand.intro')}{' '}
+          <span className="font-mono text-ink">{tenant?.customDomain ?? t('orgadm.brand.subdomain', { slug: tenant?.slug ?? '…' })}</span>
         </p>
       </div>
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
-      {saved && <Banner kind="ok">Branding saved.</Banner>}
+      {saved && <Banner kind="ok">{t('orgadm.brand.saved')}</Banner>}
 
       <form
         onSubmit={save}
@@ -509,15 +532,15 @@ export const BrandingPanel: React.FC = () => {
         }}
       >
         <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-          Organisation name
+          {t('orgadm.brand.orgName')}
           <input className={input} required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <div className="grid grid-cols-2 gap-3">
-          <Color label="Primary colour" value={primaryC} onChange={setPrimaryC} />
-          <Color label="Secondary colour" value={secondaryC} onChange={setSecondaryC} />
+          <Color label={t('orgadm.brand.primary')} value={primaryC} onChange={setPrimaryC} />
+          <Color label={t('orgadm.brand.secondary')} value={secondaryC} onChange={setSecondaryC} />
         </div>
         <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-          Logo URL (https)
+          {t('orgadm.brand.logo')}
           <input
             className={`${input} ${!isHttpUrlOrEmpty(logo) ? 'border-danger' : ''}`}
             placeholder="https://…/logo.png"
@@ -526,7 +549,7 @@ export const BrandingPanel: React.FC = () => {
           />
         </label>
         <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-          Favicon URL (https)
+          {t('orgadm.brand.favicon')}
           <input
             className={`${input} ${!isHttpUrlOrEmpty(favicon) ? 'border-danger' : ''}`}
             placeholder="https://…/favicon.ico"
@@ -535,14 +558,14 @@ export const BrandingPanel: React.FC = () => {
           />
         </label>
 
-        <div className="flex items-center gap-3 p-3 rounded-xl border border-line bg-canvas" aria-label="Preview">
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-line bg-canvas" aria-label={t('orgadm.brand.preview')}>
           <span className="h-8 w-8 rounded-lg" style={{ background: isHexColor(primaryC) ? primaryC : '#334155' }} />
           <span className="h-8 w-8 rounded-lg" style={{ background: isHexColor(secondaryC) ? secondaryC : '#334155' }} />
-          <span className="text-xs font-bold text-ink">{name || 'Your organisation'}</span>
+          <span className="text-xs font-bold text-ink">{name || t('orgadm.brand.yourOrg')}</span>
         </div>
 
         <button className={primary} disabled={busy || isLoading || !valid}>
-          {busy ? 'Saving…' : 'Save branding'}
+          {busy ? t('orgadm.saving') : t('orgadm.brand.save')}
         </button>
       </form>
     </section>
@@ -565,14 +588,15 @@ interface Compliance {
   note: string;
 }
 
-const STATUS: Record<Check['status'], { label: string; cls: string; Icon: React.ElementType }> = {
-  PASS: { label: 'Pass', cls: 'bg-success/10 text-success border-success/30', Icon: CheckCircle2 },
-  WARN: { label: 'Needs attention', cls: 'bg-accent/10 text-accent border-accent/30', Icon: AlertTriangle },
-  FAIL: { label: 'Fail', cls: 'bg-danger/10 text-danger border-danger/30', Icon: ShieldAlert },
-  INFO: { label: 'Info', cls: 'bg-raised text-ink border-line', Icon: Info },
+const STATUS: Record<Check['status'], { cls: string; Icon: React.ElementType }> = {
+  PASS: { cls: 'bg-success/10 text-success border-success/30', Icon: CheckCircle2 },
+  WARN: { cls: 'bg-accent/10 text-accent border-accent/30', Icon: AlertTriangle },
+  FAIL: { cls: 'bg-danger/10 text-danger border-danger/30', Icon: ShieldAlert },
+  INFO: { cls: 'bg-raised text-ink border-line', Icon: Info },
 };
 
 export const CompliancePanel: React.FC = () => {
+  const t = useT();
   const { data, isLoading, error, reload } = useApiData<{ data: Compliance }>('/api/v1/admin/compliance');
   const { busy, error: actionError, run } = useAction();
   const d = data?.data;
@@ -589,26 +613,27 @@ export const CompliancePanel: React.FC = () => {
     <section className="space-y-5" aria-labelledby="comp-h">
       <div>
         <h3 id="comp-h" className="font-bold text-base text-ink">
-          Security and compliance posture
+          {t('orgadm.compliance.title')}
         </h3>
-        <p className="text-xs text-ink-muted">{d?.note ?? 'Measured facts about this deployment.'}</p>
+        <p className="text-xs text-ink-muted">{d?.note ?? t('orgadm.compliance.noteDefault')}</p>
       </div>
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
-      {isLoading && <p className="text-xs text-ink-subtle">Checking…</p>}
+      {isLoading && <p className="text-xs text-ink-subtle">{t('orgadm.compliance.checking')}</p>}
 
       {d && (
         <>
-          <div className="flex flex-wrap gap-2 text-[11px]" aria-label="Summary">
+          <div className="flex flex-wrap gap-2 text-[11px]" aria-label={t('orgadm.compliance.summary')}>
             {(['PASS', 'WARN', 'FAIL', 'INFO'] as const).map((s) => (
               <span key={s} className={`px-2.5 py-1 rounded-full border font-semibold ${STATUS[s].cls}`}>
-                {counts[s] ?? 0} {STATUS[s].label.toLowerCase()}
+                {t(`orgadm.compliance.count.${s}` as const, { count: counts[s] ?? 0 })}
               </span>
             ))}
           </div>
 
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {d.checks.map((c) => {
-              const { Icon, cls, label } = STATUS[c.status];
+              const { Icon, cls } = STATUS[c.status];
+              const label = t.dyn(`orgadm.compliance.status.${c.status}`, c.status);
               return (
                 <li key={c.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
@@ -625,14 +650,12 @@ export const CompliancePanel: React.FC = () => {
           </ul>
 
           <div className="bg-canvas border border-line rounded-2xl p-4 space-y-3">
-            <h4 className="text-sm font-bold text-ink">Regulatory declarations</h4>
-            <p className="text-[11px] text-ink-subtle">
-              What your institution states about itself. These do not change how the platform behaves.
-            </p>
+            <h4 className="text-sm font-bold text-ink">{t('orgadm.compliance.declTitle')}</h4>
+            <p className="text-[11px] text-ink-subtle">{t('orgadm.compliance.declHelp')}</p>
             {(
               [
-                ['ferpaCompliant', 'FERPA (US education records)', d.declarations.ferpa],
-                ['coppaCompliant', 'COPPA (children under 13)', d.declarations.coppa],
+                ['ferpaCompliant', t('orgadm.compliance.ferpa'), d.declarations.ferpa],
+                ['coppaCompliant', t('orgadm.compliance.coppa'), d.declarations.coppa],
               ] as const
             ).map(([key, label, on]) => (
               <label key={key} className="flex items-center justify-between text-xs text-ink">
@@ -641,7 +664,8 @@ export const CompliancePanel: React.FC = () => {
               </label>
             ))}
             <p className="text-[11px] text-ink-subtle">
-              Data region: <span className="font-mono text-ink">{d.declarations.dataRegion ?? 'not set'}</span>
+              {t('orgadm.compliance.region')}{' '}
+              <span className="font-mono text-ink">{d.declarations.dataRegion ?? t('orgadm.compliance.regionNotSet')}</span>
             </p>
           </div>
         </>

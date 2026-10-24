@@ -30,7 +30,7 @@ import { UserManager } from '@/components/UserManager';
 import { AuditLogPanel } from '@/components/AuditLogPanel';
 import { CourseReviewPanel } from '@/components/admin/CourseReviewPanel';
 import { AdminCourseTable } from '@/components/admin/AdminCourseTable';
-import { plural } from '@/lib/plural';
+import { useT } from '@/lib/i18n';
 import { currentTab } from '@/lib/navigation';
 
 const TABS = ['overview', 'courses', 'compliance', 'sso', 'platform', 'billing', 'audit'] as const;
@@ -38,6 +38,7 @@ type Tab = (typeof TABS)[number];
 const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
 
 export default function AdminDashboard() {
+  const t = useT();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [showLrsStream, setShowLrsStream] = useState(false);
   const [showPeople, setShowPeople] = useState(false);
@@ -97,9 +98,9 @@ export default function AdminDashboard() {
           <div className="space-y-2 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/50 font-semibold">
-                {user?.role === 'SUPER_ADMIN' ? 'Organisation super administrator' : 'Organisation administrator'}
+                {user?.role === 'SUPER_ADMIN' ? t('people.admin.roleSuper') : t('people.admin.roleAdmin')}
               </span>
-              <span className="text-xs text-ink-muted">Plan: {usage.data?.data.tier ?? '…'}</span>
+              <span className="text-xs text-ink-muted">{t('people.admin.plan', { tier: usage.data?.data.tier ?? '…' })}</span>
             </div>
             <div className="flex items-center gap-3 min-w-0">
               {branding?.logoUrl ? (
@@ -117,8 +118,8 @@ export default function AdminDashboard() {
                 </div>
               )}
               <div className="min-w-0">
-                <h1 className="text-3xl font-extrabold text-ink tracking-tight truncate">{orgName || 'Your organisation'}</h1>
-                <p className="text-sm text-ink-muted">Administration: people, courses, sign-in, integrations and the audit trail</p>
+                <h1 className="text-3xl font-extrabold text-ink tracking-tight truncate">{orgName || t('people.admin.yourOrg')}</h1>
+                <p className="text-sm text-ink-muted">{t('people.admin.subtitle')}</p>
               </div>
             </div>
           </div>
@@ -129,7 +130,7 @@ export default function AdminDashboard() {
               className="px-4 py-2.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-md"
             >
               <UserCog className="h-4 w-4 text-accent" />
-              <span>People</span>
+              <span>{t('people.admin.people')}</span>
             </button>
           </div>
         </div>
@@ -138,30 +139,32 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {[
             {
-              label: 'Seats in use',
+              label: t('people.admin.seats'),
               value: seats ? (seats.quota ? `${seats.used} / ${seats.quota}` : String(seats.used)) : '…',
-              sub: seats ? `${usage.data?.data.last30Days.activeUsers ?? 0} active in 30 days` : '',
+              sub: seats ? t('people.admin.activeUsers', { count: t.number(usage.data?.data.last30Days.activeUsers ?? 0) }) : '',
               icon: Users,
               color: 'text-brand-fg',
             },
             {
-              label: 'Courses',
+              label: t('people.admin.courses'),
               value: usage.data ? String(usage.data.data.totals.courses) : '…',
-              sub: plural(usage.data?.data.totals.enrollments ?? 0, 'enrolment'),
+              sub: t.plural('people.admin.enrolments', usage.data?.data.totals.enrollments ?? 0, {
+                count: t.number(usage.data?.data.totals.enrollments ?? 0),
+              }),
               icon: Database,
               color: 'text-success',
             },
             {
-              label: 'Single sign-on',
-              value: flags.sso ? 'Available' : 'Not in plan',
-              sub: flags.scim ? 'SCIM provisioning on' : 'SCIM off',
+              label: t('people.admin.sso'),
+              value: flags.sso ? t('people.admin.ssoAvailable') : t('people.admin.ssoNotInPlan'),
+              sub: flags.scim ? t('people.admin.scimOn') : t('people.admin.scimOff'),
               icon: Key,
               color: 'text-accent',
             },
             {
-              label: 'Integrations',
-              value: flags.webhooks ? 'Webhooks on' : 'Webhooks off',
-              sub: flags.lti13 ? 'LTI 1.3 on' : 'LTI 1.3 off',
+              label: t('people.admin.integrations'),
+              value: flags.webhooks ? t('people.admin.webhooksOn') : t('people.admin.webhooksOff'),
+              sub: flags.lti13 ? t('people.admin.lti13On') : t('people.admin.lti13Off'),
               icon: Terminal,
               color: 'text-orchid',
             },

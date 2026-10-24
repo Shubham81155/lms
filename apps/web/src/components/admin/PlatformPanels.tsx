@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Download, Send, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { downloadFile, useAction, useApiData } from '@/hooks/useApiData';
+import { useT } from '@/lib/i18n';
 import { Banner, OnceSecret } from './IdentityPanels';
 
 const input =
@@ -16,6 +17,7 @@ const ghostBtn =
 // Feature flags
 // ---------------------------------------------------------------------------
 
+// English defaults (also used by the platform console); the admin screen shows orgadm.feature.<key>.* when present.
 export const FEATURE_LABELS: Record<string, { label: string; hint: string }> = {
   lti13: { label: 'LTI 1.3 launches', hint: 'Let external tools sign learners in.' },
   sso: { label: 'Single sign-on (OIDC / SAML)', hint: 'Sign in with your identity provider.' },
@@ -28,15 +30,16 @@ export const FEATURE_LABELS: Record<string, { label: string; hint: string }> = {
 };
 
 export const FeaturesPanel: React.FC = () => {
+  const t = useT();
   const { data, error } = useApiData<{ data: Record<string, boolean> }>('/api/v1/admin/features');
 
   return (
     <section className="space-y-4" aria-labelledby="features-heading">
       <div>
         <h3 id="features-heading" className="font-bold text-base text-ink">
-          Included in your plan
+          {t('orgadm.features.title')}
         </h3>
-        <p className="text-xs text-ink-muted">To change your plan, contact your platform provider.</p>
+        <p className="text-xs text-ink-muted">{t('orgadm.features.intro')}</p>
       </div>
       {error && <Banner kind="error">{error}</Banner>}
       <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -45,13 +48,13 @@ export const FeaturesPanel: React.FC = () => {
           return (
             <li key={key} className="bg-canvas border border-line rounded-2xl p-4 flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-ink">{meta.label}</div>
-                <div className="text-[11px] text-ink-subtle">{meta.hint}</div>
+                <div className="text-sm font-semibold text-ink">{t.dyn(`orgadm.feature.${key}.label`, meta.label)}</div>
+                <div className="text-[11px] text-ink-subtle">{t.dyn(`orgadm.feature.${key}.hint`, meta.hint)}</div>
               </div>
               <span
                 className={`shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full border ${on ? 'bg-success/10 text-success border-success/30' : 'bg-canvas text-ink-subtle border-line'}`}
               >
-                {on ? 'Included' : 'Not included'}
+                {on ? t('orgadm.features.included') : t('orgadm.features.notIncluded')}
               </span>
             </li>
           );
@@ -73,6 +76,7 @@ export interface Usage {
 }
 
 export const UsagePanel: React.FC = () => {
+  const t = useT();
   const { data, error, reload } = useApiData<{ data: Usage }>('/api/v1/admin/usage');
   const { busy, error: actionError, run } = useAction();
   const [exporting, setExporting] = useState(false);
@@ -91,15 +95,17 @@ export const UsagePanel: React.FC = () => {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 id="usage-heading" className="font-bold text-base text-ink">
-            Usage and seats
+            {t('orgadm.usage.title')}
           </h3>
           <p className="text-xs text-ink-muted">
-            Plan: {u?.tier ?? '…'}. Seats count active and invited accounts{u?.seats.quota ? `; your plan allows ${u.seats.quota}` : ''}.
+            {u?.seats.quota
+              ? t('orgadm.usage.planQuota', { tier: u.tier, quota: u.seats.quota })
+              : t('orgadm.usage.plan', { tier: u?.tier ?? '…' })}
           </p>
         </div>
         <button className={ghostBtn} onClick={exportData} disabled={exporting}>
           <Download className="h-3.5 w-3.5 inline mr-1" />
-          {exporting ? 'Preparing…' : 'Export all data (JSON)'}
+          {exporting ? t('orgadm.usage.preparing') : t('orgadm.usage.export')}
         </button>
       </div>
 
@@ -109,10 +115,10 @@ export const UsagePanel: React.FC = () => {
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              ['Seats in use', u.seats.quota ? `${u.seats.used} / ${u.seats.quota}` : String(u.seats.used)],
-              ['Active users (30 days)', String(u.last30Days.activeUsers)],
-              ['Courses', String(u.totals.courses)],
-              ['Certificates issued', String(u.totals.certificates)],
+              [t('orgadm.usage.seatsInUse'), u.seats.quota ? `${u.seats.used} / ${u.seats.quota}` : String(u.seats.used)],
+              [t('orgadm.usage.activeUsers'), String(u.last30Days.activeUsers)],
+              [t('orgadm.usage.courses'), String(u.totals.courses)],
+              [t('orgadm.usage.certificates'), String(u.totals.certificates)],
             ].map(([label, value]) => (
               <div key={label} className="bg-canvas border border-line rounded-2xl p-4">
                 <div className="text-[11px] text-ink-subtle">{label}</div>
@@ -129,18 +135,18 @@ export const UsagePanel: React.FC = () => {
                 aria-valuenow={pct}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label="Seat usage"
+                aria-label={t('orgadm.usage.seatUsage')}
               >
                 <div className={`h-2 ${pct >= 90 ? 'bg-rose-500' : 'bg-brand-hover'}`} style={{ width: `${pct}%` }} />
               </div>
-              <div className="text-[11px] text-ink-subtle mt-1">{u.seats.remaining} seats remaining</div>
+              <div className="text-[11px] text-ink-subtle mt-1">{t.plural('orgadm.usage.remaining', u.seats.remaining ?? 0)}</div>
             </div>
           )}
 
           <div className="flex flex-wrap gap-2 text-[11px]">
             {Object.entries(u.seats.byRole).map(([role, n]) => (
               <span key={role} className="px-2.5 py-1 rounded-full bg-canvas border border-line text-ink">
-                {role.replace(/_/g, ' ').toLowerCase()}: <strong className="text-ink">{n}</strong>
+                {t.dyn(`role.${role}`, role.replace(/_/g, ' ').toLowerCase())}: <strong className="text-ink">{n}</strong>
               </span>
             ))}
           </div>
@@ -172,16 +178,17 @@ interface Delivery {
 }
 
 const Deliveries: React.FC<{ id: string }> = ({ id }) => {
+  const t = useT();
   const { data, isLoading } = useApiData<{ data: Delivery[] }>(`/api/v1/admin/webhooks/${id}/deliveries`);
-  if (isLoading) return <div className="text-[11px] text-ink-subtle">Loading…</div>;
+  if (isLoading) return <div className="text-[11px] text-ink-subtle">{t('common.loading')}</div>;
   const rows = (data?.data ?? []).slice(0, 10);
-  if (rows.length === 0) return <div className="text-[11px] text-ink-subtle">No deliveries yet.</div>;
+  if (rows.length === 0) return <div className="text-[11px] text-ink-subtle">{t('orgadm.hooks.noDeliveries')}</div>;
   return (
     <ul className="space-y-1">
       {rows.map((d) => (
         <li key={d.id} className="flex items-center justify-between text-[11px] font-mono">
           <span className={d.success ? 'text-success' : 'text-danger'}>
-            {d.success ? 'OK' : 'FAIL'} {d.statusCode ?? '-'} {d.event}
+            {d.success ? t('orgadm.hooks.ok') : t('orgadm.hooks.fail')} {d.statusCode ?? '-'} {d.event}
           </span>
           <span className="text-ink-subtle">
             {new Date(d.createdAt).toLocaleString()}
@@ -193,14 +200,17 @@ const Deliveries: React.FC<{ id: string }> = ({ id }) => {
   );
 };
 
+type TestOutcome = { success: boolean; statusCode: number | null; error: string | null };
+
 export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) => {
+  const t = useT();
   const { data, error, reload } = useApiData<{ data: Endpoint[] }>('/api/v1/admin/webhooks');
   const { busy, error: actionError, run } = useAction();
   const [url, setUrl] = useState('');
   const [events, setEvents] = useState<string[]>([...EVENTS]);
   const [secret, setSecret] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<Record<string, string>>({});
+  const [testResult, setTestResult] = useState<Record<string, TestOutcome>>({});
   const [tick, setTick] = useState(0); // remounts the delivery log after a test event
 
   const create = (e: React.FormEvent) => {
@@ -215,14 +225,9 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
 
   const test = (ep: Endpoint) =>
     run(async () => {
-      const r = await api.post<{ data: { success: boolean; statusCode: number | null; error: string | null } }>(
-        `/api/v1/admin/webhooks/${ep.id}/test`
-      );
-      setTestResult((p) => ({
-        ...p,
-        [ep.id]: r.data.success ? `Delivered (HTTP ${r.data.statusCode})` : `Failed: ${r.data.error ?? 'unknown error'}`,
-      }));
-      setTick((t) => t + 1);
+      const r = await api.post<{ data: TestOutcome }>(`/api/v1/admin/webhooks/${ep.id}/test`);
+      setTestResult((p) => ({ ...p, [ep.id]: r.data }));
+      setTick((n) => n + 1);
     });
 
   const toggleActive = (ep: Endpoint) =>
@@ -232,7 +237,7 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
     });
 
   const remove = (ep: Endpoint) => {
-    if (!window.confirm(`Delete the webhook for ${ep.url}?`)) return;
+    if (!window.confirm(t('orgadm.hooks.deleteConfirm', { url: ep.url }))) return;
     run(async () => {
       await api.delete(`/api/v1/admin/webhooks/${ep.id}`);
       await reload();
@@ -243,21 +248,20 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
     <section className="space-y-4" aria-labelledby="webhooks-heading">
       <div>
         <h3 id="webhooks-heading" className="font-bold text-base text-ink">
-          Webhooks
+          {t('orgadm.hooks.title')}
         </h3>
         <p className="text-xs text-ink-muted">
-          Receive signed HTTPS events. Verify the <code className="text-brand-fg">x-lms-signature</code> header (HMAC-SHA256 of timestamp +
-          "." + body) with your endpoint's secret.
+          {t('orgadm.hooks.introBefore')} <code className="text-brand-fg">x-lms-signature</code> {t('orgadm.hooks.introAfter')}
         </p>
       </div>
 
-      {!available && <Banner kind="error">Webhooks are not included in this organisation's plan.</Banner>}
+      {!available && <Banner kind="error">{t('orgadm.hooks.notAvailable')}</Banner>}
       {(error || actionError) && <Banner kind="error">{error || actionError}</Banner>}
-      {secret && <OnceSecret label="Signing secret" value={secret} onDismiss={() => setSecret(null)} />}
+      {secret && <OnceSecret label={t('orgadm.hooks.signingSecret')} value={secret} onDismiss={() => setSecret(null)} />}
 
       <form onSubmit={create} className="space-y-3 bg-canvas border border-line rounded-2xl p-4">
         <label className="block space-y-1 text-xs text-ink-muted font-semibold">
-          Endpoint URL
+          {t('orgadm.hooks.endpointUrl')}
           <input
             className={input}
             type="url"
@@ -269,7 +273,7 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
           />
         </label>
         <fieldset className="flex flex-wrap gap-4 text-xs text-ink">
-          <legend className="text-xs text-ink-muted font-semibold mb-1">Events</legend>
+          <legend className="text-xs text-ink-muted font-semibold mb-1">{t('orgadm.hooks.events')}</legend>
           {EVENTS.map((ev) => (
             <label key={ev} className="flex items-center gap-1.5">
               <input
@@ -284,12 +288,12 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
           ))}
         </fieldset>
         <button className={primaryBtn} disabled={busy || !available || events.length === 0 || !url.trim()}>
-          Add webhook
+          {t('orgadm.hooks.add')}
         </button>
       </form>
 
       <ul className="space-y-2">
-        {(data?.data ?? []).length === 0 && <li className="text-xs text-ink-subtle">No webhooks yet.</li>}
+        {(data?.data ?? []).length === 0 && <li className="text-xs text-ink-subtle">{t('orgadm.hooks.empty')}</li>}
         {(data?.data ?? []).map((ep) => (
           <li key={ep.id} className="bg-canvas border border-line rounded-2xl p-4 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -300,21 +304,32 @@ export const WebhooksPanel: React.FC<{ available: boolean }> = ({ available }) =
               <div className="flex items-center gap-2">
                 <button className={ghostBtn} onClick={() => test(ep)} disabled={busy}>
                   <Send className="h-3 w-3 inline mr-1" />
-                  Send test
+                  {t('orgadm.hooks.sendTest')}
                 </button>
                 <button className={ghostBtn} onClick={() => toggleActive(ep)} disabled={busy}>
-                  {ep.isActive ? 'Pause' : 'Resume'}
+                  {ep.isActive ? t('orgadm.hooks.pause') : t('orgadm.hooks.resume')}
                 </button>
                 <button className={ghostBtn} onClick={() => setOpen(open === ep.id ? null : ep.id)}>
-                  {open === ep.id ? 'Hide log' : 'Deliveries'}
+                  {open === ep.id ? t('orgadm.hooks.hideLog') : t('orgadm.hooks.deliveries')}
                 </button>
-                <button className={ghostBtn} onClick={() => remove(ep)} disabled={busy} aria-label={`Delete ${ep.url}`}>
+                <button
+                  className={ghostBtn}
+                  onClick={() => remove(ep)}
+                  disabled={busy}
+                  aria-label={t('orgadm.hooks.deleteAria', { url: ep.url })}
+                >
                   <Trash2 className="h-3 w-3" />
                 </button>
               </div>
             </div>
-            {!ep.isActive && <div className="text-[11px] text-accent">Paused: no events are being sent.</div>}
-            {testResult[ep.id] && <div className="text-[11px] text-ink">{testResult[ep.id]}</div>}
+            {!ep.isActive && <div className="text-[11px] text-accent">{t('orgadm.hooks.paused')}</div>}
+            {testResult[ep.id] && (
+              <div className="text-[11px] text-ink">
+                {testResult[ep.id].success
+                  ? t('orgadm.hooks.delivered', { code: testResult[ep.id].statusCode ?? '' })
+                  : t('orgadm.hooks.failed', { error: testResult[ep.id].error ?? t('orgadm.hooks.unknownError') })}
+              </div>
+            )}
             {open === ep.id && <Deliveries key={tick} id={ep.id} />}
           </li>
         ))}

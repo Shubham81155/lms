@@ -11,6 +11,10 @@ import { gradingEn } from './t-grading.en';
 import { builderEn } from './t-builder.en';
 import { assessEn } from './t-assess.en';
 import { teachEn } from './t-teach.en';
+import { peopleEn } from './a-people.en';
+import { orgadmEn } from './a-orgadm.en';
+import { identEn } from './a-ident.en';
+import { complyEn } from './a-comply.en';
 
 export const en = {
   ...billingEn,
@@ -23,6 +27,10 @@ export const en = {
   ...builderEn,
   ...assessEn,
   ...teachEn,
+  ...peopleEn,
+  ...orgadmEn,
+  ...identEn,
+  ...complyEn,
   'language.label': 'Language',
 
   'common.loading': 'Loading…',

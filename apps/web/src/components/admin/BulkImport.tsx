@@ -8,6 +8,7 @@ import { downloadCsv } from '@/lib/download';
 import { toCsv } from '@/lib/csv';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { card, ghost, primary } from '@/components/assessments/ui';
+import { useT } from '@/lib/i18n';
 
 interface ImportResult {
   dryRun: boolean;
@@ -15,11 +16,11 @@ interface ImportResult {
   rows: { line: number; email: string; status: 'CREATE' | 'CREATED' | 'EXISTS' | 'ERROR'; message: string | null; enrol: string | null }[];
 }
 
-const STATUS_TEXT: Record<ImportResult['rows'][number]['status'], { text: string; tone: string }> = {
-  CREATE: { text: 'Will invite', tone: 'text-brand-fg' },
-  CREATED: { text: 'Invited', tone: 'text-success' },
-  EXISTS: { text: 'Has an account', tone: 'text-ink-muted' },
-  ERROR: { text: 'Problem', tone: 'text-danger' },
+const STATUS_TONE: Record<ImportResult['rows'][number]['status'], string> = {
+  CREATE: 'text-brand-fg',
+  CREATED: 'text-success',
+  EXISTS: 'text-ink-muted',
+  ERROR: 'text-danger',
 };
 
 const TEMPLATE = [
@@ -33,6 +34,7 @@ const TEMPLATE = [
  * every row's outcome, and only then confirms the import.
  */
 export const BulkImport: React.FC<{ onDone: (text: string) => void; onCancel: () => void }> = ({ onDone, onCancel }) => {
+  const t = useT();
   const [csv, setCsv] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
   const [sendInvitations, setSendInvitations] = useState(true);
@@ -49,11 +51,14 @@ export const BulkImport: React.FC<{ onDone: (text: string) => void; onCancel: ()
       else {
         const s = res.data.summary;
         onDone(
-          `Imported: ${s.created} invited, ${s.enrolled} enrolled in a course${s.existing ? `, ${s.existing} already had accounts` : ''}${s.errors ? `, ${s.errors} rows skipped` : ''}.`
+          t('people.bulk.doneLead', { created: t.number(s.created), enrolled: t.number(s.enrolled) }) +
+            (s.existing ? t('people.bulk.doneExisting', { count: t.number(s.existing) }) : '') +
+            (s.errors ? t('people.bulk.doneErrors', { count: t.number(s.errors) }) : '') +
+            t('people.bulk.end')
         );
       }
     } catch (e) {
-      setError(errorMessage(e, 'The file could not be imported.'));
+      setError(errorMessage(e, t('people.bulk.failed')));
       if (dryRun) setPreview(null);
     } finally {
       setBusy(false);
@@ -62,7 +67,7 @@ export const BulkImport: React.FC<{ onDone: (text: string) => void; onCancel: ()
 
   const pick = async (file: File | undefined) => {
     if (!file) return;
-    if (file.size > 2_000_000) return setError('The file is larger than 2 MB. Split it into smaller files.');
+    if (file.size > 2_000_000) return setError(t('people.bulk.tooBig'));
     const text = await file.text();
     setFileName(file.name);
     setCsv(text);
@@ -75,40 +80,45 @@ export const BulkImport: React.FC<{ onDone: (text: string) => void; onCancel: ()
   return (
     <div className={`${card} space-y-3`}>
       <div className="flex items-center justify-between gap-2">
-        <h4 className="text-sm font-bold text-ink">Import people from a CSV file</h4>
+        <h4 className="text-sm font-bold text-ink">{t('people.bulk.title')}</h4>
         <button type="button" className={ghost} onClick={() => downloadCsv('people-template.csv', toCsv(TEMPLATE))}>
           <Download className="h-3 w-3 inline mr-1" />
-          Template
+          {t('people.bulk.template')}
         </button>
       </div>
       <p className="text-[11px] text-ink-muted">
-        Columns: <code>email</code>, <code>first_name</code>, <code>last_name</code>, and optionally <code>role</code> (default student) and{' '}
-        <code>course_code</code> to enrol them. Up to 2,000 people per file. The file is checked first; nothing changes until you confirm.
+        {t('people.bulk.helpLead')} <code>email</code>, <code>first_name</code>, <code>last_name</code>, {t('people.bulk.helpOptional')}{' '}
+        <code>role</code> {t('people.bulk.helpRole')} <code>course_code</code> {t('people.bulk.helpCourse')} {t('people.bulk.helpTail')}
       </p>
 
       <label className="flex items-center gap-2 w-fit cursor-pointer rounded-xl border border-dashed border-line px-4 py-3 text-xs text-ink hover:border-brand/50">
         <Upload className="h-4 w-4 text-brand-fg" />
-        <span>{fileName || 'Choose a CSV file'}</span>
+        <span>{fileName || t('people.bulk.choose')}</span>
         <input type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
       </label>
 
       {error && <Banner kind="error">{error}</Banner>}
-      {busy && !preview && <p className="text-xs text-ink-muted">Checking the file…</p>}
+      {busy && !preview && <p className="text-xs text-ink-muted">{t('people.bulk.checking')}</p>}
 
       {preview && s && (
         <>
           <p className="text-xs text-ink">
-            {s.rows} rows: <strong>{s.toCreate} to invite</strong>, {s.existing} already have accounts,{' '}
-            <span className={s.errors ? 'text-danger font-semibold' : ''}>{s.errors} with problems</span>.
+            {t('people.bulk.sumRows', { count: t.number(s.rows) })}{' '}
+            <strong>{t('people.bulk.sumInvite', { count: t.number(s.toCreate) })}</strong>,{' '}
+            {t('people.bulk.sumExisting', { count: t.number(s.existing) })},{' '}
+            <span className={s.errors ? 'text-danger font-semibold' : ''}>
+              {t('people.bulk.sumProblems', { count: t.number(s.errors) })}
+            </span>
+            {t('people.bulk.end')}
           </p>
           <div className="max-h-64 overflow-y-auto rounded-xl border border-line">
             <table className="w-full text-xs">
               <thead className="bg-surface text-left text-ink-subtle sticky top-0">
                 <tr>
-                  <th className="px-3 py-1.5 font-semibold">Line</th>
-                  <th className="px-3 py-1.5 font-semibold">E-mail</th>
-                  <th className="px-3 py-1.5 font-semibold">Outcome</th>
-                  <th className="px-3 py-1.5 font-semibold">Course</th>
+                  <th className="px-3 py-1.5 font-semibold">{t('people.bulk.colLine')}</th>
+                  <th className="px-3 py-1.5 font-semibold">{t('people.bulk.colEmail')}</th>
+                  <th className="px-3 py-1.5 font-semibold">{t('people.bulk.colOutcome')}</th>
+                  <th className="px-3 py-1.5 font-semibold">{t('people.bulk.colCourse')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -116,8 +126,8 @@ export const BulkImport: React.FC<{ onDone: (text: string) => void; onCancel: ()
                   <tr key={r.line} className="border-t border-line">
                     <td className="px-3 py-1.5 text-ink-subtle">{r.line}</td>
                     <td className="px-3 py-1.5 text-ink">{r.email || '–'}</td>
-                    <td className={`px-3 py-1.5 ${STATUS_TEXT[r.status].tone}`}>
-                      {STATUS_TEXT[r.status].text}
+                    <td className={`px-3 py-1.5 ${STATUS_TONE[r.status]}`}>
+                      {t.dyn(`people.bulk.row.${r.status}`, r.status)}
                       {r.message && r.status !== 'CREATE' ? <span className="block text-[10px] text-ink-muted">{r.message}</span> : null}
                     </td>
                     <td className="px-3 py-1.5 text-ink-muted">{r.enrol ?? ''}</td>
@@ -133,7 +143,7 @@ export const BulkImport: React.FC<{ onDone: (text: string) => void; onCancel: ()
               onChange={(e) => setSendInvitations(e.target.checked)}
               className="rounded border-line"
             />
-            E-mail invitations now (otherwise send them later from each person's row)
+            {t('people.bulk.sendNow')}
           </label>
         </>
       )}
@@ -146,13 +156,15 @@ export const BulkImport: React.FC<{ onDone: (text: string) => void; onCancel: ()
           onClick={() => csv && run(csv, false)}
         >
           {busy && preview
-            ? 'Importing…'
+            ? t('people.bulk.importing')
             : s
-              ? `Import ${s.toCreate} ${s.toCreate === 1 ? 'person' : 'people'}${s.existing ? ` and enrol ${s.existing} existing` : ''}`
-              : 'Import'}
+              ? s.existing
+                ? t.plural('people.bulk.importEnrol', s.toCreate, { count: t.number(s.toCreate), existing: t.number(s.existing) })
+                : t.plural('people.bulk.import', s.toCreate, { count: t.number(s.toCreate) })
+              : t('people.bulk.importPlain')}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
-          Cancel
+          {t('people.bulk.cancel')}
         </button>
       </div>
     </div>

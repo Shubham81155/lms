@@ -5,7 +5,7 @@ import { Archive, BookOpen, FileCheck, Search, Star, Trash2, Users, X } from 'lu
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
-import { plural } from '@/lib/plural';
+import { useT } from '@/lib/i18n';
 
 // Administrators oversee courses rather than teach them: who teaches what, how many learners, and the
 // decisions only they can make (teachers, final grades, archiving). Teaching tools stay with the teachers.
@@ -53,6 +53,7 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
   onOpenGradebook,
   refreshKey,
 }) => {
+  const t = useT();
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
@@ -81,7 +82,7 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
     run(async () => {
       await api.delete(`/api/v1/courses/${c.id}`);
       setArchiving(null);
-      setDone(`"${c.title}" is archived. Learners no longer see it.`);
+      setDone(t('people.courses.archived', { title: c.title }));
       await reload();
     });
 
@@ -91,11 +92,9 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
         <div>
           <h3 id="admin-courses-h" className="font-bold text-base text-ink flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-brand-fg" />
-            All courses
+            {t('people.courses.title')}
           </h3>
-          <p className="text-xs text-ink-muted">
-            Teachers create and run courses. Here you choose who teaches them, approve final grades and archive old ones.
-          </p>
+          <p className="text-xs text-ink-muted">{t('people.courses.intro')}</p>
         </div>
         <form
           className="flex flex-wrap items-center gap-2"
@@ -107,29 +106,29 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
           }}
         >
           <label className="relative">
-            <span className="sr-only">Search courses</span>
+            <span className="sr-only">{t('people.courses.searchLabel')}</span>
             <Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-ink-subtle" aria-hidden="true" />
             <input
               className={`${input} w-48 pl-8`}
               type="search"
-              placeholder="Code or title"
+              placeholder={t('people.courses.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
           <select
             className={input}
-            aria-label="Status"
+            aria-label={t('people.courses.statusLabel')}
             value={status}
             onChange={(e) => {
               setPage(1);
               setStatus(e.target.value);
             }}
           >
-            <option value="">All statuses</option>
-            <option value="PUBLISHED">Published</option>
-            <option value="DRAFT">Draft</option>
-            <option value="ARCHIVED">Archived</option>
+            <option value="">{t('people.courses.allStatuses')}</option>
+            <option value="PUBLISHED">{t('people.courses.opt.PUBLISHED')}</option>
+            <option value="DRAFT">{t('people.courses.opt.DRAFT')}</option>
+            <option value="ARCHIVED">{t('people.courses.opt.ARCHIVED')}</option>
           </select>
         </form>
       </div>
@@ -142,19 +141,19 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
           <thead className="bg-canvas text-[11px] uppercase tracking-wider text-ink-subtle">
             <tr>
               <th scope="col" className="px-4 py-3 font-semibold">
-                Course
+                {t('people.courses.colCourse')}
               </th>
               <th scope="col" className="px-4 py-3 font-semibold">
-                Teachers
+                {t('people.courses.colTeachers')}
               </th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">
-                Learners
+                {t('people.courses.colLearners')}
               </th>
               <th scope="col" className="px-4 py-3 font-semibold">
-                Status
+                {t('people.courses.colStatus')}
               </th>
               <th scope="col" className="px-4 py-3 font-semibold text-right">
-                Actions
+                {t('people.courses.colActions')}
               </th>
             </tr>
           </thead>
@@ -162,14 +161,14 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
             {list.isLoading && rows.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-ink-subtle">
-                  Loading courses…
+                  {t('people.courses.loading')}
                 </td>
               </tr>
             )}
             {!list.isLoading && rows.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-ink-muted">
-                  {query || status ? 'No courses match.' : 'No courses yet. Teachers create them from their own dashboard.'}
+                  {query || status ? t('people.courses.noMatch') : t('people.courses.none')}
                 </td>
               </tr>
             )}
@@ -184,7 +183,7 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
                       </span>
                       {c.reviewStatus === 'PENDING' && (
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-accent/10 text-accent border-accent/30">
-                          awaiting review
+                          {t('people.courses.awaiting')}
                         </span>
                       )}
                     </div>
@@ -193,22 +192,22 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
                   </td>
                   <td className="px-4 py-3">
                     {teachers.length === 0 ? (
-                      <span className="text-accent">No teacher</span>
+                      <span className="text-accent">{t('people.courses.noTeacher')}</span>
                     ) : (
                       <ul className="space-y-0.5">
-                        {teachers.map((t) => (
-                          <li key={t.user.id} className="text-ink">
-                            {nameOf(t.user)}
-                            {t.isPrimary && teachers.length > 1 && <span className="text-ink-subtle"> (main)</span>}
+                        {teachers.map((tm) => (
+                          <li key={tm.user.id} className="text-ink">
+                            {nameOf(tm.user)}
+                            {tm.isPrimary && teachers.length > 1 && <span className="text-ink-subtle"> {t('people.courses.main')}</span>}
                           </li>
                         ))}
                       </ul>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-ink">{c.enrollmentCount}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-ink">{t.number(c.enrollmentCount)}</td>
                   <td className="px-4 py-3">
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLE[c.status]}`}>
-                      {c.status.toLowerCase()}
+                      {t.dyn(`people.courses.status.${c.status}`, c.status.toLowerCase())}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -221,12 +220,17 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
                           setDone(null);
                           setEditing(c);
                         }}
-                        aria-label={`Teachers of ${c.title}`}
+                        aria-label={t('people.courses.teachersAria', { title: c.title })}
                       >
-                        <Users className="h-3.5 w-3.5" /> Teachers
+                        <Users className="h-3.5 w-3.5" /> {t('people.courses.teachers')}
                       </button>
-                      <button type="button" className={ghost} onClick={() => onOpenGradebook(c.id)} aria-label={`Grades of ${c.title}`}>
-                        <FileCheck className="h-3.5 w-3.5" /> Grades
+                      <button
+                        type="button"
+                        className={ghost}
+                        onClick={() => onOpenGradebook(c.id)}
+                        aria-label={t('people.courses.gradesAria', { title: c.title })}
+                      >
+                        <FileCheck className="h-3.5 w-3.5" /> {t('people.courses.grades')}
                       </button>
                       {c.status !== 'ARCHIVED' && (
                         <button
@@ -237,9 +241,9 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
                             setDone(null);
                             setArchiving(c);
                           }}
-                          aria-label={`Archive ${c.title}`}
+                          aria-label={t('people.courses.archiveAria', { title: c.title })}
                         >
-                          <Archive className="h-3.5 w-3.5" /> Archive
+                          <Archive className="h-3.5 w-3.5" /> {t('people.courses.archive')}
                         </button>
                       )}
                     </div>
@@ -247,14 +251,12 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
                       <div
                         className="mt-2 rounded-xl border border-danger/40 bg-danger/5 p-3 text-right"
                         role="alertdialog"
-                        aria-label={`Archive ${c.title}?`}
+                        aria-label={t('people.courses.archiveAsk', { title: c.title })}
                       >
-                        <p className="text-[11px] text-ink">
-                          Archive this course? Learners stop seeing it; its records and grades are kept.
-                        </p>
+                        <p className="text-[11px] text-ink">{t('people.courses.archiveBody')}</p>
                         <div className="mt-2 flex justify-end gap-2">
                           <button type="button" className={ghost} onClick={() => setArchiving(null)} disabled={busy}>
-                            Cancel
+                            {t('people.courses.cancel')}
                           </button>
                           <button
                             type="button"
@@ -262,7 +264,7 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
                             onClick={() => archive(c)}
                             disabled={busy}
                           >
-                            {busy ? 'Archiving…' : 'Archive'}
+                            {busy ? t('people.courses.archiving') : t('people.courses.archive')}
                           </button>
                         </div>
                       </div>
@@ -277,17 +279,15 @@ export const AdminCourseTable: React.FC<{ onOpenGradebook: (courseId: string) =>
 
       {total > 0 && (
         <div className="flex items-center justify-between text-[11px] text-ink-muted">
-          <span>{plural(total, 'course')}</span>
+          <span>{t.plural('people.courses.count', total, { count: t.number(total) })}</span>
           {pages > 1 && (
             <div className="flex items-center gap-2">
               <button type="button" className={ghost} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                Previous
+                {t('people.courses.previous')}
               </button>
-              <span>
-                Page {page} of {pages}
-              </span>
+              <span>{t('people.courses.page', { page: t.number(page), pages: t.number(pages) })}</span>
               <button type="button" className={ghost} disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>
-                Next
+                {t('people.courses.next')}
               </button>
             </div>
           )}
@@ -315,6 +315,7 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
   onClose,
   onSaved,
 }) => {
+  const t = useT();
   const instructors = useApiData<{ data: Person[] }>('/api/v1/users', { role: 'INSTRUCTOR', limit: 100 });
   const assistants = useApiData<{ data: Person[] }>('/api/v1/users', { role: 'TEACHING_ASSISTANT', limit: 100 });
   const { busy, error, run } = useAction();
@@ -337,7 +338,7 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
   const candidates = useMemo(
     () =>
       [...(instructors.data?.data ?? []), ...(assistants.data?.data ?? [])]
-        .filter((p) => (p.status === 'ACTIVE' || p.status === 'INVITED') && !team.some((t) => t.id === p.id))
+        .filter((p) => (p.status === 'ACTIVE' || p.status === 'INVITED') && !team.some((m) => m.id === p.id))
         .sort((a, b) => nameOf(a).localeCompare(nameOf(b))),
     [instructors.data, assistants.data, team]
   );
@@ -348,14 +349,14 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
   const add = () => {
     const p = candidates.find((c) => c.id === adding);
     if (!p) return;
-    setTeam((t) => [...t, { id: p.id, name: nameOf(p), role: p.role, isPrimary: t.length === 0 && p.role === 'INSTRUCTOR' }]);
+    setTeam((prev) => [...prev, { id: p.id, name: nameOf(p), role: p.role, isPrimary: prev.length === 0 && p.role === 'INSTRUCTOR' }]);
     setAdding('');
   };
   const remove = (id: string) =>
-    setTeam((t) => {
-      const next = t.filter((m) => m.id !== id);
+    setTeam((prev) => {
+      const next = prev.filter((m) => m.id !== id);
       // Keep a main teacher when the main one is removed and an instructor is left.
-      if (t.find((m) => m.id === id)?.isPrimary) {
+      if (prev.find((m) => m.id === id)?.isPrimary) {
         const heir = next.find((m) => roleOf(m.id, m.role) === 'INSTRUCTOR');
         return next.map((m) => ({ ...m, isPrimary: m.id === heir?.id }));
       }
@@ -363,14 +364,14 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
     });
 
   const primaryCount = team.filter((m) => m.isPrimary).length;
-  const problem = team.length > 0 && primaryCount !== 1 ? 'Choose the main teacher.' : null;
+  const problem = team.length > 0 && primaryCount !== 1 ? t('people.teachers.chooseMain') : null;
 
   const save = () =>
     run(async () => {
       await api.put(`/api/v1/courses/${course.id}/instructors`, {
         instructors: team.map((m) => ({ userId: m.id, isPrimary: m.isPrimary })),
       });
-      onSaved(team.length ? `Teachers of "${course.title}" saved.` : `"${course.title}" has no teachers now.`);
+      onSaved(t(team.length ? 'people.teachers.saved' : 'people.teachers.savedNone', { title: course.title }));
     });
 
   return (
@@ -378,12 +379,12 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
       className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/85 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
-      aria-label={`Teachers of ${course.title}`}
+      aria-label={t('people.courses.teachersAria', { title: course.title })}
     >
       <div className="w-full max-w-lg space-y-4 rounded-3xl border border-line bg-surface p-6 shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="font-bold text-base text-ink">Teachers</h3>
+            <h3 className="font-bold text-base text-ink">{t('people.teachers.title')}</h3>
             <p className="text-xs text-ink-muted">
               {course.code} · {course.title}
             </p>
@@ -391,7 +392,7 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('people.teachers.close')}
             className="rounded-xl p-1 text-ink-muted hover:bg-raised hover:text-ink"
           >
             <X className="h-5 w-5" />
@@ -399,9 +400,7 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
         </div>
 
         {team.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-line p-4 text-center text-xs text-ink-muted">
-            Nobody teaches this course yet.
-          </p>
+          <p className="rounded-xl border border-dashed border-line p-4 text-center text-xs text-ink-muted">{t('people.teachers.none')}</p>
         ) : (
           <ul className="divide-y divide-line rounded-xl border border-line">
             {team.map((m) => {
@@ -410,7 +409,9 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
                 <li key={m.id} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-ink">{m.name}</div>
-                    <div className="text-[11px] text-ink-subtle">{role === 'TEACHING_ASSISTANT' ? 'Teaching assistant' : 'Instructor'}</div>
+                    <div className="text-[11px] text-ink-subtle">
+                      {role === 'TEACHING_ASSISTANT' ? t('people.teachers.ta') : t('people.teachers.instructor')}
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     {role === 'INSTRUCTOR' && (
@@ -419,16 +420,16 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
                           type="radio"
                           name="main-teacher"
                           checked={m.isPrimary}
-                          onChange={() => setTeam((t) => t.map((x) => ({ ...x, isPrimary: x.id === m.id })))}
+                          onChange={() => setTeam((prev) => prev.map((x) => ({ ...x, isPrimary: x.id === m.id })))}
                         />
-                        <Star className="h-3 w-3 text-accent" aria-hidden="true" /> Main
+                        <Star className="h-3 w-3 text-accent" aria-hidden="true" /> {t('people.teachers.main')}
                       </label>
                     )}
                     <button
                       type="button"
                       className="rounded-lg p-1.5 text-ink-muted hover:bg-danger/10 hover:text-danger"
                       onClick={() => remove(m.id)}
-                      aria-label={`Remove ${m.name}`}
+                      aria-label={t('people.teachers.remove', { name: m.name })}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -442,41 +443,39 @@ const TeachersDialog: React.FC<{ course: CourseRow; onClose: () => void; onSaved
         <div className="flex gap-2">
           <select
             className={`${input} min-w-0 flex-1`}
-            aria-label="Add a teacher"
+            aria-label={t('people.teachers.addLabel')}
             value={adding}
             onChange={(e) => setAdding(e.target.value)}
             disabled={instructors.isLoading}
           >
             <option value="">
               {instructors.isLoading
-                ? 'Loading people…'
+                ? t('people.teachers.loadingPeople')
                 : candidates.length
-                  ? 'Add an instructor or teaching assistant…'
-                  : 'No other instructors or assistants'}
+                  ? t('people.teachers.addPrompt')
+                  : t('people.teachers.noOthers')}
             </option>
             {candidates.map((p) => (
               <option key={p.id} value={p.id}>
-                {nameOf(p)} · {p.role === 'TEACHING_ASSISTANT' ? 'assistant' : 'instructor'}
-                {p.status === 'INVITED' ? ' (invited)' : ''}
+                {t(p.role === 'TEACHING_ASSISTANT' ? 'people.teachers.optAssistant' : 'people.teachers.optInstructor', { name: nameOf(p) })}
+                {p.status === 'INVITED' ? t('people.teachers.invitedSuffix') : ''}
               </option>
             ))}
           </select>
           <button type="button" className={ghost} onClick={add} disabled={!adding}>
-            Add
+            {t('people.teachers.add')}
           </button>
         </div>
-        <p className="text-[11px] text-ink-subtle">
-          Someone missing? Invite them in People with the Instructor or Teaching assistant role first.
-        </p>
+        <p className="text-[11px] text-ink-subtle">{t('people.teachers.missing')}</p>
 
         {(problem || error) && <Banner kind="error">{error || problem}</Banner>}
 
         <div className="flex justify-end gap-2">
           <button type="button" className={ghost} onClick={onClose} disabled={busy}>
-            Cancel
+            {t('people.teachers.cancel')}
           </button>
           <button type="button" className={primary} onClick={save} disabled={busy || !!problem}>
-            {busy ? 'Saving…' : 'Save teachers'}
+            {busy ? t('people.teachers.saving') : t('people.teachers.save')}
           </button>
         </div>
       </div>

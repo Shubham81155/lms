@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Activity, Terminal, Search, Filter, CheckCircle2, Copy, Download, Clock, Sparkles } from 'lucide-react';
 import { useXApiStream, XApiStatementItem } from '@/hooks/useAnalytics';
-import { plural } from '@/lib/plural';
+import { useT } from '@/lib/i18n';
 import { activateOnKey } from '@/lib/a11y';
 
 interface LrsAnalyticsViewerProps {
@@ -11,6 +11,7 @@ interface LrsAnalyticsViewerProps {
 }
 
 export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose }) => {
+  const t = useT();
   const [selectedVerb, setSelectedVerb] = useState<string>('ALL');
   const [selectedStatement, setSelectedStatement] = useState<XApiStatementItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -53,15 +54,13 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
             <div>
               <div className="flex items-center gap-2">
                 <h3 id="lrs-h" className="font-bold text-base text-ink">
-                  Learning Record Store (LRS) Telemetry Stream
+                  {t('ident.lrs.title')}
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand-fg border border-brand/30">
-                  IEEE / ADL xAPI 2.0 Spec
+                  {t('ident.lrs.badge')}
                 </span>
               </div>
-              <p className="text-xs text-ink-muted">
-                Immutable event stream tracking learner interactions, simulations, and assessment telemetry.
-              </p>
+              <p className="text-xs text-ink-muted">{t('ident.lrs.intro')}</p>
             </div>
           </div>
 
@@ -70,11 +69,11 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
               onClick={() => refetch()}
               className="px-3.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
             >
-              <span>Refresh Stream</span>
+              <span>{t('ident.lrs.refresh')}</span>
             </button>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t('common.close')}
               className="p-1 rounded-xl hover:bg-raised text-ink-muted hover:text-ink transition-colors"
             >
               <X className="h-5 w-5" />
@@ -85,7 +84,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
         {/* Verb Filter Toolbar */}
         <div className="bg-canvas/60 border-b border-line px-6 py-2.5 flex items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-2 overflow-x-auto">
-            <span className="text-ink-subtle uppercase font-bold text-[11px] shrink-0">Filter Verbs:</span>
+            <span className="text-ink-subtle uppercase font-bold text-[11px] shrink-0">{t('ident.lrs.filterVerbs')}</span>
             {['ALL', 'experienced', 'passed', 'answered', 'completed'].map((verb) => (
               <button
                 key={verb}
@@ -94,13 +93,13 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                   selectedVerb === verb ? 'bg-brand text-on-brand' : 'text-ink-muted hover:text-ink bg-surface border border-line'
                 }`}
               >
-                {verb}
+                {t.dyn(`ident.lrs.verb.${verb}`, verb)}
               </button>
             ))}
           </div>
 
           <span className="text-ink-muted text-xs font-mono hidden sm:inline">
-            Total Captured: {plural(total || statements.length, 'Statement')}
+            {t.plural('ident.lrs.total', total || statements.length)}
           </span>
         </div>
 
@@ -109,11 +108,11 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
           {/* Statement Feed Left */}
           <div className="w-full md:w-1/2 border-r border-line overflow-y-auto p-4 space-y-3 bg-canvas/30">
             {filteredStatements.length === 0 ? (
-              <div className="p-8 text-center text-ink-subtle text-xs">No statements match this filter criteria.</div>
+              <div className="p-8 text-center text-ink-subtle text-xs">{t('ident.lrs.noMatch')}</div>
             ) : (
               filteredStatements.map((stmt) => {
                 const isSelected = activeStatement?.id === stmt.id;
-                const verbDisplay = stmt.verb.display?.['en-US'] || stmt.verb.id.split('/').pop() || 'interacted';
+                const verbDisplay = stmt.verb.display?.['en-US'] || stmt.verb.id.split('/').pop() || t('ident.lrs.verbFallback');
 
                 return (
                   <div
@@ -129,7 +128,9 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                   >
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-bold text-ink">{stmt.actor.name || stmt.actor.mbox?.replace('mailto:', '')}</span>
-                      <span className="text-ink-subtle font-mono text-[10px]">{new Date(stmt.timestamp).toLocaleTimeString()}</span>
+                      <span className="text-ink-subtle font-mono text-[10px]">
+                        {t.date(stmt.timestamp, { timeStyle: 'medium', timeZone: undefined })}
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-2 mt-1.5">
@@ -143,8 +144,8 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
 
                     {stmt.result && (
                       <div className="mt-2 text-[10px] text-success font-mono">
-                        {stmt.result.score?.raw !== undefined && `Score: ${stmt.result.score.raw}% `}
-                        {stmt.result.duration && `Duration: ${stmt.result.duration}`}
+                        {stmt.result.score?.raw !== undefined && `${t('ident.lrs.score', { score: stmt.result.score.raw })} `}
+                        {stmt.result.duration && t('ident.lrs.duration', { duration: stmt.result.duration })}
                       </div>
                     )}
                   </div>
@@ -159,7 +160,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
               <div className="p-4 border-b border-line flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-mono text-brand-fg">
                   <Terminal className="h-4 w-4" />
-                  <span>Statement Inspector: {activeStatement.id}</span>
+                  <span>{t('ident.lrs.inspector', { id: activeStatement.id })}</span>
                 </div>
                 <button
                   onClick={() => handleCopyJson(activeStatement)}
@@ -168,12 +169,12 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                   {copiedId === activeStatement.id ? (
                     <>
                       <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                      <span className="text-success">Copied JSON</span>
+                      <span className="text-success">{t('ident.lrs.copiedJson')}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="h-3.5 w-3.5" />
-                      <span>Copy JSON</span>
+                      <span>{t('ident.lrs.copyJson')}</span>
                     </>
                   )}
                 </button>
@@ -183,7 +184,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
                 // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be keyboard-reachable (WCAG 2.1.1)
                 tabIndex={0}
                 role="region"
-                aria-label="Selected statement (JSON)"
+                aria-label={t('ident.lrs.region')}
                 className="flex-1 p-5 overflow-y-auto font-mono text-xs text-ink bg-canvas"
               >
                 <pre className="whitespace-pre-wrap leading-relaxed">{JSON.stringify(activeStatement, null, 2)}</pre>
