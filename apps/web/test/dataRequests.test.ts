@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { dueText, isOpen, parseDays } from '../src/lib/dataRequests';
+import { dueText, dueLabel, kindLabel, statusLabel, isOpen, parseDays } from '../src/lib/dataRequests';
+import { makeTranslator } from '../src/lib/i18n';
 
 describe('dueText', () => {
   it('says how long is left, or how late', () => {
@@ -32,5 +33,19 @@ describe('parseDays', () => {
     expect(parseDays('1.5', 7)).toBeUndefined();
     expect(parseDays('-10', 7)).toBeUndefined();
     expect(parseDays('ten', 7)).toBeUndefined();
+  });
+});
+
+describe('translating variants', () => {
+  it('match the English helpers in English', () => {
+    const en = makeTranslator('en');
+    for (const d of [null, -4, -1, 0, 1, 30]) expect(dueLabel(en, d)).toBe(dueText(d));
+    expect(kindLabel(en, 'ERASURE')).toBe('Erase my data');
+    expect(statusLabel(en, 'IN_PROGRESS')).toBe('Being handled');
+  });
+  it('speak Hindi when asked', () => {
+    const hi = makeTranslator('hi');
+    expect(dueLabel(hi, 0)).not.toBe('Due today');
+    expect(statusLabel(hi, 'OPEN')).toMatch(/[ऀ-ॿ]/);
   });
 });

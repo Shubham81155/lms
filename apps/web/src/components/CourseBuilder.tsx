@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Plus, Trash2, Sparkles, Save, CheckCircle, Layers, ArrowRight, Sliders, Shield, Eye } from 'lucide-react';
 import { api } from '@/lib/api';
 import { errorMessage } from '@/hooks/useApiData';
-import { AI_OFF_TEXT, useAiStatus } from '@/hooks/useAi';
+import { aiOffText, useAiStatus } from '@/hooks/useAi';
 import { useT } from '@/lib/i18n';
 import { LessonFields, blankLesson, isHttpUrl, type LessonDraft } from './LessonFields';
 
@@ -376,7 +376,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
 
             {!ai.enabled ? (
               <p className="text-xs text-ink-muted">
-                {ai.isLoading ? t('builder.new.ai.checking') : ai.reason ? AI_OFF_TEXT[ai.reason] : t('builder.new.ai.unavailable')}
+                {ai.isLoading ? t('builder.new.ai.checking') : ai.reason ? aiOffText(t, ai.reason) : t('builder.new.ai.unavailable')}
               </p>
             ) : (
               <>

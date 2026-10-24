@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { assignmentProblem, eventProblem, quizSettingsProblem, toLocalInput } from '../src/lib/assessmentForms';
+import { en } from '@/locales/en';
+import { hi } from '@/locales/hi';
+import {
+  ASSESSMENT_PROBLEMS,
+  assessmentProblemKey,
+  assignmentProblem,
+  eventProblem,
+  quizSettingsProblem,
+  toLocalInput,
+} from '../src/lib/assessmentForms';
+import { DRAFT_PROBLEMS, RUBRIC_PROBLEMS, draftProblem, problemKey, rubricDraft, rubricProblemMsg } from '../src/lib/forms';
+import { RELATIVE_TIMES, SCHEDULE_PROBLEMS, scheduleProblem, scheduleProblemKey, startsInParts } from '../src/lib/live';
 import { blankQuestion, questionBody } from '../src/lib/questionDraft';
 
 const quiz = {
@@ -116,5 +127,114 @@ describe('questionBody', () => {
   });
   it('starts true/false questions with both options', () => {
     expect(blankQuestion('TRUE_FALSE').options.map((o) => o.text)).toEqual(['True', 'False']);
+  });
+});
+
+describe('problem keys', () => {
+  const tables = [
+    ...Object.values(DRAFT_PROBLEMS),
+    ...Object.values(RUBRIC_PROBLEMS),
+    ...Object.values(ASSESSMENT_PROBLEMS),
+    ...Object.values(SCHEDULE_PROBLEMS),
+    ...Object.values(RELATIVE_TIMES),
+  ];
+  const enMessages = en as Record<string, string>;
+  const hiMessages = hi as Record<string, string>;
+
+  it('every entry has an English and a Hindi message', () => {
+    for (const p of tables) {
+      expect(enMessages[p.key], p.key).toBeTruthy();
+      expect(hiMessages[p.key], p.key).toMatch(/[ऀ-ॿ]/);
+    }
+  });
+
+  it('the catalogue wording is the helper wording', () => {
+    for (const p of tables) expect(enMessages[p.key], p.key).toBe(p.en);
+  });
+
+  it('every message a helper returns maps back to its key', () => {
+    const quizBad = [
+      { ...quiz, title: ' ' },
+      { ...quiz, attempts: '0' },
+      { ...quiz, passing: '101' },
+      { ...quiz, timed: true, minutes: '0' },
+      { ...quiz, opens: '2027-01-02T10:00', closes: '2027-01-01T10:00' },
+    ];
+    for (const q of quizBad) expect(assessmentProblemKey(quizSettingsProblem(q))).toBeTruthy();
+    const asg = { title: 'A', instructions: 'Do', maxPoints: '10', due: '2027-01-02T10:00', lateUntil: '' };
+    const asgBad = [
+      { ...asg, title: '' },
+      { ...asg, instructions: '' },
+      { ...asg, maxPoints: '0' },
+      { ...asg, due: 'nope' },
+      { ...asg, due: '', lateUntil: '2027-01-02T10:00' },
+      { ...asg, lateUntil: '2027-01-01T10:00' },
+    ];
+    for (const a of asgBad) expect(assessmentProblemKey(assignmentProblem(a))).toBeTruthy();
+    const evBad = [
+      { title: '', start: '', end: '' },
+      { title: 'E', start: '', end: '' },
+      { title: 'E', start: '2027-01-02T10:00', end: '2027-01-01T10:00' },
+    ];
+    for (const e of evBad) expect(assessmentProblemKey(eventProblem(e))).toBeTruthy();
+    const base = {
+      type: 'MULTIPLE_CHOICE',
+      text: 'Q',
+      answer: '',
+      options: [
+        { text: 'a', isCorrect: true },
+        { text: 'b', isCorrect: false },
+      ],
+    };
+    const draftBad = [
+      { ...base, text: '' },
+      { ...base, options: [base.options[0]] },
+      {
+        ...base,
+        options: [
+          { text: 'a', isCorrect: false },
+          { text: 'b', isCorrect: false },
+        ],
+      },
+      {
+        ...base,
+        type: 'MULTI_SELECT',
+        options: [
+          { text: 'a', isCorrect: false },
+          { text: 'b', isCorrect: false },
+        ],
+      },
+      { ...base, type: 'SHORT_ANSWER' },
+    ];
+    const keys = draftBad.map((d) => problemKey(draftProblem(d)));
+    expect(keys.every(Boolean)).toBe(true);
+    expect(new Set(keys).size).toBe(5);
+  });
+
+  it('rubric problems carry a key and values that rebuild the English text', () => {
+    const crit = [{ id: 'c1', name: 'Clarity', maxPoints: 5 }];
+    const empty = rubricDraft(crit, {});
+    expect(empty.problem).toBe('Score "Clarity".');
+    expect(rubricProblemMsg(crit, {})).toEqual({ key: 'fm.rubric.score', vars: { name: 'Clarity' } });
+    const over = rubricDraft(crit, { c1: '9' });
+    expect(over.problem).toBe('"Clarity" must be between 0 and 5.');
+    expect(rubricProblemMsg(crit, { c1: '9' })?.vars).toEqual({ name: 'Clarity', max: 5 });
+    expect(rubricProblemMsg(crit, { c1: '3' })).toBeNull();
+  });
+
+  it('schedule messages and relative times map back to their keys', () => {
+    expect(scheduleProblemKey(scheduleProblem({ title: '', when: '', durationMins: 60 }))).toBe('teach.live.problem.title');
+    expect(scheduleProblemKey(scheduleProblem({ title: 'Lecture', when: '', durationMins: 60 }))).toBe('teach.live.problem.when');
+    expect(scheduleProblemKey(scheduleProblem({ title: 'Lecture', when: '2000-01-01T10:00', durationMins: 60 }))).toBe(
+      'teach.live.problem.past'
+    );
+    expect(scheduleProblemKey(scheduleProblem({ title: 'Lecture', when: '2999-01-01T10:00', durationMins: 1 }))).toBe(
+      'teach.live.problem.duration'
+    );
+    const now = Date.parse('2026-10-20T12:00:00Z');
+    expect(startsInParts('2026-10-20T12:10:00Z', now)).toMatchObject({ key: 'teach.live.rel.inMin', count: 10 });
+    expect(startsInParts('2026-10-20T09:00:00Z', now)).toMatchObject({ key: 'teach.live.rel.agoHours', count: 3 });
+    expect(startsInParts('2026-10-20T12:00:20Z', now).key).toBe('teach.live.rel.now');
+    expect(assessmentProblemKey('something else')).toBeUndefined();
   });
 });

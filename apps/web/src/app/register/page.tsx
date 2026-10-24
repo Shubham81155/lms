@@ -10,7 +10,7 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { Captcha, type CaptchaHandle } from '@/components/Captcha';
 import { api, ApiError } from '@/lib/api';
 import { displayAddress, guessOrgUrl, isOrgSlug, suggestSlug } from '@/lib/org-address';
-import { orgNameProblem, personNameProblem } from '@/lib/platform';
+import { orgNameProblem, personNameProblem, platformMessageKey } from '@/lib/platform';
 
 // Public request to bring a new organisation onto the platform. The applicant first confirms their e-mail
 // address with the link we send (it comes back here as ?confirm=); only then does the platform team see the
@@ -30,15 +30,11 @@ const TYPES = [
 type Msg = { key: MessageKey } | { text: string };
 const msgText = (t: Translator, m: Msg) => ('key' in m ? t(m.key) : m.text);
 
-// The shared validators in lib/platform.ts return English; these are the same messages as keys.
-const KNOWN_PROBLEMS: Record<string, MessageKey> = {
-  "Enter the organisation's name.": 'site.reg.err.orgName',
-  'Leave web addresses out of the name.': 'site.reg.err.orgNameLink',
-  "Use letters, digits, spaces and . , ' & ( ) - only in the name.": 'site.reg.err.orgNameChars',
-  "Enter the contact's first and last name.": 'site.reg.err.personName',
-  "Use letters, spaces and . ' - only in names.": 'site.reg.err.personNameChars',
+// The shared validators in lib/platform.ts return English; platformMessageKey maps them to their keys.
+const problemMsg = (text: string): Msg => {
+  const key = platformMessageKey(text);
+  return key ? { key } : { text };
 };
-const problemMsg = (text: string): Msg => (KNOWN_PROBLEMS[text] ? { key: KNOWN_PROBLEMS[text] } : { text });
 
 /** Puts an element where a message has its {slot} (messages cannot hold elements). */
 const SLOT = '@@slot@@';

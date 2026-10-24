@@ -4,9 +4,18 @@ import React, { useState } from 'react';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { useAuth } from '@/context/AuthContext';
-import { useT, type Translator } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
 import { Banner } from '@/components/admin/IdentityPanels';
-import { DUE_SOON_DAYS, KIND_LABEL, REQUEST_KINDS, STATUS_LABEL, isOpen, type QueueRequest, type RequestKind } from '@/lib/dataRequests';
+import {
+  DUE_SOON_DAYS,
+  REQUEST_KINDS,
+  dueLabel,
+  isOpen,
+  kindLabel as kindOf,
+  statusLabel,
+  type QueueRequest,
+  type RequestKind,
+} from '@/lib/dataRequests';
 
 const input =
   'w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
@@ -38,17 +47,9 @@ const useLabels = () => {
   return {
     t,
     day: (iso: string) => t.date(iso, { day: 'numeric', month: 'short', year: 'numeric', timeZone: undefined }),
-    kind: (k: RequestKind) => t.dyn(`privacy.requests.kind.${k}`, KIND_LABEL[k]),
-    status: (s: QueueRequest['status']) => t.dyn(`privacy.requests.status.${s}`, STATUS_LABEL[s]),
+    kind: (k: RequestKind) => kindOf(t, k),
+    status: (s: QueueRequest['status']) => statusLabel(t, s),
   };
-};
-
-/** "Due in 3 days", "Due today", "2 days overdue". */
-const dueLabel = (t: Translator, daysLeft: number | null): string => {
-  if (daysLeft === null) return '';
-  if (daysLeft < 0) return t.plural('privacy.requests.overdue', -daysLeft);
-  if (daysLeft === 0) return t('privacy.requests.dueToday');
-  return t.plural('privacy.requests.dueIn', daysLeft);
 };
 
 const Badge: React.FC<{ r: QueueRequest }> = ({ r }) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useApiData } from '@/hooks/useApiData';
+import type { Translator } from '@/lib/i18n';
 
 export type AiOffReason = 'NOT_ON_PLAN' | 'TURNED_OFF' | 'NOT_CONFIGURED';
 
@@ -15,3 +16,6 @@ export const AI_OFF_TEXT: Record<AiOffReason, string> = {
   TURNED_OFF: 'An administrator has turned AI assistance off.',
   NOT_CONFIGURED: 'AI assistance is not set up yet. An administrator can add a provider key under Administration › Plan & Integrations.',
 };
+
+/** Why AI is off, in the reader's language (English from AI_OFF_TEXT when a language has none). */
+export const aiOffText = (t: Translator, reason: AiOffReason): string => t.dyn(`mx.ai.off.${reason}`, AI_OFF_TEXT[reason]);

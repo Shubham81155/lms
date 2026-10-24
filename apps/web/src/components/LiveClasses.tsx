@@ -8,7 +8,8 @@ import { useAction, useApiData } from '@/hooks/useApiData';
 import { useStaffCourses } from '@/hooks/useStaffCourses';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { LiveRoom, type JoinInfo } from '@/components/LiveRoom';
-import { fromLocalInput, LiveSessionView, scheduleProblem, startsIn, toLocalInput } from '@/lib/live';
+import { tProblem } from '@/components/assessments/ui';
+import { fromLocalInput, LiveSessionView, scheduleProblem, startsIn, startsInParts, toLocalInput } from '@/lib/live';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useT, type Translator } from '@/lib/i18n';
 
@@ -38,21 +39,10 @@ const STATUS: Record<string, string> = {
   ENDED: 'bg-raised text-ink border-line',
 };
 
-const PROBLEM_KEYS: Record<string, string> = {
-  'Give the class a title.': 'teach.live.problem.title',
-  'Choose a date and time.': 'teach.live.problem.when',
-  'That time is in the past.': 'teach.live.problem.past',
-  'Duration must be between 5 and 480 minutes.': 'teach.live.problem.duration',
-};
-
-/** Same thresholds as startsIn() in lib/live, with translated text. */
+/** startsIn() from lib/live, in the viewer's language. */
 function relativeStart(t: Translator, scheduledAt: string): string {
-  const ms = new Date(scheduledAt).getTime() - Date.now();
-  const min = Math.round(Math.abs(ms) / 60_000);
-  if (min < 1) return t('teach.live.rel.now');
-  const [unit, n] = min < 60 ? ['Min', min] : min < 48 * 60 ? ['Hours', Math.round(min / 60)] : ['Days', Math.round(min / 1440)];
-  const key = `teach.live.rel.${ms > 0 ? 'in' : 'ago'}${unit}`;
-  return t.dyn(key, startsIn(scheduledAt), { count: t.number(n as number) });
+  const p = startsInParts(scheduledAt);
+  return t.dyn(p.key, startsIn(scheduledAt), p.count === undefined ? undefined : { count: t.number(p.count) });
 }
 
 const AttendanceTable: React.FC<{ sessionId: string }> = ({ sessionId }) => {
@@ -123,8 +113,7 @@ export const LiveClasses: React.FC<{
   const canManage = isAdmin || user?.role === 'INSTRUCTOR';
   const editedSession = editingId ? list.find((x) => x.id === editingId) : undefined;
   const startUnchanged = !!editedSession && when === toLocalInput(new Date(editedSession.scheduledAt));
-  const problemRaw = scheduleProblem({ title, when, durationMins: duration }, Date.now(), startUnchanged);
-  const problem = problemRaw ? t.dyn(PROBLEM_KEYS[problemRaw] ?? '', problemRaw) : null;
+  const problem = tProblem(t, scheduleProblem({ title, when, durationMins: duration }, Date.now(), startUnchanged));
 
   const joinRoom = (s: LiveSessionView) =>
     run(async () => {

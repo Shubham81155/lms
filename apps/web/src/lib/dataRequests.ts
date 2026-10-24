@@ -1,5 +1,7 @@
 // Data-subject requests and data retention (API: /api/v1/privacy/requests, /api/v1/privacy/retention).
 
+import type { Translator } from '@/lib/i18n';
+
 export const REQUEST_KINDS = ['ACCESS', 'ERASURE', 'CORRECTION', 'RESTRICTION', 'OBJECTION', 'FERPA_OPT_OUT', 'OTHER'] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
 export type RequestStatus = 'OPEN' | 'IN_PROGRESS' | 'FULFILLED' | 'REJECTED' | 'CANCELLED';
@@ -21,6 +23,10 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   REJECTED: 'Declined',
   CANCELLED: 'Cancelled',
 };
+
+/** The kind / status in the reader's language (English from the tables above when a language has none). */
+export const kindLabel = (t: Translator, k: RequestKind): string => t.dyn(`privacy.requests.kind.${k}`, KIND_LABEL[k]);
+export const statusLabel = (t: Translator, s: RequestStatus): string => t.dyn(`privacy.requests.status.${s}`, STATUS_LABEL[s]);
 
 /** A request as its requester sees it. */
 export interface MyRequest {
@@ -58,6 +64,17 @@ export function dueText(daysLeft: number | null): string {
   if (daysLeft === 0) return 'Due today';
   return `Due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
 }
+
+/** `dueText` in the reader's language. */
+export function dueLabel(t: Translator, daysLeft: number | null): string {
+  if (daysLeft === null) return '';
+  if (daysLeft < 0) return t.plural('privacy.requests.overdue', -daysLeft);
+  if (daysLeft === 0) return t('privacy.requests.dueToday');
+  return t.plural('privacy.requests.dueIn', daysLeft);
+}
+
+/** `day` in the reader's language and format. */
+export const dayLabel = (t: Translator, iso: string): string => t.date(iso, { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** Administrators are warned this many days ahead; the badge turns amber at the same point. */
 export const DUE_SOON_DAYS = 5;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useT, type Translator } from '@/lib/i18n';
 import { FaceWatch, SoundWatch, rms } from '@/lib/proctor-signals';
 
 // Camera and microphone proctoring in the learner's browser. Faces are found with MediaPipe's face detector
@@ -29,14 +30,13 @@ async function loadFaceDetector(): Promise<Detector> {
 }
 
 /** Why the camera or microphone could not be used, in words for the learner. */
-function permissionMessage(e: unknown, camera: boolean, microphone: boolean): string {
-  const what = camera && microphone ? 'camera and microphone' : camera ? 'camera' : 'microphone';
+function permissionMessage(t: Translator, e: unknown, camera: boolean, microphone: boolean): string {
+  const what = t(camera && microphone ? 'mx.media.what.both' : camera ? 'mx.media.what.camera' : 'mx.media.what.microphone');
   const name = (e as { name?: string })?.name;
-  if (name === 'NotAllowedError' || name === 'SecurityError')
-    return `This exam needs your ${what}. Allow access in your browser (the icon in the address bar), then press Start again.`;
-  if (name === 'NotFoundError' || name === 'OverconstrainedError') return `No ${what} was found. Connect one and press Start again.`;
-  if (name === 'NotReadableError') return `Your ${what} is in use by another app. Close it and press Start again.`;
-  return `Your ${what} could not be started.`;
+  if (name === 'NotAllowedError' || name === 'SecurityError') return t('mx.media.denied', { what });
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return t('mx.media.notFound', { what });
+  if (name === 'NotReadableError') return t('mx.media.inUse', { what });
+  return t('mx.media.failed', { what });
 }
 
 /**
@@ -45,12 +45,15 @@ function permissionMessage(e: unknown, camera: boolean, microphone: boolean): st
  */
 export function useMediaProctor(opts: { camera: boolean; microphone: boolean; active: boolean; onEvent: (e: MediaProctorEvent) => void }) {
   const { camera, microphone, active } = opts;
+  const t = useT();
+  const tRef = useRef(t);
+  tRef.current = t;
   const onEvent = useRef(opts.onEvent);
   onEvent.current = opts.onEvent;
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [status, setStatus] = useState<MediaProctorStatus>('off');
   /** The camera works but faces cannot be detected here (the detector failed to load). */
-  const [detectorProblem, setDetectorProblem] = useState<string | null>(null);
+  const [detectorFailed, setDetectorFailed] = useState(false);
   const videoEl = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const needed = camera || microphone;
@@ -76,7 +79,7 @@ export function useMediaProctor(opts: { camera: boolean; microphone: boolean; ac
       setStatus('on');
     } catch (e) {
       setStatus('error');
-      throw new Error(permissionMessage(e, camera, microphone));
+      throw new Error(permissionMessage(tRef.current, e, camera, microphone));
     }
   }, [needed, camera, microphone]);
 
@@ -124,11 +127,7 @@ export function useMediaProctor(opts: { camera: boolean; microphone: boolean; ac
           for (const e of watch.update(t, faces)) onEvent.current(e);
         }, FACE_EVERY_MS);
       })
-      .catch(
-        () =>
-          !cancelled &&
-          setDetectorProblem('Face detection could not start in this browser. Your camera is still shown to you, but nothing is checked.')
-      );
+      .catch(() => !cancelled && setDetectorFailed(true));
     return () => {
       cancelled = true;
       if (timer) clearInterval(timer);
@@ -161,5 +160,6 @@ export function useMediaProctor(opts: { camera: boolean; microphone: boolean; ac
   // Never leave the camera or microphone on after the exam screen goes away.
   useEffect(() => stop, [stop]);
 
+  const detectorProblem = detectorFailed ? t('mx.media.detectorFailed') : null;
   return { start, stop, status, stream, videoRef, detectorProblem, needed };
 }

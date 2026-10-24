@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Archive, Globe, Plus, X } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useT, type Translator } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { FEATURE_LABELS } from '@/components/admin/PlatformPanels';
@@ -11,7 +11,7 @@ import { CustomDomainEditor } from '@/components/admin/CustomDomainPanel';
 import { TrialControls, TrialDaysField, parseTrialDays } from '@/components/platform/TrialControls';
 import { OffboardingPanel } from '@/components/admin/OffboardingPanel';
 import { DeletedOrganisations, DeletionBadge, useOffboardingOverview } from '@/components/platform/OffboardingControls';
-import { TIERS, isValidSlug, suggestSlug, type InvitationResult, type Org, type Tier } from '@/lib/platform';
+import { TIERS, invitationText, isValidSlug, suggestSlug, tierName, type InvitationResult, type Org, type Tier } from '@/lib/platform';
 
 const field = 'bg-canvas border border-line rounded-lg px-2 py-1 text-xs text-ink focus:outline-none focus:border-brand';
 const input =
@@ -27,11 +27,6 @@ const STATUS_STYLE: Record<string, string> = {
   SUSPENDED: 'bg-danger/10 text-danger border-danger/30',
   ARCHIVED: 'bg-canvas text-ink-subtle border-line',
 };
-
-const tierName = (t: Translator, tier: string) => t.dyn(`plans.tier.${tier}`, tier.charAt(0) + tier.slice(1).toLowerCase());
-
-const invitationText = (t: Translator, result: InvitationResult | undefined, email: string) =>
-  t.dyn(`operator.invite.${result ?? 'not_configured'}`, t('operator.invite.not_configured', { email }), { email });
 
 /**
  * Every organisation on the platform: its plan (tier, seats, feature overrides), its custom domain, whether it is

@@ -16,20 +16,64 @@ export interface ChoiceOption {
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Scores a rubric draft the way the API will, so the total shown is the total saved. */
-export function rubricDraft(criteria: Criterion[], values: Record<string, string>): { total: number; problem: string | null } {
+/** One validation message: its translation key and its English text (the single source of both). */
+export interface ProblemText {
+  readonly key: string;
+  readonly en: string;
+}
+
+/** Messages of draftProblem, in the catalogue's keys. */
+export const DRAFT_PROBLEMS = {
+  text: { key: 'assess.problem.q1', en: 'Write the question.' },
+  options: { key: 'assess.problem.q2', en: 'Add at least two options.' },
+  oneCorrectMin: { key: 'assess.problem.q3', en: 'Mark at least one correct option.' },
+  oneCorrect: { key: 'assess.problem.q4', en: 'Mark exactly one correct option.' },
+  answer: { key: 'assess.problem.q5', en: 'Enter the correct answer.' },
+} as const satisfies Record<string, ProblemText>;
+
+/** Rubric messages carry the criterion name / maximum: `{name}` and `{max}` are filled in. */
+export const RUBRIC_PROBLEMS = {
+  score: { key: 'fm.rubric.score', en: 'Score "{name}".' },
+  range: { key: 'fm.rubric.range', en: '"{name}" must be between 0 and {max}.' },
+} as const satisfies Record<string, ProblemText>;
+
+const fill = (en: string, vars: Record<string, string | number>) => en.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k]));
+
+/** The translation key of a message a form helper returned, or undefined when it is not one of theirs. */
+export const problemKey = (msg: string | null): string | undefined =>
+  msg ? Object.values(DRAFT_PROBLEMS).find((p) => p.en === msg)?.key : undefined;
+
+export interface RubricProblem {
+  key: string;
+  vars: Record<string, string | number>;
+}
+
+/** The first problem with a rubric draft as a key plus values (null when it is fine), with the total so far. */
+function rubricCheck(criteria: Criterion[], values: Record<string, string>): { total: number; msg: RubricProblem | null } {
   let total = 0;
   for (const c of criteria) {
     const raw = values[c.id];
-    if (raw === undefined || raw.trim() === '') return { total: round2(total), problem: `Score "${c.name}".` };
+    if (raw === undefined || raw.trim() === '')
+      return { total: round2(total), msg: { key: RUBRIC_PROBLEMS.score.key, vars: { name: c.name } } };
     const v = Number(raw);
     if (!Number.isFinite(v) || v < 0 || v > c.maxPoints) {
-      return { total: round2(total), problem: `"${c.name}" must be between 0 and ${c.maxPoints}.` };
+      return { total: round2(total), msg: { key: RUBRIC_PROBLEMS.range.key, vars: { name: c.name, max: c.maxPoints } } };
     }
     total += v;
   }
-  return { total: round2(total), problem: null };
+  return { total: round2(total), msg: null };
 }
+
+/** Scores a rubric draft the way the API will, so the total shown is the total saved. */
+export function rubricDraft(criteria: Criterion[], values: Record<string, string>): { total: number; problem: string | null } {
+  const { total, msg } = rubricCheck(criteria, values);
+  const en = msg && Object.values(RUBRIC_PROBLEMS).find((p) => p.key === msg.key)!.en;
+  return { total, problem: msg && en ? fill(en, msg.vars) : null };
+}
+
+/** The same problem as rubricDraft's, as a key plus values for translating it. */
+export const rubricProblemMsg = (criteria: Criterion[], values: Record<string, string>): RubricProblem | null =>
+  rubricCheck(criteria, values).msg;
 
 /** Length of the window in which a learner may appeal a grade (the API enforces the same number). */
 export const APPEAL_WINDOW_DAYS = 14;
@@ -45,16 +89,16 @@ export const KEYED_TYPES = ['SHORT_ANSWER', 'FORMULA_CALCULATED'];
 
 /** The first thing wrong with a question draft, or null when it can be saved. */
 export function draftProblem(d: { type: string; text: string; options: ChoiceOption[]; answer: string }): string | null {
-  if (!d.text.trim()) return 'Write the question.';
+  if (!d.text.trim()) return DRAFT_PROBLEMS.text.en;
   if (CHOICE_TYPES.includes(d.type)) {
     const filled = d.options.filter((o) => o.text.trim());
     const correct = filled.filter((o) => o.isCorrect).length;
-    if (filled.length < 2) return 'Add at least two options.';
+    if (filled.length < 2) return DRAFT_PROBLEMS.options.en;
     if (d.type === 'MULTI_SELECT' ? correct < 1 : correct !== 1) {
-      return d.type === 'MULTI_SELECT' ? 'Mark at least one correct option.' : 'Mark exactly one correct option.';
+      return (d.type === 'MULTI_SELECT' ? DRAFT_PROBLEMS.oneCorrectMin : DRAFT_PROBLEMS.oneCorrect).en;
     }
   }
-  if (KEYED_TYPES.includes(d.type) && !d.answer.trim()) return 'Enter the correct answer.';
+  if (KEYED_TYPES.includes(d.type) && !d.answer.trim()) return DRAFT_PROBLEMS.answer.en;
   return null;
 }
 

@@ -6,7 +6,16 @@ import { api } from '@/lib/api';
 import { useAction, useApiData, downloadFile } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { useT } from '@/lib/i18n';
-import { KIND_LABEL, REQUEST_KINDS, STATUS_LABEL, isOpen, type MyRequest, type RequestKind } from '@/lib/dataRequests';
+import {
+  REQUEST_KINDS,
+  dayLabel,
+  dueLabel,
+  isOpen,
+  kindLabel as kindOf,
+  statusLabel,
+  type MyRequest,
+  type RequestKind,
+} from '@/lib/dataRequests';
 
 const card = 'bg-canvas border border-line rounded-2xl p-5 space-y-3';
 const input =
@@ -34,14 +43,9 @@ export const MyDataRequests: React.FC = () => {
   const [filed, setFiled] = useState(false);
 
   const rows = mine.data?.data ?? [];
-  const day = (iso: string) => t.date(iso, { day: 'numeric', month: 'short', year: 'numeric' });
-  const kindLabel = (k: RequestKind) => t.dyn(`privacy.requests.kind.${k}`, KIND_LABEL[k]);
-  const dueText = (daysLeft: number | null) => {
-    if (daysLeft === null) return '';
-    if (daysLeft < 0) return t.plural('privacy.requests.overdue', -daysLeft);
-    if (daysLeft === 0) return t('privacy.requests.dueToday');
-    return t.plural('privacy.requests.dueIn', daysLeft);
-  };
+  const day = (iso: string) => dayLabel(t, iso);
+  const kindLabel = (k: RequestKind) => kindOf(t, k);
+  const dueText = (daysLeft: number | null) => dueLabel(t, daysLeft);
   const openKinds = new Set(rows.filter(isOpen).map((r) => r.kind));
 
   const submit = (e: React.FormEvent) => {
@@ -128,7 +132,7 @@ export const MyDataRequests: React.FC = () => {
                   </div>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_CLS[r.status]}`}>
-                  {t.dyn(`privacy.requests.status.${r.status}`, STATUS_LABEL[r.status])}
+                  {statusLabel(t, r.status)}
                 </span>
               </div>
               {isOpen(r) && r.overdue && (

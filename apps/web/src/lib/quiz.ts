@@ -1,6 +1,8 @@
 // Pure quiz-taking logic: answer handling, the countdown, and how integrity events are rated.
 // The API grades; this only prepares what is sent and what is shown while the attempt is open.
 
+import type { Translator } from '@/lib/i18n';
+
 export interface QuizOption {
   id?: string;
   text: string;
@@ -95,3 +97,6 @@ export const KIND_LABEL: Record<IntegrityKind, string> = {
   CAMERA_STOPPED: 'Your camera was turned off',
   MICROPHONE_STOPPED: 'Your microphone was turned off',
 };
+
+/** The event's text in the reader's language (English from KIND_LABEL when a language has none). */
+export const integrityLabel = (t: Translator, kind: IntegrityKind): string => t.dyn(`learn.quiz.kind.${kind}`, KIND_LABEL[kind]);

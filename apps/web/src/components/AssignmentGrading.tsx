@@ -8,7 +8,7 @@ import { useAction, useApiData } from '@/hooks/useApiData';
 import { useStaffCourses } from '@/hooks/useStaffCourses';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { SubmissionHistory } from '@/components/SubmissionHistory';
-import { round2, rubricDraft, type Criterion } from '@/lib/forms';
+import { round2, rubricDraft, rubricProblemMsg, type Criterion } from '@/lib/forms';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useT } from '@/lib/i18n';
 
@@ -72,6 +72,7 @@ export const RubricInputs: React.FC<{
 }> = ({ criteria, values, onChange, disabled }) => {
   const t = useT();
   const { total, problem } = rubricDraft(criteria, values);
+  const problemMsg = rubricProblemMsg(criteria, values);
   const max = round2(criteria.reduce((s, c) => s + c.maxPoints, 0));
   return (
     <div className="space-y-2">
@@ -99,7 +100,7 @@ export const RubricInputs: React.FC<{
       ))}
       <div className="flex items-center justify-between text-xs">
         <span className="font-bold text-ink">{t('grading.as.total', { total, max })}</span>
-        {problem && <span className="text-accent">{problem}</span>}
+        {problem && <span className="text-accent">{problemMsg ? t.dyn(problemMsg.key, problem, problemMsg.vars) : problem}</span>}
       </div>
     </div>
   );

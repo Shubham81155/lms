@@ -18,6 +18,10 @@ import { complyEn } from './a-comply.en';
 import { operatorEn } from './o-operator.en';
 import { siteEn } from './o-site.en';
 import { flowEn } from './o-flow.en';
+import { platformEn as hPlatformEn } from './h-platform.en';
+import { formsEn as hFormsEn } from './h-forms.en';
+import { miscEn as hMiscEn } from './h-misc.en';
+import { timeEn as hTimeEn } from './h-time.en';
 
 export const en = {
   ...billingEn,
@@ -37,6 +41,10 @@ export const en = {
   ...operatorEn,
   ...siteEn,
   ...flowEn,
+  ...hPlatformEn,
+  ...hFormsEn,
+  ...hMiscEn,
+  ...hTimeEn,
   'language.label': 'Language',
 
   'common.loading': 'Loading…',

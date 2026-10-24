@@ -1,5 +1,7 @@
 // Pure helpers for the live-class screens (no DOM, so they can be unit tested).
 
+import type { ProblemText } from '@/lib/forms';
+
 export type SessionStatus = 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED';
 
 export interface LiveSessionView {
@@ -18,14 +20,35 @@ export interface LiveSessionView {
   course?: { id: string; code: string; title: string };
 }
 
+/** The relative-time phrases: translation key and English template (`{count}` is filled in). */
+export const RELATIVE_TIMES = {
+  now: { key: 'teach.live.rel.now', en: 'now' },
+  inMin: { key: 'teach.live.rel.inMin', en: 'in {count} min' },
+  inHours: { key: 'teach.live.rel.inHours', en: 'in {count} h' },
+  inDays: { key: 'teach.live.rel.inDays', en: 'in {count} days' },
+  agoMin: { key: 'teach.live.rel.agoMin', en: '{count} min ago' },
+  agoHours: { key: 'teach.live.rel.agoHours', en: '{count} h ago' },
+  agoDays: { key: 'teach.live.rel.agoDays', en: '{count} days ago' },
+} as const satisfies Record<string, ProblemText>;
+
+/** Which phrase describes a start time, and the number in it (absent for "now"). */
+export function startsInParts(scheduledAt: string, now: number = Date.now()): { key: string; en: string; count?: number } {
+  const ms = new Date(scheduledAt).getTime() - now;
+  const min = Math.round(Math.abs(ms) / 60_000);
+  if (min < 1) return RELATIVE_TIMES.now;
+  const [unit, count] =
+    min < 60
+      ? (['Min', min] as const)
+      : min < 48 * 60
+        ? (['Hours', Math.round(min / 60)] as const)
+        : (['Days', Math.round(min / 1440)] as const);
+  return { ...RELATIVE_TIMES[`${ms > 0 ? 'in' : 'ago'}${unit}` as 'inMin'], count };
+}
+
 /** "in 5 min", "in 3 h", "in 2 days", "now", "5 min ago" ... relative to `now`. */
 export function startsIn(scheduledAt: string, now: number = Date.now()): string {
-  const ms = new Date(scheduledAt).getTime() - now;
-  const abs = Math.abs(ms);
-  const min = Math.round(abs / 60_000);
-  if (min < 1) return 'now';
-  const text = min < 60 ? `${min} min` : min < 48 * 60 ? `${Math.round(min / 60)} h` : `${Math.round(min / 1440)} days`;
-  return ms > 0 ? `in ${text}` : `${text} ago`;
+  const p = startsInParts(scheduledAt, now);
+  return p.en.replace('{count}', String(p.count));
 }
 
 /** Value for <input type="datetime-local"> in the user's own time zone, e.g. "2026-10-20T14:30". */
@@ -41,6 +64,18 @@ export function fromLocalInput(value: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+/** Schedule-form messages: translation key and English text from one place. */
+export const SCHEDULE_PROBLEMS = {
+  title: { key: 'teach.live.problem.title', en: 'Give the class a title.' },
+  when: { key: 'teach.live.problem.when', en: 'Choose a date and time.' },
+  past: { key: 'teach.live.problem.past', en: 'That time is in the past.' },
+  duration: { key: 'teach.live.problem.duration', en: 'Duration must be between 5 and 480 minutes.' },
+} as const satisfies Record<string, ProblemText>;
+
+/** The translation key of a message scheduleProblem returned, or undefined. */
+export const scheduleProblemKey = (msg: string | null): string | undefined =>
+  msg ? Object.values(SCHEDULE_PROBLEMS).find((p) => p.en === msg)?.key : undefined;
+
 /** Whether a schedule form can be submitted, with the reason when it cannot. */
 /** `allowPast` is for changing other details of a class whose start time is left as it was. */
 export function scheduleProblem(
@@ -48,11 +83,11 @@ export function scheduleProblem(
   now: number = Date.now(),
   allowPast = false
 ): string | null {
-  if (f.title.trim().length < 2) return 'Give the class a title.';
+  if (f.title.trim().length < 2) return SCHEDULE_PROBLEMS.title.en;
   const iso = fromLocalInput(f.when);
-  if (!iso) return 'Choose a date and time.';
-  if (!allowPast && new Date(iso).getTime() < now - 5 * 60_000) return 'That time is in the past.';
-  if (!Number.isInteger(f.durationMins) || f.durationMins < 5 || f.durationMins > 480) return 'Duration must be between 5 and 480 minutes.';
+  if (!iso) return SCHEDULE_PROBLEMS.when.en;
+  if (!allowPast && new Date(iso).getTime() < now - 5 * 60_000) return SCHEDULE_PROBLEMS.past.en;
+  if (!Number.isInteger(f.durationMins) || f.durationMins < 5 || f.durationMins > 480) return SCHEDULE_PROBLEMS.duration.en;
   return null;
 }
 

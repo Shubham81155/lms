@@ -11,7 +11,7 @@ import { Banner } from '@/components/admin/IdentityPanels';
 import {
   AnswerValue,
   IntegrityKind,
-  KIND_LABEL,
+  integrityLabel,
   QuizQuestionView,
   SEVERITY,
   buildAnswers,
@@ -303,7 +303,7 @@ export const QuizTaker: React.FC<{ quizId: string; onClose: () => void; onFinish
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                   {notice.kind === 'auto'
                     ? t('learn.quiz.autoSubmitted')
-                    : t('learn.quiz.eventNotice', { event: t.dyn(`learn.quiz.kind.${notice.event}`, KIND_LABEL[notice.event]) })}
+                    : t('learn.quiz.eventNotice', { event: integrityLabel(t, notice.event) })}
                 </div>
               )}
               {quiz.requireProctoring && !document.fullscreenElement && (

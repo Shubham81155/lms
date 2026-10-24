@@ -8,6 +8,7 @@ import { useAction, useApiData } from '@/hooks/useApiData';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useStaffCourses } from '@/hooks/useStaffCourses';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { tProblem } from '@/components/assessments/ui';
 import { eventProblem, toLocalInput } from '@/lib/assessmentForms';
 import { useT, type Translator } from '@/lib/i18n';
 import { card, danger, ghost, input, label, primary } from '@/components/assessments/ui';
@@ -36,11 +37,6 @@ interface Draft {
   courseId: string; // "" = whole organisation
 }
 
-const PROBLEM_KEYS: Record<string, string> = {
-  'Give the event a title.': 'teach.cal.problem.title',
-  'Choose when it starts and ends.': 'teach.cal.problem.when',
-  'It cannot end before it starts.': 'teach.cal.problem.order',
-};
 const catLabel = (t: Translator, c: string) => t.dyn(`teach.cal.cat.${c}`, label(c));
 const localDateTime = (t: Translator, iso: string) =>
   t.date(iso, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: undefined });
@@ -68,8 +64,7 @@ const Form: React.FC<{
 }> = ({ initial, editing, courses, allowOrg, busy, onSave, onCancel }) => {
   const t = useT();
   const [d, setD] = useState(initial);
-  const problemRaw = eventProblem(d);
-  const problem = problemRaw ? t.dyn(PROBLEM_KEYS[problemRaw] ?? '', problemRaw) : null;
+  const problem = tProblem(t, eventProblem(d));
   const set = (p: Partial<Draft>) => setD((x) => ({ ...x, ...p }));
   return (
     <form

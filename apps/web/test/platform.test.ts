@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { en } from '@/locales/en';
+import { hi } from '@/locales/hi';
 import {
+  PLATFORM_MESSAGES,
+  platformMessageKey,
   holdText,
   invitationMessage,
   isValidSlug,
@@ -164,5 +168,42 @@ describe('platform area', () => {
     for (const area of ['/admin', '/teacher', '/student', '/audit']) expect(canView(operator, area), area).toBe(false);
     expect(homeFor({ role: 'SUPER_ADMIN' })).toBe(routeForRole('SUPER_ADMIN'));
     expect(routeForRole('SUPER_ADMIN')).toBe('/admin');
+  });
+});
+
+describe('platform message table', () => {
+  const entries = Object.entries(PLATFORM_MESSAGES) as [string, { key: string; en: string }][];
+
+  it('keys exist in both catalogues and the English text is the catalogue text', () => {
+    for (const [id, m] of entries) {
+      expect((en as Record<string, string>)[m.key], id).toBe(m.en);
+      expect((hi as Record<string, string>)[m.key], id).toBeTruthy();
+    }
+  });
+
+  it('maps every fixed message a helper can return back to its key', () => {
+    const fixed = [
+      orgNameProblem(''),
+      orgNameProblem('see http://x.com'),
+      orgNameProblem('bad <name>'),
+      personNameProblem(''),
+      personNameProblem('Bad1'),
+      holdText({ status: 'PENDING', expired: true, holdExpiresAt: null }),
+    ];
+    const keys = fixed.map((m) => platformMessageKey(m as string));
+    expect(keys).toEqual([
+      'site.reg.err.orgName',
+      'site.reg.err.orgNameLink',
+      'site.reg.err.orgNameChars',
+      'site.reg.err.personName',
+      'site.reg.err.personNameChars',
+      'operator.req.holdExpired',
+    ]);
+    expect(platformMessageKey('something else')).toBeUndefined();
+  });
+
+  it('fills the parameterised messages from the same templates', () => {
+    expect(invitationMessage('sent', 'a@x.edu')).toBe('An activation e-mail was sent to a@x.edu.');
+    expect(invitationMessage(undefined, 'a@x.edu')).toBe(invitationMessage('not_configured', 'a@x.edu'));
   });
 });

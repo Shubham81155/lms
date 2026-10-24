@@ -1,5 +1,45 @@
 // Shapes and small helpers for the platform operator's page (/platform).
 
+import type { Translator } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n-core';
+
+/**
+ * The user-facing messages of the helpers below: one source of truth for the catalogue key and the English
+ * text. The English-returning helpers read `en`; screens translate through `key` (see platformMessageKey and
+ * the `t` variants). {placeholders} are filled by fillTemplate / the translator.
+ */
+export const PLATFORM_MESSAGES = {
+  orgNameMissing: { key: 'site.reg.err.orgName', en: "Enter the organisation's name." },
+  orgNameLink: { key: 'site.reg.err.orgNameLink', en: 'Leave web addresses out of the name.' },
+  orgNameChars: { key: 'site.reg.err.orgNameChars', en: "Use letters, digits, spaces and . , ' & ( ) - only in the name." },
+  personNameMissing: { key: 'site.reg.err.personName', en: "Enter the contact's first and last name." },
+  personNameChars: { key: 'site.reg.err.personNameChars', en: "Use letters, spaces and . ' - only in names." },
+  inviteSent: { key: 'operator.invite.sent', en: 'An activation e-mail was sent to {email}.' },
+  inviteFailed: {
+    key: 'operator.invite.failed',
+    en: 'The activation e-mail to {email} could not be sent. The organisation exists; resend the invitation once mail works.',
+  },
+  inviteNotConfigured: {
+    key: 'operator.invite.not_configured',
+    en: 'This server cannot send e-mail, so {email} was not told. Configure mail (SMTP_URL) and resend the invitation.',
+  },
+  holdExpired: {
+    key: 'operator.req.holdExpired',
+    en: 'Expired: waited more than 30 days, so it no longer reserves its address. Approving still works while the address is free.',
+  },
+  holdUntil: { key: 'operator.req.holdUntil', en: 'Reserves its address until {date}.' },
+} as const satisfies Record<string, { key: MessageKey; en: string }>;
+
+export type PlatformMessageId = keyof typeof PLATFORM_MESSAGES;
+
+const fillTemplate = (template: string, vars: Record<string, string>) => template.replace(/\{(\w+)\}/g, (m, k: string) => vars[k] ?? m);
+
+/** The catalogue key of one of the helpers' fixed English messages (not the ones with {placeholders}), or undefined for any other text. */
+export function platformMessageKey(msg: string): MessageKey | undefined {
+  for (const m of Object.values(PLATFORM_MESSAGES)) if (m.en === msg && !m.en.includes('{')) return m.key;
+  return undefined;
+}
+
 export type Tier = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
 export type OrgStatus = 'ACTIVE' | 'TRIAL' | 'SUSPENDED' | 'ARCHIVED';
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -84,9 +124,17 @@ export interface Pagination {
 /** What a pending request's hold on its address means for the operator, or null once it is decided. */
 export function holdText(r: Pick<OrgRequest, 'status' | 'expired' | 'holdExpiresAt'>): string | null {
   if (r.status !== 'PENDING') return null;
-  if (r.expired || !r.holdExpiresAt)
-    return 'Expired: waited more than 30 days, so it no longer reserves its address. Approving still works while the address is free.';
-  return `Reserves its address until ${new Date(r.holdExpiresAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}.`;
+  if (r.expired || !r.holdExpiresAt) return PLATFORM_MESSAGES.holdExpired.en;
+  return fillTemplate(PLATFORM_MESSAGES.holdUntil.en, {
+    date: new Date(r.holdExpiresAt).toLocaleDateString(undefined, { dateStyle: 'medium' }),
+  });
+}
+
+/** holdText, translated. */
+export function holdMessage(t: Translator, r: Pick<OrgRequest, 'status' | 'expired' | 'holdExpiresAt'>): string | null {
+  if (r.status !== 'PENDING') return null;
+  if (r.expired || !r.holdExpiresAt) return t(PLATFORM_MESSAGES.holdExpired.key);
+  return t(PLATFORM_MESSAGES.holdUntil.key, { date: t.date(r.holdExpiresAt, { dateStyle: 'medium', timeZone: undefined }) });
 }
 
 /** Same rule as the API: 3-40 characters, a-z, 0-9 and hyphens, starting and ending with a letter or digit, and not "--" as the third and fourth characters (punycode "xn--" look-alikes). */
@@ -109,12 +157,24 @@ export function suggestSlug(name: string): string {
 
 export const tierLabel = (t: string) => t.charAt(0) + t.slice(1).toLowerCase();
 
+/** tierLabel, translated (plans.tier.*), falling back to the English label for an unknown tier. */
+export const tierName = (t: Translator, tier: string) => t.dyn(`plans.tier.${tier}`, tierLabel(tier));
+
 /** What an invitation result means for the person who just created an organisation. */
+const INVITE_MESSAGE = {
+  sent: PLATFORM_MESSAGES.inviteSent,
+  failed: PLATFORM_MESSAGES.inviteFailed,
+  not_configured: PLATFORM_MESSAGES.inviteNotConfigured,
+} as const;
+
 export function invitationMessage(result: InvitationResult | undefined, email: string): string {
-  if (result === 'sent') return `An activation e-mail was sent to ${email}.`;
-  if (result === 'failed')
-    return `The activation e-mail to ${email} could not be sent. The organisation exists; resend the invitation once mail works.`;
-  return `This server cannot send e-mail, so ${email} was not told. Configure mail (SMTP_URL) and resend the invitation.`;
+  return fillTemplate(INVITE_MESSAGE[result ?? 'not_configured']?.en ?? PLATFORM_MESSAGES.inviteNotConfigured.en, { email });
+}
+
+/** invitationMessage, translated. */
+export function invitationText(t: Translator, result: InvitationResult | undefined, email: string): string {
+  const m = INVITE_MESSAGE[result ?? 'not_configured'] ?? PLATFORM_MESSAGES.inviteNotConfigured;
+  return t(m.key, { email });
 }
 
 export interface PlatformSummary {
@@ -141,16 +201,16 @@ const hasLink = (v: string) => v.includes('://') || /www\./i.test(v);
 /** Same rule as the API for an organisation's name: letters in any script, digits, spaces and . , ' & ( ) - but no web addresses. */
 export function orgNameProblem(name: string): string | null {
   const v = name.trim();
-  if (v.length < 2) return "Enter the organisation's name.";
-  if (hasLink(v)) return 'Leave web addresses out of the name.';
-  if (!/^[\p{L}\p{M}\p{N} .,'’&()-]+$/u.test(v)) return "Use letters, digits, spaces and . , ' & ( ) - only in the name.";
+  if (v.length < 2) return PLATFORM_MESSAGES.orgNameMissing.en;
+  if (hasLink(v)) return PLATFORM_MESSAGES.orgNameLink.en;
+  if (!/^[\p{L}\p{M}\p{N} .,'’&()-]+$/u.test(v)) return PLATFORM_MESSAGES.orgNameChars.en;
   return null;
 }
 
 /** Same rule as the API for a contact's first or last name: letters, spaces and . ' - but no web addresses. */
 export function personNameProblem(name: string): string | null {
   const v = name.trim();
-  if (!v) return "Enter the contact's first and last name.";
-  if (hasLink(v) || !/^[\p{L}\p{M} .'’-]+$/u.test(v)) return "Use letters, spaces and . ' - only in names.";
+  if (!v) return PLATFORM_MESSAGES.personNameMissing.en;
+  if (hasLink(v) || !/^[\p{L}\p{M} .'’-]+$/u.test(v)) return PLATFORM_MESSAGES.personNameChars.en;
   return null;
 }

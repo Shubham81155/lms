@@ -7,7 +7,18 @@ import { RichText, useT, type Translator } from '@/lib/i18n';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { TrialDaysField, parseTrialDays } from '@/components/platform/TrialControls';
-import { TIERS, type InvitationResult, type Org, type OrgRequest, type Pagination, type RequestStatus, type Tier } from '@/lib/platform';
+import {
+  TIERS,
+  holdMessage,
+  invitationText,
+  tierName,
+  type InvitationResult,
+  type Org,
+  type OrgRequest,
+  type Pagination,
+  type RequestStatus,
+  type Tier,
+} from '@/lib/platform';
 
 const input =
   'w-full bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-ink placeholder:text-ink-subtle focus:outline-none focus:border-brand';
@@ -24,16 +35,6 @@ const PAGE_SIZE = 25;
 
 const whenAt = (t: Translator, iso: string | null) =>
   iso ? t.date(iso, { dateStyle: 'medium', timeStyle: 'short', timeZone: undefined }) : '';
-
-const invitationText = (t: Translator, result: InvitationResult | undefined, email: string) =>
-  t.dyn(`operator.invite.${result ?? 'not_configured'}`, t('operator.invite.not_configured', { email }), { email });
-
-/** What a pending request's hold on its address means for the operator, or null once it is decided. */
-const holdMessage = (t: Translator, r: Pick<OrgRequest, 'status' | 'expired' | 'holdExpiresAt'>): string | null => {
-  if (r.status !== 'PENDING') return null;
-  if (r.expired || !r.holdExpiresAt) return t('operator.req.holdExpired');
-  return t('operator.req.holdUntil', { date: t.date(r.holdExpiresAt, { dateStyle: 'medium', timeZone: undefined }) });
-};
 
 const SLUG_MARK = '@@SLUG@@';
 
@@ -320,7 +321,7 @@ const RequestCard: React.FC<{
               <select className={input} value={tier} onChange={(e) => setTier(e.target.value as Tier)}>
                 {TIERS.map((tr) => (
                   <option key={tr} value={tr}>
-                    {t.dyn(`plans.tier.${tr}`, tr.charAt(0) + tr.slice(1).toLowerCase())}
+                    {tierName(t, tr)}
                   </option>
                 ))}
               </select>
