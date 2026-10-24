@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Building2, Clock, Inbox, Users } from 'lucide-react';
 import { AppShell } from '@/components/shell/AppShell';
 import { useAuth } from '@/context/AuthContext';
+import { useT } from '@/lib/i18n';
 import { useApiData } from '@/hooks/useApiData';
 import { RequestsPanel } from '@/components/platform/RequestsPanel';
 import { OrganisationsPanel } from '@/components/platform/OrganisationsPanel';
@@ -21,6 +22,7 @@ const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
  * Only for super administrators of the operator organisation; the API enforces the same.
  */
 export default function PlatformPage() {
+  const t = useT();
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('overview');
@@ -42,9 +44,9 @@ export default function PlatformPage() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const go = (t: Tab) => {
-    setTab(t);
-    const hash = t === 'overview' ? '' : `#${t}`;
+  const go = (next: Tab) => {
+    setTab(next);
+    const hash = next === 'overview' ? '' : `#${next}`;
     if (window.location.hash !== hash) window.history.replaceState(null, '', `/platform${hash}`);
   };
 
@@ -60,30 +62,36 @@ export default function PlatformPage() {
   if (!allowed) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-canvas text-xs text-ink-muted" role="status">
-        {isLoading ? 'Loading…' : 'Taking you to your dashboard…'}
+        {isLoading ? t('common.loading') : t('operator.page.redirecting')}
       </main>
     );
   }
 
   const stats = [
     {
-      label: 'Waiting for a decision',
+      label: t('operator.stat.waiting'),
       value: pending.data ? String(s.pending) : '…',
-      sub: 'registration requests',
+      sub: t('operator.stat.waitingSub'),
       icon: Inbox,
       color: 'text-accent',
       onClick: () => go('requests'),
     },
     {
-      label: 'Organisations',
+      label: t('operator.stat.orgs'),
       value: orgs.data ? String(s.organisations) : '…',
-      sub: orgs.data ? `${s.byStatus.ACTIVE} active · ${s.byStatus.TRIAL} trial · ${s.byStatus.SUSPENDED} suspended` : '',
+      sub: orgs.data
+        ? t('operator.stat.orgsSub', {
+            active: t.number(s.byStatus.ACTIVE),
+            trial: t.number(s.byStatus.TRIAL),
+            suspended: t.number(s.byStatus.SUSPENDED),
+          })
+        : '',
       icon: Building2,
       color: 'text-brand-fg',
       onClick: () => go('organisations'),
     },
     {
-      label: 'Trials ending this week',
+      label: t('operator.stat.trials'),
       value: orgs.data ? String(endingSoon.length) : '…',
       sub: orgs.data
         ? endingSoon.length
@@ -91,16 +99,16 @@ export default function PlatformPage() {
               .slice(0, 3)
               .map((o) => o.name)
               .join(', ') + (endingSoon.length > 3 ? ', …' : '')
-          : 'none in the next 7 days'
+          : t('operator.stat.trialsNone')
         : '',
       icon: Clock,
       color: 'text-accent',
       onClick: () => go('organisations'),
     },
     {
-      label: 'Seats in use',
-      value: orgs.data ? s.seatsUsed.toLocaleString() : '…',
-      sub: 'active and invited people, all organisations',
+      label: t('operator.stat.seats'),
+      value: orgs.data ? t.number(s.seatsUsed) : '…',
+      sub: t('operator.stat.seatsSub'),
       icon: Users,
       color: 'text-success',
     },
@@ -111,10 +119,10 @@ export default function PlatformPage() {
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-8 p-6 md:p-8">
         <div className="space-y-1">
           <span className="text-xs px-2.5 py-0.5 rounded-full bg-orchid/10 text-orchid border border-orchid/50 font-semibold">
-            Platform operator
+            {t('operator.page.badge')}
           </span>
-          <h1 className="text-3xl font-extrabold tracking-tight text-ink">Platform</h1>
-          <p className="text-sm text-ink-muted">Organisations asking to join, and every organisation on the platform.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">{t('operator.page.title')}</h1>
+          <p className="text-sm text-ink-muted">{t('operator.page.intro')}</p>
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -153,10 +161,10 @@ export default function PlatformPage() {
           <section className="space-y-3 rounded-3xl border border-line bg-surface p-6 shadow-xl" aria-labelledby="newest-h">
             <div className="flex items-center justify-between gap-3">
               <h2 id="newest-h" className="font-bold text-base text-ink">
-                Newest requests
+                {t('operator.newest.title')}
               </h2>
               <button type="button" className="text-xs font-semibold text-brand-fg underline" onClick={() => go('requests')}>
-                Review all requests
+                {t('operator.newest.all')}
               </button>
             </div>
             {pending.error && (
@@ -164,14 +172,15 @@ export default function PlatformPage() {
                 {pending.error}
               </p>
             )}
-            {pending.data && pending.data.data.length === 0 && <p className="text-xs text-ink-muted">No requests waiting.</p>}
+            {pending.data && pending.data.data.length === 0 && <p className="text-xs text-ink-muted">{t('operator.newest.empty')}</p>}
             <ul className="divide-y divide-line">
               {(pending.data?.data ?? []).slice(0, 5).map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-xs">
                   <div className="min-w-0">
                     <div className="font-semibold text-ink">{r.organizationName}</div>
                     <div className="text-[11px] text-ink-muted">
-                      {r.contactFirstName} {r.contactLastName} · {r.contactEmail} · {new Date(r.createdAt).toLocaleDateString()}
+                      {r.contactFirstName} {r.contactLastName} · {r.contactEmail} ·{' '}
+                      {t.date(r.createdAt, { dateStyle: 'short', timeZone: undefined })}
                     </div>
                   </div>
                   <button
@@ -179,7 +188,7 @@ export default function PlatformPage() {
                     className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-raised"
                     onClick={() => go('requests')}
                   >
-                    Review
+                    {t('operator.newest.review')}
                   </button>
                 </li>
               ))}

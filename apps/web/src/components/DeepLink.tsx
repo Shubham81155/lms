@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { AuthCard } from '@/components/AuthCard';
 import { useAuth } from '@/context/AuthContext';
 import { resolveDeepLink } from '@/lib/deeplink';
+import { useT } from '@/lib/i18n';
 
 /**
  * Landing page for links in notifications and emails (/courses/…, /quizzes/…, /assignments/…).
@@ -15,6 +16,7 @@ export function DeepLink() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const t = useT();
 
   useEffect(() => {
     if (isLoading) return;
@@ -24,9 +26,9 @@ export function DeepLink() {
   }, [user, isLoading, pathname, router]);
 
   return (
-    <AuthCard title="Taking you there">
+    <AuthCard title={t('site.deeplink.title')}>
       <p role="status" className="text-center text-xs text-ink-muted">
-        One moment…
+        {t('site.deeplink.wait')}
       </p>
     </AuthCard>
   );

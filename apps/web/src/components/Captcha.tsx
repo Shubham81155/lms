@@ -2,6 +2,7 @@
 
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useTheme } from '@/context/ThemeContext';
+import { useT } from '@/lib/i18n';
 
 // Cloudflare Turnstile CAPTCHA for public forms. The site key comes from the API (GET
 // /api/v1/organizations/captcha); with none, the CAPTCHA is off and this renders nothing. Each token can be
@@ -72,11 +73,12 @@ interface CaptchaProps {
 
 export const Captcha = forwardRef<CaptchaHandle, CaptchaProps>(function Captcha({ siteKey, action, onToken, className }, ref) {
   const { theme } = useTheme();
+  const t = useT();
   const container = useRef<HTMLDivElement>(null);
   const widget = useRef<{ api: Turnstile; id: string } | null>(null);
   const onTokenRef = useRef(onToken);
   onTokenRef.current = onToken;
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, setProblem] = useState<'failed' | 'load' | null>(null);
 
   useImperativeHandle(
     ref,
@@ -116,7 +118,7 @@ export const Captcha = forwardRef<CaptchaHandle, CaptchaProps>(function Captcha(
           },
           'error-callback': () => {
             onTokenRef.current(null);
-            setProblem('The security check failed to run. Trying again…');
+            setProblem('failed');
             resetSoon(3000);
             return true;
           },
@@ -134,9 +136,7 @@ export const Captcha = forwardRef<CaptchaHandle, CaptchaProps>(function Captcha(
       .catch(() => {
         if (!alive) return;
         onTokenRef.current(null);
-        setProblem(
-          'The security check could not load. Check your connection or allow challenges.cloudflare.com in any content blocker, then reload the page.'
-        );
+        setProblem('load');
       });
     return () => {
       alive = false;
@@ -154,7 +154,7 @@ export const Captcha = forwardRef<CaptchaHandle, CaptchaProps>(function Captcha(
       <div ref={container} className="min-h-[65px]" />
       {problem && (
         <p role="alert" className="mt-1.5 text-[11px] text-danger">
-          {problem}
+          {problem === 'failed' ? t('site.captcha.failed') : t('site.captcha.load')}
         </p>
       )}
     </div>

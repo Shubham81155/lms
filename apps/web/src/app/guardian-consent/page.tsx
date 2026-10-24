@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { AuthCard, buttonClass } from '@/components/AuthCard';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { RichText, useLocale } from '@/lib/i18n';
 
 interface Info {
   organisation: string;
@@ -14,16 +15,17 @@ interface Info {
 }
 
 function GuardianConsent() {
+  const { t, locale } = useLocale();
   const token = useSearchParams().get('token') ?? '';
   const [info, setInfo] = useState<Info | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'done' | 'error'>('loading');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<{ key: 'incomplete' | 'checkFailed' | 'saveFailed' } | { text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!token) {
       setState('error');
-      setMessage('This link is incomplete.');
+      setMessage({ key: 'incomplete' });
       return;
     }
     api
@@ -34,57 +36,54 @@ function GuardianConsent() {
       })
       .catch((err) => {
         setState('error');
-        setMessage(err instanceof ApiError ? err.message : 'This link could not be checked.');
+        setMessage(err instanceof ApiError ? { text: err.message } : { key: 'checkFailed' });
       });
   }, [token]);
 
   const confirm = async () => {
     setBusy(true);
-    setMessage('');
+    setMessage(null);
     try {
       await api.post('/api/v1/privacy/guardian-consent', { token });
       setState('done');
     } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : 'Consent could not be recorded. Please try again.');
+      setMessage(err instanceof ApiError ? { text: err.message } : { key: 'saveFailed' });
     } finally {
       setBusy(false);
     }
   };
 
+  const msg = message ? ('text' in message ? message.text : t(`flow.gc.${message.key}`)) : '';
+
   return (
-    <AuthCard title="Parent or guardian consent">
+    <AuthCard title={t('flow.gc.title')}>
       {state === 'loading' && (
         <p role="status" className="text-xs text-center text-ink">
-          Checking the link...
+          {t('flow.gc.checking')}
         </p>
       )}
-      {state === 'error' && <Banner kind="error">{message || 'This link is not valid. It may have expired or already been used.'}</Banner>}
+      {state === 'error' && <Banner kind="error">{msg || t('flow.gc.invalid')}</Banner>}
       {state === 'ready' && info && (
         <div className="space-y-4">
           <p className="text-xs text-ink leading-relaxed">
-            <strong>{info.firstName}</strong> is under 18 and uses the learning platform of <strong>{info.organisation}</strong>. Under
-            India&apos;s Digital Personal Data Protection Act, 2023, the organisation needs a parent or guardian to agree before it uses{' '}
-            {info.firstName}&apos;s personal data.
+            <RichText text={t('flow.gc.intro', { name: info.firstName, org: info.organisation })} />
           </p>
           <p className="text-[11px] text-ink-muted">
-            By confirming, you agree on {info.firstName}&apos;s behalf to the purposes the organisation lists in its{' '}
+            {t('flow.gc.agreeBefore', { name: info.firstName })}{' '}
             <Link href="/privacy" className="text-brand-fg hover:underline underline-offset-2">
-              privacy notice
+              {t('flow.gc.privacyNotice')}
             </Link>
-            . This link works once and stops working on{' '}
-            {new Date(info.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}.
+            {t('flow.gc.agreeAfter', {
+              date: new Date(info.expiresAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }),
+            })}
           </p>
-          {message && <Banner kind="error">{message}</Banner>}
+          {msg && <Banner kind="error">{msg}</Banner>}
           <button type="button" onClick={confirm} disabled={busy} className={buttonClass}>
-            {busy ? 'Saving...' : 'I am the parent or guardian and I consent'}
+            {busy ? t('flow.gc.saving') : t('flow.gc.confirm')}
           </button>
         </div>
       )}
-      {state === 'done' && (
-        <Banner kind="ok">
-          Thank you. Your consent is recorded and {info?.firstName ?? 'your child'} can now continue. You can close this page.
-        </Banner>
-      )}
+      {state === 'done' && <Banner kind="ok">{t('flow.gc.thanks', { name: info?.firstName ?? t('flow.gc.yourChild') })}</Banner>}
     </AuthCard>
   );
 }

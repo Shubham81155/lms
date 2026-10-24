@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { useT } from '@/lib/i18n';
 import { ConsentList, GuardianForm, needsAnswer, useMinorStatus, useMyConsents } from '@/components/PrivacyConsents';
 
 /**
@@ -14,6 +15,7 @@ import { ConsentList, GuardianForm, needsAnswer, useMinorStatus, useMyConsents }
  */
 export const ConsentGate: React.FC = () => {
   const { logout } = useAuth();
+  const t = useT();
   const consents = useMyConsents();
   const minor = useMinorStatus();
   const panel = useRef<HTMLDivElement>(null);
@@ -62,9 +64,9 @@ export const ConsentGate: React.FC = () => {
           </div>
           <div>
             <h2 id="consent-gate-h" className="font-bold text-base text-ink">
-              Before you continue
+              {t('flow.gate.title')}
             </h2>
-            <p className="text-xs text-ink-muted">Your organisation needs your consent to use your data in these ways.</p>
+            <p className="text-xs text-ink-muted">{t('flow.gate.subtitle')}</p>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -77,23 +79,21 @@ export const ConsentGate: React.FC = () => {
                   onClick={reloadAll}
                   className="px-4 py-2 bg-surface hover:bg-raised border border-line text-ink rounded-xl text-xs font-bold"
                 >
-                  My guardian has confirmed: check again
+                  {t('flow.gate.recheck')}
                 </button>
               )}
             </>
           ) : (
             <>
               <ConsentList consents={rows.filter((c) => c.status === 'NONE' || c.outdated)} onChanged={reloadAll} grantOnly />
-              <p className="text-[11px] text-ink-subtle">
-                Optional items can be left unanswered. You can change any answer later under Account security and privacy.
-              </p>
+              <p className="text-[11px] text-ink-subtle">{t('flow.gate.optional')}</p>
             </>
           )}
           {(consents.error || minor.error) && <Banner kind="error">{consents.error || minor.error}</Banner>}
         </div>
         <div className="border-t border-line px-6 py-3 flex justify-end">
           <button type="button" onClick={() => logout()} className="text-xs text-ink-muted hover:text-ink underline underline-offset-2">
-            Sign out
+            {t('flow.gate.signOut')}
           </button>
         </div>
       </div>

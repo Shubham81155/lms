@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { LifeBuoy, LogOut } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { useLocale } from '@/lib/i18n';
 
 // Shown on every signed-in page while the platform operator is in this organisation on a support pass, so nobody
 // mistakes the session for an ordinary one. It also notices when the pass is revoked or expires (the API then
@@ -17,7 +18,7 @@ export interface SupportSession {
 }
 
 const CHECK_MS = 30_000;
-const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+const time = (iso: string, locale: string) => new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
 /** The current support session (null for an ordinary one), checked again every 30 s while there is one. */
 export function useSupportSession(): SupportSession | null {
@@ -48,8 +49,9 @@ export function useSupportSession(): SupportSession | null {
 }
 
 export const SupportBanner: React.FC<{ session: SupportSession | null }> = ({ session }) => {
+  const { t, locale } = useLocale();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ text: string } | null>(null);
 
   if (!session) return null;
 
@@ -60,7 +62,7 @@ export const SupportBanner: React.FC<{ session: SupportSession | null }> = ({ se
       const res = await api.post<{ data: { redirect: string } }>('/api/v1/support/exit');
       window.location.assign(res.data.redirect);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not end the support session.');
+      setError({ text: err instanceof ApiError ? err.message : t('flow.support.exitFailed') });
       setBusy(false);
     }
   };
@@ -77,12 +79,13 @@ export const SupportBanner: React.FC<{ session: SupportSession | null }> = ({ se
         <p className="flex min-w-0 items-center gap-2">
           <LifeBuoy className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
           <span>
-            <span className="font-semibold">Support access by {session.operatorEmail}</span>
+            <span className="font-semibold">{t('flow.support.by', { email: session.operatorEmail })}</span>
             {' — '}
-            {readOnly ? 'read-only, forms are locked' : 'full access, every change is audited'}
-            {' — '}ends at {time(session.expiresAt)}
+            {readOnly ? t('flow.support.readOnly') : t('flow.support.full')}
+            {' — '}
+            {t('flow.support.ends', { time: time(session.expiresAt, locale) })}
           </span>
-          {error && <span className="text-danger">{error}</span>}
+          {error && <span className="text-danger">{error.text}</span>}
         </p>
         <button
           type="button"
@@ -91,7 +94,7 @@ export const SupportBanner: React.FC<{ session: SupportSession | null }> = ({ se
           className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-[11px] font-semibold text-ink transition-colors hover:bg-raised disabled:opacity-50"
         >
           <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-          {busy ? 'Leaving…' : 'Exit support session'}
+          {busy ? t('flow.support.leaving') : t('flow.support.exit')}
         </button>
       </div>
     </>

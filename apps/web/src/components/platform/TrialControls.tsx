@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Clock } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { trialPhase, type Org, type TrialSettings } from '@/lib/platform';
 
@@ -15,7 +16,7 @@ const primary =
 const ghost =
   'inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
 
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
+const formatDay = (t: ReturnType<typeof useT>, iso: string) => t.date(iso, { dateStyle: 'medium', timeZone: undefined });
 
 /** The platform's trial defaults (ORG_TRIAL_DAYS and the grace period), or null while loading or unavailable. */
 export function useTrialSettings(): TrialSettings | null {
@@ -37,6 +38,7 @@ export const TrialDaysField: React.FC<{ value: string; onChange: (v: string) => 
   onChange,
   className,
 }) => {
+  const t = useT();
   const settings = useTrialSettings();
   const [touched, setTouched] = useState(false);
   useEffect(() => {
@@ -47,7 +49,7 @@ export const TrialDaysField: React.FC<{ value: string; onChange: (v: string) => 
   const days = parseTrialDays(value);
   return (
     <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-      Start as trial (days)
+      {t('operator.trialDays.label')}
       <input
         className={className}
         type="number"
@@ -61,10 +63,10 @@ export const TrialDaysField: React.FC<{ value: string; onChange: (v: string) => 
       />
       <span className={`block font-normal ${days === null ? 'text-danger' : 'text-ink-subtle'}`}>
         {days === null
-          ? 'A whole number of days, 0 to 365.'
+          ? t('operator.trialDays.invalid')
           : days === 0
-            ? '0: starts as a paid (active) organisation.'
-            : `Trial ends ${day(new Date(Date.now() + days * 86_400_000).toISOString())}.`}
+            ? t('operator.trialDays.zero')
+            : t('operator.trialDays.endsOn', { date: formatDay(t, new Date(Date.now() + days * 86_400_000).toISOString()) })}
       </span>
     </label>
   );
@@ -72,6 +74,8 @@ export const TrialDaysField: React.FC<{ value: string; onChange: (v: string) => 
 
 /** Trial state and actions for one organisation, shown in its row of the Organisations list. */
 export const TrialControls: React.FC<{ org: Org; onChanged: (org: Org, message: string) => void }> = ({ org, onChanged }) => {
+  const t = useT();
+  const day = (iso: string) => formatDay(t, iso);
   const { busy, error, run, clearError } = useAction();
   const [open, setOpen] = useState(false);
   const [days, setDays] = useState('14');
@@ -95,49 +99,60 @@ export const TrialControls: React.FC<{ org: Org; onChanged: (org: Org, message: 
 
   return (
     <div className="mt-1.5 space-y-1 text-[11px]">
-      {phase === 'running' && org.trialEndsAt && <div className="text-accent">Trial ends {day(org.trialEndsAt)}</div>}
-      {phase === 'read-only' && (
-        <div className="text-danger">Trial ended · read-only{org.readOnlyUntil ? ` until ${day(org.readOnlyUntil)}` : ''}</div>
+      {phase === 'running' && org.trialEndsAt && (
+        <div className="text-accent">{t('operator.trial.endsOn', { date: day(org.trialEndsAt) })}</div>
       )}
-      {lapsed && <div className="text-ink-subtle">Suspended after its trial</div>}
+      {phase === 'read-only' && (
+        <div className="text-danger">
+          {org.readOnlyUntil ? t('operator.trial.endedReadOnlyUntil', { date: day(org.readOnlyUntil) }) : t('operator.trial.endedReadOnly')}
+        </div>
+      )}
+      {lapsed && <div className="text-ink-subtle">{t('operator.trial.suspendedAfter')}</div>}
       <button
         type="button"
         className="inline-flex items-center gap-1 font-semibold text-brand-fg disabled:opacity-50"
         aria-expanded={open}
-        aria-label={`Trial of ${org.name}`}
+        aria-label={t('operator.trial.aria', { name: org.name })}
         onClick={() => {
           clearError();
           setConfirm(null);
           setOpen((v) => !v);
         }}
       >
-        <Clock className="h-3 w-3" aria-hidden="true" /> {phase === 'none' && !lapsed ? 'Trial…' : 'Manage trial…'}
+        <Clock className="h-3 w-3" aria-hidden="true" />{' '}
+        {phase === 'none' && !lapsed ? t('operator.trial.open') : t('operator.trial.manage')}
       </button>
 
       {open && (
-        <div role="group" aria-label={`Trial of ${org.name}`} className="w-64 space-y-2 rounded-xl border border-line bg-canvas p-3">
+        <div
+          role="group"
+          aria-label={t('operator.trial.aria', { name: org.name })}
+          className="w-64 space-y-2 rounded-xl border border-line bg-canvas p-3"
+        >
           {(canStart || phase !== 'none') && (
             <div className="flex items-center gap-1.5">
               <input
                 type="number"
                 min={1}
                 max={365}
-                aria-label="Days"
+                aria-label={t('operator.trial.daysAria')}
                 value={days}
                 onChange={(e) => setDays(e.target.value)}
                 className={`${field} w-16`}
               />
-              <span className="text-ink-muted">days</span>
+              <span className="text-ink-muted">{t('operator.trial.daysUnit')}</span>
               {canStart ? (
                 <button
                   type="button"
                   className={primary}
                   disabled={busy || !daysOk}
                   onClick={() =>
-                    act('post', base, { days: n }, (o) => `"${o.name}" is on a trial until ${o.trialEndsAt ? day(o.trialEndsAt) : '…'}.`)
+                    act('post', base, { days: n }, (o) =>
+                      t('operator.trial.msg.started', { name: o.name, date: o.trialEndsAt ? day(o.trialEndsAt) : '…' })
+                    )
                   }
                 >
-                  Start trial
+                  {t('operator.trial.start')}
                 </button>
               ) : (
                 <button
@@ -145,46 +160,44 @@ export const TrialControls: React.FC<{ org: Org; onChanged: (org: Org, message: 
                   className={primary}
                   disabled={busy || !daysOk}
                   onClick={() =>
-                    act(
-                      'patch',
-                      base,
-                      { days: n },
-                      (o) => `The trial of "${o.name}" now ends ${o.trialEndsAt ? day(o.trialEndsAt) : 'later'}.`
+                    act('patch', base, { days: n }, (o) =>
+                      t('operator.trial.msg.extended', {
+                        name: o.name,
+                        date: o.trialEndsAt ? day(o.trialEndsAt) : t('operator.trial.later'),
+                      })
                     )
                   }
                 >
-                  Extend
+                  {t('operator.trial.extend')}
                 </button>
               )}
             </div>
           )}
-          {phase !== 'none' && !lapsed && <p className="text-ink-subtle">Extending an ended trial lifts the read-only mode.</p>}
+          {phase !== 'none' && !lapsed && <p className="text-ink-subtle">{t('operator.trial.extendNote')}</p>}
           <div className="flex flex-wrap gap-1.5">
             {phase === 'running' && (
               <button type="button" className={ghost} disabled={busy} onClick={() => setConfirm('end')}>
-                End now
+                {t('operator.trial.endNow')}
               </button>
             )}
             {(phase !== 'none' || lapsed) && (
               <button type="button" className={ghost} disabled={busy} onClick={() => setConfirm('convert')}>
-                Convert to paid
+                {t('operator.trial.convertToPaid')}
               </button>
             )}
           </div>
           {confirm && (
             <div
               role="alertdialog"
-              aria-label={confirm === 'end' ? `End the trial of ${org.name}?` : `Convert ${org.name} to paid?`}
+              aria-label={
+                confirm === 'end' ? t('operator.trial.endAria', { name: org.name }) : t('operator.trial.convertAria', { name: org.name })
+              }
               className={`rounded-lg border p-2 ${confirm === 'end' ? 'border-danger/40 bg-danger/5' : 'border-success/40 bg-success/5'}`}
             >
-              <p className="text-ink">
-                {confirm === 'end'
-                  ? 'The organisation becomes read-only at once, and is suspended when the grace period is over.'
-                  : 'The trial ends and the organisation becomes active (paid), with no end date.'}
-              </p>
+              <p className="text-ink">{confirm === 'end' ? t('operator.trial.endBody') : t('operator.trial.convertBody')}</p>
               <div className="mt-2 flex justify-end gap-1.5">
                 <button type="button" className={ghost} disabled={busy} onClick={() => setConfirm(null)}>
-                  Cancel
+                  {t('operator.cancel')}
                 </button>
                 {confirm === 'end' ? (
                   <button
@@ -192,25 +205,23 @@ export const TrialControls: React.FC<{ org: Org; onChanged: (org: Org, message: 
                     className="px-3 py-1.5 bg-danger hover:opacity-90 text-on-danger rounded-lg text-[11px] font-bold disabled:opacity-50"
                     disabled={busy}
                     onClick={() =>
-                      act(
-                        'post',
-                        `${base}/end`,
-                        undefined,
-                        (o) =>
-                          `The trial of "${o.name}" has ended: it is read-only${o.readOnlyUntil ? ` until ${day(o.readOnlyUntil)}` : ''}.`
+                      act('post', `${base}/end`, undefined, (o) =>
+                        o.readOnlyUntil
+                          ? t('operator.trial.msg.endedUntil', { name: o.name, date: day(o.readOnlyUntil) })
+                          : t('operator.trial.msg.ended', { name: o.name })
                       )
                     }
                   >
-                    End trial
+                    {t('operator.trial.endButton')}
                   </button>
                 ) : (
                   <button
                     type="button"
                     className={primary}
                     disabled={busy}
-                    onClick={() => act('post', `${base}/convert`, undefined, (o) => `"${o.name}" is now a paid, active organisation.`)}
+                    onClick={() => act('post', `${base}/convert`, undefined, (o) => t('operator.trial.msg.converted', { name: o.name }))}
                   >
-                    Convert
+                    {t('operator.trial.convertButton')}
                   </button>
                 )}
               </div>

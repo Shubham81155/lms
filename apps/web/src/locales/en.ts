@@ -15,6 +15,9 @@ import { peopleEn } from './a-people.en';
 import { orgadmEn } from './a-orgadm.en';
 import { identEn } from './a-ident.en';
 import { complyEn } from './a-comply.en';
+import { operatorEn } from './o-operator.en';
+import { siteEn } from './o-site.en';
+import { flowEn } from './o-flow.en';
 
 export const en = {
   ...billingEn,
@@ -31,6 +34,9 @@ export const en = {
   ...orgadmEn,
   ...identEn,
   ...complyEn,
+  ...operatorEn,
+  ...siteEn,
+  ...flowEn,
   'language.label': 'Language',
 
   'common.loading': 'Loading…',

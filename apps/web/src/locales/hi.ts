@@ -13,6 +13,9 @@ import { peopleHi } from './a-people.hi';
 import { orgadmHi } from './a-orgadm.hi';
 import { identHi } from './a-ident.hi';
 import { complyHi } from './a-comply.hi';
+import { operatorHi } from './o-operator.hi';
+import { siteHi } from './o-site.hi';
+import { flowHi } from './o-flow.hi';
 
 // हिन्दी संदेश। Typed against English: a missing key is a compile error. The wording is natural Hindi as used in
 // Indian education software (common English terms such as "लॉग इन", "ई-मेल" and "पासवर्ड" are kept where people use
@@ -32,6 +35,9 @@ export const hi: Record<MessageKey, string> = {
   ...orgadmHi,
   ...identHi,
   ...complyHi,
+  ...operatorHi,
+  ...siteHi,
+  ...flowHi,
   'language.label': 'भाषा',
 
   'common.loading': 'लोड हो रहा है…',

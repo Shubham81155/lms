@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { AuthCard, buttonClass } from '@/components/AuthCard';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { RichText, useLocale } from '@/lib/i18n';
 
 interface Info {
   organisation: string;
@@ -13,16 +14,17 @@ interface Info {
 }
 
 function WithdrawConsent() {
+  const { t, locale } = useLocale();
   const token = useSearchParams().get('token') ?? '';
   const [info, setInfo] = useState<Info | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'done' | 'error'>('loading');
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<{ key: 'incomplete' | 'checkFailed' | 'saveFailed' } | { text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!token) {
       setState('error');
-      setMessage('This link is incomplete.');
+      setMessage({ key: 'incomplete' });
       return;
     }
     api
@@ -33,52 +35,58 @@ function WithdrawConsent() {
       })
       .catch((err) => {
         setState('error');
-        setMessage(err instanceof ApiError ? err.message : 'This link could not be checked.');
+        setMessage(err instanceof ApiError ? { text: err.message } : { key: 'checkFailed' });
       });
   }, [token]);
 
   const withdraw = async () => {
     setBusy(true);
-    setMessage('');
+    setMessage(null);
     try {
       await api.post('/api/v1/privacy/guardian-consent/withdraw', { token });
       setState('done');
     } catch (err) {
-      setMessage(err instanceof ApiError ? err.message : 'Consent could not be withdrawn. Please try again.');
+      setMessage(err instanceof ApiError ? { text: err.message } : { key: 'saveFailed' });
     } finally {
       setBusy(false);
     }
   };
 
+  const msg = message
+    ? 'text' in message
+      ? message.text
+      : message.key === 'saveFailed'
+        ? t('flow.gw.saveFailed')
+        : t(`flow.gc.${message.key}`)
+    : '';
+
   return (
-    <AuthCard title="Withdraw parent or guardian consent">
+    <AuthCard title={t('flow.gw.title')}>
       {state === 'loading' && (
         <p role="status" className="text-xs text-center text-ink">
-          Checking the link...
+          {t('flow.gc.checking')}
         </p>
       )}
-      {state === 'error' && (
-        <Banner kind="error">{message || 'This link is no longer valid. Consent may already have been withdrawn.'}</Banner>
-      )}
+      {state === 'error' && <Banner kind="error">{msg || t('flow.gw.invalid')}</Banner>}
       {state === 'ready' && info && (
         <div className="space-y-4">
           <p className="text-xs text-ink leading-relaxed">
-            You gave consent on{' '}
-            {new Date(info.consentGivenAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} for{' '}
-            <strong>{info.firstName}</strong>&apos;s use of the learning platform of <strong>{info.organisation}</strong>.
+            <RichText
+              text={t('flow.gw.gave', {
+                date: new Date(info.consentGivenAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }),
+                name: info.firstName,
+                org: info.organisation,
+              })}
+            />
           </p>
-          <p className="text-[11px] text-ink-muted">
-            If you withdraw, everything {info.firstName} agreed to is withdrawn too, and {info.firstName} cannot agree to anything again
-            until a parent or guardian consents. Camera and microphone monitoring stops being allowed. The organisation may no longer be
-            able to provide the service.
-          </p>
-          {message && <Banner kind="error">{message}</Banner>}
+          <p className="text-[11px] text-ink-muted">{t('flow.gw.effects', { name: info.firstName })}</p>
+          {msg && <Banner kind="error">{msg}</Banner>}
           <button type="button" onClick={withdraw} disabled={busy} className={buttonClass}>
-            {busy ? 'Saving...' : 'Withdraw my consent'}
+            {busy ? t('flow.gc.saving') : t('flow.gw.withdraw')}
           </button>
         </div>
       )}
-      {state === 'done' && <Banner kind="ok">Your consent is withdrawn. You can close this page.</Banner>}
+      {state === 'done' && <Banner kind="ok">{t('flow.gw.done')}</Banner>}
     </AuthCard>
   );
 }

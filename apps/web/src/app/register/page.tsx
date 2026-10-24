@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, ArrowLeft, Building2, CheckCircle2, Loader2, MailCheck, XCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { LanguageSwitcher } from '@/lib/i18n';
+import { LanguageSwitcher, useT, type Translator } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n-core';
 import { BrandLogo } from '@/components/BrandLogo';
 import { Captcha, type CaptchaHandle } from '@/components/Captcha';
 import { api, ApiError } from '@/lib/api';
@@ -17,13 +18,40 @@ import { orgNameProblem, personNameProblem } from '@/lib/platform';
 // first administrator.
 
 const TYPES = [
-  { value: 'UNIVERSITY', label: 'University' },
-  { value: 'COLLEGE', label: 'College' },
-  { value: 'SCHOOL', label: 'School' },
-  { value: 'TRAINING_PROVIDER', label: 'Training provider' },
-  { value: 'COMPANY', label: 'Company' },
-  { value: 'OTHER', label: 'Other' },
-] as const;
+  { value: 'UNIVERSITY', label: 'site.reg.type.UNIVERSITY' },
+  { value: 'COLLEGE', label: 'site.reg.type.COLLEGE' },
+  { value: 'SCHOOL', label: 'site.reg.type.SCHOOL' },
+  { value: 'TRAINING_PROVIDER', label: 'site.reg.type.TRAINING_PROVIDER' },
+  { value: 'COMPANY', label: 'site.reg.type.COMPANY' },
+  { value: 'OTHER', label: 'site.reg.type.OTHER' },
+] as const satisfies readonly { value: string; label: MessageKey }[];
+
+/** A message shown to the person: a catalogue key (translated when drawn) or text the API sent. */
+type Msg = { key: MessageKey } | { text: string };
+const msgText = (t: Translator, m: Msg) => ('key' in m ? t(m.key) : m.text);
+
+// The shared validators in lib/platform.ts return English; these are the same messages as keys.
+const KNOWN_PROBLEMS: Record<string, MessageKey> = {
+  "Enter the organisation's name.": 'site.reg.err.orgName',
+  'Leave web addresses out of the name.': 'site.reg.err.orgNameLink',
+  "Use letters, digits, spaces and . , ' & ( ) - only in the name.": 'site.reg.err.orgNameChars',
+  "Enter the contact's first and last name.": 'site.reg.err.personName',
+  "Use letters, spaces and . ' - only in names.": 'site.reg.err.personNameChars',
+};
+const problemMsg = (text: string): Msg => (KNOWN_PROBLEMS[text] ? { key: KNOWN_PROBLEMS[text] } : { text });
+
+/** Puts an element where a message has its {slot} (messages cannot hold elements). */
+const SLOT = '@@slot@@';
+const withSlot = (text: string, node: React.ReactNode) => {
+  const [before, after = ''] = text.split(SLOT);
+  return (
+    <>
+      {before}
+      {node}
+      {after}
+    </>
+  );
+};
 
 type Availability =
   | { state: 'idle' }
@@ -35,11 +63,11 @@ type Availability =
 /** The widget action the API expects for this form (ORG_REQUEST_CAPTCHA_ACTION). */
 const CAPTCHA_ACTION = 'org-request';
 
-const REASON_TEXT: Record<'invalid' | 'reserved' | 'taken' | 'pending', string> = {
-  invalid: 'Use 3 to 40 lowercase letters, digits or hyphens, starting and ending with a letter or digit.',
-  reserved: 'This address is reserved. Choose another.',
-  taken: 'Another organisation already uses this address.',
-  pending: 'Someone has already asked for this address. Choose another.',
+const REASON_TEXT: Record<'invalid' | 'reserved' | 'taken' | 'pending', MessageKey> = {
+  invalid: 'site.reg.slug.reason.invalid',
+  reserved: 'site.reg.slug.reason.reserved',
+  taken: 'site.reg.slug.reason.taken',
+  pending: 'site.reg.slug.reason.pending',
 };
 
 const input =
@@ -53,53 +81,62 @@ const Field: React.FC<{
   hint?: React.ReactNode;
   className?: string;
   children: React.ReactNode;
-}> = ({ id, text, optional, hint, className, children }) => (
-  <div className={`space-y-1.5 ${className ?? ''}`}>
-    <label htmlFor={id} className={label}>
-      {text} {optional && <span className="font-normal text-ink-subtle">(optional)</span>}
-    </label>
-    {children}
-    {hint && (
-      <div id={`${id}-hint`} className="text-[11px] text-ink-subtle">
-        {hint}
-      </div>
-    )}
-  </div>
-);
+}> = ({ id, text, optional, hint, className, children }) => {
+  const t = useT();
+  return (
+    <div className={`space-y-1.5 ${className ?? ''}`}>
+      <label htmlFor={id} className={label}>
+        {text} {optional && <span className="font-normal text-ink-subtle">{t('site.reg.optional')}</span>}
+      </label>
+      {children}
+      {hint && (
+        <div id={`${id}-hint`} className="text-[11px] text-ink-subtle">
+          {hint}
+        </div>
+      )}
+    </div>
+  );
+};
 
 type Confirmation =
   | { state: 'working' }
   | { state: 'done'; status: 'PENDING' | 'APPROVED' | 'REJECTED'; organizationName: string; contactEmail: string; url: string }
-  | { state: 'error'; message: string };
+  | { state: 'error'; message: Msg };
 
-const Steps: React.FC<{ email: string; url: string | null }> = ({ email, url }) => (
-  <ol className="space-y-3 text-xs text-ink-muted">
-    <li className="flex gap-3">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[11px] font-bold text-brand-fg">
-        1
-      </span>
-      The platform team reviews your request, usually within one or two working days.
-    </li>
-    <li className="flex gap-3">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[11px] font-bold text-brand-fg">
-        2
-      </span>
-      Once approved, {email} receives an e-mail with a link to choose a password. The link is valid for 7 days.
-    </li>
-    <li className="flex gap-3">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[11px] font-bold text-brand-fg">
-        3
-      </span>
-      You sign in at {url ? <span className="font-mono text-ink">{displayAddress(url)}</span> : "your organisation's address"} as its
-      administrator and invite your teachers and learners.
-    </li>
-  </ol>
-);
+const Steps: React.FC<{ email: string; url: string | null }> = ({ email, url }) => {
+  const t = useT();
+  return (
+    <ol className="space-y-3 text-xs text-ink-muted">
+      <li className="flex gap-3">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[11px] font-bold text-brand-fg">
+          1
+        </span>
+        {t('site.reg.step1')}
+      </li>
+      <li className="flex gap-3">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[11px] font-bold text-brand-fg">
+          2
+        </span>
+        {t('site.reg.step2', { email })}
+      </li>
+      <li className="flex gap-3">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[11px] font-bold text-brand-fg">
+          3
+        </span>
+        {withSlot(
+          t('site.reg.step3', { address: SLOT }),
+          url ? <span className="font-mono text-ink">{displayAddress(url)}</span> : t('site.reg.step3.fallback')
+        )}
+      </li>
+    </ol>
+  );
+};
 
 const card = 'bg-surface border border-line rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl shadow-black/20';
 
 /** What the confirmation link opens: confirms the request and says what happens next. */
 const ConfirmRequest: React.FC<{ token: string; onRestart: () => void }> = ({ token, onRestart }) => {
+  const t = useT();
   const [result, setResult] = useState<Confirmation>({ state: 'working' });
   useEffect(() => {
     let alive = true;
@@ -111,12 +148,11 @@ const ConfirmRequest: React.FC<{ token: string; onRestart: () => void }> = ({ to
       .then((r) => alive && setResult({ state: 'done', ...r.data }))
       .catch((err) => {
         if (!alive) return;
-        if (err instanceof ApiError && err.status === 429)
-          setResult({ state: 'error', message: 'Too many attempts from your network. Please try again later.' });
+        if (err instanceof ApiError && err.status === 429) setResult({ state: 'error', message: { key: 'site.reg.confirm.tooMany' } });
         else
           setResult({
             state: 'error',
-            message: err instanceof ApiError ? err.message : 'Something went wrong. Please try the link again.',
+            message: err instanceof ApiError ? { text: err.message } : { key: 'site.reg.confirm.wrong' },
           });
       });
     return () => {
@@ -128,7 +164,7 @@ const ConfirmRequest: React.FC<{ token: string; onRestart: () => void }> = ({ to
     return (
       <section className={card} aria-busy="true">
         <p className="flex items-center justify-center gap-2 text-xs text-ink-muted">
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Confirming your request…
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> {t('site.reg.confirm.working')}
         </p>
       </section>
     );
@@ -141,10 +177,10 @@ const ConfirmRequest: React.FC<{ token: string; onRestart: () => void }> = ({ to
         </div>
         <div className="text-center space-y-2">
           <h1 id="confirm-h" className="text-2xl font-extrabold text-ink">
-            The request could not be confirmed
+            {t('site.reg.confirm.failedTitle')}
           </h1>
           <p role="alert" className="text-xs text-ink-muted">
-            {result.message}
+            {msgText(t, result.message)}
           </p>
         </div>
         <div className="flex justify-center">
@@ -153,7 +189,7 @@ const ConfirmRequest: React.FC<{ token: string; onRestart: () => void }> = ({ to
             onClick={onRestart}
             className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold"
           >
-            Send a new request
+            {t('site.reg.confirm.restart')}
           </button>
         </div>
       </section>
@@ -166,33 +202,30 @@ const ConfirmRequest: React.FC<{ token: string; onRestart: () => void }> = ({ to
       </div>
       <div className="text-center space-y-2">
         <h1 id="confirm-h" className="text-2xl font-extrabold text-ink">
-          {result.status === 'PENDING' ? 'Request confirmed' : 'This request has been decided'}
+          {result.status === 'PENDING' ? t('site.reg.confirm.titlePending') : t('site.reg.confirm.titleDecided')}
         </h1>
         <p className="text-xs text-ink-muted">
-          {result.status === 'PENDING' ? (
-            <>
-              Thank you. Your request for <span className="font-semibold text-ink">{result.organizationName}</span> is now with the platform
-              team.
-            </>
-          ) : result.status === 'APPROVED' ? (
-            <>
-              {result.organizationName} has been approved. Look for the e-mail to {result.contactEmail} with a link to choose your password.
-            </>
-          ) : (
-            <>We have e-mailed {result.contactEmail} about the decision.</>
-          )}
+          {result.status === 'PENDING'
+            ? withSlot(
+                t('site.reg.confirm.pending', { name: SLOT }),
+                <span className="font-semibold text-ink">{result.organizationName}</span>
+              )
+            : result.status === 'APPROVED'
+              ? t('site.reg.confirm.approved', { name: result.organizationName, email: result.contactEmail })
+              : t('site.reg.confirm.rejected', { email: result.contactEmail })}
         </p>
         <p className="text-xs text-ink-muted">
-          Requested address: <span className="font-mono font-semibold text-ink">{displayAddress(result.url)}</span>
+          {withSlot(
+            t('site.reg.sent.requested', { address: SLOT }),
+            <span className="font-mono font-semibold text-ink">{displayAddress(result.url)}</span>
+          )}
         </p>
       </div>
       {result.status === 'PENDING' && <Steps email={result.contactEmail} url={result.url} />}
-      {result.status === 'PENDING' && (
-        <p className="text-[11px] text-ink-subtle text-center">If the request is declined, we will e-mail you the reason.</p>
-      )}
+      {result.status === 'PENDING' && <p className="text-[11px] text-ink-subtle text-center">{t('site.reg.confirm.declined')}</p>}
       <div className="flex justify-center">
         <Link href="/" className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold">
-          Back to home
+          {t('common.backToHome')}
         </Link>
       </div>
     </section>
@@ -200,6 +233,7 @@ const ConfirmRequest: React.FC<{ token: string; onRestart: () => void }> = ({ to
 };
 
 export default function RegisterOrganisationPage() {
+  const t = useT();
   // The confirmation link: read once, then taken out of the address bar so it does not stay in the history.
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
   useEffect(() => {
@@ -225,7 +259,7 @@ export default function RegisterOrganisationPage() {
   const [message, setMessage] = useState('');
   const [terms, setTerms] = useState(false);
   const [availability, setAvailability] = useState<Availability>({ state: 'idle' });
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Msg | null>(null);
   const [busy, setBusy] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [confirmBy, setConfirmBy] = useState<string | null>(null);
@@ -264,7 +298,7 @@ export default function RegisterOrganisationPage() {
     }
     let alive = true;
     setAvailability({ state: 'checking' });
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       api
         .get<{ data: { slug: string; available: boolean; reason?: 'invalid' | 'reserved' | 'taken' | 'pending'; url?: string } }>(
           '/api/v1/organizations/availability',
@@ -281,7 +315,7 @@ export default function RegisterOrganisationPage() {
     }, 400);
     return () => {
       alive = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [slug]);
 
@@ -289,29 +323,29 @@ export default function RegisterOrganisationPage() {
     e.preventDefault();
     setError(null);
     if (!isOrgSlug(slug)) {
-      setError(REASON_TEXT.invalid);
+      setError({ key: REASON_TEXT.invalid });
       return;
     }
     if (availability.state === 'unavailable') {
-      setError(REASON_TEXT[availability.reason]);
+      setError({ key: REASON_TEXT[availability.reason] });
       return;
     }
     const nameIssue = orgNameProblem(name) ?? personNameProblem(firstName) ?? personNameProblem(lastName);
     if (nameIssue) {
-      setError(nameIssue);
+      setError(problemMsg(nameIssue));
       return;
     }
     if (website.trim() && !/^https:\/\/\S+\.\S+/.test(website.trim())) {
-      setError('The website must start with https://');
+      setError({ key: 'site.reg.err.website' });
       return;
     }
     const expected = learners.trim() ? Number(learners) : undefined;
     if (expected !== undefined && (!Number.isInteger(expected) || expected < 1)) {
-      setError('Expected learners must be a whole number.');
+      setError({ key: 'site.reg.err.learners' });
       return;
     }
     if (captchaKey && !captchaToken) {
-      setError('Complete the security check first.');
+      setError({ key: 'site.reg.err.captcha' });
       return;
     }
     setBusy(true);
@@ -342,15 +376,15 @@ export default function RegisterOrganisationPage() {
       // The token has been spent either way; a new attempt needs a fresh one.
       captcha.current?.reset();
       if (err instanceof ApiError && err.status === 409) {
-        setError('That web address was just taken or asked for by someone else. Choose another.');
+        setError({ key: 'site.reg.err.conflict' });
         setAvailability({ state: 'unavailable', reason: 'taken' });
       } else if (err instanceof ApiError && err.status === 403) {
-        setError('Registration of new organisations is closed at the moment. Please contact us instead.');
+        setError({ key: 'site.reg.err.closed' });
       } else if (err instanceof ApiError && err.status === 429) {
         // Either this network's limit or this e-mail address's open requests; the API says which.
-        setError(err.message || 'Too many requests from your network. Please try again later.');
+        setError(err.message ? { text: err.message } : { key: 'site.reg.err.tooMany' });
       } else {
-        setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+        setError(err instanceof ApiError ? { text: err.message } : { key: 'site.reg.err.wrong' });
       }
     } finally {
       setBusy(false);
@@ -368,16 +402,19 @@ export default function RegisterOrganisationPage() {
       case 'checking':
         return (
           <span className="inline-flex items-center gap-1 text-ink-subtle">
-            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Checking…
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> {t('site.reg.slug.checking')}
           </span>
         );
       case 'available':
         return (
           <span className="inline-flex flex-wrap items-center gap-1 text-success">
-            <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> Available
+            <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> {t('site.reg.slug.available')}
             {futureUrl && (
               <span className="text-ink-muted">
-                · your address will be <span className="font-mono font-semibold text-ink">{displayAddress(futureUrl)}</span>
+                {withSlot(
+                  t('site.reg.slug.willBe', { address: SLOT }),
+                  <span className="font-mono font-semibold text-ink">{displayAddress(futureUrl)}</span>
+                )}
               </span>
             )}
           </span>
@@ -385,13 +422,13 @@ export default function RegisterOrganisationPage() {
       case 'unavailable':
         return (
           <span className="inline-flex items-center gap-1 text-danger">
-            <XCircle className="h-3 w-3" aria-hidden="true" /> {REASON_TEXT[availability.reason]}
+            <XCircle className="h-3 w-3" aria-hidden="true" /> {t(REASON_TEXT[availability.reason])}
           </span>
         );
       case 'error':
-        return <span className="text-ink-subtle">Could not check right now; we will check when you send the request.</span>;
+        return <span className="text-ink-subtle">{t('site.reg.slug.error')}</span>;
       default:
-        return <span>Your people will use this address to sign in to your organisation.</span>;
+        return <span>{t('site.reg.slug.help')}</span>;
     }
   })();
 
@@ -408,7 +445,7 @@ export default function RegisterOrganisationPage() {
           <BrandLogo />
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors">
-              Sign in
+              {t('common.signIn')}
             </Link>
             <LanguageSwitcher />
             <ThemeToggle />
@@ -419,7 +456,7 @@ export default function RegisterOrganisationPage() {
       <main className="relative flex-1 px-4 sm:px-6 py-10">
         <div className="mx-auto w-full max-w-2xl space-y-6">
           <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-ink-muted hover:text-brand-fg">
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to home
+            <ArrowLeft className="h-3.5 w-3.5" /> {t('common.backToHome')}
           </Link>
 
           {confirmToken ? (
@@ -431,27 +468,32 @@ export default function RegisterOrganisationPage() {
               </div>
               <div className="text-center space-y-2">
                 <h1 id="done-h" className="text-2xl font-extrabold text-ink">
-                  Check your e-mail
+                  {t('site.reg.sent.title')}
                 </h1>
                 <p className="text-xs text-ink-muted">
-                  We have sent a confirmation link to <span className="font-semibold text-ink">{sentTo}</span>. Open it{' '}
-                  {confirmBy
-                    ? `by ${new Date(confirmBy).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`
-                    : 'within 24 hours'}{' '}
-                  to send your request to the platform team. Until then, nobody else can ask for this address.
+                  {withSlot(
+                    confirmBy
+                      ? t('site.reg.sent.bodyBy', {
+                          email: SLOT,
+                          when: t.date(confirmBy, { dateStyle: 'medium', timeStyle: 'short' }),
+                        })
+                      : t('site.reg.sent.bodyWithin', { email: SLOT }),
+                    <span className="font-semibold text-ink">{sentTo}</span>
+                  )}
                 </p>
                 {requestedUrl && (
                   <p className="text-xs text-ink-muted">
-                    Requested address: <span className="font-mono font-semibold text-ink">{displayAddress(requestedUrl)}</span>
+                    {withSlot(
+                      t('site.reg.sent.requested', { address: SLOT }),
+                      <span className="font-mono font-semibold text-ink">{displayAddress(requestedUrl)}</span>
+                    )}
                   </p>
                 )}
               </div>
-              <p className="text-[11px] text-ink-subtle text-center">
-                No e-mail? Check your spam folder. If the link expires, simply send the request again.
-              </p>
+              <p className="text-[11px] text-ink-subtle text-center">{t('site.reg.sent.noEmail')}</p>
               <div className="flex justify-center">
                 <Link href="/" className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-bold">
-                  Back to home
+                  {t('common.backToHome')}
                 </Link>
               </div>
             </section>
@@ -465,13 +507,9 @@ export default function RegisterOrganisationPage() {
                   <Building2 className="h-5 w-5" />
                 </div>
                 <h1 id="register-h" className="text-2xl font-extrabold text-ink">
-                  Register your organisation
+                  {t('site.reg.title')}
                 </h1>
-                <p className="text-xs text-ink-muted leading-relaxed">
-                  Tell us about your institution. We e-mail the contact person below a link to confirm the request; the platform team then
-                  reviews it. After approval, the contact person receives an e-mail to choose a password and becomes your
-                  organisation&apos;s administrator, who then invites teachers and learners.
-                </p>
+                <p className="text-xs text-ink-muted leading-relaxed">{t('site.reg.intro')}</p>
               </div>
 
               {error && (
@@ -480,26 +518,26 @@ export default function RegisterOrganisationPage() {
                   className="p-3.5 bg-danger/10 border border-danger/30 rounded-2xl flex items-start gap-2.5 text-xs text-danger"
                 >
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>{error}</span>
+                  <span>{msgText(t, error)}</span>
                 </div>
               )}
 
               <form onSubmit={submit} className="space-y-6">
                 <fieldset className="space-y-4">
-                  <legend className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Organisation</legend>
-                  <Field id="org-name" text="Organisation name">
+                  <legend className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">{t('site.reg.org.legend')}</legend>
+                  <Field id="org-name" text={t('site.reg.org.name')}>
                     <input
                       id="org-name"
                       className={input}
                       required
                       maxLength={120}
                       autoComplete="organization"
-                      placeholder="e.g. St. Mary's College"
+                      placeholder={t('site.reg.org.namePlaceholder')}
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                     />
                   </Field>
-                  <Field id="org-slug" text="Web address" hint={<span aria-live="polite">{slugStatus}</span>}>
+                  <Field id="org-slug" text={t('site.reg.org.slug')} hint={<span aria-live="polite">{slugStatus}</span>}>
                     <div className="flex items-stretch overflow-hidden rounded-xl border border-line bg-canvas focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20">
                       <input
                         id="org-slug"
@@ -520,16 +558,16 @@ export default function RegisterOrganisationPage() {
                     </div>
                   </Field>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field id="org-type" text="Type of institution">
+                    <Field id="org-type" text={t('site.reg.org.type')}>
                       <select id="org-type" className={input} value={type} onChange={(e) => setType(e.target.value as typeof type)}>
-                        {TYPES.map((t) => (
-                          <option key={t.value} value={t.value}>
-                            {t.label}
+                        {TYPES.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {t(o.label)}
                           </option>
                         ))}
                       </select>
                     </Field>
-                    <Field id="org-country" text="Country" optional>
+                    <Field id="org-country" text={t('site.reg.org.country')} optional>
                       <input
                         id="org-country"
                         className={input}
@@ -539,7 +577,7 @@ export default function RegisterOrganisationPage() {
                         onChange={(e) => setCountry(e.target.value)}
                       />
                     </Field>
-                    <Field id="org-website" text="Website" optional>
+                    <Field id="org-website" text={t('site.reg.org.website')} optional>
                       <input
                         id="org-website"
                         type="url"
@@ -551,7 +589,7 @@ export default function RegisterOrganisationPage() {
                         onChange={(e) => setWebsite(e.target.value)}
                       />
                     </Field>
-                    <Field id="org-learners" text="Expected number of learners" optional>
+                    <Field id="org-learners" text={t('site.reg.org.learners')} optional>
                       <input
                         id="org-learners"
                         type="number"
@@ -569,10 +607,10 @@ export default function RegisterOrganisationPage() {
 
                 <fieldset className="space-y-4">
                   <legend className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
-                    Contact person (your first administrator)
+                    {t('site.reg.contact.legend')}
                   </legend>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field id="c-first" text="First name">
+                    <Field id="c-first" text={t('site.reg.contact.first')}>
                       <input
                         id="c-first"
                         className={input}
@@ -583,7 +621,7 @@ export default function RegisterOrganisationPage() {
                         onChange={(e) => setFirstName(e.target.value)}
                       />
                     </Field>
-                    <Field id="c-last" text="Last name">
+                    <Field id="c-last" text={t('site.reg.contact.last')}>
                       <input
                         id="c-last"
                         className={input}
@@ -594,11 +632,7 @@ export default function RegisterOrganisationPage() {
                         onChange={(e) => setLastName(e.target.value)}
                       />
                     </Field>
-                    <Field
-                      id="c-email"
-                      text="Work e-mail"
-                      hint="We send a confirmation link here first; the approval e-mail and your sign-in use this address too."
-                    >
+                    <Field id="c-email" text={t('site.reg.contact.email')} hint={t('site.reg.contact.emailHint')}>
                       <input
                         id="c-email"
                         type="email"
@@ -611,7 +645,7 @@ export default function RegisterOrganisationPage() {
                         onChange={(e) => setEmail(e.target.value)}
                       />
                     </Field>
-                    <Field id="c-phone" text="Phone" optional>
+                    <Field id="c-phone" text={t('site.reg.contact.phone')} optional>
                       <input
                         id="c-phone"
                         type="tel"
@@ -623,13 +657,13 @@ export default function RegisterOrganisationPage() {
                       />
                     </Field>
                   </div>
-                  <Field id="c-message" text="Anything we should know?" optional>
+                  <Field id="c-message" text={t('site.reg.contact.message')} optional>
                     <textarea
                       id="c-message"
                       className={input}
                       rows={3}
                       maxLength={2000}
-                      placeholder="For example: when you would like to start, or which systems you use today."
+                      placeholder={t('site.reg.contact.messagePlaceholder')}
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                     />
@@ -644,9 +678,7 @@ export default function RegisterOrganisationPage() {
                     onChange={(e) => setTerms(e.target.checked)}
                     className="mt-0.5 rounded border-line accent-brand"
                   />
-                  <span>
-                    I am authorised to register this organisation, and I agree that the platform team may contact me about this request.
-                  </span>
+                  <span>{t('site.reg.terms')}</span>
                 </label>
 
                 <Captcha ref={captcha} siteKey={captchaKey} action={CAPTCHA_ACTION} onToken={setCaptchaToken} />
@@ -658,12 +690,12 @@ export default function RegisterOrganisationPage() {
                   }
                   className="w-full py-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-on-brand rounded-xl text-xs font-bold shadow-lg shadow-brand/25 transition-all"
                 >
-                  {busy ? 'Sending…' : 'Send registration request'}
+                  {busy ? t('site.reg.sending') : t('site.reg.submit')}
                 </button>
                 <p className="text-center text-[11px] text-ink-muted">
-                  Already registered?{' '}
+                  {t('site.reg.already')}{' '}
                   <Link href="/login" className="font-semibold text-brand-fg hover:underline underline-offset-2">
-                    Sign in
+                    {t('common.signIn')}
                   </Link>
                 </p>
               </form>

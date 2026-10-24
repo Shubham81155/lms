@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { LifeBuoy, LogIn } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
+import { useT } from '@/lib/i18n';
 
 // The platform operator's side of support access: the passes organisations have granted and that are still in
 // force. "Enter" asks the API for a one-time link and follows it to the organisation's own address, where it
@@ -24,9 +25,9 @@ export interface OperatorSupportPass {
   lastEnteredByEmail: string | null;
 }
 
-const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-
 export const SupportPassesPanel: React.FC = () => {
+  const t = useT();
+  const when = (iso: string) => t.date(iso, { dateStyle: 'medium', timeStyle: 'short', timeZone: undefined });
   const { data, isLoading, error, reload } = useApiData<{ data: OperatorSupportPass[] }>('/api/v1/operator/support-passes');
   const { busy, error: actionError, run } = useAction();
   const [entering, setEntering] = useState<string | null>(null);
@@ -45,23 +46,20 @@ export const SupportPassesPanel: React.FC = () => {
       <div className="flex items-center justify-between gap-3">
         <h2 id="support-passes-h" className="flex items-center gap-2 font-bold text-base text-ink">
           <LifeBuoy className="h-4 w-4 text-accent" aria-hidden="true" />
-          Support access granted
+          {t('operator.support.title')}
         </h2>
         <button type="button" className="text-xs font-semibold text-brand-fg underline" onClick={reload}>
-          Refresh
+          {t('operator.support.refresh')}
         </button>
       </div>
-      <p className="text-xs text-ink-muted">
-        Organisations that have let support in. Entering opens the organisation at its own address in this tab; everything you do there is
-        in its audit trail.
-      </p>
+      <p className="text-xs text-ink-muted">{t('operator.support.intro')}</p>
       {(error || actionError) && (
         <p role="alert" className="text-xs text-danger">
           {error || actionError}
         </p>
       )}
-      {isLoading && !data && <p className="text-xs text-ink-subtle">Loading…</p>}
-      {data && passes.length === 0 && <p className="text-xs text-ink-muted">No organisation has granted support access right now.</p>}
+      {isLoading && !data && <p className="text-xs text-ink-subtle">{t('common.loading')}</p>}
+      {data && passes.length === 0 && <p className="text-xs text-ink-muted">{t('operator.support.empty')}</p>}
       <ul className="divide-y divide-line">
         {passes.map((p) => {
           const blocked = p.organization.status === 'SUSPENDED' || p.organization.status === 'ARCHIVED';
@@ -75,19 +73,25 @@ export const SupportPassesPanel: React.FC = () => {
                       p.scope === 'FULL' ? 'border-danger/40 bg-danger/10 text-danger' : 'border-line bg-canvas text-ink-muted'
                     }`}
                   >
-                    {p.scope === 'FULL' ? 'Full access' : 'Read-only'}
+                    {p.scope === 'FULL' ? t('operator.support.full') : t('operator.support.readOnly')}
                   </span>
-                  {blocked && <span className="text-[10px] font-semibold text-danger">{p.organization.status.toLowerCase()}</span>}
+                  {blocked && (
+                    <span className="text-[10px] font-semibold text-danger">
+                      {t.dyn(`operator.status.${p.organization.status}`, p.organization.status.toLowerCase())}
+                    </span>
+                  )}
                 </div>
                 <div className="text-ink-muted">{p.reason}</div>
                 <div className="text-[11px] text-ink-subtle">
-                  Granted by {p.grantedByEmail} · ends {when(p.expiresAt)}
-                  {p.lastEnteredAt ? ` · last entered by ${p.lastEnteredByEmail}, ${when(p.lastEnteredAt)}` : ''}
+                  {t('operator.support.granted', { email: p.grantedByEmail, when: when(p.expiresAt) })}
+                  {p.lastEnteredAt
+                    ? ` · ${t('operator.support.lastEntered', { email: p.lastEnteredByEmail ?? '', when: when(p.lastEnteredAt) })}`
+                    : ''}
                 </div>
               </div>
               <button type="button" className={ghost} disabled={busy || blocked} onClick={() => enter(p.id)}>
                 <LogIn className="h-3.5 w-3.5" aria-hidden="true" />
-                {entering === p.id ? 'Entering…' : 'Enter'}
+                {entering === p.id ? t('operator.support.entering') : t('operator.support.enter')}
               </button>
             </li>
           );

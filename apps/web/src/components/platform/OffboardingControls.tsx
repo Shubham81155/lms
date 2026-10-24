@@ -3,7 +3,8 @@
 import React from 'react';
 import { useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
-import { ExportRow, longDate, type ExportJob } from '@/components/admin/OffboardingPanel';
+import { ExportRow, type ExportJob } from '@/components/admin/OffboardingPanel';
+import { useT } from '@/lib/i18n';
 
 // The platform operator's view of offboarding: which organisations are scheduled for deletion (shown on their row
 // in the organisations table) and the organisations already deleted, with their final export.
@@ -32,30 +33,33 @@ export function useOffboardingOverview(refreshKey?: number) {
   return overview;
 }
 
+const longDate = (t: ReturnType<typeof useT>, iso: string) => t.date(iso, { dateStyle: 'long', timeZone: undefined });
+
 /** "Deletion on 3 December 2026" under an organisation's status. */
-export const DeletionBadge: React.FC<{ scheduledAt: string; byOperator: boolean }> = ({ scheduledAt, byOperator }) => (
-  <div
-    className="mt-1 text-[10px] font-semibold text-danger"
-    title={byOperator ? 'Scheduled by the platform operator' : "Scheduled by the organisation's administrator"}
-  >
-    Deletion on {longDate(scheduledAt)}
-  </div>
-);
+export const DeletionBadge: React.FC<{ scheduledAt: string; byOperator: boolean }> = ({ scheduledAt, byOperator }) => {
+  const t = useT();
+  return (
+    <div
+      className="mt-1 text-[10px] font-semibold text-danger"
+      title={byOperator ? t('operator.deletion.byOperator') : t('operator.deletion.byAdmin')}
+    >
+      {t('operator.deletion.badge', { date: longDate(t, scheduledAt) })}
+    </div>
+  );
+};
 
 /** Organisations already deleted: when, their final export, and until when their address stays reserved. */
 export const DeletedOrganisations: React.FC<{ overview: ReturnType<typeof useOffboardingOverview> }> = ({ overview }) => {
+  const t = useT();
   const deleted = overview.data?.data.deleted ?? [];
   if (overview.error) return <Banner kind="error">{overview.error}</Banner>;
   if (deleted.length === 0) return null;
   return (
     <section className="space-y-2" aria-labelledby="deleted-orgs-h">
       <h3 id="deleted-orgs-h" className="text-xs font-bold text-ink">
-        Deleted organisations
+        {t('operator.deleted.title')}
       </h3>
-      <p className="text-[11px] text-ink-muted">
-        The final export taken before each deletion is kept for 90 days. A deleted organisation&apos;s address cannot be taken until the
-        date shown.
-      </p>
+      <p className="text-[11px] text-ink-muted">{t('operator.deleted.intro')}</p>
       <ul className="space-y-2">
         {deleted.map((d) => {
           const rows = d.summary?.rows ? Object.values(d.summary.rows).reduce((a, b) => a + b, 0) : null;
@@ -67,20 +71,29 @@ export const DeletedOrganisations: React.FC<{ overview: ReturnType<typeof useOff
                   <span className="font-mono text-[11px] text-ink-subtle">{d.slug}</span>
                 </div>
                 <div className="text-[11px] text-ink-subtle">
-                  Deleted {longDate(d.deletedAt)}
-                  {d.requestedBy ? ` · asked by ${d.requestedBy}` : ''} · address reserved until {longDate(d.slugHeldUntil)}
+                  {[
+                    t('operator.deleted.on', { date: longDate(t, d.deletedAt) }),
+                    d.requestedBy ? t('operator.deleted.askedBy', { who: d.requestedBy }) : '',
+                    t('operator.deleted.reserved', { date: longDate(t, d.slugHeldUntil) }),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </div>
               </div>
               <div className="mt-1 text-[11px] text-ink-subtle">
-                {rows !== null ? `${rows.toLocaleString()} records` : ''}
-                {d.summary?.files !== undefined ? `, ${d.summary.files} files` : ''}
-                {d.summary?.filesNotRemoved ? ` (${d.summary.filesNotRemoved} could not be removed from storage)` : ''}
+                {[
+                  rows !== null ? t.plural('operator.deleted.records', rows) : '',
+                  d.summary?.files !== undefined ? t.plural('operator.deleted.files', d.summary.files) : '',
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
+                {d.summary?.filesNotRemoved ? ` ${t('operator.deleted.notRemoved', { count: t.number(d.summary.filesNotRemoved) })}` : ''}
               </div>
               <ul className="mt-2">
                 {d.finalExport ? (
                   <ExportRow job={d.finalExport} downloadPath={`/api/v1/operator/exports/${d.finalExport.id}/download`} />
                 ) : (
-                  <li className="text-[11px] text-ink-subtle">No final export.</li>
+                  <li className="text-[11px] text-ink-subtle">{t('operator.deleted.noExport')}</li>
                 )}
               </ul>
             </li>
