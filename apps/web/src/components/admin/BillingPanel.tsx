@@ -5,9 +5,12 @@ import { CreditCard, Download } from 'lucide-react';
 import { api } from '@/lib/api';
 import { downloadFile, useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
+import { useSupportSession } from '@/components/shell/SupportBanner';
 import {
   formatBytes,
+  formatDay,
   formatInr,
+  isRazorpayUrl,
   isValidGstin,
   planTotalPaise,
   usagePercent,
@@ -68,7 +71,7 @@ const STATES: [string, string][] = [
   ['38', 'Ladakh'],
 ];
 
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { dateStyle: 'long' });
+const day = (iso: string) => formatDay(iso);
 const limitText = (n: number | null) => (n === null ? 'unlimited' : n.toLocaleString('en-IN'));
 
 const Meter: React.FC<{ label: string; used: string; limit: string; percent: number | null }> = ({ label, used, limit, percent }) => (
@@ -122,7 +125,7 @@ export const BillingBanner: React.FC<{ onOpenBilling: () => void }> = ({ onOpenB
   );
 };
 
-const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void }> = ({ overview, onSaved }) => {
+const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void; locked: boolean }> = ({ overview, onSaved, locked }) => {
   const p = overview.profile;
   const { busy, error, run } = useAction();
   const [legalName, setLegalName] = useState(p?.legalName ?? '');
@@ -133,7 +136,7 @@ const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void }> 
   const gstinBad = gstin.trim() !== '' && !isValidGstin(gstin);
   // A GSTIN starts with the state code; keep them in step so the invoice taxes the right way (CGST/SGST or IGST).
   const mismatch = gstin.trim().length >= 2 && stateCode !== '' && gstin.trim().slice(0, 2) !== stateCode;
-  const valid = legalName.trim().length > 1 && address.trim().length > 4 && stateCode !== '' && !gstinBad && !mismatch;
+  const valid = !locked && legalName.trim().length > 1 && address.trim().length > 4 && stateCode !== '' && !gstinBad && !mismatch;
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,8 +172,13 @@ const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void }> 
           maxLength={15}
           placeholder="29ABCDE1234F1Z5"
           aria-invalid={gstinBad}
+          aria-describedby={gstinBad ? 'gstin-err' : undefined}
         />
-        {gstinBad && <span className="block font-normal text-danger">Not a valid GSTIN (15 characters).</span>}
+        {gstinBad && (
+          <span id="gstin-err" className="block font-normal text-danger">
+            Not a valid GSTIN (15 characters).
+          </span>
+        )}
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted sm:col-span-2">
         Billing address
@@ -178,7 +186,14 @@ const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void }> 
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
         State (decides CGST/SGST or IGST)
-        <select className={field} value={stateCode} onChange={(e) => setStateCode(e.target.value)} required>
+        <select
+          className={field}
+          value={stateCode}
+          onChange={(e) => setStateCode(e.target.value)}
+          required
+          aria-describedby={mismatch ? 'state-err' : undefined}
+          aria-invalid={mismatch}
+        >
           <option value="">Choose a state…</option>
           {STATES.map(([code, name]) => (
             <option key={code} value={code}>
@@ -187,7 +202,9 @@ const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void }> 
           ))}
         </select>
         {mismatch && (
-          <span className="block font-normal text-danger">The GSTIN begins with {gstin.trim().slice(0, 2)}, which is not this state.</span>
+          <span id="state-err" className="block font-normal text-danger">
+            The GSTIN begins with {gstin.trim().slice(0, 2)}, which is not this state.
+          </span>
         )}
       </label>
       <div className="flex items-end gap-3">
@@ -209,12 +226,15 @@ const ProfileForm: React.FC<{ overview: BillingOverview; onSaved: () => void }> 
   );
 };
 
-const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedProfile: () => void }> = ({
+const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedProfile: () => void; locked: boolean }> = ({
   overview,
   plans,
   onNeedProfile,
+  locked,
 }) => {
   const { busy, error, run } = useAction();
+  // Held from the click until the browser has left for Razorpay's page, so a second click cannot start a second subscription.
+  const [redirecting, setRedirecting] = useState(false);
   const [interval, setInterval] = useState<BillingInterval>(overview.interval ?? 'MONTH');
   const [planId, setPlanId] = useState<string>(overview.plan?.id ?? plans[0]?.id ?? '');
   const [seats, setSeats] = useState(String(Math.max(1, overview.seats ?? overview.usage.seats)));
@@ -223,20 +243,32 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
   const minSeats = Math.max(1, overview.usage.seats);
   const seatsOk = Number.isInteger(n) && n >= minSeats && (!plan || plan.seatLimit === null || n <= plan.seatLimit);
   const current = overview.status === 'ACTIVE' || overview.status === 'PAST_DUE';
-  const canBuy = overview.configured && !!overview.profile;
-  const unchanged = overview.status === 'ACTIVE' && overview.plan?.id === planId && overview.interval === interval && overview.seats === n;
+  // The API refuses a second subscription while one is in force, so a plan can only be bought without one.
+  const canBuy = overview.configured && !!overview.profile && !current && !locked;
 
-  const subscribe = () =>
-    run(async () => {
+  useEffect(() => {
+    // Back from Razorpay's page through the browser cache: the page is as it was, not mid-redirect.
+    const back = (e: PageTransitionEvent) => e.persisted && setRedirecting(false);
+    window.addEventListener('pageshow', back);
+    return () => window.removeEventListener('pageshow', back);
+  }, []);
+
+  const subscribe = () => {
+    if (redirecting) return;
+    return run(async () => {
       const res = await api.post<{ data: { shortUrl: string } }>('/api/v1/billing/subscribe', { planId, interval, seats: n });
-      // Razorpay's hosted payment page; the plan changes when its webhook reports the payment.
+      // Razorpay's hosted payment page. The plan changes only when Razorpay's webhook reaches the server, never on the
+      // customer's word that they paid.
+      if (!isRazorpayUrl(res.data.shortUrl)) throw new Error('The payment page could not be opened. Please try again or contact us.');
+      setRedirecting(true);
       window.location.assign(res.data.shortUrl);
     });
+  };
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-xs font-semibold text-ink-muted">{current ? 'Change plan' : 'Choose a plan'}</h3>
+        <h3 className="text-xs font-semibold text-ink-muted">{current ? 'Plans' : 'Choose a plan'}</h3>
         <div
           role="radiogroup"
           aria-label="Billing interval"
@@ -267,6 +299,7 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
               type="button"
               role="radio"
               aria-checked={selected}
+              disabled={current}
               onClick={() => setPlanId(p.id)}
               className={`space-y-2 rounded-2xl border p-4 text-left text-xs transition-colors ${selected ? 'border-brand bg-brand/10' : 'border-line bg-canvas hover:border-brand/40'}`}
             >
@@ -291,7 +324,13 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
           );
         })}
       </div>
-      {plan && (
+      {current && (
+        <p className="rounded-2xl border border-line bg-canvas p-4 text-xs text-ink-muted">
+          You are on a plan already. To move to another, cancel the subscription (it runs to the end of the period you paid for), then
+          choose a new plan once it has ended. To change sooner, contact us.
+        </p>
+      )}
+      {plan && !current && (
         <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-line bg-canvas p-4">
           <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
             Seats
@@ -302,13 +341,15 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
               max={plan.seatLimit ?? undefined}
               value={seats}
               onChange={(e) => setSeats(e.target.value)}
+              aria-invalid={!seatsOk}
+              aria-describedby="seats-hint"
             />
           </label>
           <div className="text-xs text-ink">
             <div className="font-semibold">
               {seatsOk ? `${formatInr(planTotalPaise(plan, interval, n))} per ${interval === 'YEAR' ? 'year' : 'month'}` : '—'}
             </div>
-            <div className="text-[11px] text-ink-subtle">
+            <div id="seats-hint" className="text-[11px] text-ink-subtle">
               plus GST.{' '}
               {n < minSeats
                 ? `${minSeats} seats are in use.`
@@ -317,10 +358,10 @@ const PlanPicker: React.FC<{ overview: BillingOverview; plans: Plan[]; onNeedPro
                   : ''}
             </div>
           </div>
-          <button type="button" className={primary} disabled={busy || !seatsOk || !canBuy || unchanged} onClick={subscribe}>
-            {current ? 'Switch to this plan' : 'Subscribe'}
+          <button type="button" className={primary} disabled={busy || redirecting || !seatsOk || !canBuy} onClick={subscribe}>
+            {redirecting ? 'Opening the payment page…' : 'Subscribe'}
           </button>
-          {!overview.profile && overview.configured && (
+          {!overview.profile && overview.configured && !current && (
             <button type="button" className="text-[11px] font-semibold text-brand-fg underline" onClick={onNeedProfile}>
               Add your billing details first
             </button>
@@ -337,6 +378,10 @@ export const BillingPanel: React.FC = () => {
   const plans = useApiData<{ data: Plan[] }>('/api/v1/billing/plans');
   const invoices = useApiData<{ data: Invoice[] }>('/api/v1/billing/invoices');
   const { busy, error, run } = useAction();
+  const support = useSupportSession();
+  // A read-only support session cannot change anything; buttons outside forms are not covered by the page-wide lock.
+  const locked = support?.scope === 'READ_ONLY';
+  const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -353,11 +398,15 @@ export const BillingPanel: React.FC = () => {
       await overview.reload();
     });
   const pdf = async (inv: Invoice) => {
+    if (downloading) return;
     setDownloadError(null);
+    setDownloading(inv.id);
     try {
-      await downloadFile(`/api/v1/billing/invoices/${inv.id}/pdf`, `${inv.number}.pdf`);
+      await downloadFile(`/api/v1/billing/invoices/${encodeURIComponent(inv.id)}/pdf`, `${inv.number.replace(/[^A-Za-z0-9-]+/g, '-')}.pdf`);
     } catch {
-      setDownloadError('Could not download the invoice. Try again.');
+      setDownloadError(`Could not download invoice ${inv.number}. Try again.`);
+    } finally {
+      setDownloading(null);
     }
   };
 
@@ -385,8 +434,8 @@ export const BillingPanel: React.FC = () => {
       )}
       {b?.status === 'PAST_DUE' && (
         <div role="alert" className="rounded-2xl border border-danger/40 bg-danger/5 p-4 text-xs text-ink">
-          <span className="font-semibold">The last payment failed.</span> Razorpay retries it for a few days. If it keeps failing, the
-          organisation goes read-only. Switching to a plan below lets you pay again.
+          <span className="font-semibold">The last payment failed.</span> Razorpay retries it for a few days; update your payment method
+          using the link in Razorpay's e-mail. If it keeps failing, the organisation becomes read-only. Contact us if you need help.
         </div>
       )}
 
@@ -416,16 +465,27 @@ export const BillingPanel: React.FC = () => {
                 Your subscription has ended{b.currentPeriodEnd ? ` (${day(b.currentPeriodEnd)})` : ''}. Choose a plan to start again.
               </p>
             )}
-            {b.status === 'NONE' && b.configured && <p className="text-ink-muted">Choose a plan below to subscribe.</p>}
+            {b.pending && (
+              <p role="status" className="text-ink-muted">
+                A payment{b.pendingSince ? ` started on ${day(b.pendingSince)}` : ''} is waiting for confirmation from Razorpay. If you have
+                paid, this page updates once it arrives; if you left without paying, you can choose a plan again below.
+              </p>
+            )}
+            {b.status === 'NONE' && b.configured && !b.pending && <p className="text-ink-muted">Choose a plan below to subscribe.</p>}
             {live && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {b.cancelAtPeriodEnd ? (
-                  <button type="button" className={ghost} disabled={busy} onClick={() => post('/api/v1/billing/resume')}>
+                  <button type="button" className={ghost} disabled={busy || locked} onClick={() => post('/api/v1/billing/resume')}>
                     Keep my subscription
                   </button>
                 ) : confirmCancel ? (
                   <>
-                    <button type="button" className={`${ghost} text-danger`} disabled={busy} onClick={() => post('/api/v1/billing/cancel')}>
+                    <button
+                      type="button"
+                      className={`${ghost} text-danger`}
+                      disabled={busy || locked}
+                      onClick={() => post('/api/v1/billing/cancel')}
+                    >
                       Cancel at period end
                     </button>
                     <button type="button" className={ghost} disabled={busy} onClick={() => setConfirmCancel(false)}>
@@ -433,7 +493,7 @@ export const BillingPanel: React.FC = () => {
                     </button>
                   </>
                 ) : (
-                  <button type="button" className={ghost} disabled={busy} onClick={() => setConfirmCancel(true)}>
+                  <button type="button" className={ghost} disabled={busy || locked} onClick={() => setConfirmCancel(true)}>
                     Cancel subscription
                   </button>
                 )}
@@ -471,6 +531,7 @@ export const BillingPanel: React.FC = () => {
           overview={b}
           plans={plans.data.data}
           onNeedProfile={() => setProfileOpen(true)}
+          locked={locked}
         />
       )}
       {plans.error && <Banner kind="error">{plans.error}</Banner>}
@@ -496,7 +557,7 @@ export const BillingPanel: React.FC = () => {
               {b.profile.gstin ? ` · GSTIN ${b.profile.gstin}` : ' · no GSTIN'}
             </p>
           ) : (
-            <ProfileForm overview={b} onSaved={overview.reload} />
+            <ProfileForm overview={b} onSaved={overview.reload} locked={locked} />
           )}
         </div>
       )}
@@ -535,12 +596,18 @@ export const BillingPanel: React.FC = () => {
                 {invoices.data.data.map((inv) => (
                   <tr key={inv.id}>
                     <td className="px-3 py-2.5 font-mono text-ink">{inv.number}</td>
-                    <td className="px-3 py-2.5 text-ink-muted">{new Date(inv.issuedAt).toLocaleDateString()}</td>
+                    <td className="px-3 py-2.5 text-ink-muted">{formatDay(inv.issuedAt, 'medium')}</td>
                     <td className="px-3 py-2.5 text-right text-ink-muted">{formatInr(inv.taxPaise)}</td>
                     <td className="px-3 py-2.5 text-right font-semibold text-ink">{formatInr(inv.amountPaise)}</td>
                     <td className="px-3 py-2.5 text-ink-muted">{inv.status.toLowerCase()}</td>
                     <td className="px-3 py-2.5 text-right">
-                      <button type="button" className={ghost} onClick={() => pdf(inv)} aria-label={`Download invoice ${inv.number} as PDF`}>
+                      <button
+                        type="button"
+                        className={ghost}
+                        onClick={() => pdf(inv)}
+                        disabled={downloading !== null}
+                        aria-label={`Download invoice ${inv.number} as PDF`}
+                      >
                         <Download className="h-3.5 w-3.5" aria-hidden="true" />
                         PDF
                       </button>

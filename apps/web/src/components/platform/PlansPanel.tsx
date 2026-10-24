@@ -5,7 +5,18 @@ import { CreditCard } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAction, useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
-import { formatInr, type Plan, type PlanInput } from '@/lib/billing';
+import {
+  formatInr,
+  MONTHLY_PAISE,
+  parseLimit,
+  parseRupees,
+  PLAN_CODE,
+  PLAN_LIMIT_MAX,
+  rupeesText,
+  YEARLY_PAISE,
+  type Plan,
+  type PlanInput,
+} from '@/lib/billing';
 import { TIERS, tierLabel, type Org } from '@/lib/platform';
 
 // The platform operator's price list (what organisations can subscribe to) and the assignment of a plan to one
@@ -19,19 +30,6 @@ const ghost =
   'inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface hover:bg-raised border border-line text-ink rounded-lg text-[11px] font-semibold transition-colors disabled:opacity-50';
 
 const limit = (n: number | null, unit = '') => (n === null ? 'unlimited' : `${n.toLocaleString('en-IN')}${unit}`);
-
-/** Blank means unlimited; otherwise a whole number of at least 1. `undefined` when the text is not one. */
-const parseLimit = (v: string): number | null | undefined => {
-  if (v.trim() === '') return null;
-  const n = Number(v);
-  return Number.isInteger(n) && n >= 1 ? n : undefined;
-};
-/** Rupees (up to two decimals) to paise. */
-const parseRupees = (v: string): number | undefined => {
-  if (!/^\d+(\.\d{1,2})?$/.test(v.trim())) return undefined;
-  return Math.round(Number(v) * 100);
-};
-const rupeesText = (paise: number) => String(paise / 100);
 
 interface Draft {
   code: string;
@@ -69,9 +67,9 @@ function inputOf(d: Draft): PlanInput | null {
   const seatLimit = parseLimit(d.seatLimit);
   const courseLimit = parseLimit(d.courseLimit);
   const storageGb = parseLimit(d.storageGb);
-  const monthlyPaise = parseRupees(d.monthly);
-  const yearlyPaise = parseRupees(d.yearly);
-  if (!/^[a-z0-9][a-z0-9-]{1,39}$/.test(d.code) || d.name.trim().length < 2) return null;
+  const monthlyPaise = parseRupees(d.monthly, MONTHLY_PAISE);
+  const yearlyPaise = parseRupees(d.yearly, YEARLY_PAISE);
+  if (!PLAN_CODE.test(d.code) || d.name.trim().length < 2 || d.name.trim().length > 80) return null;
   if (
     seatLimit === undefined ||
     seatLimit === null ||
@@ -115,11 +113,11 @@ const PlanForm: React.FC<{ plan: Plan | null; onSaved: (message: string) => void
     >
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
         Name
-        <input className={input} value={d.name} onChange={set('name')} maxLength={60} required />
+        <input className={input} value={d.name} onChange={set('name')} maxLength={80} required />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
-        Code (lower case, fixed once created)
-        <input className={input} value={d.code} onChange={set('code')} maxLength={40} placeholder="growth" required disabled={!!plan} />
+        Code (2-32 lower-case letters, digits, hyphens; fixed once created)
+        <input className={input} value={d.code} onChange={set('code')} maxLength={32} placeholder="growth" required disabled={!!plan} />
       </label>
       <label className="space-y-1 text-[11px] font-semibold text-ink-muted">
         Feature set
@@ -152,15 +150,16 @@ const PlanForm: React.FC<{ plan: Plan | null; onSaved: (message: string) => void
         <input className={input} inputMode="decimal" value={d.yearly} onChange={set('yearly')} placeholder="1999" required />
       </label>
       <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-4">
-        <button type="submit" className={primary} disabled={busy || !body}>
+        <button type="submit" className={primary} disabled={busy || !body} aria-describedby={body ? undefined : 'plan-form-hint'}>
           {plan ? 'Save plan' : 'Add plan'}
         </button>
         <button type="button" className={ghost} onClick={onCancel}>
           Cancel
         </button>
         {!body && (
-          <span className="text-[11px] text-ink-subtle">
-            Limits are whole numbers (or blank); prices are rupees with up to two decimals.
+          <span id="plan-form-hint" className="text-[11px] text-ink-subtle">
+            Seats, courses and storage are whole numbers up to 1,00,00,000 (blank: unlimited, except seats). Prices are rupees with up to
+            two decimals, at least ₹1.
           </span>
         )}
       </div>
@@ -182,7 +181,7 @@ const AssignPlan: React.FC<{ plans: Plan[]; onDone: (message: string) => void }>
   const [seats, setSeats] = useState('');
   const org = orgs.data?.data.find((o) => o.id === orgId);
   const seatsN = seats.trim() === '' ? undefined : Number(seats);
-  const seatsOk = seatsN === undefined || (Number.isInteger(seatsN) && seatsN >= 1);
+  const seatsOk = seatsN === undefined || (Number.isInteger(seatsN) && seatsN >= 1 && seatsN <= PLAN_LIMIT_MAX);
 
   const assign = (e: React.FormEvent) => {
     e.preventDefault();

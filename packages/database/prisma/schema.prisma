@@ -1464,6 +1464,8 @@ model Invoice {
   sgstPaise         Int      @default(0)
   igstPaise         Int      @default(0)
   totalPaise        Int
+  /// The GST rate (percent) the tax was split at, as issued.
+  gstRatePercent    Int      @default(18)
   status            String   @default("PAID")
   /// Who it was issued to and by, as they were then.
   buyerJson         Json

@@ -89,6 +89,7 @@ async function as(who: string, tenant: string) {
 }
 
 let eventSeq = 0;
+const FIXED_NOW = Math.floor(Date.now() / 1000);
 function webhook(
   event: string,
   tenantId: string,
@@ -96,12 +97,14 @@ function webhook(
 ) {
   const body = JSON.stringify({
     event,
+    id: extra.eventId ?? `evt_${++eventSeq}`,
+    created_at: FIXED_NOW,
     payload: {
       subscription: {
         entity: {
           id: `sub_${tenantId}`,
           quantity: extra.quantity ?? 5,
-          current_end: Math.floor(Date.now() / 1000) + 30 * 86_400,
+          current_end: FIXED_NOW + 30 * 86_400,
           notes: { tenantId },
         },
       },
@@ -113,7 +116,7 @@ function webhook(
     .post('/api/v1/billing/webhook')
     .set('content-type', 'application/json')
     .set('x-razorpay-signature', signature)
-    .set('x-razorpay-event-id', extra.eventId ?? `evt_${++eventSeq}`)
+    .set('x-razorpay-event-id', extra.eventId ?? 'unused')
     .send(body);
 }
 
@@ -125,6 +128,7 @@ describe('GST and numbering', () => {
       sgstPaise: 9_000,
       igstPaise: 0,
       totalPaise: 118_000,
+      gstRatePercent: 18,
     });
     expect(invoiceLib.computeGst(118_000, '07', '27')).toEqual({
       taxablePaise: 100_000,
@@ -132,6 +136,7 @@ describe('GST and numbering', () => {
       sgstPaise: 0,
       igstPaise: 18_000,
       totalPaise: 118_000,
+      gstRatePercent: 18,
     });
     const odd = invoiceLib.computeGst(99_901, '27', '27');
     expect(odd.taxablePaise + odd.cgstPaise + odd.sgstPaise).toBe(99_901);
@@ -205,7 +210,7 @@ describe('subscribing, paying, invoices', () => {
     expect(calls.some((c) => c.startsWith('sub:plan_') && c.endsWith(':5:t-a'))).toBe(true);
 
     const state = await a.get('/api/v1/billing');
-    expect(state.body.data).toMatchObject({ status: 'NONE', configured: true, profile: { legalName: 'Acme Ltd' } });
+    expect(state.body.data).toMatchObject({ status: 'NONE', pending: true, configured: true, profile: { legalName: 'Acme Ltd' } });
   });
 
   it('activates on the webhook, converts the trial, and issues one invoice per payment', async () => {
@@ -331,7 +336,7 @@ describe('payment failure and cancellation', () => {
     expect((await admin.tenant.findUniqueOrThrow({ where: { id: 't-b' } })).status).toBe('TRIAL');
     expect((await admin.subscription.findUniqueOrThrow({ where: { tenantId: 't-b' } })).status).toBe('CANCELLED');
     const b = await as('b-admin', 'beta');
-    expect((await b.get('/api/v1/billing')).body.data).toMatchObject({ status: 'CANCELLED', usage: { seatLimit: null } });
+    expect((await b.get('/api/v1/billing')).body.data).toMatchObject({ status: 'CANCELLED', usage: { seatLimit: 2 } });
   });
 });
 
@@ -394,5 +399,251 @@ describe('operator plans and limits', () => {
     expect((await op.post('/api/v1/operator/organizations/t-c/plan').send({ planId: null })).status).toBe(200);
     await billing.assertCourseAllowed('t-c'); // no plan: no limit
     expect((await op.post('/api/v1/operator/organizations/t-op/plan').send({ planId: tiny.id })).status).toBe(409);
+  });
+});
+
+describe('webhook hardening', () => {
+  const post = (body: string) =>
+    request(app)
+      .post('/api/v1/billing/webhook')
+      .set('content-type', 'application/json')
+      .set('x-razorpay-signature', rzp.signWebhook(WEBHOOK_SECRET, body))
+      .set('x-razorpay-event-id', `fresh_${Math.random()}`)
+      .send(body);
+  const seed = async (id: string, status: string) => {
+    await admin.tenant.create({ data: { id, slug: id, name: id, tier: 'STARTER' } });
+    await admin.subscription.create({
+      data: { tenantId: id, planId: 'plan-growth', interval: 'MONTH', seats: 5, status, razorpaySubscriptionId: `sub_${id}` },
+    });
+  };
+
+  it('a replayed signed body is a duplicate even under a new X-Razorpay-Event-Id header', async () => {
+    await seed('t-r', 'PENDING');
+    const body = JSON.stringify({
+      event: 'subscription.activated',
+      payload: { subscription: { entity: { id: 'sub_t-r', notes: { tenantId: 't-r' } } } },
+    });
+    expect((await post(body)).body.data.status).toBe('handled');
+    expect((await post(body)).body.data.status).toBe('duplicate');
+  });
+
+  it('an event for a subscription we do not know yet is not remembered, so its redelivery can still be applied', async () => {
+    await admin.tenant.create({ data: { id: 't-e', slug: 't-e', name: 'e', tier: 'STARTER' } });
+    const body = JSON.stringify({
+      event: 'subscription.activated',
+      payload: { subscription: { entity: { id: 'sub_t-e', notes: { tenantId: 't-e' } } } },
+    });
+    expect((await post(body)).body.data.status).toBe('ignored');
+    await admin.subscription.create({
+      data: { tenantId: 't-e', planId: 'plan-growth', interval: 'MONTH', seats: 5, status: 'PENDING', razorpaySubscriptionId: 'sub_t-e' },
+    });
+    expect((await post(body)).body.data.status).toBe('handled');
+    expect((await admin.subscription.findUniqueOrThrow({ where: { tenantId: 't-e' } })).status).toBe('ACTIVE');
+  });
+
+  it('a late event cannot revive a cancelled subscription, but a payment that went through is still invoiced', async () => {
+    await seed('t-x', 'CANCELLED');
+    const ev = (event: string, extra: object = {}) =>
+      JSON.stringify({
+        event,
+        n: Math.random(),
+        payload: { subscription: { entity: { id: 'sub_t-x', notes: { tenantId: 't-x' } } }, ...extra },
+      });
+    expect((await post(ev('subscription.activated'))).body.data.status).toBe('ignored');
+    expect((await post(ev('subscription.halted'))).body.data.status).toBe('ignored');
+    expect((await admin.subscription.findUniqueOrThrow({ where: { tenantId: 't-x' } })).status).toBe('CANCELLED');
+    const paid = await post(ev('subscription.charged', { payment: { entity: { id: 'pay_x1', amount: 118_000, currency: 'INR' } } }));
+    expect(paid.body.data.status).toBe('handled');
+    expect((await admin.subscription.findUniqueOrThrow({ where: { tenantId: 't-x' } })).status).toBe('CANCELLED');
+    expect(await admin.invoice.count({ where: { tenantId: 't-x' } })).toBe(1);
+  });
+
+  it('issues no invoice for a non-INR or non-positive payment', async () => {
+    await seed('t-y', 'ACTIVE');
+    const ev = (payment: object) =>
+      JSON.stringify({
+        event: 'subscription.charged',
+        n: Math.random(),
+        payload: { subscription: { entity: { id: 'sub_t-y', notes: { tenantId: 't-y' } } }, payment: { entity: payment } },
+      });
+    await post(ev({ id: 'pay_y1', amount: 118_000, currency: 'USD' }));
+    await post(ev({ id: 'pay_y2', amount: -5, currency: 'INR' }));
+    await post(ev({ id: 'pay_y3', amount: 10.5, currency: 'INR' }));
+    expect(await admin.invoice.count({ where: { tenantId: 't-y' } })).toBe(0);
+  });
+
+  it('a signed event naming another organisation tenant id with our subscription id changes nothing', async () => {
+    await seed('t-v', 'ACTIVE');
+    const body = JSON.stringify({
+      event: 'subscription.cancelled',
+      payload: { subscription: { entity: { id: 'sub_t-r', notes: { tenantId: 't-v' } } } },
+    });
+    expect((await post(body)).body.data.status).toBe('ignored');
+    expect((await admin.subscription.findUniqueOrThrow({ where: { tenantId: 't-v' } })).status).toBe('ACTIVE');
+  });
+
+  it('starting a new subscription closes the previous unpaid Razorpay one', async () => {
+    await admin.subscription.deleteMany({ where: { tenantId: 't-c' } });
+    await admin.billingProfile.upsert({
+      where: { tenantId: 't-c' },
+      create: { tenantId: 't-c', legalName: 'Gamma Ltd', address: '1 Road, Pune', stateCode: '27' },
+      update: {},
+    });
+    await admin.subscription.create({
+      data: {
+        tenantId: 't-c',
+        planId: 'plan-growth',
+        interval: 'MONTH',
+        seats: 5,
+        status: 'PENDING',
+        razorpaySubscriptionId: 'sub_old_unpaid',
+      },
+    });
+    const c = await as('c-admin', 'gamma');
+    const res = await c.post('/api/v1/billing/subscribe').send({ planId: 'plan-growth', interval: 'MONTH', seats: 5 });
+    expect(res.status).toBe(201);
+    expect(calls).toContain('cancel:sub_old_unpaid:false');
+  });
+});
+
+describe('review fixes: GST rate, concurrency, pending state', () => {
+  const seedTenant = async (id: string, slug: string, extra: Record<string, unknown> = {}) => {
+    await admin.tenant.create({ data: { id, slug, name: slug, tier: 'STARTER', ...extra } });
+    await admin.user.create({
+      data: {
+        id: `${id}-admin`,
+        tenantId: id,
+        email: `${id}-admin@x.edu`,
+        firstName: 'A',
+        lastName: 'L',
+        role: 'TENANT_ADMIN',
+        passwordHash: bcrypt.hashSync(PASSWORD, 4),
+        emailVerified: true,
+      },
+    });
+  };
+  const login = async (id: string, slug: string) => {
+    const agent = request.agent(app);
+    const res = await agent
+      .post('/api/v1/auth/login')
+      .set('x-tenant-id', slug)
+      .send({ email: `${id}-admin@x.edu`, password: PASSWORD });
+    expect(res.status).toBe(200);
+    return agent;
+  };
+
+  it('stores the GST rate on each invoice and the PDF uses the stored rate', async () => {
+    expect(invoiceLib.computeGst(112_000, '07', '27', 12)).toMatchObject({ taxablePaise: 100_000, igstPaise: 12_000, gstRatePercent: 12 });
+    const invoices = await admin.invoice.findMany();
+    expect(invoices.length).toBeGreaterThan(0);
+    expect(invoices.every((i) => i.gstRatePercent === 18)).toBe(true);
+    const mine = invoices[0];
+    await admin.invoice.update({ where: { id: mine.id }, data: { gstRatePercent: 12 } });
+    const { pdf } = await billing.invoicePdfFor(mine.tenantId, mine.id);
+    const text = pdf.toString('latin1');
+    expect(text).toMatch(/GST @ 12%|CGST @ 6%/);
+    expect(text).not.toMatch(/@ 9%|@ 18%/);
+    await admin.invoice.update({ where: { id: mine.id }, data: { gstRatePercent: 18 } });
+  });
+
+  it('two simultaneous subscribes create one Razorpay subscription; the overview shows the pending payment', async () => {
+    await seedTenant('t-d', 'delta', { status: 'TRIAL', trialEndsAt: new Date(Date.now() + 5 * 86_400_000), seatQuota: 7 });
+    await admin.billingProfile.create({ data: { tenantId: 't-d', legalName: 'Delta', address: '1 Road', stateCode: '27' } });
+    const d = await login('t-d', 'delta');
+    // On a trial there is no subscription, but the organisation's seat quota is the effective limit.
+    expect((await d.get('/api/v1/billing')).body.data).toMatchObject({ status: 'NONE', pending: false, usage: { seatLimit: 7 } });
+    const isDelta = (c: string) => c.startsWith('sub:') && c.endsWith(':t-d');
+    const before = calls.filter(isDelta).length;
+    const body = { planId: 'plan-growth', interval: 'MONTH', seats: 3 };
+    // A slow Razorpay call keeps the first request in flight while the second arrives.
+    const client = rzp.razorpay();
+    const original = client.createSubscription;
+    client.createSubscription = async (i) => {
+      await new Promise((r) => setTimeout(r, 300));
+      return original(i);
+    };
+    let res;
+    try {
+      res = await Promise.all([d.post('/api/v1/billing/subscribe').send(body), d.post('/api/v1/billing/subscribe').send(body)]);
+    } finally {
+      client.createSubscription = original;
+    }
+    expect(res.map((r) => r.status).sort()).toEqual([201, 409]);
+    expect(calls.filter(isDelta).length - before).toBe(1);
+    const sub = await admin.subscription.findUniqueOrThrow({ where: { tenantId: 't-d' } });
+    expect(sub).toMatchObject({ status: 'PENDING', razorpaySubscriptionId: 'sub_t-d' });
+    const view = (await d.get('/api/v1/billing')).body.data;
+    expect(view).toMatchObject({ status: 'NONE', pending: true });
+    expect(typeof view.pendingSince).toBe('string');
+  });
+
+  it('a failed Razorpay call releases the claim so the customer can retry', async () => {
+    await admin.subscription.deleteMany({ where: { tenantId: 't-d' } });
+    const d = await login('t-d', 'delta');
+    const client = rzp.razorpay();
+    const original = client.createSubscription;
+    client.createSubscription = async () => {
+      throw new Error('razorpay down');
+    };
+    try {
+      const failed = await d.post('/api/v1/billing/subscribe').send({ planId: 'plan-growth', interval: 'MONTH', seats: 3 });
+      expect(failed.status).toBe(500);
+    } finally {
+      client.createSubscription = original;
+    }
+    expect(await admin.subscription.count({ where: { tenantId: 't-d' } })).toBe(0);
+    expect((await d.post('/api/v1/billing/subscribe').send({ planId: 'plan-growth', interval: 'MONTH', seats: 3 })).status).toBe(201);
+  });
+
+  it('simultaneous creates of one plan code give one 201 and 409s, never 500', async () => {
+    const op = await as('operator', 'ops');
+    const plan = { code: 'racer', name: 'Racer', tier: 'STARTER', seatLimit: 10, monthlyPaise: 50_000, yearlyPaise: 500_000 };
+    const res = await Promise.all([1, 2, 3].map(() => op.post('/api/v1/operator/plans').send(plan)));
+    expect(res.map((r) => r.status).sort()).toEqual([201, 409, 409]);
+  });
+
+  it('course and storage limits hold under concurrent requests', async () => {
+    await seedTenant('t-lim', 'lim');
+    await admin.plan.create({
+      data: {
+        id: 'plan-lim',
+        code: 'lim',
+        name: 'Lim',
+        tier: 'STARTER',
+        seatLimit: 10,
+        courseLimit: 2,
+        storageGb: 1,
+        monthlyPaise: 1000,
+        yearlyPaise: 10000,
+      },
+    });
+    await admin.subscription.create({ data: { tenantId: 't-lim', planId: 'plan-lim', interval: 'MONTH', seats: 5, status: 'ACTIVE' } });
+    const make = (i: number) =>
+      billing.withCourseSlot('t-lim', (tx) =>
+        tx.course.create({ data: { tenantId: 't-lim', code: `E${i}`, title: `Course ${i}`, status: 'DRAFT' } })
+      );
+    const made = await Promise.allSettled([0, 1, 2, 3, 4].map(make));
+    expect(made.filter((r) => r.status === 'fulfilled').length).toBe(2);
+    for (const r of made) if (r.status === 'rejected') expect((r.reason as any).status).toBe(402);
+    expect(await admin.course.count({ where: { tenantId: 't-lim' } })).toBe(2);
+
+    const size = 600 * 1024 ** 2;
+    const put = (i: number) =>
+      billing.withStorage('t-lim', size, (tx) =>
+        tx.storedFile.create({
+          data: {
+            tenantId: 't-lim',
+            purpose: 'LESSON_MEDIA',
+            storageKey: `k${i}`,
+            filename: `f${i}`,
+            contentType: 'video/mp4',
+            sizeBytes: size,
+            sha256: 'a'.repeat(64),
+          },
+        })
+      );
+    const stored = await Promise.allSettled([0, 1, 2].map(put));
+    expect(stored.filter((r) => r.status === 'fulfilled').length).toBe(1);
+    for (const r of stored) if (r.status === 'rejected') expect((r.reason as any).status).toBe(402);
   });
 });

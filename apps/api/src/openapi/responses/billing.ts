@@ -33,6 +33,9 @@ const Billing = z.object({
   seats: z.number().nullable(),
   currentPeriodEnd: z.string().nullable(),
   cancelAtPeriodEnd: z.boolean(),
+  /** True while checkout was started but the payment is not yet confirmed (status is still NONE). */
+  pending: z.boolean(),
+  pendingSince: z.string().nullable(),
   /** Limits are null while there is no subscription in force. */
   usage: z.object({
     seats: z.number(),

@@ -1,6 +1,6 @@
 import { Router, Request } from 'express';
 import { z } from 'zod';
-import { assertCourseAllowed } from '../lib/billing';
+import { withCourseSlot } from '../lib/billing';
 import { prisma, runInTenantTransaction } from '../lib/prisma';
 import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
@@ -256,26 +256,27 @@ router.post(
     await assertDepartmentInTenant(input.departmentId);
     await assertTermInTenant(input.termId);
     await assertMayPublish(req, input.status, null);
-    await assertCourseAllowed(tenantId);
 
-    const course = await prisma.course.create({
-      data: {
-        tenantId,
-        code: input.code,
-        title: input.title,
-        description: input.description,
-        syllabus: input.syllabus,
-        thumbnailUrl: emptyToNull(input.thumbnailUrl) ?? null,
-        departmentId: input.departmentId,
-        termId: input.termId ?? null,
-        passingGradePercent: input.passingGradePercent ?? 70.0,
-        allowSelfEnroll: input.allowSelfEnroll ?? false,
-        status: input.status ?? CourseStatus.DRAFT,
-        // An instructor who creates a course becomes its primary instructor.
-        instructors: req.user!.role === 'INSTRUCTOR' ? { create: { userId: req.user!.id, isPrimary: true } } : undefined,
-      },
-      include: { instructors: { include: { user: { select: { id: true, firstName: true, lastName: true } } } } },
-    });
+    const course = await withCourseSlot(tenantId, (tx) =>
+      tx.course.create({
+        data: {
+          tenantId,
+          code: input.code,
+          title: input.title,
+          description: input.description,
+          syllabus: input.syllabus,
+          thumbnailUrl: emptyToNull(input.thumbnailUrl) ?? null,
+          departmentId: input.departmentId,
+          termId: input.termId ?? null,
+          passingGradePercent: input.passingGradePercent ?? 70.0,
+          allowSelfEnroll: input.allowSelfEnroll ?? false,
+          status: input.status ?? CourseStatus.DRAFT,
+          // An instructor who creates a course becomes its primary instructor.
+          instructors: req.user!.role === 'INSTRUCTOR' ? { create: { userId: req.user!.id, isPrimary: true } } : undefined,
+        },
+        include: { instructors: { include: { user: { select: { id: true, firstName: true, lastName: true } } } } },
+      })
+    );
 
     await logAuditEvent({
       tenantId,
@@ -305,7 +306,6 @@ router.post(
     const tenantId = tenantIdOf(req);
     const access = await requireCourseEditor(req, String(req.params.id));
     const input = parseBody(req, copyCourseSchema);
-    await assertCourseAllowed(tenantId);
     const result = await copyCourse(access.course.id, input, { id: req.user!.id, role: req.user!.role, tenantId });
     await logAuditEvent({
       tenantId,

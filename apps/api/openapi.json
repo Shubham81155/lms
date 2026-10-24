@@ -12110,6 +12110,13 @@
                         "cancelAtPeriodEnd": {
                           "type": "boolean"
                         },
+                        "pending": {
+                          "type": "boolean"
+                        },
+                        "pendingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "usage": {
                           "type": "object",
                           "properties": {
@@ -12184,6 +12191,8 @@
                         "seats",
                         "currentPeriodEnd",
                         "cancelAtPeriodEnd",
+                        "pending",
+                        "pendingSince",
                         "usage",
                         "profile",
                         "razorpayKeyId",
@@ -12330,6 +12339,13 @@
                         "cancelAtPeriodEnd": {
                           "type": "boolean"
                         },
+                        "pending": {
+                          "type": "boolean"
+                        },
+                        "pendingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "usage": {
                           "type": "object",
                           "properties": {
@@ -12404,6 +12420,8 @@
                         "seats",
                         "currentPeriodEnd",
                         "cancelAtPeriodEnd",
+                        "pending",
+                        "pendingSince",
                         "usage",
                         "profile",
                         "razorpayKeyId",
@@ -12974,6 +12992,13 @@
                         "cancelAtPeriodEnd": {
                           "type": "boolean"
                         },
+                        "pending": {
+                          "type": "boolean"
+                        },
+                        "pendingSince": {
+                          "type": "string",
+                          "nullable": true
+                        },
                         "usage": {
                           "type": "object",
                           "properties": {
@@ -13048,6 +13073,8 @@
                         "seats",
                         "currentPeriodEnd",
                         "cancelAtPeriodEnd",
+                        "pending",
+                        "pendingSince",
                         "usage",
                         "profile",
                         "razorpayKeyId",

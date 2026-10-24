@@ -10178,6 +10178,8 @@ export interface operations {
                             seats: number | null;
                             currentPeriodEnd: string | null;
                             cancelAtPeriodEnd: boolean;
+                            pending: boolean;
+                            pendingSince: string | null;
                             usage: {
                                 seats: number;
                                 seatLimit: number | null;
@@ -10254,6 +10256,8 @@ export interface operations {
                             seats: number | null;
                             currentPeriodEnd: string | null;
                             cancelAtPeriodEnd: boolean;
+                            pending: boolean;
+                            pendingSince: string | null;
                             usage: {
                                 seats: number;
                                 seatLimit: number | null;
@@ -10558,6 +10562,8 @@ export interface operations {
                             seats: number | null;
                             currentPeriodEnd: string | null;
                             cancelAtPeriodEnd: boolean;
+                            pending: boolean;
+                            pendingSince: string | null;
                             usage: {
                                 seats: number;
                                 seatLimit: number | null;

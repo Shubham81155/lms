@@ -16,16 +16,6 @@ export interface TrialStatus {
   paymentLapsed?: boolean;
 }
 
-const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { dateStyle: 'long' });
-
-/** "in 5 days", "tomorrow", "today". */
-export function trialEndsText(daysLeft: number | null, trialEndsAt: string | null): string {
-  if (daysLeft === null) return trialEndsAt ? `on ${day(trialEndsAt)}` : 'soon';
-  if (daysLeft <= 0) return 'today';
-  if (daysLeft === 1) return 'tomorrow';
-  return `in ${daysLeft} days`;
-}
-
 const BillingLink: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const t = useT();
   return (

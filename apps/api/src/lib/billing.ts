@@ -143,22 +143,62 @@ async function limitsOf(tenantId: string) {
     : null;
 }
 
-/** 402 when creating one more course would pass the plan's course limit. */
+const courseFull = (limit: number) =>
+  new HttpError(402, `Your plan allows ${limit} courses and all are in use. Archive a course or upgrade the plan.`);
+const storageFull = () => new HttpError(402, "Your plan's storage is full. Delete files or upgrade the plan.");
+
+/** 402 when creating one more course would pass the plan's course limit. A fast check; withCourseSlot is the strict one. */
 export async function assertCourseAllowed(tenantId: string): Promise<void> {
   const limits = await limitsOf(tenantId);
   if (limits?.courseLimit == null) return;
   const { courses } = await usageOf(tenantId);
-  if (courses >= limits.courseLimit)
-    throw new HttpError(402, `Your plan allows ${limits.courseLimit} courses and all are in use. Archive a course or upgrade the plan.`);
+  if (courses >= limits.courseLimit) throw courseFull(limits.courseLimit);
 }
 
-/** 402 when storing `addBytes` more would pass the plan's storage limit. */
+/** 402 when storing `addBytes` more would pass the plan's storage limit. A fast check; withStorage is the strict one. */
 export async function assertStorageAllowed(tenantId: string, addBytes: number): Promise<void> {
   const limits = await limitsOf(tenantId);
   if (limits?.storageBytes == null) return;
   const { storageBytes } = await usageOf(tenantId);
-  if (storageBytes + addBytes > limits.storageBytes)
-    throw new HttpError(402, "Your plan's storage is full. Delete files or upgrade the plan.");
+  if (storageBytes + addBytes > limits.storageBytes) throw storageFull();
+}
+
+/** Locks the tenant row (the same lock seats use) so the check and the insert that follow it cannot race another. */
+const lockTenant = (tx: Tx, tenantId: string) => tx.$queryRaw`SELECT 1 FROM "Tenant" WHERE id = ${tenantId} FOR UPDATE`;
+
+/** Locks the tenant and throws 402 if the course limit is reached; call it first inside the transaction that inserts the course. */
+export async function checkCourseSlot(tx: Tx, tenantId: string): Promise<void> {
+  await lockTenant(tx, tenantId);
+  const sub = await tx.subscription.findUnique({ where: { tenantId } });
+  if (!sub || (sub.status !== 'ACTIVE' && sub.status !== 'PAST_DUE')) return;
+  const plan = await basePrisma.plan.findUnique({ where: { id: sub.planId } });
+  if (plan?.courseLimit == null) return;
+  const courses = await tx.course.count({ where: { tenantId, status: { not: 'ARCHIVED' } } });
+  if (courses >= plan.courseLimit) throw courseFull(plan.courseLimit);
+}
+
+/** Checks the course limit and runs `fn` (which creates the course) in one transaction holding the tenant lock. */
+export function withCourseSlot<T>(tenantId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return runInTenantTransaction(tenantId, async (tx) => {
+    await checkCourseSlot(tx, tenantId);
+    return fn(tx);
+  });
+}
+
+/** Checks the storage limit for `addBytes` more and runs `fn` (which records the file) under the tenant lock. */
+export function withStorage<T>(tenantId: string, addBytes: number, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return runInTenantTransaction(tenantId, async (tx) => {
+    await lockTenant(tx, tenantId);
+    const sub = await tx.subscription.findUnique({ where: { tenantId } });
+    if (sub && (sub.status === 'ACTIVE' || sub.status === 'PAST_DUE')) {
+      const plan = await basePrisma.plan.findUnique({ where: { id: sub.planId } });
+      if (plan?.storageGb != null) {
+        const sum = await tx.storedFile.aggregate({ where: { tenantId }, _sum: { sizeBytes: true } });
+        if ((sum._sum.sizeBytes ?? 0) + addBytes > plan.storageGb * 1024 ** 3) throw storageFull();
+      }
+    }
+    return fn(tx);
+  });
 }
 
 // --------------------------------------------------------------------------- the organisation's view
@@ -166,10 +206,11 @@ export async function assertStorageAllowed(tenantId: string, addBytes: number): 
 const iso = (d: Date | null | undefined) => d ?? null;
 
 export async function billingOverview(tenantId: string) {
-  const [sub, profile, usage] = await Promise.all([
+  const [sub, profile, usage, tenantRow] = await Promise.all([
     runWithTenant(tenantId, () => prisma.subscription.findUnique({ where: { tenantId } })),
     runWithTenant(tenantId, () => prisma.billingProfile.findUnique({ where: { tenantId } })),
     usageOf(tenantId),
+    runWithTenant(tenantId, () => prisma.tenant.findUnique({ where: { id: tenantId }, select: { seatQuota: true } })),
   ]);
   const plan = sub ? await basePrisma.plan.findUnique({ where: { id: sub.planId } }) : null;
   const live = !!sub && sub.status !== 'PENDING';
@@ -182,9 +223,13 @@ export async function billingOverview(tenantId: string) {
     seats: live ? sub!.seats : null,
     currentPeriodEnd: live ? iso(sub!.currentPeriodEnd) : null,
     cancelAtPeriodEnd: live ? sub!.cancelAtPeriodEnd : false,
+    /** Checkout started but the payment not yet confirmed by Razorpay's webhook. */
+    pending: !!sub && sub.status === 'PENDING',
+    pendingSince: sub && sub.status === 'PENDING' ? sub.updatedAt : null,
     usage: {
       seats: usage.seats,
-      seatLimit: inForce ? sub!.seats : null,
+      // Without a subscription in force the organisation's own seat quota (a trial's) is the limit, if it has one.
+      seatLimit: inForce ? sub!.seats : (tenantRow?.seatQuota ?? null),
       courses: usage.courses,
       courseLimit: inForce ? (plan?.courseLimit ?? null) : null,
       storageBytes: usage.storageBytes,
@@ -254,39 +299,82 @@ async function razorpayPlanFor(
   return created.id;
 }
 
+/** How long an unfinished subscribe() claim blocks another one (a crashed request must not block for ever). */
+const CLAIM_TTL_MS = 60_000;
+
 export async function subscribe(tenantId: string, input: z.infer<typeof subscribeSchema>, actor: Actor) {
   if (!razorpayConfigured()) throw new HttpError(503, 'Online payment is not set up on this platform yet');
   const plan = await basePrisma.plan.findUnique({ where: { id: input.planId } });
   if (!plan || !plan.active) throw new HttpError(404, 'That plan is not available');
   if (input.seats > plan.seatLimit) throw new HttpError(400, `The ${plan.name} plan has at most ${plan.seatLimit} seats`);
-  const [{ seats: used }, profile, existing] = await Promise.all([
-    usageOf(tenantId),
-    runWithTenant(tenantId, () => prisma.billingProfile.findUnique({ where: { tenantId } })),
-    runWithTenant(tenantId, () => prisma.subscription.findUnique({ where: { tenantId } })),
-  ]);
-  if (!profile) throw new HttpError(409, 'Add your billing details first: they go on the invoice');
+  const { seats: used } = await usageOf(tenantId);
   if (input.seats < used) throw new HttpError(409, `${used} seats are in use, so at least ${used} are needed`);
-  if (existing && (existing.status === 'ACTIVE' || existing.status === 'PAST_DUE'))
-    throw new HttpError(409, 'This organisation is already subscribed. Cancel the subscription before choosing another plan');
 
-  const planId = await razorpayPlanFor(plan, input.interval);
-  const created = await razorpay().createSubscription({
-    planId,
-    quantity: input.seats,
-    totalCount: input.interval === 'MONTH' ? 120 : 10,
-    notes: { tenantId },
-  });
-  const data = {
+  // Claim first: under a per-organisation lock, check the state and mark the row PENDING with no Razorpay id yet.
+  // A second request meanwhile sees the claim and is refused, so only one creates a Razorpay subscription. The lock
+  // is held for these statements only, never across the Razorpay calls.
+  const claimData = {
     planId: plan.id,
     interval: input.interval,
     seats: input.seats,
     status: 'PENDING',
-    razorpaySubscriptionId: created.id,
+    razorpaySubscriptionId: null,
     currentPeriodEnd: null,
     cancelAtPeriodEnd: false,
     pastDueSince: null,
   };
-  await runWithTenant(tenantId, () => prisma.subscription.upsert({ where: { tenantId }, create: { tenantId, ...data }, update: data }));
+  const previous = await runInTenantTransaction(tenantId, async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'billing-subscribe:' + tenantId}))`;
+    const profile = await tx.billingProfile.findUnique({ where: { tenantId } });
+    if (!profile) throw new HttpError(409, 'Add your billing details first: they go on the invoice');
+    const existing = await tx.subscription.findUnique({ where: { tenantId } });
+    if (existing && (existing.status === 'ACTIVE' || existing.status === 'PAST_DUE'))
+      throw new HttpError(409, 'This organisation is already subscribed. Cancel the subscription before choosing another plan');
+    if (
+      existing &&
+      existing.status === 'PENDING' &&
+      !existing.razorpaySubscriptionId &&
+      Date.now() - existing.updatedAt.getTime() < CLAIM_TTL_MS
+    )
+      throw new HttpError(409, 'A subscription is already being set up for this organisation. Try again in a minute');
+    await tx.subscription.upsert({ where: { tenantId }, create: { tenantId, ...claimData }, update: claimData });
+    return existing;
+  });
+
+  let created: Awaited<ReturnType<ReturnType<typeof razorpay>['createSubscription']>>;
+  try {
+    const planId = await razorpayPlanFor(plan, input.interval);
+    // Starting over replaces an unpaid attempt: close the old Razorpay subscription so paying it later cannot charge
+    // the customer for something our records have dropped.
+    if (previous?.razorpaySubscriptionId && previous.status === 'PENDING')
+      await razorpay()
+        .cancelSubscription(previous.razorpaySubscriptionId, false)
+        .catch((err) => logger.warn({ err, tenantId }, 'could not close the previous unpaid subscription'));
+    created = await razorpay().createSubscription({
+      planId,
+      quantity: input.seats,
+      totalCount: input.interval === 'MONTH' ? 120 : 10,
+      notes: { tenantId },
+    });
+  } catch (err) {
+    // Release the claim so the customer can retry at once.
+    await runWithTenant(tenantId, () =>
+      prisma.subscription.deleteMany({ where: { tenantId, status: 'PENDING', razorpaySubscriptionId: null } })
+    ).catch(() => undefined);
+    throw err;
+  }
+  const stored = await runWithTenant(tenantId, () =>
+    prisma.subscription.updateMany({
+      where: { tenantId, status: 'PENDING', razorpaySubscriptionId: null },
+      data: { razorpaySubscriptionId: created.id },
+    })
+  );
+  if (stored.count === 0) {
+    await razorpay()
+      .cancelSubscription(created.id, false)
+      .catch((err) => logger.warn({ err, tenantId }, 'could not close a subscription that lost its claim'));
+    throw new HttpError(409, 'A subscription is already being set up for this organisation. Try again in a minute');
+  }
   await auditBilling(
     tenantId,
     'SUBSCRIPTION_STARTED',
@@ -411,6 +499,7 @@ export async function invoicePdfFor(tenantId: string, id: string): Promise<{ num
     sgstPaise: i.sgstPaise,
     igstPaise: i.igstPaise,
     totalPaise: i.totalPaise,
+    gstRatePercent: i.gstRatePercent,
     buyer: i.buyerJson as unknown as Party,
     seller: i.sellerJson as unknown as Party,
   });
@@ -430,7 +519,25 @@ interface RzpSubscription {
 interface RzpPayment {
   id: string;
   amount: number;
+  currency?: string;
 }
+const HANDLED_EVENTS = new Set([
+  'subscription.activated',
+  'subscription.charged',
+  'subscription.resumed',
+  'subscription.pending',
+  'subscription.halted',
+  'subscription.cancelled',
+  'subscription.completed',
+]);
+/** An INR payment of a positive whole number of paise: the only kind an invoice is issued for. */
+const validPayment = (p: RzpPayment | undefined): p is RzpPayment =>
+  !!p &&
+  typeof p.id === 'string' &&
+  p.id.length > 0 &&
+  Number.isSafeInteger(p.amount) &&
+  p.amount > 0 &&
+  (!p.currency || p.currency === 'INR');
 
 /**
  * Handles one Razorpay webhook delivery. `rawBody` is exactly what was received (the signature covers it);
@@ -455,33 +562,49 @@ export async function handleWebhook(
   const type = typeof body?.event === 'string' ? body.event : '';
   const sub: RzpSubscription | undefined = body?.payload?.subscription?.entity;
   const payment: RzpPayment | undefined = body?.payload?.payment?.entity;
-  const id = (eventId && eventId.slice(0, 128)) || crypto.createHash('sha256').update(rawBody).digest('hex');
+  // The idempotency key is the signed body itself: X-Razorpay-Event-Id is not covered by the signature, so keying on
+  // it would let anyone who captured one signed delivery replay it under a fresh id. Razorpay's retries resend the
+  // same bytes, so they still collapse into one.
+  void eventId;
+  const id = crypto.createHash('sha256').update(rawBody).digest('hex');
   const tenantId = sub && !Array.isArray(sub.notes) ? sub.notes?.tenantId : undefined;
-  if (!type.startsWith('subscription.') || !sub?.id || typeof tenantId !== 'string') return { status: 'ignored' };
+  if (!HANDLED_EVENTS.has(type) || !sub?.id || typeof tenantId !== 'string' || !tenantId || tenantId.length > 128)
+    return { status: 'ignored' };
 
   const result = await runInTenantTransaction(tenantId, async (tx) => {
-    const seen = await tx.billingEvent.findUnique({ where: { id } });
-    if (seen) return { status: 'duplicate' as const };
-    await tx.billingEvent.create({ data: { id, type } });
+    // ON CONFLICT DO NOTHING waits for a concurrent delivery of the same event, so exactly one of them proceeds.
+    const { count } = await tx.billingEvent.createMany({ data: [{ id, type }], skipDuplicates: true });
+    if (!count) return { status: 'duplicate' as const };
     const row = await tx.subscription.findUnique({ where: { tenantId } });
     // Only the subscription this organisation has started: an event for an older, replaced one changes nothing.
-    if (!row || row.razorpaySubscriptionId !== sub.id) return { status: 'ignored' as const };
+    // It is not remembered as seen, so a delivery that raced ahead of our own records can be evaluated again.
+    if (!row || row.razorpaySubscriptionId !== sub.id) {
+      await tx.billingEvent.delete({ where: { id } });
+      return { status: 'ignored' as const };
+    }
     const plan = await tx.plan.findUnique({ where: { id: row.planId } });
     const periodEnd = sub.current_end ? new Date(sub.current_end * 1000) : row.currentPeriodEnd;
     const seats = sub.quantity && sub.quantity > 0 ? sub.quantity : row.seats;
     const changes: Record<string, unknown> = { event: type };
     let sessions = false;
 
+    // A cancelled subscription stays so: a late activation or failure event must not revive it. A charge that did go
+    // through still gets its invoice.
+    const dead = row.status === 'CANCELLED';
+    if (dead && type !== 'subscription.charged') return { status: 'ignored' as const };
+
     switch (type) {
       case 'subscription.activated':
       case 'subscription.charged':
       case 'subscription.resumed': {
-        await tx.subscription.update({
-          where: { tenantId },
-          data: { status: 'ACTIVE', seats, currentPeriodEnd: periodEnd, pastDueSince: null },
-        });
-        if (plan) sessions = (await applyPlan(tx, tenantId, plan, seats)) || sessions;
-        if (type === 'subscription.charged' && payment?.id && plan) {
+        if (!dead) {
+          await tx.subscription.update({
+            where: { tenantId },
+            data: { status: 'ACTIVE', seats, currentPeriodEnd: periodEnd, pastDueSince: null },
+          });
+          if (plan) sessions = (await applyPlan(tx, tenantId, plan, seats)) || sessions;
+        }
+        if (type === 'subscription.charged' && plan && validPayment(payment)) {
           const already = await tx.invoice.findUnique({ where: { razorpayPaymentId: payment.id } });
           if (!already) {
             const inv = await issueInvoice(tx, tenantId, {
@@ -505,8 +628,6 @@ export async function handleWebhook(
         sessions = await lapseTenant(tx, tenantId, now);
         changes.lapsed = sessions;
         break;
-      default:
-        return { status: 'ignored' as const };
     }
     return { status: 'handled' as const, sessions, changes };
   });

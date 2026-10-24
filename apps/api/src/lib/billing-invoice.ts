@@ -4,6 +4,7 @@ import { basePrisma } from './prisma';
 // GST tax invoices: the tax split, the numbering, and a small PDF. Plan prices include GST (18%), so an invoice
 // works backwards from what was charged. Same state as the seller: CGST + SGST (half each); otherwise IGST.
 
+/** The rate new invoices are issued at. Each invoice stores the rate it was issued at (Invoice.gstRatePercent). */
 export const GST_RATE_PERCENT = 18;
 
 export interface GstSplit {
@@ -12,21 +13,24 @@ export interface GstSplit {
   sgstPaise: number;
   igstPaise: number;
   totalPaise: number;
+  /** The rate the tax was split at. */
+  gstRatePercent: number;
 }
 
 /** Splits a GST-inclusive amount. A buyer without a known state is treated as in the seller's state. */
 export function computeGst(
   totalPaise: number,
   buyerStateCode: string | null | undefined,
-  sellerStateCode = config.SELLER_STATE_CODE
+  sellerStateCode = config.SELLER_STATE_CODE,
+  gstRatePercent = GST_RATE_PERCENT
 ): GstSplit {
-  const taxablePaise = Math.round((totalPaise * 100) / (100 + GST_RATE_PERCENT));
+  const taxablePaise = Math.round((totalPaise * 100) / (100 + gstRatePercent));
   const tax = totalPaise - taxablePaise;
   if (!buyerStateCode || buyerStateCode === sellerStateCode) {
     const cgstPaise = Math.floor(tax / 2);
-    return { taxablePaise, cgstPaise, sgstPaise: tax - cgstPaise, igstPaise: 0, totalPaise };
+    return { taxablePaise, cgstPaise, sgstPaise: tax - cgstPaise, igstPaise: 0, totalPaise, gstRatePercent };
   }
-  return { taxablePaise, cgstPaise: 0, sgstPaise: 0, igstPaise: tax, totalPaise };
+  return { taxablePaise, cgstPaise: 0, sgstPaise: 0, igstPaise: tax, totalPaise, gstRatePercent };
 }
 
 /** The Indian financial year (1 April to 31 March, by India time) a date falls in: "2026-27". */
@@ -137,11 +141,11 @@ export function invoicePdf(inv: InvoiceForPdf): Buffer {
     { text: '' },
     { text: `Taxable value: ${rupees(inv.taxablePaise)}` },
   ];
-  if (inv.igstPaise) lines.push({ text: `IGST @ ${GST_RATE_PERCENT}%: ${rupees(inv.igstPaise)}` });
+  if (inv.igstPaise) lines.push({ text: `IGST @ ${inv.gstRatePercent}%: ${rupees(inv.igstPaise)}` });
   else
     lines.push(
-      { text: `CGST @ ${GST_RATE_PERCENT / 2}%: ${rupees(inv.cgstPaise)}` },
-      { text: `SGST @ ${GST_RATE_PERCENT / 2}%: ${rupees(inv.sgstPaise)}` }
+      { text: `CGST @ ${inv.gstRatePercent / 2}%: ${rupees(inv.cgstPaise)}` },
+      { text: `SGST @ ${inv.gstRatePercent / 2}%: ${rupees(inv.sgstPaise)}` }
     );
   lines.push(
     { text: `Total (paid): ${rupees(inv.totalPaise)}`, size: 12, bold: true },

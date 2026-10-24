@@ -60,7 +60,14 @@ router.post(
   route('Failed to create the plan', async (req, res) => {
     const input = parseBody(req, createPlanSchema);
     if (await basePrisma.plan.findUnique({ where: { code: input.code } })) throw new HttpError(409, 'A plan with that code exists');
-    const plan = await basePrisma.plan.create({ data: input });
+    let plan;
+    try {
+      plan = await basePrisma.plan.create({ data: input });
+    } catch (e) {
+      // Two creates with one code can both pass the check above; the unique index decides.
+      if ((e as { code?: string })?.code === 'P2002') throw new HttpError(409, 'A plan with that code exists');
+      throw e;
+    }
     await audit(req, 'PLAN_CREATED', plan.id, { ...input });
     return res.status(201).json({ data: operatorPlanView(plan) });
   })

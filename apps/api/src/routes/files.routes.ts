@@ -3,7 +3,7 @@ import { once } from 'events';
 import { z } from 'zod';
 import { createReadStream } from 'fs';
 import { rm } from 'fs/promises';
-import { assertStorageAllowed } from '../lib/billing';
+import { assertStorageAllowed, withStorage } from '../lib/billing';
 import { prisma } from '../lib/prisma';
 import { HttpError, route } from '../lib/http';
 import { idSchema, parseQuery } from '../lib/validate';
@@ -113,21 +113,23 @@ async function handleUpload(req: Request, res: Response) {
   }
   let file;
   try {
-    file = await prisma.storedFile.create({
-      data: {
-        tenantId,
-        ownerId: req.user!.id,
-        courseId,
-        purpose,
-        storageKey,
-        filename: cleanName(filename),
-        contentType,
-        sizeBytes,
-        sha256,
-        scanStatus: scannedAt ? 'CLEAN' : 'NOT_SCANNED',
-        scannedAt,
-      },
-    });
+    file = await withStorage(tenantId, sizeBytes, (tx) =>
+      tx.storedFile.create({
+        data: {
+          tenantId,
+          ownerId: req.user!.id,
+          courseId,
+          purpose,
+          storageKey,
+          filename: cleanName(filename),
+          contentType,
+          sizeBytes,
+          sha256,
+          scanStatus: scannedAt ? 'CLEAN' : 'NOT_SCANNED',
+          scannedAt,
+        },
+      })
+    );
   } catch (e) {
     await storage()
       .delete(storageKey)

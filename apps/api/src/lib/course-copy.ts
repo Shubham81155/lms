@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { CourseStatus, Prisma } from '@enterprise-lms/database';
 import { prisma, runInTenantTransaction } from './prisma';
 import { HttpError } from './http';
+import { checkCourseSlot } from './billing';
 import { copyStored, newStorageKey, storage } from './storage';
 import { fileLink } from './stored-files';
 import { logger } from './logger';
@@ -92,6 +93,7 @@ export async function copyCourse(sourceId: string, opts: CopyOptions, actor: { i
     const result = await runInTenantTransaction(
       tenantId,
       async (tx) => {
+        await checkCourseSlot(tx, tenantId);
         const course = await tx.course.create({
           data: {
             tenantId,
