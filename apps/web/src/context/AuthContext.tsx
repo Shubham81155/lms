@@ -9,6 +9,9 @@ export interface UserSession {
   id: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string | null;
   role: Role;
   tenantId: string;
   tenantName: string;
@@ -26,6 +29,7 @@ interface ApiUser {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string | null;
   role: Role;
   tenantId: string;
   tenant?: { name?: string; slug?: string; logoUrl?: string | null };
@@ -42,6 +46,8 @@ interface AuthContextType {
     mfaCode?: string
   ) => Promise<{ success: boolean; targetRoute?: string; error?: string; mfaRequired?: boolean }>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  updateUserSession: (patch: Partial<UserSession>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,6 +57,9 @@ function toSession(u: ApiUser): UserSession {
     id: u.id,
     email: u.email,
     name: `${u.firstName} ${u.lastName}`.trim(),
+    firstName: u.firstName,
+    lastName: u.lastName,
+    avatarUrl: u.avatarUrl ?? null,
     role: u.role,
     tenantId: u.tenantId,
     tenantName: u.tenant?.name ?? '',
@@ -69,6 +78,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const data = await api.get<{ user: ApiUser }>('/api/v1/auth/me');
+      setUser(toSession(data.user));
+    } catch {
+      // ignore if unauthenticated
+    }
+  }, []);
+
+  const updateUserSession = useCallback((patch: Partial<UserSession>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : null));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,7 +154,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [router]);
 
-  return <AuthContext.Provider value={{ user, isLoading, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, isLoading, login, logout, refreshUser, updateUserSession }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {

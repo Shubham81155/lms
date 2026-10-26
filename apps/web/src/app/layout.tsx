@@ -9,8 +9,8 @@ import { LocaleProvider } from '@/lib/i18n';
 import { LOCALE_COOKIE, resolveLocale } from '@/lib/i18n-core';
 
 export const metadata: Metadata = {
-  title: 'ApexLMS: Enterprise Learning Platform',
-  description: 'Enterprise Multi-Tenant Learning Management Platform',
+  title: 'GuruGyan Learning Management System',
+  description: 'GuruGyan Enterprise Multi-Tenant Learning Management System',
 };
 
 export default async function RootLayout({

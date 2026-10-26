@@ -12,9 +12,10 @@ export const UPLOAD_ACCEPT = {
     '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.txt,.csv,.zip,.png,.jpg,.jpeg,.gif,.webp,application/pdf,image/png,image/jpeg,image/gif,image/webp',
   video: '.mp4,.webm,video/mp4,video/webm',
   scorm: '.zip,application/zip',
+  avatar: '.png,.jpg,.jpeg,.gif,.webp,image/png,image/jpeg,image/gif,image/webp',
 } as const;
 
-export type UploadPurpose = 'ASSIGNMENT_SUBMISSION' | 'LESSON_MEDIA' | 'SCORM_PACKAGE';
+export type UploadPurpose = 'ASSIGNMENT_SUBMISSION' | 'LESSON_MEDIA' | 'SCORM_PACKAGE' | 'AVATAR';
 
 export interface UploadedFile {
   id: string;
@@ -46,6 +47,23 @@ export async function uploadFile(file: File, purpose: UploadPurpose, courseId: s
     throw new Error(res.status === 415 ? 'This kind of file cannot be uploaded.' : (json?.error ?? 'The upload failed.'));
   }
   return json.data as UploadedFile;
+}
+
+export async function uploadAvatar(file: File, userId: string = 'me'): Promise<string> {
+  if (file.size > 5 * 1024 * 1024) throw new Error('Profile pictures must be 5 MB or smaller.');
+  if (file.size === 0) throw new Error('That file is empty.');
+  const contentType = file.type || 'application/octet-stream';
+  const res = await fetch(`/api/v1/users/${userId}/avatar`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': contentType },
+    body: file,
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(json?.error || json?.message || 'Failed to upload profile picture.');
+  }
+  return (json.avatarUrl || json.data?.avatarUrl) as string;
 }
 
 export const formatBytes = (n: number) =>

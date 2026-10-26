@@ -31,7 +31,7 @@ export function BrandLogo({ href = '/', compact = false, showTagline = true }: B
         {!compact && (
           <div className="flex flex-col min-w-0">
             <span className="leading-tight truncate">{name}</span>
-            {showTagline && <span className="text-[10px] text-ink-subtle font-normal">Learning platform</span>}
+            {showTagline && <span className="text-[10px] text-ink-subtle font-normal">Learning Management System</span>}
           </div>
         )}
       </Link>
@@ -39,16 +39,16 @@ export function BrandLogo({ href = '/', compact = false, showTagline = true }: B
   }
 
   return (
-    <Link href={href} aria-label={compact ? 'ApexLMS home' : undefined} className="flex items-center gap-2.5 font-bold text-lg text-ink">
+    <Link href={href} aria-label={compact ? 'GuruGyan LMS home' : undefined} className="flex items-center gap-2.5 font-bold text-lg text-ink">
       <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-brand to-brand-hover flex items-center justify-center text-on-brand shadow-lg shadow-brand/30">
         <GraduationCap className="h-5 w-5" />
       </div>
       {!compact && (
         <div className="flex flex-col">
           <span className="leading-tight">
-            Apex<span className="text-brand-fg">LMS</span>
+            Guru<span className="text-brand-fg">Gyan</span>
           </span>
-          {showTagline && <span className="text-[10px] text-ink-subtle font-normal">{name ?? 'Enterprise Education'}</span>}
+          {showTagline && <span className="text-[10px] text-ink-subtle font-normal">Learning Management System</span>}
         </div>
       )}
     </Link>

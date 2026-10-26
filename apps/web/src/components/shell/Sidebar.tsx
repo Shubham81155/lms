@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import clsx from 'clsx';
-import { LogOut, UserCog, X } from 'lucide-react';
+import { LogOut, User, UserCog, X } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { initialsOf, roleTitle, type Area, type NavItem, type NavSection } from '@/lib/navigation';
 import { useT } from '@/lib/i18n';
@@ -25,7 +25,8 @@ interface SidebarProps {
   collapsed?: boolean;
   onSelect: (item: NavItem) => void;
   onClose?: () => void;
-  user: { name?: string; role?: string } | null;
+  user: { name?: string; role?: string; avatarUrl?: string | null } | null;
+  onOpenProfile?: () => void;
   onOpenPrivacy: () => void;
   onSignOut: () => void;
 }
@@ -42,11 +43,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelect,
   onClose,
   user,
+  onOpenProfile,
   onOpenPrivacy,
   onSignOut,
 }) => {
   const compact = variant === 'rail' && collapsed;
   const t = useT();
+  const [avatarImgError, setAvatarImgError] = useState(false);
+
+  useEffect(() => {
+    setAvatarImgError(false);
+  }, [user?.avatarUrl]);
+
   const labelOf = (item: NavItem) => t.dyn(`nav.item.${area}.${item.key}`, item.label);
 
   const renderItem = (item: NavItem) => {
@@ -126,23 +134,55 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       <div className="shrink-0 space-y-1 border-t border-line p-3">
-        <div
-          className={clsx('mb-2 flex items-center gap-3 rounded-xl px-2 py-1.5', compact && 'justify-center px-0')}
-          title={compact ? user?.name : undefined}
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          className={clsx(
+            'group mb-1 flex w-full items-center gap-3 rounded-xl p-1.5 text-left transition-colors hover:bg-raised focus-visible:ring-2 focus-visible:ring-brand outline-none',
+            compact && 'justify-center p-0'
+          )}
+          title={compact ? (user?.name ?? t('shell.profileSettings')) : t('shell.profileSettings')}
         >
           <div
             aria-hidden="true"
-            className={clsx('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-xs font-bold', AVATAR[area])}
+            className={clsx(
+              'relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border text-xs font-bold transition-transform group-hover:scale-105',
+              AVATAR[area]
+            )}
           >
-            {initialsOf(user?.name)}
+            {user?.avatarUrl && !avatarImgError ? (
+              /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */
+              <img
+                src={user.avatarUrl}
+                alt=""
+                className="h-full w-full object-cover"
+                onError={() => setAvatarImgError(true)}
+              />
+            ) : (
+              <span>{initialsOf(user?.name)}</span>
+            )}
           </div>
           {!compact && (
-            <div className="min-w-0">
-              <p className="truncate text-xs font-semibold text-ink">{user?.name ?? t('shell.userLoading')}</p>
-              <p className="truncate text-[11px] text-ink-muted">{user ? t.dyn(`role.${user.role}`, roleTitle(user.role)) : ' '}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-ink group-hover:text-brand-fg transition-colors">
+                {user?.name ?? t('shell.userLoading')}
+              </p>
+              <p className="truncate text-[11px] text-ink-muted">
+                {user ? t.dyn(`role.${user.role}`, roleTitle(user.role)) : ' '}
+              </p>
             </div>
           )}
-        </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          title={compact ? t('shell.profileSettings') : undefined}
+          className={clsx(rowBase, footerRow, compact && 'justify-center px-0')}
+        >
+          <User className="h-[18px] w-[18px] shrink-0" />
+          <span className={compact ? 'sr-only' : 'truncate'}>{t('shell.profileSettings')}</span>
+        </button>
 
         <button
           type="button"

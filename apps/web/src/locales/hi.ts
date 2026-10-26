@@ -116,6 +116,7 @@ export const hi: Record<MessageKey, string> = {
   'shell.expandSidebar': 'साइडबार फैलाएँ',
   'shell.collapseSidebar': 'साइडबार छोटा करें',
   'shell.breadcrumb': 'ब्रेडक्रम्ब',
+  'shell.profileSettings': 'प्रोफ़ाइल और पासवर्ड',
   'shell.securityPrivacy': 'सुरक्षा और गोपनीयता',
   'shell.notifications': 'सूचनाएँ',
   'shell.notificationsUnread': 'सूचनाएँ, {count} अपठित',

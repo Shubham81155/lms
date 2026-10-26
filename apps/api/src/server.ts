@@ -34,6 +34,13 @@ import { startBreachJob } from './lib/breaches';
 import { startRetentionJob } from './lib/retention';
 import { startBillingJob } from './lib/billing';
 
+process.on('uncaughtException', (err) => {
+  logger.error({ err }, 'uncaughtException');
+});
+process.on('unhandledRejection', (reason) => {
+  logger.error({ reason }, 'unhandledRejection');
+});
+
 const app = express();
 const PORT = config.PORT;
 

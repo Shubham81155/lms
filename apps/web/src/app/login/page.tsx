@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, Mail, ArrowRight, AlertCircle, KeyRound, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ArrowLeft, AlertCircle, KeyRound, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { BrandLogo } from '@/components/BrandLogo';
@@ -14,6 +14,29 @@ import { LanguageSwitcher, useT } from '@/lib/i18n';
 
 // Error codes the API puts in /login?error= after a failed single sign-on round trip (messages: login.error.<code>).
 const SSO_ERROR_CODES = ['sso_failed', 'sso_unavailable'] as const;
+
+const DEMO_USERS = [
+  {
+    roleName: 'Platform Admin',
+    email: 'platform@gurugyan.com',
+    roleTag: 'Super Admin',
+  },
+  {
+    roleName: 'Institution Admin',
+    email: 'admin@gurugyan.edu',
+    roleTag: 'Admin',
+  },
+  {
+    roleName: 'Teacher',
+    email: 'teacher@gurugyan.edu',
+    roleTag: 'Faculty',
+  },
+  {
+    roleName: 'Student',
+    email: 'student@gurugyan.edu',
+    roleTag: 'Learner',
+  },
+];
 
 function LoginForm() {
   const router = useRouter();
@@ -105,7 +128,18 @@ function LoginForm() {
       {/* Top Header */}
       <header className="relative border-b border-line bg-canvas/80 backdrop-blur-md px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <BrandLogo />
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-muted hover:text-brand-fg transition-colors p-1.5 -ml-1.5 rounded-lg hover:bg-raised"
+              title={t('common.backToHome')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">{t('common.backToHome')}</span>
+            </Link>
+            <div className="h-4 w-px bg-line hidden sm:block" />
+            <BrandLogo />
+          </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
             <ThemeToggle />
@@ -114,8 +148,9 @@ function LoginForm() {
       </header>
 
       {/* Main Login Box */}
-      <main className="relative flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-surface border border-line rounded-3xl p-8 space-y-6 shadow-2xl shadow-black/20">
+      <main className="relative flex-1 flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-md space-y-3">
+          <div className="w-full bg-surface border border-line rounded-3xl p-8 space-y-6 shadow-2xl shadow-black/20">
           <div className="text-center space-y-2">
             <div className="mx-auto h-11 w-11 rounded-2xl bg-brand/10 border border-brand/20 text-brand-fg flex items-center justify-center">
               <Lock className="h-5 w-5" />
@@ -157,6 +192,43 @@ function LoginForm() {
               <span>{errorMsg}</span>
             </div>
           )}
+
+          {/* Quick Demo Credentials */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-ink-muted">
+              <span className="font-semibold uppercase tracking-wider">Quick Select Demo Role</span>
+              <span className="text-[10px] font-mono bg-raised px-1.5 py-0.5 rounded border border-line text-brand-fg">Password123!</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {DEMO_USERS.map((demo) => {
+                const isSelected = email === demo.email;
+                return (
+                  <button
+                    key={demo.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(demo.email);
+                      setPassword('Password123!');
+                      setErrorMsg(null);
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 text-xs ${
+                      isSelected
+                        ? 'border-brand bg-brand/10 text-brand-fg shadow-sm'
+                        : 'border-line hover:border-brand/40 bg-canvas hover:bg-raised text-ink'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="font-bold text-[11px] leading-tight truncate">{demo.roleName}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-raised text-ink-muted border border-line font-medium shrink-0">
+                        {demo.roleTag}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-ink-muted truncate font-mono">{demo.email}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Credentials Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -301,6 +373,7 @@ function LoginForm() {
                 Privacy notice
               </Link>
             </p>
+          </div>
           </div>
         </div>
       </main>

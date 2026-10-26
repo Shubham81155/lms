@@ -117,6 +117,7 @@ export const en = {
   'shell.expandSidebar': 'Expand sidebar',
   'shell.collapseSidebar': 'Collapse sidebar',
   'shell.breadcrumb': 'Breadcrumb',
+  'shell.profileSettings': 'Profile & password',
   'shell.securityPrivacy': 'Security & privacy',
   'shell.notifications': 'Notifications',
   'shell.notificationsUnread': 'Notifications, {count} unread',

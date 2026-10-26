@@ -17,15 +17,15 @@ import { ScanUnavailableError, virusScanner } from '../lib/virus-scan';
 // Mounted at /api/v1/files. Uploads stream straight into storage (lib/storage); the result is linked from
 // a submission's fileUrl or a lesson's mediaUrl as /api/v1/files/<id>. Who may read a file follows from
 // its purpose: a submission file is for the learner who uploaded it and the course's staff; lesson media
-// is for anyone who can read the course. With a virus scanner set (CLAMAV_URL) every upload is scanned before
-// it is stored: infected files are refused, and nothing is stored while the scanner cannot answer.
+// is for anyone who can read the course; an avatar is visible to anyone in the tenant.
+// With a virus scanner set (CLAMAV_URL) every upload is scanned before it is stored.
 
 const router = Router();
 router.use(authenticateJWT);
 
 export const uploadQuery = z.object({
   purpose: z.enum(FILE_PURPOSES),
-  courseId: idSchema,
+  courseId: idSchema.optional(),
   /** The original file name, shown on download. Path parts and control characters are dropped. */
   filename: z.string().trim().min(1).max(200),
 });
@@ -42,8 +42,7 @@ const cleanName = (name: string) =>
 
 /**
  * POST /api/v1/files?purpose&courseId&filename
- * The request body is the file itself (not multipart), with its own Content-Type. Submission files: learners
- * enrolled in the course. Lesson media: the course's editors.
+ * The request body is the file itself (not multipart), with its own Content-Type.
  */
 router.post(
   '/',
@@ -51,8 +50,6 @@ router.post(
     try {
       await handleUpload(req, res);
     } catch (e) {
-      // Node resets the connection when a response ends before the request body is read, so a refused
-      // upload's body is read and discarded first: the client then sees the error, not a reset.
       if (!req.readableEnded) {
         req.resume();
         await once(req, 'end').catch(() => undefined);
@@ -73,9 +70,19 @@ async function handleUpload(req: Request, res: Response) {
   if (purpose === 'SCORM_PACKAGE' && contentType !== 'application/zip' && contentType !== 'application/x-zip-compressed') {
     throw new HttpError(415, 'A SCORM package must be a .zip file');
   }
-  if (purpose === 'LESSON_MEDIA' || purpose === 'SCORM_PACKAGE') await requireCourseEditor(req, courseId);
-  else if (!(await requireContentAccess(req, courseId)).isEnrolled)
-    throw new HttpError(403, 'Forbidden: only enrolled learners can upload work for this course');
+  if (purpose === 'AVATAR') {
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(contentType)) {
+      throw new HttpError(415, 'A profile picture must be an image (PNG, JPEG, WebP, or GIF)');
+    }
+  } else if (purpose === 'LESSON_MEDIA' || purpose === 'SCORM_PACKAGE') {
+    if (!courseId) throw new HttpError(400, 'courseId is required for this file upload');
+    await requireCourseEditor(req, courseId);
+  } else {
+    if (!courseId) throw new HttpError(400, 'courseId is required for assignment submissions');
+    if (!(await requireContentAccess(req, courseId)).isEnrolled) {
+      throw new HttpError(403, 'Forbidden: only enrolled learners can upload work for this course');
+    }
+  }
 
   const tenantId = tenantIdOf(req);
   const { tempPath, sizeBytes, sha256 } = await receiveUpload(req);
@@ -118,7 +125,7 @@ async function handleUpload(req: Request, res: Response) {
         data: {
           tenantId,
           ownerId: req.user!.id,
-          courseId,
+          courseId: courseId || null,
           purpose,
           storageKey,
           filename: cleanName(filename),
@@ -162,22 +169,24 @@ async function handleUpload(req: Request, res: Response) {
 
 /**
  * GET /api/v1/files/:id
- * Streams the file (local storage) or redirects to a link that works for five minutes (S3). Files that a
- * browser could run (anything but PDFs, images, audio and video) always download rather than open.
+ * Streams the file (local storage) or redirects to a link that works for five minutes (S3).
  */
 router.get(
   '/:id',
   route('Failed to download the file', async (req, res) => {
     const file = await prisma.storedFile.findFirst({ where: { id: idSchema.parse(req.params.id), tenantId: tenantIdOf(req) } });
-    if (!file || !file.courseId) throw new HttpError(404, 'File not found');
-    const access = await requireContentAccess(req, file.courseId);
-    const user = req.user!;
-    // Submission files: their learner and the staff. A SCORM zip: the staff (learners play the unpacked package).
-    const staffOnly = file.purpose === 'SCORM_PACKAGE' || (file.purpose === 'ASSIGNMENT_SUBMISSION' && file.ownerId !== user.id);
-    if (staffOnly && !access.isStaff && !canSeeAllCourses(user.role)) {
-      throw new HttpError(404, 'File not found');
-    }
+    if (!file) throw new HttpError(404, 'File not found');
     if (file.scanStatus === 'INFECTED') throw new HttpError(410, 'This file was withdrawn because a virus scan found malware in it.');
+
+    if (file.purpose !== 'AVATAR') {
+      if (!file.courseId) throw new HttpError(404, 'File not found');
+      const access = await requireContentAccess(req, file.courseId);
+      const user = req.user!;
+      const staffOnly = file.purpose === 'SCORM_PACKAGE' || (file.purpose === 'ASSIGNMENT_SUBMISSION' && file.ownerId !== user.id);
+      if (staffOnly && !access.isStaff && !canSeeAllCourses(user.role)) {
+        throw new HttpError(404, 'File not found');
+      }
+    }
 
     const inline = ALLOWED_TYPES[file.contentType]?.inline ?? false;
     const signed = await storage().signedDownloadUrl(file.storageKey, { filename: file.filename, contentType: file.contentType, inline });
@@ -188,7 +197,6 @@ router.get(
     res.setHeader('content-length', String(file.sizeBytes));
     res.setHeader('content-disposition', contentDisposition(file.filename, inline));
     res.setHeader('x-content-type-options', 'nosniff');
-    // Nothing served here should run script, even if a browser were persuaded to render it.
     if (file.contentType !== 'application/pdf')
       res.setHeader('content-security-policy', "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox");
     const stream = await storage().open(file.storageKey);

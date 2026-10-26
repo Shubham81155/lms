@@ -27,11 +27,13 @@ async function main() {
   // 1. Create Enterprise Tenant: Harvard University
   const harvard = await prisma.tenant.upsert({
     where: { slug: 'harvard' },
-    update: {},
+    update: {
+      name: 'GuruGyan Learning Management System',
+    },
     create: {
       id: 'ten_harvard_01',
       slug: 'harvard',
-      name: 'Harvard University',
+      name: 'GuruGyan Learning Management System',
       customDomain: 'learn.harvard.edu',
       customDomainVerifiedAt: new Date(),
       tier: 'ENTERPRISE',
@@ -157,6 +159,97 @@ async function main() {
       firstName: 'Marcus',
       lastName: 'Brody',
       role: 'TEACHING_ASSISTANT',
+      emailVerified: true,
+    },
+  });
+
+  // GuruGyan Institutional Accounts
+  await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: harvard.id, email: 'admin@gurugyan.edu' } },
+    update: { passwordHash, status: 'ACTIVE', emailVerified: true },
+    create: {
+      passwordHash,
+      id: 'usr_admin_gg',
+      tenantId: harvard.id,
+      email: 'admin@gurugyan.edu',
+      firstName: 'GuruGyan',
+      lastName: 'Administrator',
+      role: 'TENANT_ADMIN',
+      emailVerified: true,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: harvard.id, email: 'teacher@gurugyan.edu' } },
+    update: { passwordHash, status: 'ACTIVE', emailVerified: true },
+    create: {
+      passwordHash,
+      id: 'usr_teacher_gg',
+      tenantId: harvard.id,
+      email: 'teacher@gurugyan.edu',
+      firstName: 'GuruGyan',
+      lastName: 'Professor',
+      role: 'INSTRUCTOR',
+      emailVerified: true,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: harvard.id, email: 'student@gurugyan.edu' } },
+    update: { passwordHash, status: 'ACTIVE', emailVerified: true },
+    create: {
+      passwordHash,
+      id: 'usr_student_gg',
+      tenantId: harvard.id,
+      email: 'student@gurugyan.edu',
+      firstName: 'GuruGyan',
+      lastName: 'Student',
+      role: 'STUDENT',
+      emailVerified: true,
+    },
+  });
+
+  // Platform Operator Tenant & Platform Admins
+  const platformTenant = await prisma.tenant.upsert({
+    where: { slug: 'platform' },
+    update: { name: 'Platform operator' },
+    create: {
+      id: '0ebd88c5-e607-44c1-be9e-cc6ba7ee8950',
+      slug: 'platform',
+      name: 'Platform operator',
+      tier: 'ENTERPRISE',
+      status: 'ACTIVE',
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: platformTenant.id, email: 'platform@gurugyan.com' } },
+    update: { passwordHash, status: 'ACTIVE', emailVerified: true },
+    create: {
+      passwordHash,
+      id: 'usr_platform_gg',
+      tenantId: platformTenant.id,
+      email: 'platform@gurugyan.com',
+      firstName: 'Platform',
+      lastName: 'Administrator',
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+      emailVerified: true,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: platformTenant.id, email: 'operator@platform.test' } },
+    update: { passwordHash, status: 'ACTIVE', emailVerified: true },
+    create: {
+      passwordHash,
+      id: 'a45cabfd-3163-41e2-a729-2fdbd24b1961',
+      tenantId: platformTenant.id,
+      email: 'operator@platform.test',
+      firstName: 'Platform',
+      lastName: 'Operator',
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
       emailVerified: true,
     },
   });

@@ -25,7 +25,7 @@ export const siteEn = {
     "Courses, assessments, live classes and verifiable certificates for students, faculty and administrators, with every tenant's data isolated and every action audited.",
   'site.home.hero.signIn': 'Sign in to your portal',
   'site.home.hero.new':
-    'New to ApexLMS? Register your college, school or company; our team reviews each request and e-mails your administrator a link to get started.',
+    'New to GuruGyan LMS? Register your college, school or company; our team reviews each request and e-mails your administrator a link to get started.',
   'site.home.hero.explore': 'Explore the platform',
   'site.home.hero.lost': "Already have an account but not sure of your organisation's address?",
 
@@ -94,7 +94,7 @@ export const siteEn = {
   // Landing: closing and footer
   'site.home.cta.title': 'Ready to get to class?',
   'site.home.cta.body': 'Use the account your institution gave you to sign in, or bring your institution on board.',
-  'site.home.footer.rights': '© ApexLMS Enterprise Platform. All rights reserved.',
+  'site.home.footer.rights': '© GuruGyan Learning Management System. All rights reserved.',
   'site.home.footer.forgot': 'Forgot password',
 
   // Registration: form

@@ -11,9 +11,11 @@ import { RequestsPanel } from '@/components/platform/RequestsPanel';
 import { OrganisationsPanel } from '@/components/platform/OrganisationsPanel';
 import { PlansPanel } from '@/components/platform/PlansPanel';
 import { SupportPassesPanel } from '@/components/platform/SupportPassesPanel';
+import { OperatorsPanel } from '@/components/platform/OperatorsPanel';
+import { AuditLogPanel } from '@/components/AuditLogPanel';
 import { summarise, trialsEndingWithin, type Org, type OrgRequest } from '@/lib/platform';
 
-const TABS = ['overview', 'requests', 'organisations', 'plans'] as const;
+const TABS = ['overview', 'requests', 'organisations', 'plans', 'operators', 'audit'] as const;
 type Tab = (typeof TABS)[number];
 const isTab = (v: string): v is Tab => (TABS as readonly string[]).includes(v);
 
@@ -125,37 +127,39 @@ export default function PlatformPage() {
           <p className="text-sm text-ink-muted">{t('operator.page.intro')}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((st) => {
-            const Icon = st.icon;
-            const body = (
-              <>
-                <div className="flex items-center justify-between text-ink-muted">
-                  <span className="text-xs font-semibold">{st.label}</span>
-                  <Icon className={`h-5 w-5 ${st.color}`} />
+        {tab === 'overview' && (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.map((st) => {
+              const Icon = st.icon;
+              const body = (
+                <>
+                  <div className="flex items-center justify-between text-ink-muted">
+                    <span className="text-xs font-semibold">{st.label}</span>
+                    <Icon className={`h-5 w-5 ${st.color}`} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-ink">{st.value}</div>
+                    <div className="mt-0.5 text-[11px] text-ink-subtle">{st.sub}</div>
+                  </div>
+                </>
+              );
+              return st.onClick ? (
+                <button
+                  key={st.label}
+                  type="button"
+                  onClick={st.onClick}
+                  className="space-y-3 rounded-2xl border border-line bg-surface p-5 text-left shadow-lg transition-colors hover:border-brand/40"
+                >
+                  {body}
+                </button>
+              ) : (
+                <div key={st.label} className="space-y-3 rounded-2xl border border-line bg-surface p-5 shadow-lg">
+                  {body}
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-ink">{st.value}</div>
-                  <div className="mt-0.5 text-[11px] text-ink-subtle">{st.sub}</div>
-                </div>
-              </>
-            );
-            return st.onClick ? (
-              <button
-                key={st.label}
-                type="button"
-                onClick={st.onClick}
-                className="space-y-3 rounded-2xl border border-line bg-surface p-5 text-left shadow-lg transition-colors hover:border-brand/40"
-              >
-                {body}
-              </button>
-            ) : (
-              <div key={st.label} className="space-y-3 rounded-2xl border border-line bg-surface p-5 shadow-lg">
-                {body}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {tab === 'overview' && (
           <section className="space-y-3 rounded-3xl border border-line bg-surface p-6 shadow-xl" aria-labelledby="newest-h">
@@ -215,6 +219,24 @@ export default function PlatformPage() {
 
         {tab === 'organisations' && (
           <OrganisationsPanel ownTenantId={user?.tenantId} focusId={focusOrg} refreshKey={version} onChanged={orgs.reload} />
+        )}
+
+        {tab === 'operators' && <OperatorsPanel />}
+
+        {tab === 'audit' && (
+          <section className="space-y-4" aria-labelledby="platform-audit-title">
+            <div>
+              <h2 id="platform-audit-title" className="text-xl font-bold text-ink">
+                {t('nav.item.platform.audit')}
+              </h2>
+              <p className="text-xs text-ink-muted">
+                Audit trail and activity log across platform operator actions, settings, and decisions.
+              </p>
+            </div>
+            <div className="rounded-3xl border border-line bg-surface p-6 shadow-xl">
+              <AuditLogPanel />
+            </div>
+          </section>
         )}
       </main>
     </AppShell>

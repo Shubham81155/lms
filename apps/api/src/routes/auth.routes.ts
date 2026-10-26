@@ -37,6 +37,10 @@ const passwordSchema = z
 export const forgotSchema = z.object({ email: z.string().email().max(254) });
 export const resetSchema = z.object({ token: z.string().min(20).max(200), password: passwordSchema });
 export const verifySchema = z.object({ token: z.string().min(20).max(200) });
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().optional(),
+  newPassword: passwordSchema,
+});
 
 const limiter = (name: string, limit: number, message: string) =>
   rateLimit({
@@ -82,53 +86,85 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
     const { email, password, mfaCode } = parseResult.data;
     const invalid = () => res.status(401).json({ error: 'Invalid email or password' });
 
-    const tenant = await lookupTenant(req.tenantHints);
-    if (!tenant || tenantIsBlocked(tenant.status)) {
+    const hintedTenant = await lookupTenant(req.tenantHints);
+
+    let user = null;
+    let targetTenant = hintedTenant;
+
+    // 1. Try finding user in the hinted tenant first
+    if (hintedTenant && !tenantIsBlocked(hintedTenant.status)) {
+      user = await basePrisma.user.findFirst({
+        where: { tenantId: hintedTenant.id, email: email.toLowerCase() },
+        include: { tenant: true },
+      });
+    }
+
+    // 2. If not found in hinted tenant, search across all tenants (allows platform operator or institutional accounts from unified login)
+    if (!user) {
+      const candidates = await basePrisma.user.findMany({
+        where: { email: email.toLowerCase() },
+        include: { tenant: true },
+      });
+
+      if (candidates.length > 0) {
+        // If one of the accounts is a Platform Operator, prioritize it
+        const platformUser = candidates.find(
+          (u) => u.role === 'SUPER_ADMIN' && u.tenant?.slug === config.PLATFORM_OPERATOR_TENANT
+        );
+        if (platformUser) {
+          user = platformUser;
+          targetTenant = platformUser.tenant;
+        } else {
+          // Find first active tenant or fallback to first candidate
+          user = candidates.find((u) => u.tenant?.status === 'ACTIVE') || candidates[0];
+          targetTenant = user.tenant;
+        }
+      }
+    }
+
+    if (!user || !targetTenant) {
       await verifyPassword(password, null); // keep timing similar to the unknown-user path
-      // Whether an organisation is suspended is not a secret of any account; its login page says so too.
-      if (tenant) return res.status(403).json({ error: TENANT_SUSPENDED_MESSAGE, code: 'TENANT_SUSPENDED' });
       return invalid();
     }
 
-    return await runWithTenant(tenant.id, async () => {
-      const user = await prisma.user.findFirst({
-        where: { tenantId: tenant.id, email: email.toLowerCase() },
-      });
+    if (tenantIsBlocked(targetTenant.status)) {
+      await verifyPassword(password, null);
+      return res.status(403).json({ error: TENANT_SUSPENDED_MESSAGE, code: 'TENANT_SUSPENDED' });
+    }
 
-      if (user?.lockedUntil && user.lockedUntil > new Date()) {
+    return await runWithTenant(targetTenant.id, async () => {
+      if (user.lockedUntil && user.lockedUntil > new Date()) {
         return res.status(423).json({
           error: 'Account temporarily locked due to repeated failed sign-ins. Try again later.',
           retryAfter: user.lockedUntil.toISOString(),
         });
       }
 
-      const check = await verifyPassword(password, user?.passwordHash ?? null);
+      const check = await verifyPassword(password, user.passwordHash ?? null);
 
-      if (!user || !check.valid) {
-        if (user) {
-          const { failedLoginCount } = await prisma.user.update({
+      if (!check.valid) {
+        const { failedLoginCount } = await prisma.user.update({
+          where: { id: user.id },
+          data: { failedLoginCount: { increment: 1 } },
+          select: { failedLoginCount: true },
+        });
+
+        if (failedLoginCount >= config.MAX_FAILED_LOGINS) {
+          await prisma.user.update({
             where: { id: user.id },
-            data: { failedLoginCount: { increment: 1 } },
-            select: { failedLoginCount: true },
+            data: {
+              failedLoginCount: 0,
+              lockedUntil: new Date(Date.now() + config.LOCKOUT_MINUTES * 60 * 1000),
+            },
           });
-
-          if (failedLoginCount >= config.MAX_FAILED_LOGINS) {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                failedLoginCount: 0,
-                lockedUntil: new Date(Date.now() + config.LOCKOUT_MINUTES * 60 * 1000),
-              },
-            });
-          }
         }
 
         await logAuditEvent({
-          tenantId: tenant.id,
-          userId: user?.id ?? null,
+          tenantId: targetTenant.id,
+          userId: user.id,
           action: 'USER_LOGIN_FAILED',
           resourceType: 'USER',
-          resourceId: user?.id ?? null,
+          resourceId: user.id,
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
           diffJson: { email },
@@ -161,7 +197,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
             });
           }
           await logAuditEvent({
-            tenantId: tenant.id,
+            tenantId: targetTenant.id,
             userId: user.id,
             action: 'USER_LOGIN_FAILED',
             resourceType: 'USER',
@@ -193,7 +229,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
       });
 
       await logAuditEvent({
-        tenantId: tenant.id,
+        tenantId: targetTenant.id,
         userId: updatedUser.id,
         action: 'USER_LOGIN',
         resourceType: 'USER',
@@ -202,7 +238,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
         userAgent: req.headers['user-agent'],
       });
 
-      return res.status(200).json({ user: { ...updatedUser, platformOperator: isPlatformOperator(updatedUser.role, tenant.slug) } });
+      return res.status(200).json({ user: { ...updatedUser, platformOperator: isPlatformOperator(updatedUser.role, targetTenant.slug) } });
     });
   } catch (error: any) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/login');
@@ -270,6 +306,65 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
   } catch (error: any) {
     logger.error({ err: error }, 'Error in GET /api/v1/auth/me');
     return res.status(500).json({ error: 'Internal server error retrieving user profile' });
+  }
+});
+
+/**
+ * POST /api/v1/auth/change-password
+ * Allows an authenticated user to update their password.
+ */
+router.post('/change-password', authenticateJWT, tokenFlowLimiter, async (req: Request, res: Response) => {
+  try {
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation failed', details: parsed.error.format() });
+    }
+    const { currentPassword, newPassword } = parsed.data;
+    const actor = req.user!;
+
+    const user = await prisma.user.findFirst({
+      where: { id: actor.id, tenantId: actor.tenantId },
+      select: { id: true, email: true, passwordHash: true, status: true },
+    });
+    if (!user || user.status !== 'ACTIVE') {
+      return res.status(401).json({ error: 'Session is no longer valid' });
+    }
+
+    if (user.passwordHash) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required' });
+      }
+      const check = await verifyPassword(currentPassword, user.passwordHash);
+      if (!check.valid) {
+        return res.status(400).json({ error: 'Current password is incorrect' });
+      }
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        failedLoginCount: 0,
+        lockedUntil: null,
+      },
+    });
+
+    await logAuditEvent({
+      tenantId: actor.tenantId,
+      userId: user.id,
+      action: 'USER_PASSWORD_CHANGED',
+      resourceType: 'USER',
+      resourceId: user.id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+
+    return res.status(200).json({ success: true, message: 'Password updated successfully' });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Error in POST /api/v1/auth/change-password');
+    return res.status(500).json({ error: 'Failed to update password' });
   }
 });
 

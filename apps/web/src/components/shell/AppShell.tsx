@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useAuth } from '@/context/AuthContext';
 import { PrivacySettings } from '@/components/PrivacySettings';
+import { ProfileSettingsModal } from '@/components/ProfileSettingsModal';
 import { ConsentGate } from '@/components/ConsentGate';
 import { Sidebar } from '@/components/shell/Sidebar';
 import { TopBar, type TopBarSearch } from '@/components/shell/TopBar';
@@ -35,6 +36,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
   const t = useT();
   const { collapsed, ready, toggleCollapsed, mobileOpen, openMobile, closeMobile } = useSidebar();
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const drawerRef = useRef<HTMLElement>(null);
   const mainRef = useRef<HTMLDivElement>(null);
   const support = useSupportSession();
@@ -50,10 +52,14 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
     else actions?.[item.key]?.();
     closeMobile();
   };
-  const sidebarUser = user ? { name: user.name, role: user.role } : null;
+  const sidebarUser = user ? { name: user.name, role: user.role, avatarUrl: user.avatarUrl } : null;
   const openPrivacy = () => {
     closeMobile();
     setShowPrivacy(true);
+  };
+  const openProfile = () => {
+    closeMobile();
+    setShowProfile(true);
   };
 
   return (
@@ -82,6 +88,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
           collapsed={collapsed}
           onSelect={select}
           user={sidebarUser}
+          onOpenProfile={openProfile}
           onOpenPrivacy={openPrivacy}
           onSignOut={logout}
         />
@@ -118,6 +125,7 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
             onSelect={select}
             onClose={closeMobile}
             user={sidebarUser}
+            onOpenProfile={openProfile}
             onOpenPrivacy={openPrivacy}
             onSignOut={logout}
           />
@@ -144,7 +152,8 @@ export function AppShell({ area, activeKey, onNavigate, actions, search, childre
       {/* Ordinary sessions only: not a support pass (the operator is not the data subject) and not the operator console. */}
       {user && !support && !user.platformOperator && area !== 'platform' && <ConsentGate />}
 
-      {showPrivacy && <PrivacySettings onClose={() => setShowPrivacy(false)} />}
+      {showPrivacy && <PrivacySettings onClose={() => setShowPrivacy(false)} onOpenProfile={openProfile} />}
+      {showProfile && <ProfileSettingsModal isOpen={showProfile} onClose={() => setShowProfile(false)} />}
     </div>
   );
 }

@@ -27,7 +27,7 @@ export const siteHi: Record<keyof typeof siteEn, string> = {
     'विद्यार्थियों, शिक्षकों और प्रशासकों के लिए कोर्स, मूल्यांकन, लाइव कक्षाएँ और सत्यापन-योग्य प्रमाणपत्र, जिसमें हर संगठन का डेटा अलग रहता है और हर कार्रवाई का ऑडिट होता है।',
   'site.home.hero.signIn': 'अपने पोर्टल में साइन इन करें',
   'site.home.hero.new':
-    'ApexLMS पर नए हैं? अपना कॉलेज, स्कूल या कंपनी पंजीकृत करें; हमारी टीम हर अनुरोध की समीक्षा करती है और आपके प्रशासक को शुरू करने का लिंक ई-मेल करती है।',
+    'GuruGyan LMS पर नए हैं? अपना कॉलेज, स्कूल या कंपनी पंजीकृत करें; हमारी टीम हर अनुरोध की समीक्षा करती है और आपके प्रशासक को शुरू करने का लिंक ई-मेल करती है।',
   'site.home.hero.explore': 'प्लेटफ़ॉर्म देखें',
   'site.home.hero.lost': 'खाता है, लेकिन अपने संगठन का पता याद नहीं?',
 
@@ -98,7 +98,7 @@ export const siteHi: Record<keyof typeof siteEn, string> = {
   // Landing: closing and footer
   'site.home.cta.title': 'कक्षा में जाने के लिए तैयार?',
   'site.home.cta.body': 'साइन इन करने के लिए अपनी संस्था से मिला खाता इस्तेमाल करें, या अपनी संस्था को जोड़ें।',
-  'site.home.footer.rights': '© ApexLMS एंटरप्राइज़ प्लेटफ़ॉर्म। सर्वाधिकार सुरक्षित।',
+  'site.home.footer.rights': '© GuruGyan Learning Management System. सर्वाधिकार सुरक्षित।',
   'site.home.footer.forgot': 'पासवर्ड भूल गए',
 
   // Registration: form

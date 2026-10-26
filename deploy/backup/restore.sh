@@ -4,8 +4,8 @@
 # Without a target the dump goes into a NEW database "<db>_restored" (nothing is overwritten): inspect it, or point the
 # stack at it. To replace the live database (disaster recovery), stop the api first and name it explicitly:
 #   docker compose -f docker-compose.prod.yml stop api caddy web
-#   docker compose -f docker-compose.prod.yml --profile backup run --rm -e RESTORE_CONFIRM=enterprise_lms \
-#       backup restore.sh /backups/enterprise_lms-<stamp>.dump enterprise_lms
+#   docker compose -f docker-compose.prod.yml --profile backup run --rm -e RESTORE_CONFIRM=lms_preview \
+#       backup restore.sh /backups/lms_preview-<stamp>.dump lms_preview
 # which drops that database and loads the dump into a fresh one. Needs the owner/superuser (PGUSER/PGPASSWORD).
 . /usr/local/bin/common.sh
 

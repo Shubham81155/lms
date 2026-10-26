@@ -100,8 +100,8 @@ services:
     environment:
       NODE_ENV: production
       # Prisma's migrate uses DIRECT_URL (the owner); DATABASE_URL must be set for the schema to load.
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_lms}?schema=public
-      DIRECT_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_lms}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lms_preview}?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-lms_preview}?schema=public
     networks: [backend]
     logging: *logging
 
@@ -116,7 +116,7 @@ services:
       PORT: 4000
       # The unprivileged role: row-level security is enforced (the API exits at start-up in production if this
       # role could bypass it). No DIRECT_URL here: the API never needs the owner.
-      DATABASE_URL: postgresql://lms_app:${LMS_APP_DB_PASSWORD:?set LMS_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-enterprise_lms}?schema=public
+      DATABASE_URL: postgresql://lms_app:${LMS_APP_DB_PASSWORD:?set LMS_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-lms_preview}?schema=public
       REDIS_URL: redis://redis:6379
       # Caddy is the one proxy in front of the API (browser /api/* goes straight to it); see the Caddyfile.
       TRUST_PROXY: ${TRUST_PROXY:-1}
@@ -223,7 +223,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-enterprise_lms}
+      POSTGRES_DB: ${POSTGRES_DB:-lms_preview}
       LMS_APP_DB_PASSWORD: ${LMS_APP_DB_PASSWORD:?set LMS_APP_DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -281,7 +281,7 @@ services:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB:-enterprise_lms}
+      PGDATABASE: ${POSTGRES_DB:-lms_preview}
       # Optional: passed through only when set in .env.
       BACKUP_AT:
       BACKUP_KEEP_DAYS:

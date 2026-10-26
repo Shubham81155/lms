@@ -20,7 +20,10 @@ const input =
  * The signed-in person's own data rights (GDPR Art. 15/17/20, FERPA directory opt-out),
  * backed by /api/v1/privacy/me/*. Every action is written to the audit trail by the API.
  */
-export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const PrivacySettings: React.FC<{ onClose: () => void; onOpenProfile?: () => void }> = ({
+  onClose,
+  onOpenProfile,
+}) => {
   useEscapeKey(onClose);
   const { user, logout } = useAuth();
   const t = useT();
@@ -84,6 +87,25 @@ export const PrivacySettings: React.FC<{ onClose: () => void }> = ({ onClose }) 
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {onOpenProfile && (
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-brand/10 border border-brand/20">
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold text-ink">Account credentials & photo</p>
+                <p className="text-[11px] text-ink-muted">Update your profile picture, display name, or login password</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenProfile();
+                }}
+                className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-on-brand rounded-xl text-xs font-semibold transition-all shrink-0 ml-3"
+              >
+                Profile & Password
+              </button>
+            </div>
+          )}
+
           <MfaSettings />
 
           {/* Access and portability */}

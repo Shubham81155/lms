@@ -12,13 +12,19 @@ import { withSeat } from '../lib/features';
 import { sendInvitation } from '../lib/invitations';
 import { dispatchWebhook } from '../lib/webhooks';
 import { parseCsv } from '../lib/csv';
+import { createReadStream } from 'fs';
+import { rm } from 'fs/promises';
+import { linkOrUpload, fileLink } from '../lib/stored-files';
+import { receiveUpload, newStorageKey, storage } from '../lib/storage';
+import { virusScanner, ScanUnavailableError } from '../lib/virus-scan';
+import { verifyPassword, hashPassword, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from '../lib/password';
 
 const router = Router();
 
 export const updateUserSchema = z.object({
   firstName: z.string().trim().min(1).max(100).optional(),
   lastName: z.string().trim().min(1).max(100).optional(),
-  avatarUrl: httpUrl.or(z.literal('')).nullable().optional(),
+  avatarUrl: linkOrUpload.or(z.literal('')).nullable().optional(),
   role: z.nativeEnum(GlobalRole).optional(),
   status: z.nativeEnum(UserStatus).optional(),
 });
@@ -416,7 +422,8 @@ router.get(
   '/:id',
   authenticateJWT,
   route('Failed to retrieve user profile', async (req, res) => {
-    const id = String(req.params.id);
+    const rawId = String(req.params.id);
+    const id = rawId === 'me' ? req.user!.id : rawId;
     if (req.user!.id !== id && !isAdminRole(req.user!.role)) {
       throw new HttpError(403, 'Forbidden: Access to this profile is restricted');
     }
@@ -442,7 +449,8 @@ router.patch(
   route('Failed to update user profile', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const actor = req.user!;
-    const id = String(req.params.id);
+    const rawId = String(req.params.id);
+    const id = rawId === 'me' ? req.user!.id : rawId;
     const isSelf = actor.id === id;
     const isAdmin = isAdminRole(actor.role);
 
@@ -491,6 +499,213 @@ router.patch(
 );
 
 /**
+ * POST /api/v1/users/:id/avatar
+ * Uploads a profile picture for oneself or by an administrator.
+ */
+router.post(
+  '/:id/avatar',
+  authenticateJWT,
+  route('Failed to upload profile picture', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const actor = req.user!;
+    const rawId = String(req.params.id);
+    const id = rawId === 'me' ? actor.id : rawId;
+    const isSelf = actor.id === id;
+    const isAdmin = isAdminRole(actor.role);
+
+    if (!isSelf && !isAdmin) throw new HttpError(403, 'Forbidden: Cannot update this user profile picture');
+
+    const existing = await prisma.user.findFirst({ where: { id, tenantId }, select: safeUserSelect });
+    if (!existing) throw new HttpError(404, 'User not found');
+
+    const contentType = String(req.headers['content-type'] ?? '')
+      .split(';')[0]
+      .trim()
+      .toLowerCase();
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(contentType)) {
+      throw new HttpError(415, 'Profile picture must be an image (PNG, JPEG, WebP, or GIF)');
+    }
+
+    const { tempPath, sizeBytes, sha256 } = await receiveUpload(req, 5 * 1024 * 1024);
+    const storageKey = newStorageKey(tenantId);
+    let scannedAt: Date | null = null;
+    try {
+      const scanner = virusScanner();
+      if (scanner) {
+        let result;
+        try {
+          result = await scanner.scan(createReadStream(tempPath));
+        } catch (e) {
+          if (e instanceof ScanUnavailableError)
+            throw new HttpError(503, 'Files cannot be checked for viruses right now. Try again in a few minutes.');
+          throw e;
+        }
+        if (result.infected) {
+          await logAuditEvent({
+            tenantId,
+            userId: actor.id,
+            action: 'FILE_MALWARE_BLOCKED',
+            resourceType: 'USER_AVATAR',
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            diffJson: { contentType, sizeBytes, sha256, signature: result.signature },
+          });
+          throw new HttpError(422, 'This file contains malware and was not uploaded.');
+        }
+        scannedAt = new Date();
+      }
+      await storage().putFile(storageKey, tempPath, contentType);
+    } finally {
+      await rm(tempPath, { force: true });
+    }
+
+    let file;
+    try {
+      file = await prisma.storedFile.create({
+        data: {
+          tenantId,
+          ownerId: id,
+          purpose: 'AVATAR',
+          storageKey,
+          filename: `avatar-${id}.${contentType.split('/')[1] || 'jpg'}`,
+          contentType,
+          sizeBytes,
+          sha256,
+          scanStatus: scannedAt ? 'CLEAN' : 'NOT_SCANNED',
+          scannedAt,
+        },
+      });
+    } catch (e) {
+      await storage().delete(storageKey).catch(() => undefined);
+      throw e;
+    }
+
+    const newAvatarUrl = fileLink(file.id);
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { avatarUrl: newAvatarUrl },
+      select: safeUserSelect,
+    });
+    invalidateSessionCache(id);
+
+    await logAuditEvent({
+      tenantId,
+      userId: actor.id,
+      action: 'USER_AVATAR_UPDATED',
+      resourceType: 'USER',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { before: existing.avatarUrl, after: newAvatarUrl },
+    });
+
+    return res.status(200).json({ data: updated, avatarUrl: newAvatarUrl });
+  })
+);
+
+/**
+ * DELETE /api/v1/users/:id/avatar
+ * Removes the profile picture for oneself or by an administrator.
+ */
+router.delete(
+  '/:id/avatar',
+  authenticateJWT,
+  route('Failed to remove profile picture', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const actor = req.user!;
+    const rawId = String(req.params.id);
+    const id = rawId === 'me' ? actor.id : rawId;
+    const isSelf = actor.id === id;
+    const isAdmin = isAdminRole(actor.role);
+
+    if (!isSelf && !isAdmin) throw new HttpError(403, 'Forbidden: Cannot update this user');
+
+    const existing = await prisma.user.findFirst({ where: { id, tenantId }, select: safeUserSelect });
+    if (!existing) throw new HttpError(404, 'User not found');
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { avatarUrl: null },
+      select: safeUserSelect,
+    });
+    invalidateSessionCache(id);
+
+    await logAuditEvent({
+      tenantId,
+      userId: actor.id,
+      action: 'USER_AVATAR_REMOVED',
+      resourceType: 'USER',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { before: existing.avatarUrl, after: null },
+    });
+
+    return res.status(200).json({ data: updated, avatarUrl: null });
+  })
+);
+
+/**
+ * POST /api/v1/users/:id/password
+ * Changes password for oneself (requires currentPassword if set) or for a user by an admin.
+ */
+router.post(
+  '/:id/password',
+  authenticateJWT,
+  route('Failed to update password', async (req, res) => {
+    const tenantId = tenantIdOf(req);
+    const actor = req.user!;
+    const rawId = String(req.params.id);
+    const id = rawId === 'me' ? actor.id : rawId;
+    const isSelf = actor.id === id;
+    const isAdmin = isAdminRole(actor.role);
+
+    if (!isSelf && !isAdmin) throw new HttpError(403, 'Forbidden: Cannot change password for this user');
+
+    const schema = z.object({
+      currentPassword: z.string().optional(),
+      newPassword: z.string().min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`).max(PASSWORD_MAX_LENGTH),
+    });
+    const { currentPassword, newPassword } = parseBody(req, schema);
+
+    const target = await prisma.user.findFirst({
+      where: { id, tenantId },
+      select: { id: true, email: true, passwordHash: true, status: true },
+    });
+    if (!target) throw new HttpError(404, 'User not found');
+
+    if (isSelf && target.passwordHash) {
+      if (!currentPassword) throw new HttpError(400, 'Current password is required');
+      const check = await verifyPassword(currentPassword, target.passwordHash);
+      if (!check.valid) throw new HttpError(400, 'Current password is incorrect');
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash,
+        failedLoginCount: 0,
+        lockedUntil: null,
+      },
+    });
+
+    await logAuditEvent({
+      tenantId,
+      userId: actor.id,
+      action: 'USER_PASSWORD_CHANGED',
+      resourceType: 'USER',
+      resourceId: id,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      diffJson: { selfChange: isSelf },
+    });
+
+    return res.status(200).json({ success: true, message: 'Password updated successfully' });
+  })
+);
+
+/**
  * GET /api/v1/users/:id/enrollments
  * Yourself; admins and auditors for anyone; instructors only the enrollments in courses they teach.
  */
@@ -500,7 +715,8 @@ router.get(
   route('Failed to retrieve user enrollments', async (req, res) => {
     const tenantId = tenantIdOf(req);
     const actor = req.user!;
-    const id = String(req.params.id);
+    const rawId = String(req.params.id);
+    const id = rawId === 'me' ? req.user!.id : rawId;
     parseQuery(req, z.object({}).passthrough());
 
     const isSelf = actor.id === id;
