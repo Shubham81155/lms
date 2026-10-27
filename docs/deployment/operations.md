@@ -26,14 +26,14 @@ Enable both on a live server:
 # .env: COMPOSE_PROFILES=backup,monitoring   METRICS_TOKEN=<32+ random chars>   BACKUP_S3_*   ALERT_*
 dc up -d            # recreates api (METRICS_TOKEN), starts backup, prometheus, alertmanager
 dc ps               # backup and prometheus healthy
-dc logs backup      # "wrote /backups/lms_preview-<stamp>.dump": the first backup runs at start-up
+dc logs backup      # "wrote /backups/enterprise_lms-<stamp>.dump": the first backup runs at start-up
 ```
 
 ## Backups
 
 - **What:** a custom-format dump (`pg_dump -Fc`) of the application database, every day at `BACKUP_AT` (02:30 UTC), plus
   one at start-up when the last is older than 24 hours. Each dump is checked with `pg_restore --list` before it counts.
-- **Where:** the `backups` volume (`/backups` in the container), named `lms_preview-<UTC timestamp>.dump`
+- **Where:** the `backups` volume (`/backups` in the container), named `enterprise_lms-<UTC timestamp>.dump`
   (`.dump.enc` when `BACKUP_ENCRYPTION_PASSPHRASE` is set: AES-256-CBC with PBKDF2, readable with the `openssl` line
   under "Restore" below). Local files older than `BACKUP_KEEP_DAYS` (14) are removed; the newest is never removed.
 - **Off the server:** set `BACKUP_S3_BUCKET` (and endpoint/keys for R2, Wasabi, MinIO...). A backup whose upload fails counts as
@@ -55,13 +55,13 @@ Always restore into a _new_ database first (the default) unless the live one is 
 2. **Into a new database, to inspect it** (nothing is overwritten):
    ```sh
    dc --profile backup run --rm backup restore.sh /backups/<file> [new_database_name]   # default <db>_restored
-   dc exec postgres psql -U postgres -d lms_preview_restored -c 'SELECT count(*) FROM "User"'
+   dc exec postgres psql -U postgres -d enterprise_lms_restored -c 'SELECT count(*) FROM "User"'
    ```
 3. **Replacing the live database** (disaster recovery, or undoing a bad change; everything since the dump is lost):
    ```sh
    dc stop caddy web api                       # nobody may write meanwhile
-   dc --profile backup run --rm -e RESTORE_CONFIRM=lms_preview backup \
-       restore.sh /backups/<file> lms_preview
+   dc --profile backup run --rm -e RESTORE_CONFIRM=enterprise_lms backup \
+       restore.sh /backups/<file> enterprise_lms
    dc up -d                                    # migrate runs first and applies any newer migrations
    ```
    `restore.sh` refuses to touch the live database unless `RESTORE_CONFIRM` names it. It drops it, creates it
@@ -69,7 +69,7 @@ Always restore into a _new_ database first (the default) unless the live one is 
    cluster: on a brand-new server start `postgres` once with an empty volume first (the init script creates it from
    `LMS_APP_DB_PASSWORD`), then restore.
 4. **On a new server:** deploy the stack as in dns-and-tls.md (same `.env` secrets, notably `PII_ENCRYPTION_KEY`: without it
-   encrypted personal data in the dump is unreadable), start `postgres` and run step 3 against `lms_preview`, then `dc up -d`.
+   encrypted personal data in the dump is unreadable), start `postgres` and run step 3 against `enterprise_lms`, then `dc up -d`.
 5. **Encrypted dumps:** `restore.sh` and the drill decrypt automatically when `BACKUP_ENCRYPTION_PASSPHRASE` is in the
    environment. By hand: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_ENCRYPTION_PASSPHRASE -in x.dump.enc -out x.dump`.
 6. **Check:** sign in as an administrator, open a course and a file, look at Billing, and read `dc logs api`.

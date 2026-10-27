@@ -575,6 +575,18 @@ export const RESPONSES: ResponseTable = {
     errors: [403, 404, 409],
   },
   'GET /api/v1/users/:id': { response: data(UserDetail), errors: [403, 404] },
+  'POST /api/v1/users/:id/avatar': {
+    response: { status: 200, schema: z.object({ data: UserAccount, avatarUrl: z.string() }) },
+    errors: [400, 403, 404, 413, 415, 422, 503],
+  },
+  'DELETE /api/v1/users/:id/avatar': {
+    response: { status: 200, schema: z.object({ data: UserAccount, avatarUrl: z.null() }) },
+    errors: [403, 404],
+  },
+  'POST /api/v1/users/:id/password': {
+    response: { status: 200, schema: z.object({ success: z.boolean(), message: z.string() }) },
+    errors: [400, 403, 404, 409],
+  },
   'PATCH /api/v1/users/:id': { response: data(UserAccount), errors: [400, 403, 404] },
   'GET /api/v1/users/:id/enrollments': {
     response: body(

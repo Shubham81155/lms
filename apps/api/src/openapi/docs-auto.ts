@@ -499,6 +499,18 @@ export const AUTO_DOCS: Record<string, Pick<OperationDoc, 'summary' | 'query' | 
   },
   'POST /api/v1/users/:id/invite': { summary: 'Send a fresh invitation link to someone who has not accepted yet.' },
   'GET /api/v1/users/:id': { summary: 'own profile, or any profile for admins' },
+  'POST /api/v1/users/:id/avatar': {
+    summary:
+      'Upload a profile picture for yourself or (administrators) anyone in the organisation: the request body is the image itself (PNG, JPEG, WebP or GIF, at most 5 MB) with its Content-Type. Scanned for viruses when a scanner is set up. `me` stands for the caller. Audited.',
+  },
+  'DELETE /api/v1/users/:id/avatar': {
+    summary: 'Remove a profile picture (yours, or anyone in the organisation for administrators). Audited.',
+  },
+  'POST /api/v1/users/:id/password': {
+    summary:
+      "Change a password. Your own needs the current one and signs out your other sessions; an administrator may set a learner or staff password, and only a SUPER_ADMIN an administrator's, which signs that person out everywhere. 409 for your own account when it has no password yet. `me` stands for the caller. Audited.",
+    body: r_users.setPasswordSchema,
+  },
   'PATCH /api/v1/users/:id': {
     summary:
       "Anyone may edit their own name and avatar. Roles and status are administrator-only, and: - only a SUPER_ADMIN may grant the SUPER_ADMIN role or change a SUPER_ADMIN's account - nobody may change their own role or status (no self-promotion, no locking...",

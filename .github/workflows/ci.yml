@@ -75,16 +75,16 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: lms_preview
+          POSTGRES_DB: enterprise_lms
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U postgres -d lms_preview"
+          --health-cmd "pg_isready -U postgres -d enterprise_lms"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/lms_preview?schema=public
-      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/lms_preview?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/enterprise_lms?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/enterprise_lms?schema=public
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

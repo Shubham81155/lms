@@ -15,6 +15,7 @@ import { generateOneTimeToken, hashOneTimeToken } from '../lib/one-time-token';
 import { sendMail } from '../lib/mailer';
 import { verifySecondFactor } from '../lib/mfa';
 import { authenticateJWT, clearAuthCookie, optionalAuth, startSession } from '../middleware/auth';
+import { PASSWORDLESS_MESSAGE, setPasswordAndRevokeSessions } from '../lib/account-password';
 import { invalidateSessionCache, revokeSessions, TENANT_SUSPENDED_MESSAGE, tenantIsBlocked } from '../lib/session';
 
 const router = Router();
@@ -86,85 +87,56 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
     const { email, password, mfaCode } = parseResult.data;
     const invalid = () => res.status(401).json({ error: 'Invalid email or password' });
 
-    const hintedTenant = await lookupTenant(req.tenantHints);
-
-    let user = null;
-    let targetTenant = hintedTenant;
-
-    // 1. Try finding user in the hinted tenant first
-    if (hintedTenant && !tenantIsBlocked(hintedTenant.status)) {
-      user = await basePrisma.user.findFirst({
-        where: { tenantId: hintedTenant.id, email: email.toLowerCase() },
-        include: { tenant: true },
-      });
-    }
-
-    // 2. If not found in hinted tenant, search across all tenants (allows platform operator or institutional accounts from unified login)
-    if (!user) {
-      const candidates = await basePrisma.user.findMany({
-        where: { email: email.toLowerCase() },
-        include: { tenant: true },
-      });
-
-      if (candidates.length > 0) {
-        // If one of the accounts is a Platform Operator, prioritize it
-        const platformUser = candidates.find(
-          (u) => u.role === 'SUPER_ADMIN' && u.tenant?.slug === config.PLATFORM_OPERATOR_TENANT
-        );
-        if (platformUser) {
-          user = platformUser;
-          targetTenant = platformUser.tenant;
-        } else {
-          // Find first active tenant or fallback to first candidate
-          user = candidates.find((u) => u.tenant?.status === 'ACTIVE') || candidates[0];
-          targetTenant = user.tenant;
-        }
-      }
-    }
-
-    if (!user || !targetTenant) {
+    // An account is only ever looked up in the organisation the request is for: the e-mail is never searched
+    // across organisations, so a sign-in cannot land in, lock out, or reveal an account of another one.
+    const targetTenant = await lookupTenant(req.tenantHints);
+    if (!targetTenant || tenantIsBlocked(targetTenant.status)) {
       await verifyPassword(password, null); // keep timing similar to the unknown-user path
+      // Whether an organisation is suspended is not a secret of any account; its login page says so too.
+      if (targetTenant) return res.status(403).json({ error: TENANT_SUSPENDED_MESSAGE, code: 'TENANT_SUSPENDED' });
       return invalid();
     }
 
-    if (tenantIsBlocked(targetTenant.status)) {
-      await verifyPassword(password, null);
-      return res.status(403).json({ error: TENANT_SUSPENDED_MESSAGE, code: 'TENANT_SUSPENDED' });
-    }
-
     return await runWithTenant(targetTenant.id, async () => {
-      if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const user = await prisma.user.findFirst({
+        where: { tenantId: targetTenant.id, email: email.toLowerCase() },
+        include: { tenant: true },
+      });
+
+      if (user?.lockedUntil && user.lockedUntil > new Date()) {
         return res.status(423).json({
           error: 'Account temporarily locked due to repeated failed sign-ins. Try again later.',
           retryAfter: user.lockedUntil.toISOString(),
         });
       }
 
-      const check = await verifyPassword(password, user.passwordHash ?? null);
+      const check = await verifyPassword(password, user?.passwordHash ?? null);
 
-      if (!check.valid) {
-        const { failedLoginCount } = await prisma.user.update({
-          where: { id: user.id },
-          data: { failedLoginCount: { increment: 1 } },
-          select: { failedLoginCount: true },
-        });
-
-        if (failedLoginCount >= config.MAX_FAILED_LOGINS) {
-          await prisma.user.update({
+      if (!user || !check.valid) {
+        if (user) {
+          const { failedLoginCount } = await prisma.user.update({
             where: { id: user.id },
-            data: {
-              failedLoginCount: 0,
-              lockedUntil: new Date(Date.now() + config.LOCKOUT_MINUTES * 60 * 1000),
-            },
+            data: { failedLoginCount: { increment: 1 } },
+            select: { failedLoginCount: true },
           });
+
+          if (failedLoginCount >= config.MAX_FAILED_LOGINS) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginCount: 0,
+                lockedUntil: new Date(Date.now() + config.LOCKOUT_MINUTES * 60 * 1000),
+              },
+            });
+          }
         }
 
         await logAuditEvent({
           tenantId: targetTenant.id,
-          userId: user.id,
+          userId: user?.id ?? null,
           action: 'USER_LOGIN_FAILED',
           resourceType: 'USER',
-          resourceId: user.id,
+          resourceId: user?.id ?? null,
           ipAddress: req.ip,
           userAgent: req.headers['user-agent'],
           diffJson: { email },
@@ -330,26 +302,13 @@ router.post('/change-password', authenticateJWT, tokenFlowLimiter, async (req: R
       return res.status(401).json({ error: 'Session is no longer valid' });
     }
 
-    if (user.passwordHash) {
-      if (!currentPassword) {
-        return res.status(400).json({ error: 'Current password is required' });
-      }
-      const check = await verifyPassword(currentPassword, user.passwordHash);
-      if (!check.valid) {
-        return res.status(400).json({ error: 'Current password is incorrect' });
-      }
-    }
+    if (!user.passwordHash) return res.status(409).json({ error: PASSWORDLESS_MESSAGE });
+    if (!currentPassword) return res.status(400).json({ error: 'Current password is required' });
+    const check = await verifyPassword(currentPassword, user.passwordHash);
+    if (!check.valid) return res.status(400).json({ error: 'Current password is incorrect' });
 
-    const passwordHash = await hashPassword(newPassword);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        failedLoginCount: 0,
-        lockedUntil: null,
-      },
-    });
+    await setPasswordAndRevokeSessions(user.id, newPassword);
+    await startSession(res, { id: user.id, role: actor.role, email: user.email, tenantId: actor.tenantId });
 
     await logAuditEvent({
       tenantId: actor.tenantId,

@@ -975,6 +975,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change your own password (current password required). Signs out every other session; this one stays signed in. 409 for an account with no password yet: use the reset e-mail. Audited. */
+        post: operations["postAuthChangePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/forgot-password": {
         parameters: {
             query?: never;
@@ -4188,6 +4205,24 @@ export interface paths {
         patch: operations["patchUsersId"];
         trace?: never;
     };
+    "/api/v1/users/{id}/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a profile picture for yourself or (administrators) anyone in the organisation: the request body is the image itself (PNG, JPEG, WebP or GIF, at most 5 MB) with its Content-Type. Scanned for viruses when a scanner is set up. `me` stands for the caller. Audited. */
+        post: operations["postUsersIdAvatar"];
+        /** Remove a profile picture (yours, or anyone in the organisation for administrators). Audited. */
+        delete: operations["deleteUsersIdAvatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}/enrollments": {
         parameters: {
             query?: never;
@@ -4216,6 +4251,23 @@ export interface paths {
         put?: never;
         /** Send a fresh invitation link to someone who has not accepted yet. */
         post: operations["postUsersIdInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change a password. Your own needs the current one and signs out your other sessions; an administrator may set a learner or staff password, and only a SUPER_ADMIN an administrator's, which signs that person out everywhere. 409 for your own account when it has no password yet. `me` stands for the caller. Audited. */
+        post: operations["postUsersIdPassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9421,6 +9473,72 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postAuthChangePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword?: string;
+                    newPassword: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15619,8 +15737,8 @@ export interface operations {
     postFiles: {
         parameters: {
             query: {
-                purpose: "ASSIGNMENT_SUBMISSION" | "LESSON_MEDIA" | "SCORM_PACKAGE";
-                courseId: string;
+                purpose: "ASSIGNMENT_SUBMISSION" | "LESSON_MEDIA" | "SCORM_PACKAGE" | "AVATAR";
+                courseId?: string;
                 filename: string;
             };
             header?: never;
@@ -26280,6 +26398,189 @@ export interface operations {
             };
         };
     };
+    postUsersIdAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            avatarUrl: string | null;
+                            /** @enum {string} */
+                            role: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                            emailVerified: boolean;
+                            idpProvider: string | null;
+                            mfaEnabled: boolean;
+                            lastLoginAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                        avatarUrl: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unsupported content type */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Refused */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A service this needs is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteUsersIdAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            tenantId: string;
+                            email: string;
+                            firstName: string;
+                            lastName: string;
+                            avatarUrl: string | null;
+                            /** @enum {string} */
+                            role: "SUPER_ADMIN" | "TENANT_ADMIN" | "INSTRUCTOR" | "TEACHING_ASSISTANT" | "STUDENT" | "PARENT_GUARDIAN" | "AUDITOR";
+                            /** @enum {string} */
+                            status: "ACTIVE" | "INVITED" | "LOCKED" | "SUSPENDED";
+                            emailVerified: boolean;
+                            idpProvider: string | null;
+                            mfaEnabled: boolean;
+                            lastLoginAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                        avatarUrl: unknown;
+                    };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getUsersIdEnrollments: {
         parameters: {
             query?: never;
@@ -26397,6 +26698,83 @@ export interface operations {
                             emailConfigured: boolean;
                         };
                     };
+                };
+            };
+            /** @description Not signed in, or the session was revoked */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    postUsersIdPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword?: string;
+                    newPassword: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        message: string;
+                    };
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not signed in, or the session was revoked */

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { ResponseDoc } from './responses/types';
-import { forgotSchema, loginSchema, resetSchema, verifySchema } from '../routes/auth.routes';
+import { changePasswordSchema, forgotSchema, loginSchema, resetSchema, verifySchema } from '../routes/auth.routes';
 import { confirmRequestSchema, organizationRequestSchema, slugQuery } from '../routes/organizations.routes';
 import { findOrganizationSchema } from '../routes/find-organization.routes';
 import {
@@ -391,6 +391,13 @@ export const DOCS: Record<string, OperationDoc> = {
     body: forgotSchema,
     response: ok(message),
     errors: [429],
+  },
+  'POST /api/v1/auth/change-password': {
+    summary:
+      'Change your own password (current password required). Signs out every other session; this one stays signed in. 409 for an account with no password yet: use the reset e-mail. Audited.',
+    body: changePasswordSchema,
+    response: ok(z.object({ success: z.boolean(), message: z.string() })),
+    errors: [400, 401, 409, 429],
   },
   'POST /api/v1/auth/reset-password': {
     summary:

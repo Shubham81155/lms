@@ -2,7 +2,7 @@
 # Shared by backup.sh, restore.sh and restore-drill.sh (sourced).
 : "${PGHOST:=postgres}"
 : "${PGUSER:=postgres}"
-: "${PGDATABASE:=lms_preview}"
+: "${PGDATABASE:=enterprise_lms}"
 : "${BACKUP_DIR:=/backups}"
 export PGHOST PGUSER PGDATABASE
 # PGPASSWORD comes from the environment (compose passes POSTGRES_PASSWORD) and is read by libpq itself.

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { invalidateSessionCache } from '../lib/session';
 import { logAuditEvent, pick } from '../lib/audit';
-import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
+import { authenticateJWT, requireRole, startSession, tenantIdOf } from '../middleware/auth';
 import { GlobalRole, UserStatus } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
 import { httpUrl, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
@@ -12,14 +12,20 @@ import { withSeat } from '../lib/features';
 import { sendInvitation } from '../lib/invitations';
 import { dispatchWebhook } from '../lib/webhooks';
 import { parseCsv } from '../lib/csv';
+import { PASSWORDLESS_MESSAGE, mayResetPasswordOf, setPasswordAndRevokeSessions } from '../lib/account-password';
 import { createReadStream } from 'fs';
 import { rm } from 'fs/promises';
 import { linkOrUpload, fileLink } from '../lib/stored-files';
 import { receiveUpload, newStorageKey, storage } from '../lib/storage';
 import { virusScanner, ScanUnavailableError } from '../lib/virus-scan';
-import { verifyPassword, hashPassword, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from '../lib/password';
+import { verifyPassword, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from '../lib/password';
 
 const router = Router();
+
+export const setPasswordSchema = z.object({
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`).max(PASSWORD_MAX_LENGTH),
+});
 
 export const updateUserSchema = z.object({
   firstName: z.string().trim().min(1).max(100).optional(),
@@ -576,7 +582,9 @@ router.post(
         },
       });
     } catch (e) {
-      await storage().delete(storageKey).catch(() => undefined);
+      await storage()
+        .delete(storageKey)
+        .catch(() => undefined);
       throw e;
     }
 
@@ -662,33 +670,25 @@ router.post(
 
     if (!isSelf && !isAdmin) throw new HttpError(403, 'Forbidden: Cannot change password for this user');
 
-    const schema = z.object({
-      currentPassword: z.string().optional(),
-      newPassword: z.string().min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`).max(PASSWORD_MAX_LENGTH),
-    });
-    const { currentPassword, newPassword } = parseBody(req, schema);
+    const { currentPassword, newPassword } = parseBody(req, setPasswordSchema);
 
     const target = await prisma.user.findFirst({
       where: { id, tenantId },
-      select: { id: true, email: true, passwordHash: true, status: true },
+      select: { id: true, email: true, role: true, passwordHash: true, status: true },
     });
     if (!target) throw new HttpError(404, 'User not found');
 
-    if (isSelf && target.passwordHash) {
+    if (isSelf) {
+      if (!target.passwordHash) throw new HttpError(409, PASSWORDLESS_MESSAGE);
       if (!currentPassword) throw new HttpError(400, 'Current password is required');
       const check = await verifyPassword(currentPassword, target.passwordHash);
       if (!check.valid) throw new HttpError(400, 'Current password is incorrect');
+    } else if (!mayResetPasswordOf(actor.role, target.role)) {
+      throw new HttpError(403, 'Forbidden: Only a super admin can change an administrator’s password');
     }
 
-    const passwordHash = await hashPassword(newPassword);
-    await prisma.user.update({
-      where: { id },
-      data: {
-        passwordHash,
-        failedLoginCount: 0,
-        lockedUntil: null,
-      },
-    });
+    await setPasswordAndRevokeSessions(id, newPassword);
+    if (isSelf) await startSession(res, { id, role: target.role, email: target.email, tenantId });
 
     await logAuditEvent({
       tenantId,

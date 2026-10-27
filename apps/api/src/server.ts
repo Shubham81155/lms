@@ -34,13 +34,6 @@ import { startBreachJob } from './lib/breaches';
 import { startRetentionJob } from './lib/retention';
 import { startBillingJob } from './lib/billing';
 
-process.on('uncaughtException', (err) => {
-  logger.error({ err }, 'uncaughtException');
-});
-process.on('unhandledRejection', (reason) => {
-  logger.error({ reason }, 'unhandledRejection');
-});
-
 const app = express();
 const PORT = config.PORT;
 
@@ -48,7 +41,12 @@ app.use(requestId);
 app.use(httpMetrics);
 
 // Needed for correct client IPs (rate limiting, audit) when behind a reverse proxy.
-if (config.TRUST_PROXY > 0) app.set('trust proxy', config.TRUST_PROXY);
+if (config.TRUST_PROXY > 0) {
+  app.set('trust proxy', config.TRUST_PROXY);
+} else {
+  // In development, trust loopback proxies (e.g. Next.js rewriting from port 3000 to port 4000)
+  app.set('trust proxy', 'loopback');
+}
 
 // =========================================================
 // 1. ENTERPRISE SECURITY & COMPLIANCE MIDDLEWARE

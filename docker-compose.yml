@@ -7,12 +7,12 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: lms_preview
+      POSTGRES_DB: enterprise_lms
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/init-db.sql:/docker-entrypoint-initdb.d/10-app-role.sql:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres -d lms_preview']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d enterprise_lms']
       interval: 5s
       retries: 10
 
@@ -23,8 +23,8 @@ services:
     working_dir: /app
     command: ['npm', 'run', 'db:deploy', '-w', '@enterprise-lms/database']
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/lms_preview?schema=public
-      DIRECT_URL: postgresql://postgres:postgres@db:5432/lms_preview?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/enterprise_lms?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/enterprise_lms?schema=public
 
   api:
     build: { context: ., dockerfile: deploy/Dockerfile.api }
@@ -33,7 +33,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 4000
-      DATABASE_URL: postgresql://lms_app:lms_app_dev_password@db:5432/lms_preview?schema=public
+      DATABASE_URL: postgresql://lms_app:lms_app_dev_password@db:5432/enterprise_lms?schema=public
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:?set PII_ENCRYPTION_KEY}
       TRUST_PROXY: 1
