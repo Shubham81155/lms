@@ -8,6 +8,8 @@ import { BrandLogo } from '@/components/BrandLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useAuth } from '@/context/AuthContext';
+import { resolveDeepLink } from '@/lib/deeplink';
 import { AREA_LABEL, type Area } from '@/lib/navigation';
 import { LanguageSwitcher, useT } from '@/lib/i18n';
 
@@ -43,8 +45,55 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [query, setQuery] = useState('');
   const notifications = useNotifications();
+  const { user } = useAuth();
   const router = useRouter();
   const t = useT();
+
+  const handleNotificationAction = (url: string) => {
+    if (!url) return;
+
+    // External links
+    if (/^https?:\/\//i.test(url)) {
+      window.location.href = url;
+      return;
+    }
+
+    // Resolve internal deeplinks (/courses/..., /quizzes/..., /assignments/...)
+    let target = url;
+    if (user && (target.startsWith('/courses') || target.startsWith('/quizzes') || target.startsWith('/assignments'))) {
+      target = resolveDeepLink(target, user.role);
+    }
+
+    const [targetPath, targetHash] = target.split('#');
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+
+    if (targetHash && (!targetPath || targetPath === currentPath)) {
+      if (window.location.hash !== `#${targetHash}`) {
+        window.location.hash = targetHash;
+      }
+      // Explicitly fire hashchange event so SPA dashboard listeners switch tabs
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+      setTimeout(() => {
+        const el =
+          document.getElementById(targetHash) ||
+          document.getElementById(`admin-${targetHash}`) ||
+          document.getElementById('review-h') ||
+          document.getElementById('admin-courses');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 50);
+      return;
+    }
+
+    if (target.includes('#')) {
+      // Cross-page navigation with a hash
+      window.location.href = target;
+    } else {
+      router.push(target);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-3 border-b border-line bg-canvas/85 px-4 backdrop-blur-md sm:px-6">
@@ -141,8 +190,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             onMarkRead={notifications.markRead}
             onMarkAllRead={notifications.markAllRead}
             onDismiss={notifications.dismiss}
-            // The link is a path like /courses/:id/live; DeepLink turns it into the right dashboard panel.
-            onActionClick={(url) => router.push(url)}
+            onActionClick={handleNotificationAction}
           />
         </div>
 

@@ -135,100 +135,103 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Top Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {[
-            {
-              label: t('people.admin.seats'),
-              value: seats ? (seats.quota ? `${seats.used} / ${seats.quota}` : String(seats.used)) : '…',
-              sub: seats ? t('people.admin.activeUsers', { count: t.number(usage.data?.data.last30Days.activeUsers ?? 0) }) : '',
-              icon: Users,
-              color: 'text-brand-fg',
-            },
-            {
-              label: t('people.admin.courses'),
-              value: usage.data ? String(usage.data.data.totals.courses) : '…',
-              sub: t.plural('people.admin.enrolments', usage.data?.data.totals.enrollments ?? 0, {
-                count: t.number(usage.data?.data.totals.enrollments ?? 0),
-              }),
-              icon: Database,
-              color: 'text-success',
-            },
-            {
-              label: t('people.admin.sso'),
-              value: flags.sso ? t('people.admin.ssoAvailable') : t('people.admin.ssoNotInPlan'),
-              sub: flags.scim ? t('people.admin.scimOn') : t('people.admin.scimOff'),
-              icon: Key,
-              color: 'text-accent',
-            },
-            {
-              label: t('people.admin.integrations'),
-              value: flags.webhooks ? t('people.admin.webhooksOn') : t('people.admin.webhooksOff'),
-              sub: flags.lti13 ? t('people.admin.lti13On') : t('people.admin.lti13Off'),
-              icon: Terminal,
-              color: 'text-orchid',
-            },
-          ].map((stat, idx) => {
-            const Icon = stat.icon;
-            return (
-              <div key={idx} className="bg-surface border border-line rounded-2xl p-5 space-y-3 shadow-lg">
-                <div className="flex items-center justify-between text-ink-muted">
-                  <span className="text-xs font-semibold">{stat.label}</span>
-                  <Icon className={`h-5 w-5 ${stat.color}`} />
+        {/* Top Metric Cards (Organisation tab only) */}
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              {
+                label: t('people.admin.seats'),
+                value: seats ? (seats.quota ? `${seats.used} / ${seats.quota}` : String(seats.used)) : '…',
+                sub: seats ? t('people.admin.activeUsers', { count: t.number(usage.data?.data.last30Days.activeUsers ?? 0) }) : '',
+                icon: Users,
+                color: 'text-brand-fg',
+              },
+              {
+                label: t('people.admin.courses'),
+                value: usage.data ? String(usage.data.data.totals.courses) : '…',
+                sub: t.plural('people.admin.enrolments', usage.data?.data.totals.enrollments ?? 0, {
+                  count: t.number(usage.data?.data.totals.enrollments ?? 0),
+                }),
+                icon: Database,
+                color: 'text-success',
+              },
+              {
+                label: t('people.admin.sso'),
+                value: flags.sso ? t('people.admin.ssoAvailable') : t('people.admin.ssoNotInPlan'),
+                sub: flags.scim ? t('people.admin.scimOn') : t('people.admin.scimOff'),
+                icon: Key,
+                color: 'text-accent',
+              },
+              {
+                label: t('people.admin.integrations'),
+                value: flags.webhooks ? t('people.admin.webhooksOn') : t('people.admin.webhooksOff'),
+                sub: flags.lti13 ? t('people.admin.lti13On') : t('people.admin.lti13Off'),
+                icon: Terminal,
+                color: 'text-orchid',
+              },
+            ].map((stat, idx) => {
+              const Icon = stat.icon;
+              return (
+                <div key={idx} className="bg-surface border border-line rounded-2xl p-5 space-y-3 shadow-lg">
+                  <div className="flex items-center justify-between text-ink-muted">
+                    <span className="text-xs font-semibold">{stat.label}</span>
+                    <Icon className={`h-5 w-5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-ink">{stat.value}</div>
+                    <div className="text-[11px] text-ink-subtle mt-0.5">{stat.sub}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-ink">{stat.value}</div>
-                  <div className="text-[11px] text-ink-subtle mt-0.5">{stat.sub}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Tab Contents */}
         <h2 className="sr-only">{currentTab('admin', activeTab).label}</h2>
         {activeTab === 'overview' && (
-          <SetupChecklist
-            seatsUsed={seats?.used ?? null}
-            courses={usage.data?.data.totals.courses ?? null}
-            ssoAvailable={!!flags.sso}
-            onGo={(step) => {
-              if (step === 'people' || step === 'course') setShowPeople(true);
-              else if (step === 'signin') setActiveTab('sso');
-              else
-                document
-                  .getElementById(step === 'terms' ? 'admin-terms' : 'admin-branding')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-          />
-        )}
-
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-surface border border-line rounded-3xl p-6 shadow-xl">
-              <CampusPanel />
-            </div>
-            <div id="admin-branding" className="bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
-              <BrandingPanel />
-            </div>
-            <div id="admin-domain" className="md:col-span-3 bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
-              <CustomDomainPanel />
-            </div>
-            <div id="admin-terms" className="md:col-span-3 bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
-              <TermsPanel />
+          <div id="admin-overview" className="space-y-6">
+            <SetupChecklist
+              seatsUsed={seats?.used ?? null}
+              courses={usage.data?.data.totals.courses ?? null}
+              ssoAvailable={!!flags.sso}
+              onGo={(step) => {
+                if (step === 'people' || step === 'course') setShowPeople(true);
+                else if (step === 'signin') setActiveTab('sso');
+                else
+                  document
+                    .getElementById(step === 'terms' ? 'admin-terms' : 'admin-branding')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 bg-surface border border-line rounded-3xl p-6 shadow-xl">
+                <CampusPanel />
+              </div>
+              <div id="admin-branding" className="bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
+                <BrandingPanel />
+              </div>
+              <div id="admin-domain" className="md:col-span-3 bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
+                <CustomDomainPanel />
+              </div>
+              <div id="admin-terms" className="md:col-span-3 bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
+                <TermsPanel />
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'courses' && (
-          <div className="space-y-6">
+          <div id="admin-courses" className="space-y-6 scroll-mt-20">
+            <div id="courses" className="scroll-mt-20" />
             <CourseReviewPanel onDecided={() => setCoursesVersion((v) => v + 1)} />
             <AdminCourseTable onOpenGradebook={(id) => show('gradebook', id)} refreshKey={coursesVersion} />
           </div>
         )}
 
         {activeTab === 'compliance' && (
-          <div className="space-y-6">
+          <div id="admin-compliance" className="space-y-6 scroll-mt-20">
+            <div id="compliance" className="scroll-mt-20" />
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <CompliancePanel />
             </div>
@@ -257,7 +260,8 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'sso' && (
-          <div className="space-y-6">
+          <div id="admin-sso" className="space-y-6 scroll-mt-20">
+            <div id="sso" className="scroll-mt-20" />
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <SsoPanel available={!!flags.sso} />
             </div>
@@ -271,7 +275,8 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'platform' && (
-          <div className="space-y-6">
+          <div id="admin-platform" className="space-y-6 scroll-mt-20">
+            <div id="platform" className="scroll-mt-20" />
             <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
               <UsagePanel />
             </div>
@@ -291,13 +296,15 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'billing' && (
-          <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
+          <div id="admin-billing" className="bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
+            <div id="billing" className="scroll-mt-20" />
             <BillingPanel />
           </div>
         )}
 
         {activeTab === 'audit' && (
-          <div className="bg-surface border border-line rounded-3xl p-6 shadow-xl">
+          <div id="admin-audit" className="bg-surface border border-line rounded-3xl p-6 shadow-xl scroll-mt-20">
+            <div id="audit" className="scroll-mt-20" />
             <AuditLogPanel />
           </div>
         )}

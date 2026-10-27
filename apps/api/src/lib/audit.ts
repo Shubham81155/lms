@@ -8,9 +8,31 @@ export interface AuditLogOptions {
   action: string;
   resourceType: string;
   resourceId?: string | null;
-  ipAddress?: string;
-  userAgent?: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
   diffJson?: any;
+}
+
+/**
+ * Normalizes client IP addresses for audit logging and display.
+ * Maps IPv6 loopback (::1) to 127.0.0.1 and strips IPv4-mapped prefixes (::ffff:).
+ */
+export function normalizeIp(ip: string | undefined | null): string | null {
+  if (!ip) return null;
+  let clean = ip.trim();
+  if (!clean) return null;
+
+  // Strip IPv4-mapped IPv6 prefix (e.g., ::ffff:192.168.1.1 -> 192.168.1.1)
+  if (clean.startsWith('::ffff:')) {
+    clean = clean.slice(7);
+  }
+
+  // Normalize IPv6 loopback to IPv4 loopback
+  if (clean === '::1' || clean === '0:0:0:0:0:0:0:1' || clean.toLowerCase() === 'localhost') {
+    return '127.0.0.1';
+  }
+
+  return clean;
 }
 
 export async function logAuditEvent(options: AuditLogOptions) {
@@ -24,7 +46,7 @@ export async function logAuditEvent(options: AuditLogOptions) {
         action: options.action,
         resourceType: options.resourceType,
         resourceId: options.resourceId ?? null,
-        ipAddress: options.ipAddress ?? null,
+        ipAddress: normalizeIp(options.ipAddress),
         userAgent: options.userAgent ?? null,
         diffJson: sanitizedDiff ?? null,
       },

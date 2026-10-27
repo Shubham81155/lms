@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Download, ChevronDown, ChevronRight } from 'lucide-react';
 import { downloadFile, errorMessage, useApiData } from '@/hooks/useApiData';
 import { useT } from '@/lib/i18n';
+import { formatIpAddress } from '@/lib/ip';
 
 interface AuditEntry {
   id: string;
@@ -218,7 +219,22 @@ export const AuditLogPanel: React.FC = () => {
                         <span className="text-ink-subtle">{t('ident.audit.system')}</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 font-mono text-ink-muted">{l.ipAddress ?? ''}</td>
+                    <td className="px-3 py-2 font-mono text-ink-muted whitespace-nowrap">
+                      {(() => {
+                        const { display, isLocal } = formatIpAddress(l.ipAddress);
+                        if (display === '—') return <span className="text-ink-subtle">—</span>;
+                        return (
+                          <span className="inline-flex items-center gap-1.5" title={isLocal ? 'Localhost (127.0.0.1)' : display}>
+                            <span>{display}</span>
+                            {isLocal && (
+                              <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-sans font-medium text-brand-fg">
+                                Localhost
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })()}
+                    </td>
                   </tr>
                   {open && (
                     <tr className="bg-canvas">

@@ -15,3 +15,4 @@ process.env.LOCKOUT_MINUTES = '15';
 process.env.DEFAULT_TENANT_SLUG = 'harvard';
 process.env.CORS_ORIGINS = 'http://localhost:3000';
 process.env.APP_URL = 'http://localhost:3000';
+process.env.TRUST_PROXY = '0';

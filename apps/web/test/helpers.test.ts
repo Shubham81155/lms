@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { appealDaysLeft, draftProblem, rubricDraft } from '../src/lib/forms';
 import { timeAgo, toItem } from '../src/hooks/useNotifications';
 import { countdown } from '../src/hooks/useEngagement';
+import { formatIpAddress } from '../src/lib/ip';
 
 const crit = [
   { id: 'a', name: 'Thesis', maxPoints: 10 },
@@ -273,5 +274,36 @@ describe('live class helpers', () => {
       expect(decodeChat(raw(bad), 'Ada'), JSON.stringify(bad)).toBeNull();
     }
     expect(decodeChat(raw({ t: 'chat', text: '<script>alert(1)</script>' }), 'x'.repeat(300))!.from).toHaveLength(100);
+  });
+});
+
+describe('formatIpAddress', () => {
+  it('formats IPv6 loopback as 127.0.0.1 (Localhost)', () => {
+    expect(formatIpAddress('::1')).toEqual({ display: '127.0.0.1', isLocal: true, raw: '::1' });
+    expect(formatIpAddress('0:0:0:0:0:0:0:1')).toEqual({ display: '127.0.0.1', isLocal: true, raw: '0:0:0:0:0:0:0:1' });
+  });
+
+  it('formats IPv4 loopback as 127.0.0.1 (Localhost)', () => {
+    expect(formatIpAddress('127.0.0.1')).toEqual({ display: '127.0.0.1', isLocal: true, raw: '127.0.0.1' });
+    expect(formatIpAddress('::ffff:127.0.0.1')).toEqual({ display: '127.0.0.1', isLocal: true, raw: '::ffff:127.0.0.1' });
+    expect(formatIpAddress('localhost')).toEqual({ display: '127.0.0.1', isLocal: true, raw: 'localhost' });
+  });
+
+  it('strips IPv4-mapped IPv6 prefixes', () => {
+    expect(formatIpAddress('::ffff:192.168.1.10')).toEqual({ display: '192.168.1.10', isLocal: false, raw: '::ffff:192.168.1.10' });
+    expect(formatIpAddress('::ffff:10.0.0.1')).toEqual({ display: '10.0.0.1', isLocal: false, raw: '::ffff:10.0.0.1' });
+  });
+
+  it('retains regular public or local IPv4/IPv6 addresses', () => {
+    expect(formatIpAddress('192.168.1.100')).toEqual({ display: '192.168.1.100', isLocal: false, raw: '192.168.1.100' });
+    expect(formatIpAddress('203.0.113.195')).toEqual({ display: '203.0.113.195', isLocal: false, raw: '203.0.113.195' });
+    expect(formatIpAddress('2001:db8::1')).toEqual({ display: '2001:db8::1', isLocal: false, raw: '2001:db8::1' });
+  });
+
+  it('handles null, undefined, and empty string', () => {
+    expect(formatIpAddress(null)).toEqual({ display: '—', isLocal: false, raw: null });
+    expect(formatIpAddress(undefined)).toEqual({ display: '—', isLocal: false, raw: null });
+    expect(formatIpAddress('')).toEqual({ display: '—', isLocal: false, raw: null });
+    expect(formatIpAddress('   ')).toEqual({ display: '—', isLocal: false, raw: null });
   });
 });

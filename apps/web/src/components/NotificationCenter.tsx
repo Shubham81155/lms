@@ -50,6 +50,14 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   const markAllAsRead = onMarkAllRead;
   const markSingleAsRead = onMarkRead;
 
+  const handleOpenItem = (notif: NotificationItem) => {
+    markSingleAsRead(notif.id);
+    if (onActionClick && notif.actionUrl) {
+      onActionClick(notif.actionUrl);
+      onClose();
+    }
+  };
+
   return (
     <div className="absolute right-0 top-12 z-50 w-96 max-w-[calc(100vw-2rem)] bg-surface border border-line rounded-3xl shadow-2xl overflow-hidden animate-fadeIn">
       {/* Header */}
@@ -123,15 +131,17 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               <div className="p-8 text-center text-ink-subtle text-xs">{t('notif.empty')}</div>
             ) : (
               filteredNotifications.map((notif) => (
-                // A mouse shortcut for "mark as read": the row holds its own buttons, so it cannot be a button itself.
-                // Keyboard users reach the same action with Enter or Space on the row (unread ones only).
                 // eslint-disable-next-line jsx-a11y/no-static-element-interactions
                 <div
                   key={notif.id}
-                  onClick={() => markSingleAsRead(notif.id)}
+                  onClick={() => (notif.actionUrl ? handleOpenItem(notif) : markSingleAsRead(notif.id))}
                   // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-                  tabIndex={notif.isRead ? undefined : 0}
-                  onKeyDown={notif.isRead ? undefined : activateOnKey(() => markSingleAsRead(notif.id))}
+                  tabIndex={notif.isRead && !notif.actionUrl ? undefined : 0}
+                  onKeyDown={
+                    notif.isRead && !notif.actionUrl
+                      ? undefined
+                      : activateOnKey(() => (notif.actionUrl ? handleOpenItem(notif) : markSingleAsRead(notif.id)))
+                  }
                   className={`p-3.5 text-xs transition-colors hover:bg-raised/40 cursor-pointer ${
                     !notif.isRead ? 'bg-brand/15' : 'bg-transparent'
                   }`}
@@ -145,6 +155,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       <span className="text-[10px] text-ink-subtle">{notif.timestamp}</span>
                       {onDismiss && (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onDismiss(notif.id);
@@ -152,7 +163,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                           aria-label={t('notif.dismiss', { title: notif.title })}
                           className="rounded p-0.5 text-ink-subtle transition-colors hover:bg-raised hover:text-ink"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </span>
@@ -163,13 +174,12 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   {notif.actionLabel && (
                     <div className="mt-2.5 flex items-center justify-between">
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          markSingleAsRead(notif.id);
-                          if (onActionClick && notif.actionUrl) onActionClick(notif.actionUrl);
-                          onClose();
+                          handleOpenItem(notif);
                         }}
-                        className="text-[10px] font-bold text-brand-fg hover:text-brand-fg flex items-center gap-1 bg-brand/15 px-2 py-1 rounded-md border border-brand/30 transition-colors"
+                        className="text-[10px] font-bold text-brand-fg hover:text-brand-fg flex items-center gap-1 bg-brand/15 hover:bg-brand/25 px-2 py-1 rounded-md border border-brand/30 transition-colors"
                       >
                         <span>{notif.actionLabel}</span>
                         <ExternalLink className="h-2.5 w-2.5" />

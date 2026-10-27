@@ -3,6 +3,7 @@ import { changePasswordSchema } from '../src/routes/auth.routes';
 import { updateUserSchema } from '../src/routes/users.routes';
 import { FILE_PURPOSES } from '../src/lib/stored-files';
 import { hashPassword, verifyPassword } from '../src/lib/password';
+import { normalizeIp } from '../src/lib/audit';
 
 describe('FILE_PURPOSES', () => {
   it('includes AVATAR for user profile pictures', () => {
@@ -67,5 +68,36 @@ describe('password hashing and verification', () => {
 
     const checkWrong = await verifyPassword('WrongPassword!', hashed);
     expect(checkWrong.valid).toBe(false);
+  });
+});
+
+describe('normalizeIp', () => {
+  it('normalizes IPv6 loopback to 127.0.0.1', () => {
+    expect(normalizeIp('::1')).toBe('127.0.0.1');
+    expect(normalizeIp('0:0:0:0:0:0:0:1')).toBe('127.0.0.1');
+    expect(normalizeIp('localhost')).toBe('127.0.0.1');
+  });
+
+  it('normalizes IPv4-mapped loopback to 127.0.0.1', () => {
+    expect(normalizeIp('::ffff:127.0.0.1')).toBe('127.0.0.1');
+    expect(normalizeIp('127.0.0.1')).toBe('127.0.0.1');
+  });
+
+  it('strips IPv4-mapped prefixes', () => {
+    expect(normalizeIp('::ffff:192.168.1.10')).toBe('192.168.1.10');
+    expect(normalizeIp('::ffff:10.0.0.5')).toBe('10.0.0.5');
+  });
+
+  it('preserves clean public/private IP addresses', () => {
+    expect(normalizeIp('192.168.1.50')).toBe('192.168.1.50');
+    expect(normalizeIp('203.0.113.195')).toBe('203.0.113.195');
+    expect(normalizeIp('2001:db8::1')).toBe('2001:db8::1');
+  });
+
+  it('handles null, undefined, empty string, and whitespace', () => {
+    expect(normalizeIp(null)).toBeNull();
+    expect(normalizeIp(undefined)).toBeNull();
+    expect(normalizeIp('')).toBeNull();
+    expect(normalizeIp('   ')).toBeNull();
   });
 });

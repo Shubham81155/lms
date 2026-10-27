@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { csvRow } from '../lib/csv';
-import { logAuditEvent, pick } from '../lib/audit';
+import { logAuditEvent, normalizeIp, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 import { EnrollmentStatus } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
@@ -195,7 +195,7 @@ router.get(
             l.resourceId,
             l.user?.email,
             l.user?.role,
-            l.ipAddress,
+            normalizeIp(l.ipAddress) ?? '',
             l.userAgent,
             l.diffJson ? JSON.stringify(l.diffJson) : '',
           ])
@@ -230,7 +230,12 @@ router.get(
       }),
     ]);
 
-    return res.status(200).json({ data: logs, pagination: pageMeta(page, limit, total) });
+    const mappedLogs = logs.map((l) => ({
+      ...l,
+      ipAddress: normalizeIp(l.ipAddress),
+    }));
+
+    return res.status(200).json({ data: mappedLogs, pagination: pageMeta(page, limit, total) });
   })
 );
 
