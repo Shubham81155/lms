@@ -15,29 +15,6 @@ import { LanguageSwitcher, useT } from '@/lib/i18n';
 // Error codes the API puts in /login?error= after a failed single sign-on round trip (messages: login.error.<code>).
 const SSO_ERROR_CODES = ['sso_failed', 'sso_unavailable'] as const;
 
-const DEMO_USERS = [
-  {
-    roleName: 'Platform Admin',
-    email: 'platform@gurugyan.com',
-    roleTag: 'Super Admin',
-  },
-  {
-    roleName: 'Institution Admin',
-    email: 'admin@gurugyan.edu',
-    roleTag: 'Admin',
-  },
-  {
-    roleName: 'Teacher',
-    email: 'teacher@gurugyan.edu',
-    roleTag: 'Faculty',
-  },
-  {
-    roleName: 'Student',
-    email: 'student@gurugyan.edu',
-    roleTag: 'Learner',
-  },
-];
-
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -195,43 +172,6 @@ function LoginForm() {
                 <span>{errorMsg}</span>
               </div>
             )}
-
-            {/* Quick Demo Credentials */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-ink-muted">
-                <span className="font-semibold uppercase tracking-wider">Quick Select Demo Role</span>
-                <span className="text-[10px] font-mono bg-raised px-1.5 py-0.5 rounded border border-line text-brand-fg">Password123!</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {DEMO_USERS.map((demo) => {
-                  const isSelected = email === demo.email;
-                  return (
-                    <button
-                      key={demo.email}
-                      type="button"
-                      onClick={() => {
-                        setEmail(demo.email);
-                        setPassword('Password123!');
-                        setErrorMsg(null);
-                      }}
-                      className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-1 text-xs ${
-                        isSelected
-                          ? 'border-brand bg-brand/10 text-brand-fg shadow-sm'
-                          : 'border-line hover:border-brand/40 bg-canvas hover:bg-raised text-ink'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-[11px] leading-tight truncate">{demo.roleName}</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-raised text-ink-muted border border-line font-medium shrink-0">
-                          {demo.roleTag}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-ink-muted truncate font-mono">{demo.email}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             {/* Credentials Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
