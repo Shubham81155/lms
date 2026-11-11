@@ -2,20 +2,7 @@
 
 import React, { useState } from 'react';
 import { useCalendarEvents, type ServerEvent } from '@/hooks/useEngagement';
-import {
-  X,
-  Calendar as CalendarIcon,
-  Clock,
-  Video,
-  FileCheck,
-  AlertTriangle,
-  Award,
-  Download,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  CheckCircle2,
-} from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, Video, FileCheck, AlertTriangle, Download, CheckCircle2 } from 'lucide-react';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useT, type Translator } from '@/lib/i18n';
 import { activateOnKey } from '@/lib/a11y';
@@ -97,7 +84,6 @@ interface AcademicCalendarProps {
 export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onSelectEvent }) => {
   const t = useT();
   useEscapeKey(onClose);
-  const [selectedView, setSelectedView] = useState<'MONTH' | 'AGENDA'>('AGENDA');
   const [calendarSyncNotification, setCalendarSyncNotification] = useState<{ ok: boolean; message?: string } | null>(null);
 
   const { events: raw, next, isLoading, error, downloadIcs } = useCalendarEvents();
@@ -108,8 +94,8 @@ export const AcademicCalendar: React.FC<AcademicCalendarProps> = ({ onClose, onS
     try {
       await downloadIcs();
       setCalendarSyncNotification({ ok: true });
-    } catch (e: any) {
-      setCalendarSyncNotification({ ok: false, message: e?.message });
+    } catch (e: unknown) {
+      setCalendarSyncNotification({ ok: false, message: e instanceof Error ? e.message : undefined });
     }
     setTimeout(() => setCalendarSyncNotification(null), 4000);
   };

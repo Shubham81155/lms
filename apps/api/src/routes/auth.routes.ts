@@ -212,7 +212,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
 
       return res.status(200).json({ user: { ...updatedUser, platformOperator: isPlatformOperator(updatedUser.role, targetTenant.slug) } });
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/login');
     return res.status(500).json({ error: 'Internal server error during authentication' });
   }
@@ -275,7 +275,7 @@ router.get('/me', authenticateJWT, async (req: Request, res: Response) => {
     }
 
     return res.status(200).json({ user: { ...user, platformOperator: isPlatformOperator(user.role, user.tenant?.slug) } });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Error in GET /api/v1/auth/me');
     return res.status(500).json({ error: 'Internal server error retrieving user profile' });
   }
@@ -321,7 +321,7 @@ router.post('/change-password', authenticateJWT, tokenFlowLimiter, async (req: R
     });
 
     return res.status(200).json({ success: true, message: 'Password updated successfully' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/change-password');
     return res.status(500).json({ error: 'Failed to update password' });
   }
@@ -348,7 +348,7 @@ router.post('/forgot-password', tokenFlowLimiter, async (req: Request, res: Resp
     }
 
     return res.status(200).json(GENERIC_FORGOT_RESPONSE);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/forgot-password');
     return res.status(500).json({ error: 'Failed to process password reset request' });
   }
@@ -476,7 +476,7 @@ router.post('/reset-password', tokenFlowLimiter, async (req: Request, res: Respo
       message: changed === 'INVITED' ? 'Your account is ready. You can now sign in.' : 'Password updated. You can now sign in.',
       ...(tenant ? { organization: { slug: tenant.slug, name: tenant.name, url: tenantUrl(tenant) } } : {}),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/reset-password');
     return res.status(500).json({ error: 'Failed to reset password' });
   }
@@ -522,7 +522,7 @@ router.post('/verify-email', tokenFlowLimiter, async (req: Request, res: Respons
     );
 
     return res.status(200).json({ message: 'Email verified' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/verify-email');
     return res.status(500).json({ error: 'Failed to verify email' });
   }
@@ -564,7 +564,7 @@ router.post('/resend-verification', authenticateJWT, tokenFlowLimiter, async (re
     });
 
     return res.status(200).json({ message: 'Verification email sent' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error }, 'Error in POST /api/v1/auth/resend-verification');
     return res.status(500).json({ error: 'Failed to send verification email' });
   }

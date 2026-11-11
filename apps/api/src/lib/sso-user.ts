@@ -115,10 +115,10 @@ async function createSsoUser(id: SsoIdentity, email: string): Promise<SsoResolut
         },
       })
     );
-  } catch (err: any) {
+  } catch (err) {
     if (err instanceof HttpError && err.status === 409) return { ok: false, reason: 'no seats left' };
     // Two first sign-ins at once: the other one created the account, so sign in as it.
-    if (err?.code === 'P2002') return resolveSsoUser({ ...id, autoCreate: false });
+    if ((err as { code?: string } | null)?.code === 'P2002') return resolveSsoUser({ ...id, autoCreate: false });
     throw err;
   }
   await logAuditEvent({

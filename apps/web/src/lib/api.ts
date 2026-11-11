@@ -1,8 +1,10 @@
+export type ApiErrorDetails = Record<string, unknown>;
+
 export class ApiError extends Error {
   status: number;
-  details?: any;
+  details?: ApiErrorDetails;
 
-  constructor(message: string, status: number, details?: any) {
+  constructor(message: string, status: number, details?: ApiErrorDetails) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -58,13 +60,22 @@ export async function apiClient<T>(path: string, options: RequestOptions = {}): 
 
   if (!response.ok) {
     let errorMessage = `HTTP error ${response.status}: ${response.statusText}`;
-    let errorDetails: any = null;
+    let errorDetails: ApiErrorDetails | undefined;
 
     try {
-      const errorJson = await response.json();
+      const errorJson = (await response.json()) as {
+        error?: string;
+        message?: string;
+        details?: unknown;
+      } | null;
       if (errorJson) {
         errorMessage = errorJson.error || errorJson.message || errorMessage;
-        errorDetails = errorJson.details || errorJson;
+        const raw = errorJson.details ?? errorJson;
+        if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
+          errorDetails = raw as ApiErrorDetails;
+        } else if (raw !== undefined) {
+          errorDetails = { value: raw };
+        }
       }
     } catch {
       try {
@@ -96,7 +107,7 @@ export const api = {
     return apiClient<T>(path, { ...options, method: 'GET' });
   },
 
-  post: <T>(path: string, body?: any, options?: RequestOptions): Promise<T> => {
+  post: <T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> => {
     return apiClient<T>(path, {
       ...options,
       method: 'POST',
@@ -104,7 +115,7 @@ export const api = {
     });
   },
 
-  put: <T>(path: string, body?: any, options?: RequestOptions): Promise<T> => {
+  put: <T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> => {
     return apiClient<T>(path, {
       ...options,
       method: 'PUT',
@@ -112,7 +123,7 @@ export const api = {
     });
   },
 
-  patch: <T>(path: string, body?: any, options?: RequestOptions): Promise<T> => {
+  patch: <T>(path: string, body?: unknown, options?: RequestOptions): Promise<T> => {
     return apiClient<T>(path, {
       ...options,
       method: 'PATCH',

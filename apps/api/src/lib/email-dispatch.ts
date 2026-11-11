@@ -124,10 +124,19 @@ export async function dispatchPendingEmails(opts: { now?: Date; batch?: number }
 
 let timer: NodeJS.Timeout | null = null;
 
+/** Stops the background notification e-mail dispatcher. */
+export function stopEmailDispatcher(): void {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+}
+
 /** Starts the background sender; a tick is skipped while the previous one is still running. */
-export function startEmailDispatcher(): void {
+export function startEmailDispatcher(): () => void {
   const seconds = config.EMAIL_DISPATCH_INTERVAL_SECONDS;
-  if (seconds <= 0 || timer) return;
+  if (seconds <= 0) return () => {};
+  if (timer) return stopEmailDispatcher;
   let running = false;
   timer = setInterval(async () => {
     if (running) return;
@@ -140,4 +149,5 @@ export function startEmailDispatcher(): void {
     }
   }, seconds * 1000);
   timer.unref();
+  return stopEmailDispatcher;
 }

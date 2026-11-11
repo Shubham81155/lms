@@ -4,7 +4,7 @@ import { config } from '../config';
 import { basePrisma, prisma } from './prisma';
 import { logAuditEvent } from './audit';
 import { logger } from './logger';
-import { startPeriodicJob, withJobLock } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs, withJobLock } from './job-lock';
 import { storage } from './storage';
 
 // Data retention: an organisation can have data it no longer needs removed after N days. Off by default. Only
@@ -356,5 +356,10 @@ export async function runRetentionJob(now = new Date()): Promise<RetentionJobRes
 /** One round under the job lock: null when another process is running it. */
 export const runRetentionJobLocked = (now?: Date) => withJobLock(RETENTION_JOB, () => runRetentionJob(now));
 
+export const stopRetentionJob = () => stopPeriodicJobs();
+
 /** Starts the periodic job (every RETENTION_JOB_INTERVAL_SECONDS; one process at a time across the deployment). */
-export const startRetentionJob = () => startPeriodicJob(RETENTION_JOB, config.RETENTION_JOB_INTERVAL_SECONDS, () => runRetentionJob());
+export const startRetentionJob = (): (() => void) => {
+  startPeriodicJob(RETENTION_JOB, config.RETENTION_JOB_INTERVAL_SECONDS, () => runRetentionJob());
+  return stopRetentionJob;
+};

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 import { applyCurve, computeRawGrade, letterFor, weightsValid, ItemScore } from '../src/lib/gradebook';
@@ -23,7 +22,7 @@ async function seed() {
     ['t-m', 'mit'],
   ])
     await admin.tenant.create({ data: { id, slug, name: slug } });
-  const user = (id: string, tenantId: string, slug: string, role: any) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -239,7 +238,7 @@ describe('gradebook workflow', () => {
       { name: 'Assignments', weightPercent: 60 },
     ]);
     expect(ok.status).toBe(200);
-    ids = Object.fromEntries(ok.body.data.map((c: any) => [c.name, c.id]));
+    ids = Object.fromEntries(ok.body.data.map((c: { name: string; id: unknown }) => [c.name, c.id]));
 
     const items = (arr: unknown) => teacher.put(`${G}/items`).send({ items: arr });
     expect((await items([{ type: 'QUIZ', id: 'q-c2', categoryId: ids.Quizzes }])).status).toBe(400); // quiz of another course
@@ -253,7 +252,7 @@ describe('gradebook workflow', () => {
       ).status
     ).toBe(200);
     const cfg = (await teacher.get(`${G}/config`)).body.data;
-    expect(cfg.items.find((i: any) => i.id === 'q1').gradeCategoryId).toBe(ids.Quizzes);
+    expect(cfg.items.find((i: { id: unknown }) => i.id === 'q1').gradeCategoryId).toBe(ids.Quizzes);
   });
 
   it('keeps assigned items when categories are re-saved by name', async () => {
@@ -264,8 +263,8 @@ describe('gradebook workflow', () => {
       ],
     });
     const cfg = (await teacher.get(`${G}/config`)).body.data;
-    expect(cfg.categories.map((c: any) => c.weightPercent).sort()).toEqual([30, 70]);
-    expect(cfg.items.find((i: any) => i.id === 'q1').gradeCategoryId).toBe(ids.Quizzes);
+    expect(cfg.categories.map((c: { weightPercent: unknown }) => c.weightPercent).sort()).toEqual([30, 70]);
+    expect(cfg.items.find((i: { id: unknown }) => i.id === 'q1').gradeCategoryId).toBe(ids.Quizzes);
     await teacher.put(`${G}/categories`).send({
       categories: [
         { name: 'Quizzes', weightPercent: 40 },
@@ -285,7 +284,7 @@ describe('gradebook workflow', () => {
     expect(calc.body.data).toMatchObject({ learners: 3, calculated: 3, skippedApproved: 0 });
 
     const book = await teacher.get(G);
-    const by = Object.fromEntries(book.body.data.map((r: any) => [r.userId, r]));
+    const by = Object.fromEntries(book.body.data.map((r: { userId: unknown }) => [r.userId, r]));
     expect(by.s1).toMatchObject({ rawPercent: 94, curvedPercent: 99, letter: 'A', status: 'DRAFT', incomplete: false });
     expect(by.s2).toMatchObject({ rawPercent: 30, curvedPercent: 35, letter: 'F' });
     expect(by.s3.incomplete).toBe(true); // assignment still waiting for a grader
@@ -322,7 +321,7 @@ describe('gradebook workflow', () => {
     expect((await admin.enrollment.findUnique({ where: { id: 'e-s1' } }))?.finalGrade).toBe(99);
     expect((await admin.enrollment.findUnique({ where: { id: 'e-s2' } }))?.finalGrade).toBe(35);
     const notes = (await (await as('s1')).get('/api/v1/notifications?category=GRADE')).body.data;
-    expect(notes.some((n: any) => n.title === 'Your final grade is available')).toBe(true);
+    expect(notes.some((n: { title: string }) => n.title === 'Your final grade is available')).toBe(true);
   });
 
   it('shows learners only their own approved grade', async () => {
@@ -345,7 +344,7 @@ describe('gradebook workflow', () => {
 
     const recalculated = await teacher.post(`${G}/calculate`);
     expect(recalculated.body.data.calculated).toBe(3);
-    const s3 = (await teacher.get(G)).body.data.find((r: any) => r.userId === 's3');
+    const s3 = (await teacher.get(G)).body.data.find((r: { userId: unknown }) => r.userId === 's3');
     expect(s3).toMatchObject({ incomplete: false, status: 'DRAFT', rawPercent: 60 }); // quiz 0*.4 + assignment 100*.6
     expect((await (await as('s1')).get(G)).body.published).toBe(false); // withdrawn until re-approved
   });
@@ -358,7 +357,7 @@ describe('gradebook workflow', () => {
     const row = (await teacher.get(G)).body.data[0];
     expect(row).toMatchObject({ status: 'DRAFT', decisionNote: 'Curve too generous' });
     const told = (await teacher.get('/api/v1/notifications?category=GRADE')).body.data;
-    expect(told.some((n: any) => n.body === 'Curve too generous')).toBe(true);
+    expect(told.some((n: { body: string }) => n.body === 'Curve too generous')).toBe(true);
     expect((await admin1.post(`${G}/reject`).send({ note: 'again' })).status).toBe(409); // nothing submitted
   });
 
@@ -408,7 +407,7 @@ describe('question bank', () => {
     expect(res.status).toBe(201);
     itemId = res.body.data.id;
     expect(res.body.data.tags.sort()).toEqual(['consensus', 'raft']);
-    expect(res.body.data.optionsJson.every((o: any) => o.id)).toBe(true);
+    expect(res.body.data.optionsJson.every((o: { id: unknown }) => o.id)).toBe(true);
 
     const bad = (over: object) => teacher.post('/api/v1/question-bank').send(mc(over));
     expect(
@@ -435,12 +434,12 @@ describe('question bank', () => {
     expect((await (await as('admin')).get(`/api/v1/question-bank/${itemId}`)).status).toBe(200);
     expect((await (await as('m-admin', 'mit')).get(`/api/v1/question-bank/${itemId}`)).status).toBe(404);
     const list = (await (await as('teacher2')).get('/api/v1/question-bank')).body.data;
-    expect(list.map((i: any) => i.id)).not.toContain(itemId);
+    expect(list.map((i: { id: unknown }) => i.id)).not.toContain(itemId);
   });
 
   it('filters by text, tag, type and Bloom level', async () => {
     const t = await as('teacher');
-    const get = async (qs: string) => (await t.get(`/api/v1/question-bank?${qs}`)).body.data.map((i: any) => i.id);
+    const get = async (qs: string) => (await t.get(`/api/v1/question-bank?${qs}`)).body.data.map((i: { id: unknown }) => i.id);
     expect(await get('q=raft')).toContain(itemId);
     expect(await get('tag=consensus')).toContain(itemId);
     expect(await get('tag=nothing')).toEqual([]);
@@ -478,7 +477,7 @@ describe('question bank', () => {
     expect(res.body.data).toHaveLength(2); // duplicate id collapsed
     expect(res.body.data[0].questionText).toBe('Course-shared question');
     expect(res.body.data[1].bloomLevel).toBe('UNDERSTAND');
-    const orders = res.body.data.map((q: any) => q.orderIndex);
+    const orders = res.body.data.map((q: { orderIndex: unknown }) => q.orderIndex);
     expect(orders[1]).toBe(orders[0] + 1);
 
     const bank = (await teacher.get(`/api/v1/question-bank/${itemId}`)).body.data;
@@ -512,10 +511,10 @@ describe('question bank', () => {
 
   it('tags questions on quizzes and reports Bloom mastery from graded answers', async () => {
     const res = await (await as('teacher')).get('/api/v1/analytics/cohort');
-    const apply = res.body.bloomsMastery.find((b: any) => b.level === 'APPLY');
+    const apply = res.body.bloomsMastery.find((b: { level: unknown }) => b.level === 'APPLY');
     expect(apply).toBeTruthy();
     expect(apply.score).toBe(50); // one of the two graded answers to the APPLY question was right
-    expect(res.body.bloomsMastery.map((b: any) => b.level)).toEqual(['APPLY']); // only levels with data
+    expect(res.body.bloomsMastery.map((b: { level: unknown }) => b.level)).toEqual(['APPLY']); // only levels with data
 
     const created = await (await as('teacher')).post('/api/v1/quizzes/q1/questions').send({
       questionText: 'Tagged directly',
@@ -569,13 +568,13 @@ describe('plagiarism provider callbacks', () => {
     const res = await post({ submissionId: 'as-2', score: 61 });
     expect(res.body.alerted).toBe(2); // teacher and TA of c1
     const notes = (await (await as('teacher')).get('/api/v1/notifications?category=GRADE')).body.data;
-    expect(notes.some((n: any) => n.title.includes('High similarity'))).toBe(true);
+    expect(notes.some((n: { title: string }) => n.title.includes('High similarity'))).toBe(true);
     expect(await admin.auditLog.count({ where: { action: 'PLAGIARISM_RESULT_RECORDED' } })).toBeGreaterThanOrEqual(2);
   });
 
   it('feeds the early-warning radar', async () => {
     const risk = (await (await as('teacher')).get('/api/v1/analytics/at-risk?courseId=c1')).body.data;
-    const s2 = risk.find((l: any) => l.id === 's2');
+    const s2 = risk.find((l: { id: unknown }) => l.id === 's2');
     expect(s2.reasons.some((r: string) => r.includes('Plagiarism match 61%'))).toBe(true);
   });
 
@@ -633,13 +632,17 @@ describe('pending submissions feed', () => {
     const feed = await (await as('teacher')).get('/api/v1/analytics/pending-grading');
     expect(feed.status).toBe(200);
     expect(feed.body.total).toBe(2); // c1 only; graded work and c2 excluded
-    expect(feed.body.data.map((r: any) => r.id)).toEqual(['p-1', 'p-2']);
+    expect(feed.body.data.map((r: { id: unknown }) => r.id)).toEqual(['p-1', 'p-2']);
     expect(feed.body.data[0]).toMatchObject({ student: 's1 L', assignment: 'Lab 2', course: 'C1', plagiarismScore: 42 });
     expect((await (await as('teacher')).get('/api/v1/analytics/pending-grading?limit=1')).body.data).toHaveLength(1);
 
-    expect((await (await as('teacher2')).get('/api/v1/analytics/pending-grading')).body.data.map((r: any) => r.id)).toEqual(['p-3']);
+    expect((await (await as('teacher2')).get('/api/v1/analytics/pending-grading')).body.data.map((r: { id: unknown }) => r.id)).toEqual([
+      'p-3',
+    ]);
     expect((await (await as('admin')).get('/api/v1/analytics/pending-grading')).body.total).toBe(3);
-    expect((await (await as('m-admin', 'mit')).get('/api/v1/analytics/pending-grading')).body.data.map((r: any) => r.id)).toEqual(['as-m']);
+    expect(
+      (await (await as('m-admin', 'mit')).get('/api/v1/analytics/pending-grading')).body.data.map((r: { id: unknown }) => r.id)
+    ).toEqual(['as-m']);
     expect((await (await as('s1')).get('/api/v1/analytics/pending-grading')).status).toBe(403);
     expect((await request(app).get('/api/v1/analytics/pending-grading')).status).toBe(401);
   });
@@ -651,8 +654,8 @@ describe('row-level security on gradebook tables', () => {
     const app_ = new PrismaClient({ datasourceUrl: db.appUrl });
     try {
       for (const t of ['gradeCategory', 'courseGrade', 'questionBankItem'] as const) {
-        expect(await (admin as any)[t].count(), `${t} has rows`).toBeGreaterThan(0);
-        expect(await (app_ as any)[t].count(), t).toBe(0);
+        expect(await (admin as unknown as Record<string, { count(): Promise<number> }>)[t].count(), `${t} has rows`).toBeGreaterThan(0);
+        expect(await (app_ as unknown as Record<string, { count(): Promise<number> }>)[t].count(), t).toBe(0);
       }
     } finally {
       await app_.$disconnect();

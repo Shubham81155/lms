@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Deadlines against a real PostgreSQL: quiz windows, late assignments and the late-work cutoff, per-learner
@@ -18,7 +18,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -57,7 +57,7 @@ beforeAll(async () => {
       courseId: 'c1',
       title: 'Not yet open',
       availableFrom: at(DAY),
-      questions: { create: [mc('q-later')].map(({ quizId, ...q }) => q) },
+      questions: { create: [mc('q-later')].map(({ quizId: _quizId, ...q }) => q) },
     },
   });
   await admin.quiz.create({
@@ -68,7 +68,7 @@ beforeAll(async () => {
       title: 'Closed',
       dueAt: at(-DAY),
       maxAttempts: 2,
-      questions: { create: [mc('q-closed')].map(({ quizId, ...q }) => q) },
+      questions: { create: [mc('q-closed')].map(({ quizId: _quizId, ...q }) => q) },
     },
   });
   await admin.quiz.create({
@@ -79,7 +79,7 @@ beforeAll(async () => {
       title: 'Reveal',
       reviewPolicy: 'ANSWERS',
       maxAttempts: 2,
-      questions: { create: [mc('q-answers')].map(({ quizId, ...q }) => q) },
+      questions: { create: [mc('q-answers')].map(({ quizId: _quizId, ...q }) => q) },
     },
   });
   await admin.quiz.create({
@@ -89,7 +89,7 @@ beforeAll(async () => {
       courseId: 'c1',
       title: 'Score only',
       reviewPolicy: 'SCORE_ONLY',
-      questions: { create: [mc('q-score')].map(({ quizId, ...q }) => q) },
+      questions: { create: [mc('q-score')].map(({ quizId: _quizId, ...q }) => q) },
     },
   });
 
@@ -190,24 +190,24 @@ describe('assignments', () => {
     expect(ok.status).toBe(201);
     expect(ok.body.data.isLate).toBe(false);
 
-    const mine = (await (await as('s2')).get('/api/v1/courses/c1/assignments')).body.data.find((x: any) => x.id === 'a-cutoff');
+    const mine = (await (await as('s2')).get('/api/v1/courses/c1/assignments')).body.data.find((x: { id: unknown }) => x.id === 'a-cutoff');
     expect(mine).toMatchObject({ extended: true });
     expect(new Date(mine.myDueAt).getTime()).toBeGreaterThan(Date.now());
     expect(mine._count).toBeUndefined();
 
     const grades = (await (await as('s1')).get('/api/v1/enrollments/grades')).body.data[0];
-    expect(grades.assignments.find((a: any) => a.id === 'a-late').late).toBe(true);
+    expect(grades.assignments.find((a: { id: unknown }) => a.id === 'a-late').late).toBe(true);
   });
 
   it('shows the learner their own deadlines in the to-do list', async () => {
     const todo = (await (await as('s2')).get('/api/v1/enrollments/todo')).body.data;
-    const closed = todo.find((i: any) => i.id === 'q-closed');
+    const closed = todo.find((i: { id: unknown }) => i.id === 'q-closed');
     expect(closed).toMatchObject({ extended: true });
     expect(new Date(closed.dueAt).getTime()).toBeGreaterThan(Date.now());
-    expect(todo.find((i: any) => i.id === 'q-later').opensAt).toBeTruthy();
+    expect(todo.find((i: { id: unknown }) => i.id === 'q-later').opensAt).toBeTruthy();
     // Without an extension a closed quiz is not on the list.
     const s1todo = (await (await as('s1')).get('/api/v1/enrollments/todo')).body.data;
-    expect(s1todo.some((i: any) => i.id === 'q-closed')).toBe(false);
+    expect(s1todo.some((i: { id: unknown }) => i.id === 'q-closed')).toBe(false);
   });
 });
 

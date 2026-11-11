@@ -26,7 +26,7 @@ async function seed() {
     ['t-m', 'mit'],
   ])
     await admin.tenant.create({ data: { id, slug, name: slug } });
-  const user = (id: string, tenantId: string, slug: string, role: any) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -92,7 +92,8 @@ async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
 }
 
 const inFuture = (ms: number) => new Date(Date.now() + ms).toISOString();
-const decode = (token: string) => jwt.verify(token, LK_SECRET, { algorithms: ['HS256'], issuer: LK_KEY }) as any;
+const decode = (token: string) =>
+  jwt.verify(token, LK_SECRET, { algorithms: ['HS256'], issuer: LK_KEY }) as jwt.JwtPayload & { exp: number; iat: number };
 
 /** Signs a webhook the way the media server does. */
 function signedWebhook(body: object | string, over: { secret?: string; key?: string; sha?: string; expiresIn?: number } = {}) {
@@ -165,7 +166,9 @@ describe('pure helpers', () => {
     expect(lk.verifyWebhook(signedWebhook({ event: 'x' }, { expiresIn: -10 }).token, raw)).toBe(false);
     expect(
       lk.verifyWebhook(
-        jwt.sign({ iss: LK_KEY, sha256: crypto.createHash('sha256').update(raw).digest('base64') }, '', { algorithm: 'none' as any }),
+        jwt.sign({ iss: LK_KEY, sha256: crypto.createHash('sha256').update(raw).digest('base64') }, '', {
+          algorithm: 'none' as unknown as jwt.Algorithm,
+        }),
         raw
       )
     ).toBe(false);
@@ -228,7 +231,7 @@ describe('scheduling', () => {
     for (const who of ['s1', 's2']) {
       const notes = (await (await as(who)).get('/api/v1/notifications?category=LIVE')).body.data;
       expect(
-        notes.some((n: any) => n.title === 'Live class scheduled: Raft consensus'),
+        notes.some((n: { title: string }) => n.title === 'Live class scheduled: Raft consensus'),
         who
       ).toBe(true);
     }
@@ -261,10 +264,10 @@ describe('scheduling', () => {
     expect((await (await as('ta')).post(`/api/v1/live-sessions/${id}/cancel`)).status).toBe(403);
     expect((await t.post(`/api/v1/live-sessions/${id}/cancel`)).body.data.status).toBe('CANCELLED');
     expect(await admin.calendarEvent.count({ where: { id: calendarId } })).toBe(0);
-    expect((await (await as('s1')).get('/api/v1/courses/c1/live-sessions')).body.data.map((s: any) => s.id)).not.toContain(id);
+    expect((await (await as('s1')).get('/api/v1/courses/c1/live-sessions')).body.data.map((s: { id: unknown }) => s.id)).not.toContain(id);
     expect(
       (await (await as('s1')).get('/api/v1/notifications?category=LIVE')).body.data.some(
-        (n: any) => n.title === 'Live class cancelled: Cancel me'
+        (n: { title: string }) => n.title === 'Live class cancelled: Cancel me'
       )
     ).toBe(true);
     expect((await t.post(`/api/v1/live-sessions/${id}/cancel`)).status).toBe(409); // already cancelled
@@ -289,11 +292,11 @@ describe('lifecycle and joining', () => {
 
   it('lists sessions for people with access, with staff-only and learner-only fields', async () => {
     const learner = await (await as('s1')).get('/api/v1/courses/c1/live-sessions');
-    const mine = learner.body.data.find((s: any) => s.id === id);
+    const mine = learner.body.data.find((s: { id: unknown }) => s.id === id);
     expect(learner.body.configured).toBe(true);
     expect(mine).toMatchObject({ status: 'SCHEDULED', attended: false });
     expect(mine).not.toHaveProperty('attendeeCount');
-    const staff = (await (await as('teacher')).get('/api/v1/courses/c1/live-sessions')).body.data.find((s: any) => s.id === id);
+    const staff = (await (await as('teacher')).get('/api/v1/courses/c1/live-sessions')).body.data.find((s: { id: unknown }) => s.id === id);
     expect(staff.attendeeCount).toBe(0);
     expect(staff).not.toHaveProperty('attended');
     expect((await (await as('s3')).get('/api/v1/courses/c1/live-sessions')).status).toBe(403); // not enrolled in c1
@@ -301,13 +304,14 @@ describe('lifecycle and joining', () => {
   });
 
   it('shows each person only the classes of their own courses on the dashboard feed', async () => {
-    const ids = async (who: string) => (await (await as(who)).get('/api/v1/live-sessions/mine')).body.data.map((s: any) => s.id);
+    const ids = async (who: string) =>
+      (await (await as(who)).get('/api/v1/live-sessions/mine')).body.data.map((s: { id: unknown }) => s.id);
     expect(await ids('s1')).toContain(id);
     expect(await ids('s3')).not.toContain(id); // enrolled in c2 only
     expect(await ids('teacher')).toContain(id);
     expect(await ids('teacher2')).not.toContain(id);
     expect(await ids('admin')).toContain(id);
-    const entry = (await (await as('s1')).get('/api/v1/live-sessions/mine')).body.data.find((s: any) => s.id === id);
+    const entry = (await (await as('s1')).get('/api/v1/live-sessions/mine')).body.data.find((s: { id: unknown }) => s.id === id);
     expect(entry.course).toMatchObject({ code: 'C1' });
   });
 
@@ -325,7 +329,7 @@ describe('lifecycle and joining', () => {
     expect(a.body.data.status).toBe('LIVE');
     expect(await admin.auditLog.count({ where: { action: 'LIVE_SESSION_STARTED', resourceId: id } })).toBe(1);
     const notes = (await (await as('s1')).get('/api/v1/notifications?category=LIVE')).body.data.filter(
-      (n: any) => n.title === 'Live now: Live lecture'
+      (n: { title: string }) => n.title === 'Live now: Live lecture'
     );
     expect(notes).toHaveLength(1);
   });
@@ -400,7 +404,9 @@ describe('lifecycle and joining', () => {
     expect((await (await as('teacher')).post(`/api/v1/live-sessions/${id}/start`)).status).toBe(409);
     expect((await (await as('s1')).post(`/api/v1/live-sessions/${id}/join`)).status).toBe(409);
     // The learner now shows as having attended in their own listing.
-    expect((await (await as('s1')).get('/api/v1/courses/c1/live-sessions')).body.data.find((s: any) => s.id === id).attended).toBe(true);
+    expect(
+      (await (await as('s1')).get('/api/v1/courses/c1/live-sessions')).body.data.find((s: { id: unknown }) => s.id === id).attended
+    ).toBe(true);
   });
 });
 
@@ -470,7 +476,7 @@ describe('media server webhooks and attendance', () => {
     await hook(evt('participant_joined', 's1', Math.floor(Date.now() / 1000) - 600)); // in the room for ten minutes, still there
     const res = await (await as('teacher')).get(`/api/v1/live-sessions/${id}/attendance`);
     expect(res.status).toBe(200);
-    const by = Object.fromEntries(res.body.data.map((r: any) => [r.userId, r]));
+    const by = Object.fromEntries(res.body.data.map((r: { userId: unknown }) => [r.userId, r]));
     expect(Object.keys(by).sort()).toEqual(['s1', 's2']); // enrolled learners only: not the dropped one, not staff
     expect(by.s1).toMatchObject({ present: true, inRoomNow: true });
     expect(by.s1.minutes).toBeGreaterThanOrEqual(9);
@@ -485,7 +491,7 @@ describe('media server webhooks and attendance', () => {
   it('marks someone who barely stayed as absent', async () => {
     await admin.liveAttendance.updateMany({ where: { sessionId: id, userId: 's2' }, data: { totalSeconds: 120 } });
     const res = await (await as('teacher')).get(`/api/v1/live-sessions/${id}/attendance`);
-    expect(res.body.data.find((r: any) => r.userId === 's2')).toMatchObject({ present: false, minutes: 2 });
+    expect(res.body.data.find((r: { userId: unknown }) => r.userId === 's2')).toMatchObject({ present: false, minutes: 2 });
   });
 
   it('ends the session and closes the room when the media server reports it finished', async () => {
@@ -506,8 +512,8 @@ describe('row-level security on live classes', () => {
     const unscoped = new PrismaClient({ datasourceUrl: db.appUrl });
     try {
       for (const t of ['liveSession', 'liveAttendance'] as const) {
-        expect(await (admin as any)[t].count(), t).toBeGreaterThan(0);
-        expect(await (unscoped as any)[t].count(), t).toBe(0);
+        expect(await (admin as unknown as Record<string, { count(): Promise<number> }>)[t].count(), t).toBeGreaterThan(0);
+        expect(await (unscoped as unknown as Record<string, { count(): Promise<number> }>)[t].count(), t).toBe(0);
       }
     } finally {
       await unscoped.$disconnect();

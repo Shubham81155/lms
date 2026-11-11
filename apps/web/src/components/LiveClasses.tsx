@@ -103,7 +103,7 @@ export const LiveClasses: React.FC<{
   useEffect(() => {
     if (!courseId && courses.length)
       setCourseId(initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0].id);
-  }, [courses, courseId]);
+  }, [courses, courseId, initialCourseId]);
   const sessions = useApiData<{ configured: boolean; data: LiveSessionView[] }>(
     courseId ? `/api/v1/courses/${courseId}/live-sessions` : null
   );

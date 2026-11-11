@@ -266,7 +266,7 @@ router.patch(
     const startsAt = patch.startsAt ?? event.startsAt;
     const endsAt = patch.endsAt ?? event.endsAt;
     if (endsAt < startsAt) throw new HttpError(400, 'endsAt must not be before startsAt');
-    const { courseId: _ignored, ...data } = patch as any;
+    const { courseId: _ignored, ...data } = patch;
     const updated = await prisma.calendarEvent.update({ where: { id: event.id }, data });
     return res.json({ data: updated });
   })

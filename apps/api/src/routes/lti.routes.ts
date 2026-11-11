@@ -10,6 +10,7 @@ import { startSession } from '../middleware/auth';
 import { HttpError, route } from '../lib/http';
 import { parseBody } from '../lib/validate';
 import { requireFeature } from '../lib/features';
+import { assertSafeWebhookTarget } from '../lib/webhooks';
 
 // LTI 1.3 launch (this LMS acting as the tool). The id_token is verified against the platform's
 // JWKS using the registered deployment; nothing in the body is trusted before that. The launching
@@ -22,13 +23,18 @@ const CLAIM = 'https://purl.imsglobal.org/spec/lti/claim';
 const LAUNCH_MAX_AGE_SECONDS = 300;
 export const launchSchema = z.object({ id_token: z.string().min(20).max(20_000) });
 
-type Jwk = crypto.JsonWebKey & { kid?: string };
+type Jwk = crypto.JsonWebKey & { kid?: string; use?: string };
 
 async function fetchKey(keySetUrl: string, kid?: string) {
+  try {
+    await assertSafeWebhookTarget(keySetUrl);
+  } catch (err: unknown) {
+    throw new HttpError(400, err instanceof Error ? err.message : 'Invalid key set URL');
+  }
   const res = await fetch(keySetUrl, { signal: AbortSignal.timeout(5000), redirect: 'error' });
   if (!res.ok) throw new HttpError(502, 'Could not fetch the platform key set');
   const { keys } = (await res.json()) as { keys?: Jwk[] };
-  const jwk = keys?.find((k) => (kid ? k.kid === kid : true) && (k as any).use !== 'enc');
+  const jwk = keys?.find((k) => (kid ? k.kid === kid : true) && k.use !== 'enc');
   if (!jwk) throw new HttpError(401, 'No matching platform key');
   return crypto.createPublicKey({ key: jwk, format: 'jwk' });
 }
@@ -39,7 +45,7 @@ router.post(
   route('LTI launch failed', async (req, res) => {
     const { id_token } = parseBody(req, launchSchema);
     const decoded = jwt.decode(id_token, { complete: true });
-    const claims = decoded && typeof decoded.payload === 'object' ? (decoded.payload as Record<string, any>) : null;
+    const claims = decoded && typeof decoded.payload === 'object' ? (decoded.payload as Record<string, unknown>) : null;
     if (!decoded || !claims || decoded.header.alg !== 'RS256') throw new HttpError(401, 'Invalid LTI token');
     if (claims[`${CLAIM}/version`] !== '1.3.0') throw new HttpError(400, 'Unsupported LTI version');
 
@@ -61,9 +67,11 @@ router.post(
       if (!deployment) throw new HttpError(401, 'Unknown LTI deployment');
 
       const key = await fetchKey(deployment.keySetUrl, decoded.header.kid);
-      let verified: any;
+      let verified: jwt.JwtPayload;
       try {
-        verified = jwt.verify(id_token, key, { algorithms: ['RS256'], issuer: deployment.issuer, audience: deployment.clientId });
+        const result = jwt.verify(id_token, key, { algorithms: ['RS256'], issuer: deployment.issuer, audience: deployment.clientId });
+        if (typeof result === 'string') throw new HttpError(401, 'LTI token verification failed');
+        verified = result;
       } catch {
         throw new HttpError(401, 'LTI token verification failed');
       }
@@ -84,8 +92,8 @@ router.post(
         await prisma.ltiNonce.create({
           data: { tenantId: tenant.id, issuer: deployment.issuer, nonce: String(verified.nonce), expiresAt: new Date(verified.exp * 1000) },
         });
-      } catch (err: any) {
-        if (err?.code === 'P2002') throw new HttpError(401, 'This LTI launch was already used');
+      } catch (err: unknown) {
+        if ((err as { code?: string })?.code === 'P2002') throw new HttpError(401, 'This LTI launch was already used');
         throw err;
       }
 

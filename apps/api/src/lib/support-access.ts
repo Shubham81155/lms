@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { runWithTenant } from '@enterprise-lms/database';
+import { runWithTenant, type Prisma } from '@enterprise-lms/database';
 import { config } from '../config';
 import { basePrisma, prisma } from './prisma';
 import { invalidateSessionCache } from './session';
@@ -97,9 +97,7 @@ export function generateSupportToken(user: { id: string; tenantId: string; token
   );
 }
 
-type UserClient = {
-  user: { findFirst: (args: any) => Promise<any>; create: (args: any) => Promise<any>; update: (args: any) => Promise<any> };
-};
+type UserClient = { user: Pick<Prisma.TransactionClient['user'], 'findFirst' | 'create' | 'update'> };
 
 /**
  * Makes the organisation's support account usable (creating it the first time) and returns it. Deliberately not

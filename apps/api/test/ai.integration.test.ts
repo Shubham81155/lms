@@ -3,7 +3,7 @@ import http from 'http';
 import { AddressInfo } from 'net';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // AI assistance against a real PostgreSQL and one local stand-in that answers like each provider:
@@ -21,7 +21,17 @@ let R: typeof import('../src/openapi/responses/ai.js').RESPONSES;
 let stub: http.Server;
 
 type Provider = 'claude' | 'gemini' | 'grok';
-let calls: { provider: Provider; url: string; headers: http.IncomingHttpHeaders; body: any }[] = [];
+/** The parts of the request body the three provider shapes are asserted on. */
+interface StubBody {
+  systemInstruction: { parts: { text: string }[] };
+  generationConfig: { responseSchema: { type: string; properties: Record<string, unknown> } };
+  contents: { role: string; parts: { text: string }[] }[];
+  output_config: { format: { schema: { properties: { practice: { anyOf: unknown[] } } } } };
+  system: string;
+  messages: { role: string; content: string }[];
+  response_format: unknown;
+}
+let calls: { provider: Provider; url: string; headers: http.IncomingHttpHeaders; body: StubBody }[] = [];
 /** The JSON the "model" answers with, how it finished, or a raw HTTP failure. */
 let next: { json?: unknown; finish?: 'stop' | 'refusal' | 'length'; status?: number; raw?: unknown } = {};
 const answer = (json: unknown, finish: 'stop' | 'refusal' | 'length' = 'stop') => (next = { json, finish });
@@ -84,7 +94,7 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-s', slug: 'small', name: 'small', tier: 'STARTER' } });
-  const user = (id: string, tenantId: string, slug: string, role: any) =>
+  const user = (id: string, tenantId: string, slug: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -153,7 +163,7 @@ async function as(who: string, tenant = 'harvard') {
 }
 
 const covered = new Set<string>();
-const check = (key: string, res: { status: number; body: any }) => {
+const check = (key: string, res: Pick<request.Response, 'status' | 'body'>) => {
   expect(res.status, `${key}: ${JSON.stringify(res.body)}`).toBe(200);
   const parsed = R[key].response!.schema!.safeParse(res.body);
   expect(parsed.success, `${key}: ${JSON.stringify(parsed.success ? null : parsed.error)}`).toBe(true);
@@ -221,7 +231,7 @@ describe('tutor on the platform default (Gemini)', () => {
       ],
     });
     expect(check('POST /api/v1/ai/tutor', res)).toMatchObject({ practice: null, groundedInCourse: false });
-    expect(calls[0].body.contents.map((c: any) => c.role)).toEqual(['user', 'model', 'user']);
+    expect(calls[0].body.contents.map((c: { role: unknown }) => c.role)).toEqual(['user', 'model', 'user']);
     expect(calls[0].body.contents[2].parts[0].text).toContain('And diffusion?');
   });
 
@@ -302,7 +312,7 @@ describe("the organisation's own provider", () => {
       effectiveSource: 'PLATFORM',
       platformDefault: { provider: 'GEMINI', model: 'gemini-test' },
     });
-    expect(view.providers.map((p: any) => p.id)).toEqual(['ANTHROPIC', 'GEMINI', 'XAI']);
+    expect(view.providers.map((p: { id: unknown }) => p.id)).toEqual(['ANTHROPIC', 'GEMINI', 'XAI']);
   });
 
   it('saves a Claude key encrypted, never shows it again, and uses it', async () => {
@@ -323,7 +333,7 @@ describe("the organisation's own provider", () => {
     expect(row.apiKeyEnc).not.toContain(CLAUDE_KEY);
     const audit = await admin.auditLog.findFirstOrThrow({ where: { action: 'AI_SETTINGS_UPDATED' }, orderBy: { createdAt: 'desc' } });
     expect(JSON.stringify(audit)).not.toContain(CLAUDE_KEY);
-    expect((audit.diffJson as any).key).toBe('replaced');
+    expect((audit.diffJson as { key: string }).key).toBe('replaced');
 
     answer(tutorReply);
     check('POST /api/v1/ai/tutor', await ask('s1', { courseId: 'c1', message: 'What is osmosis?' }));

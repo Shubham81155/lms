@@ -11,7 +11,10 @@ export * from '@prisma/client';
  * `app.current_tenant_id`, so the database only exposes that tenant's rows. Outside any scope no
  * tenant is set and tenant tables return nothing (the policies fail closed).
  */
-const tenantStorage = new AsyncLocalStorage<string>();
+const globalForTenant = globalThis as typeof globalThis & {
+  __lmsTenantStorage?: AsyncLocalStorage<string>;
+};
+const tenantStorage = (globalForTenant.__lmsTenantStorage ??= new AsyncLocalStorage<string>());
 
 export function runWithTenant<T>(tenantId: string, fn: () => T): T {
   return tenantStorage.run(tenantId, () => {
@@ -20,8 +23,8 @@ export function runWithTenant<T>(tenantId: string, fn: () => T): T {
     // straight out of this callback would therefore execute after the scope has ended, with no
     // tenant set (and RLS would hide every row). Subscribing here, inside the scope, makes the
     // query start with the tenant in place no matter how the caller consumes the result.
-    if (result && typeof (result as any).then === 'function') {
-      return new Promise((resolve, reject) => (result as any).then(resolve, reject)) as unknown as T;
+    if (result && typeof (result as { then?: unknown }).then === 'function') {
+      return new Promise((resolve, reject) => (result as unknown as PromiseLike<T>).then(resolve, reject)) as unknown as T;
     }
     return result;
   });
@@ -57,7 +60,7 @@ function extend(base: PrismaClient) {
           // that reuses the pooled connection.
           const [, result] = await base.$transaction([
             base.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`,
-            query(args) as any,
+            query(args) as unknown as Prisma.PrismaPromise<unknown>,
           ]);
           return result;
         },

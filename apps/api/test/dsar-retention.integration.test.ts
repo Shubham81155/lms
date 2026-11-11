@@ -5,7 +5,7 @@ import fs from 'fs';
 import { randomUUID } from 'crypto';
 import os from 'os';
 import path from 'path';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Data-subject requests (lib/data-requests.ts): filing, the administrators' queue, assigning, fulfilling (export,
@@ -63,7 +63,7 @@ beforeEach(() => {
   });
 });
 
-function user(id: string, tenantId: string, role: any) {
+function user(id: string, tenantId: string, role: GlobalRole) {
   return admin.user.create({
     data: {
       id,
@@ -144,10 +144,10 @@ describe('data-subject requests', () => {
     matchesDocs('GET /api/v1/privacy/requests', queue.body);
     expect(queue.body.data).toHaveLength(5);
     expect(queue.body.summary).toEqual({ open: 5, overdue: 0 });
-    const access = queue.body.data.find((r: any) => r.kind === 'ACCESS');
+    const access = queue.body.data.find((r: { kind: unknown }) => r.kind === 'ACCESS');
     expect(access.requester).toEqual({ name: 's1 L', email: 's1@x.edu' });
     // Most urgent first: filed in this order, so the deadlines ascend.
-    const dues = queue.body.data.map((r: any) => r.dueAt);
+    const dues = queue.body.data.map((r: { dueAt: unknown }) => r.dueAt);
     expect([...dues].sort()).toEqual(dues);
 
     expect((await a.get('/api/v1/privacy/requests?kind=ACCESS')).body.data).toHaveLength(1);
@@ -183,7 +183,7 @@ describe('data-subject requests', () => {
     expect(await audits('DATA_REQUEST_NOTE_CHANGED')).toBe(1);
 
     // The person sees the status but never the internal notes or assignee.
-    const mine = (await s1.get('/api/v1/privacy/requests/mine')).body.data.find((r: any) => r.id === access.id);
+    const mine = (await s1.get('/api/v1/privacy/requests/mine')).body.data.find((r: { id: unknown }) => r.id === access.id);
     expect(mine.status).toBe('IN_PROGRESS');
     expect(mine.notes).toBeUndefined();
     expect(mine.assignedToId).toBeUndefined();
@@ -440,7 +440,10 @@ describe('data retention', () => {
   const has = async (
     model: 'notification' | 'passwordResetToken' | 'emailVerificationToken' | 'supportPass' | 'supportHandoff' | 'storedFile',
     id: string
-  ) => !!(await (admin as any)[model].findUnique({ where: { id } }));
+  ) =>
+    !!(await (admin as unknown as Record<string, { findUnique: (a: { where: { id: string } }) => Promise<unknown> }>)[model].findUnique({
+      where: { id },
+    }));
 
   it('is off by default and validates what it is given', async () => {
     const a = await as('a-admin', 'acme');
@@ -448,7 +451,7 @@ describe('data retention', () => {
     expect(def.status).toBe(200);
     matchesDocs('GET /api/v1/privacy/retention', def.body);
     expect(def.body.data).toMatchObject({ enabled: false, dryRun: true, notificationsDays: null, lastRun: null, rowCap: 5000 });
-    expect(def.body.data.classes.map((c: any) => c.key)).toEqual([
+    expect(def.body.data.classes.map((c: { key: unknown }) => c.key)).toEqual([
       'notifications',
       'tokens',
       'proctoring',

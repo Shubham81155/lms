@@ -70,7 +70,7 @@ export const signSamlFlow = (f: SamlFlow) =>
 export function readSamlFlow(token: string | undefined): SamlFlow | null {
   if (!token) return null;
   try {
-    const d = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'], audience: FLOW_AUDIENCE }) as any;
+    const d = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'], audience: FLOW_AUDIENCE }) as Partial<SamlFlow>;
     return d.tenantId && d.requestId && d.origin ? { tenantId: d.tenantId, requestId: d.requestId, origin: d.origin } : null;
   } catch {
     return null;

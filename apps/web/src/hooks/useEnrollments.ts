@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { api, ApiError } from '@/lib/api';
+import { typedGet } from '@/lib/typed-api';
+import { errorMessage } from '@/hooks/useApiData';
 import { Enrollment, EnrollmentStats } from '@/lib/types';
 
 export function useMyEnrollments() {
@@ -14,13 +15,12 @@ export function useMyEnrollments() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get<any>('/api/v1/enrollments/my');
-      const list: Enrollment[] = Array.isArray(response) ? response : response.enrollments || response.data || [];
+      const response = await typedGet('/api/v1/enrollments/my');
+      const list: Enrollment[] = response.data ?? [];
       setEnrollments(list);
       setData(list);
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch enrollments';
-      setError(message);
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Failed to fetch enrollments'));
       setEnrollments([]);
       setData([]);
     } finally {
@@ -51,13 +51,18 @@ export function useEnrollmentStats() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get<any>('/api/v1/enrollments/stats');
-      const statsData: EnrollmentStats = response.stats || response.data || response;
+      const response = await typedGet('/api/v1/enrollments/stats');
+      const d = response.data;
+      const statsData: EnrollmentStats = {
+        totalCourses: d.total,
+        inProgress: d.inProgress,
+        completed: d.completed,
+        averageGrade: d.averageProgress,
+      };
       setStats(statsData);
       setData(statsData);
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch enrollment stats';
-      setError(message);
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Failed to fetch enrollment stats'));
       setStats(null);
       setData(null);
     } finally {

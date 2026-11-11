@@ -6,7 +6,7 @@ import { logAuditEvent } from './audit';
 import { logger } from './logger';
 import { mailDelivers, sendMail } from './mailer';
 import { invalidateTenantSessions, PAYMENT_LAPSED } from './session';
-import { startPeriodicJob, withJobLock } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs, withJobLock } from './job-lock';
 import { tenantUrl } from './tenant-url';
 import type { Actor } from './organizations';
 
@@ -319,5 +319,10 @@ export async function runTrialJob(now = new Date()): Promise<TrialJobResult> {
 /** One round under the job lock: null when another process is running it. */
 export const runTrialJobLocked = (now?: Date) => withJobLock(TRIAL_JOB, () => runTrialJob(now));
 
+export const stopTrialJob = () => stopPeriodicJobs();
+
 /** Starts the periodic trial job (every TRIAL_JOB_INTERVAL_SECONDS; one process at a time across the deployment). */
-export const startTrialJob = () => startPeriodicJob(TRIAL_JOB, config.TRIAL_JOB_INTERVAL_SECONDS, () => runTrialJob());
+export const startTrialJob = (): (() => void) => {
+  startPeriodicJob(TRIAL_JOB, config.TRIAL_JOB_INTERVAL_SECONDS, () => runTrialJob());
+  return stopTrialJob;
+};

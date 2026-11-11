@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { Router } from 'express';
+import { Router, Request } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
@@ -23,7 +23,7 @@ import { SamlError, acsUrl, parseIdpKey, spEntityId } from '../lib/saml';
 const router = Router();
 router.use(authenticateJWT, requireRole('SUPER_ADMIN', 'TENANT_ADMIN'));
 
-const audit = (req: any, action: string, resourceType: string, resourceId?: string, diffJson?: unknown) =>
+const audit = (req: Request, action: string, resourceType: string, resourceId?: string, diffJson?: unknown) =>
   logAuditEvent({
     tenantId: tenantIdOf(req),
     userId: req.user!.id,
@@ -220,11 +220,17 @@ export const endpointSchema = z.object({
 const safeUrl = (url: string) => {
   try {
     assertSafeWebhookUrl(url);
-  } catch (e: any) {
-    throw new HttpError(400, e.message);
+  } catch (e: unknown) {
+    throw new HttpError(400, e instanceof Error ? e.message : 'Invalid URL');
   }
 };
-const endpointView = (e: any) => ({ id: e.id, url: e.url, events: e.events, isActive: e.isActive, createdAt: e.createdAt });
+const endpointView = (e: { id: string; url: string; events: string[]; isActive: boolean; createdAt: Date }) => ({
+  id: e.id,
+  url: e.url,
+  events: e.events,
+  isActive: e.isActive,
+  createdAt: e.createdAt,
+});
 
 router.get(
   '/webhooks',
@@ -244,7 +250,13 @@ router.post(
     safeUrl(body.url);
     const secret = `whsec_${crypto.randomBytes(24).toString('base64url')}`;
     const row = await prisma.webhookEndpoint.create({
-      data: { tenantId, url: body.url, events: [...new Set(body.events)], isActive: body.isActive ?? true, secret },
+      data: {
+        tenantId,
+        url: body.url,
+        events: [...new Set(body.events)],
+        isActive: body.isActive ?? true,
+        secret: encryptSecret(secret),
+      },
     });
     await audit(req, 'WEBHOOK_CREATED', 'WEBHOOK', row.id, { url: body.url, events: body.events });
     return res.status(201).json({ data: { ...endpointView(row), secret } });
@@ -263,7 +275,9 @@ router.patch(
     const r = await prisma.webhookEndpoint.updateMany({ where: { id, tenantId: tenantIdOf(req) }, data: body });
     if (r.count === 0) throw new HttpError(404, 'Webhook not found');
     await audit(req, 'WEBHOOK_UPDATED', 'WEBHOOK', id, body);
-    return res.json({ data: endpointView(await prisma.webhookEndpoint.findUnique({ where: { id } })) });
+    const updated = await prisma.webhookEndpoint.findUnique({ where: { id } });
+    if (!updated) throw new HttpError(404, 'Webhook not found');
+    return res.json({ data: endpointView(updated) });
   })
 );
 
@@ -393,7 +407,10 @@ export const ssoSchema = z
     path: ['allowedDomains'],
   });
 
-const ssoView = (c: any, tenant: { slug: string; customDomain: string | null }) => ({
+const ssoView = (
+  c: { issuer: string; clientId: string; enabled: boolean; allowedDomains: string[]; autoCreateAccounts: boolean },
+  tenant: { slug: string; customDomain: string | null }
+) => ({
   issuer: c.issuer,
   clientId: c.clientId,
   enabled: c.enabled,
@@ -501,7 +518,15 @@ const samlSp = (tenant: { slug: string; customDomain: string | null }) => {
   };
 };
 
-const samlView = (c: any) => {
+const samlView = (c: {
+  entryPoint: string;
+  idpIssuer: string;
+  idpCert: string;
+  emailAttribute: string;
+  enabled: boolean;
+  allowedDomains: string[];
+  autoCreateAccounts: boolean;
+}) => {
   let key: ReturnType<typeof parseIdpKey> | null = null;
   try {
     key = parseIdpKey(c.idpCert);
@@ -548,8 +573,8 @@ router.put(
     if (!existing && !body.idpCert) throw new HttpError(400, "The identity provider's signing certificate is required");
     try {
       assertSafeWebhookUrl(body.entryPoint);
-    } catch (e: any) {
-      throw new HttpError(400, `Sign-in URL: ${e.message}`);
+    } catch (e: unknown) {
+      throw new HttpError(400, `Sign-in URL: ${e instanceof Error ? e.message : 'Invalid URL'}`);
     }
     let pem: string | undefined;
     let fingerprint: string | undefined;

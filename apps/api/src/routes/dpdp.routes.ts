@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { basePrisma } from '../lib/prisma';
@@ -41,9 +41,9 @@ import {
 
 const router = Router();
 
-const ctxOf = (req: any) => ({ ipAddress: req.ip as string | undefined, userAgent: req.headers['user-agent'] as string | undefined });
+const ctxOf = (req: Request) => ({ ipAddress: req.ip as string | undefined, userAgent: req.headers['user-agent'] as string | undefined });
 const adminOnly = [authenticateJWT, requireRole('SUPER_ADMIN', 'TENANT_ADMIN')] as const;
-const isAdmin = (req: any) => req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'TENANT_ADMIN';
+const isAdmin = (req: Request) => req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'TENANT_ADMIN';
 
 const publicLimiter = rateLimit({
   store: rateLimitStore('dpdp-public'),

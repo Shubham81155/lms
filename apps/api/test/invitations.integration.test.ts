@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Inviting people: the account starts INVITED, the emailed link lets the person choose a password
@@ -19,7 +19,7 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard' } });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', seatQuota: 2 } });
-  const user = (id: string, tenantId: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, role: GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -93,7 +93,7 @@ describe('bulk import', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.dryRun).toBe(true);
     expect(res.body.data.summary).toMatchObject({ rows: 9, toCreate: 2, existing: 1, errors: 6, created: 0, enrolled: 0 });
-    const byLine = Object.fromEntries(res.body.data.rows.map((r: any) => [r.line, r]));
+    const byLine = Object.fromEntries(res.body.data.rows.map((r: { line: unknown }) => [r.line, r]));
     expect(byLine[2]).toMatchObject({ status: 'CREATE', enrol: 'BIO-101' });
     expect(byLine[4]).toMatchObject({ status: 'EXISTS', message: expect.stringContaining('enrolled') });
     expect(byLine[5].message).toMatch(/e-mail/);
@@ -247,7 +247,7 @@ describe('when the server cannot deliver mail', () => {
       mailer.setMailer({ mode, async send() {} });
       const res = await a.get('/api/v1/admin/compliance');
       expect(res.status).toBe(200);
-      return res.body.data.checks.find((c: any) => c.id === 'outbound-email');
+      return res.body.data.checks.find((c: { id: unknown }) => c.id === 'outbound-email');
     };
     expect(await status('discarded')).toMatchObject({ status: 'FAIL', detail: expect.stringMatching(/SMTP_URL/) });
     expect(await status('console')).toMatchObject({ status: 'WARN' });

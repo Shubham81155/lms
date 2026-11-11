@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Organisation registration: public requests and their e-mail confirmation, the platform operator's decisions, creating and suspending
@@ -26,7 +26,7 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator' } });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard' } });
-  const user = (id: string, tenantId: string, role: any) =>
+  const user = (id: string, tenantId: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -101,12 +101,12 @@ const confirm = (token: string) => request(app).post('/api/v1/organizations/requ
 async function submit(slug: string, over: Record<string, unknown> = {}) {
   const body = ask(slug, over);
   expect((await send(body)).status, `request ${slug}`).toBe(201);
-  const res = await confirm(tokenFor(String((body as any).contactEmail).toLowerCase()));
+  const res = await confirm(tokenFor(String((body as Record<string, unknown>).contactEmail).toLowerCase()));
   expect(res.status, `confirm ${slug}`).toBe(200);
   return requestFor(slug);
 }
 const pendingSlugs = async (query = '') =>
-  (await (await as('operator', 'ops')).get(`/api/v1/operator/requests${query}`)).body.data.map((r: any) => r.slug);
+  (await (await as('operator', 'ops')).get(`/api/v1/operator/requests${query}`)).body.data.map((r: { slug: unknown }) => r.slug);
 
 describe('asking for an organisation', () => {
   it('reports why an address cannot be used, and the address an available one gives', async () => {
@@ -279,7 +279,7 @@ describe('the platform operator decides', () => {
     const op = await as('operator', 'ops');
     const list = await op.get('/api/v1/operator/requests');
     expect(list.status).toBe(200);
-    expect(list.body.data.map((r: any) => r.slug)).toEqual(['second-college', 'new-college']);
+    expect(list.body.data.map((r: { slug: unknown }) => r.slug)).toEqual(['second-college', 'new-college']);
     expect(list.body.data[0]).toMatchObject({
       status: 'PENDING',
       institutionType: 'COLLEGE',
@@ -291,7 +291,7 @@ describe('the platform operator decides', () => {
     expect(list.body.data[0].verifiedAt).toBeTruthy();
     expect(list.body.pagination).toEqual({ page: 1, limit: 25, total: 2, totalPages: 1 });
     const second = await op.get('/api/v1/operator/requests?limit=1&page=2');
-    expect(second.body.data.map((r: any) => r.slug)).toEqual(['new-college']);
+    expect(second.body.data.map((r: { slug: unknown }) => r.slug)).toEqual(['new-college']);
     expect(second.body.pagination).toEqual({ page: 2, limit: 1, total: 2, totalPages: 2 });
     expect((await op.get('/api/v1/operator/requests?limit=1000')).status).toBe(400);
   });
@@ -370,7 +370,7 @@ describe('the platform operator decides', () => {
     const op = await as('operator', 'ops');
     const stale = await submit('stale-college');
     await admin.organizationRequest.update({ where: { id: stale.id }, data: { holdExpiresAt: new Date(Date.now() - 1000) } });
-    const listed = (await op.get('/api/v1/operator/requests')).body.data.find((x: any) => x.slug === 'stale-college');
+    const listed = (await op.get('/api/v1/operator/requests')).body.data.find((x: { slug: unknown }) => x.slug === 'stale-college');
     expect(listed).toMatchObject({ status: 'PENDING', expired: true });
     expect(await availability('stale-college')).toMatchObject({ available: true });
 

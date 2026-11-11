@@ -1,9 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { EventEmitter } from 'events';
+import type { Response } from 'express';
 import { JsonObjectStream } from '../src/lib/json-stream';
 
 function fakeRes(backpressure = false) {
-  const res: any = new EventEmitter();
+  const res = new EventEmitter() as EventEmitter & {
+    chunks: string[];
+    ended: boolean;
+    write: (c: string) => boolean;
+    end: () => boolean;
+  };
   res.chunks = [] as string[];
   res.ended = false;
   res.write = (c: string) => {
@@ -25,7 +31,7 @@ describe('JsonObjectStream', () => {
     const rows = Array.from({ length: n }, (_, i) => ({ id: `r${i}`, v: `x"${i}` }));
     for (const backpressure of [false, true]) {
       const res = fakeRes(backpressure);
-      const out = new JsonObjectStream(res);
+      const out = new JsonObjectStream(res as unknown as Response);
       await out.start();
       await out.value('meta', { a: 1 });
       await out.value('missing', undefined);

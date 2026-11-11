@@ -11,7 +11,7 @@ const TEXT = 'This is a sufficiently long essay body, written to be checked for 
 let db: TestDatabase;
 let admin: PrismaClient;
 let provider: http.Server;
-let received: { headers: http.IncomingHttpHeaders; body: any }[] = [];
+let received: { headers: http.IncomingHttpHeaders; body: { raw: string } & Record<string, unknown> }[] = [];
 let respondWith = 200;
 let lib: typeof import('../src/lib/plagiarism-submit.js');
 let signCallback: typeof import('../src/routes/integrations.routes.js').signCallback;

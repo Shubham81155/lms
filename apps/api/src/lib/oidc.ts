@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
-import { assertSafeWebhookUrl as assertSafeUrl } from './webhooks';
+import { assertSafeWebhookTarget, assertSafeWebhookUrl as assertSafeUrl } from './webhooks';
 
 // OpenID Connect authorization-code flow with PKCE, as a relying party. Only what a login needs:
 // discovery, the code exchange, and strict ID-token validation. Failures throw OidcError; callers
@@ -19,8 +19,8 @@ export interface Discovery {
 const TIMEOUT_MS = 5000;
 const normalise = (u: string) => u.replace(/\/+$/, '');
 
-async function getJson(url: string): Promise<any> {
-  assertSafeUrl(url);
+async function getJson(url: string): Promise<unknown> {
+  await assertSafeWebhookTarget(url);
   const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), redirect: 'error', headers: { accept: 'application/json' } });
   if (!res.ok) throw new OidcError(`GET ${new URL(url).pathname} -> ${res.status}`);
   return res.json();
@@ -28,15 +28,16 @@ async function getJson(url: string): Promise<any> {
 
 /** Reads the provider's configuration and checks it really belongs to the configured issuer. */
 export async function discover(issuer: string): Promise<Discovery> {
-  const doc = await getJson(`${normalise(issuer)}/.well-known/openid-configuration`);
-  if (typeof doc?.issuer !== 'string' || normalise(doc.issuer) !== normalise(issuer)) {
+  const raw = await getJson(`${normalise(issuer)}/.well-known/openid-configuration`);
+  const doc = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  if (typeof doc.issuer !== 'string' || normalise(doc.issuer) !== normalise(issuer)) {
     throw new OidcError('issuer in the discovery document does not match');
   }
   for (const k of ['authorization_endpoint', 'token_endpoint', 'jwks_uri'] as const) {
     if (typeof doc[k] !== 'string') throw new OidcError(`discovery document has no ${k}`);
     assertSafeUrl(doc[k]);
   }
-  return doc as Discovery;
+  return doc as unknown as Discovery;
 }
 
 const b64url = (buf: Buffer) => buf.toString('base64url');
@@ -67,7 +68,7 @@ export const signFlow = (f: FlowState) =>
 export function readFlow(token: string | undefined): FlowState | null {
   if (!token) return null;
   try {
-    const d = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'], audience: FLOW_AUDIENCE }) as any;
+    const d = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'], audience: FLOW_AUDIENCE }) as Partial<FlowState>;
     return d.state && d.nonce && d.verifier && d.tenantId && d.redirectUri
       ? { state: d.state, nonce: d.nonce, verifier: d.verifier, tenantId: d.tenantId, redirectUri: d.redirectUri }
       : null;
@@ -102,7 +103,7 @@ export async function exchangeCode(
   d: Discovery,
   p: { clientId: string; clientSecret: string; redirectUri: string; code: string; verifier: string }
 ): Promise<string> {
-  assertSafeUrl(d.token_endpoint);
+  await assertSafeWebhookTarget(d.token_endpoint);
   const res = await fetch(d.token_endpoint, {
     method: 'POST',
     redirect: 'error',
@@ -144,17 +145,20 @@ export async function verifyIdToken(idToken: string, d: Discovery, p: { clientId
   const jwk = keys?.find((k) => k.use !== 'enc' && (!decoded.header.kid || k.kid === decoded.header.kid));
   if (!jwk) throw new OidcError('no matching signing key');
 
-  let claims: any;
+  let claims: jwt.JwtPayload;
   try {
-    claims = jwt.verify(idToken, crypto.createPublicKey({ key: jwk, format: 'jwk' }), {
+    const verified = jwt.verify(idToken, crypto.createPublicKey({ key: jwk, format: 'jwk' }), {
       algorithms: ['RS256'],
       issuer: [d.issuer, normalise(d.issuer), `${normalise(d.issuer)}/`],
       audience: p.clientId,
     });
-  } catch (e: any) {
-    throw new OidcError(`token rejected: ${e.message}`);
+    if (typeof verified === 'string') throw new OidcError('token payload is not an object');
+    claims = verified;
+  } catch (e: unknown) {
+    if (e instanceof OidcError) throw e;
+    throw new OidcError(`token rejected: ${e instanceof Error ? e.message : String(e)}`);
   }
   if (typeof claims.nonce !== 'string' || !safeEqual(claims.nonce, p.nonce)) throw new OidcError('nonce mismatch');
   if (typeof claims.sub !== 'string' || !claims.sub) throw new OidcError('no subject');
-  return claims as IdClaims;
+  return claims as unknown as IdClaims;
 }

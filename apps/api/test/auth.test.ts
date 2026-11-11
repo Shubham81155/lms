@@ -57,7 +57,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   fake.tenant.findFirst.mockResolvedValue(TENANT);
   fake.auditLog.create.mockResolvedValue({});
-  fake.user.update.mockImplementation(async ({ data }: any) => ({
+  fake.user.update.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
     ...(await userRecord()),
     failedLoginCount: 1,
     ...Object.fromEntries(Object.entries(data).filter(([, v]) => typeof v !== 'object')),
@@ -140,7 +140,7 @@ describe('authentication cannot be bypassed', () => {
     it('logout bumps the token version so the old token stops working', async () => {
       session();
       await request(app).post('/api/v1/auth/logout').set('Authorization', `Bearer ${tokenFor()}`);
-      const bump = fake.user.update.mock.calls.find((c: any) => c[0].data.tokenVersion);
+      const bump = fake.user.update.mock.calls.find((c) => c[0].data.tokenVersion);
       expect(bump?.[0].data.tokenVersion).toEqual({ increment: 1 });
     });
   });
@@ -160,7 +160,9 @@ describe('authentication cannot be bypassed', () => {
   it('takes the tenant from the token, ignoring the x-tenant-id header', async () => {
     fake.user.findFirst.mockResolvedValue(await userRecord());
     await request(app).get('/api/v1/auth/me').set('Authorization', `Bearer ${tokenFor()}`).set('x-tenant-id', 'some-other-tenant');
-    expect(fake.user.findFirst.mock.calls.map((c: any) => c[0].where).find((w: any) => w.tenantId)).toMatchObject({ tenantId: 'ten_1' });
+    expect(fake.user.findFirst.mock.calls.map((c) => c[0].where).find((w: { tenantId: unknown }) => w.tenantId)).toMatchObject({
+      tenantId: 'ten_1',
+    });
   });
 
   it('runs the request inside the tenant context from the token, not from headers', async () => {
@@ -204,7 +206,7 @@ describe('POST /auth/login', () => {
     expect(cookie).toMatch(/SameSite=Lax/i);
 
     const token = cookie.split(';')[0].split('=')[1];
-    const claims = jwt.verify(token, SECRET) as any;
+    const claims = jwt.verify(token, SECRET) as jwt.JwtPayload;
     expect(claims).toMatchObject({ id: 'u1', tenantId: 'ten_1', role: 'STUDENT' });
     expect(fake.user.findFirst.mock.calls[0][0].where.email).toBe('a@x.edu');
   });
@@ -224,14 +226,14 @@ describe('POST /auth/login', () => {
       .set('x-tenant-id', 'ten_hdr')
       .send({ email: 'a@x.edu', password: PASSWORD });
 
-    const hints = fake.tenant.findFirst.mock.calls.map((c: any) => c[0].where.OR[0].id);
+    const hints = fake.tenant.findFirst.mock.calls.map((c) => c[0].where.OR[0].id);
     expect(hints).toEqual(['ten_hdr', 'stanford.lms.example.com', 'stanford', 'harvard']);
   });
 
   it('does not treat an IP address host as a tenant subdomain', async () => {
     fake.tenant.findFirst.mockResolvedValue(null);
     await request(app).post('/api/v1/auth/login').set('Host', '10.0.0.5:4000').send({ email: 'a@x.edu', password: PASSWORD });
-    const hints = fake.tenant.findFirst.mock.calls.map((c: any) => c[0].where.OR[0].id);
+    const hints = fake.tenant.findFirst.mock.calls.map((c) => c[0].where.OR[0].id);
     expect(hints).toEqual(['harvard']);
   });
 
@@ -241,7 +243,7 @@ describe('POST /auth/login', () => {
       .post('/api/v1/auth/login')
       .set('x-forwarded-host', 'victim.lms.example.com')
       .send({ email: 'a@x.edu', password: PASSWORD });
-    const hints = fake.tenant.findFirst.mock.calls.map((c: any) => c[0].where.OR[0].id);
+    const hints = fake.tenant.findFirst.mock.calls.map((c) => c[0].where.OR[0].id);
     expect(hints).not.toContain('victim');
   });
 
@@ -299,7 +301,9 @@ describe('POST /auth/login', () => {
 
   it('does not look an e-mail up across organisations: one that exists only elsewhere gets the generic 401', async () => {
     // The user exists in another organisation, but the tenant-scoped lookup finds nobody.
-    fake.user.findFirst.mockImplementation(async (args: any) => (args?.where?.tenantId === 'ten_other' ? await userRecord() : null));
+    fake.user.findFirst.mockImplementation(async (args?: { where?: { tenantId?: string } }) =>
+      args?.where?.tenantId === 'ten_other' ? await userRecord() : null
+    );
     const unknown = await login({ email: 'nobody@x.edu', password: PASSWORD });
     const elsewhere = await login({ email: 'a@x.edu', password: PASSWORD });
     expect(elsewhere.status).toBe(401);
@@ -481,7 +485,7 @@ describe('health endpoints', () => {
   });
 
   it('reports ready only when the database answers', async () => {
-    (fake as any).$queryRaw = vi
+    (fake as unknown as { $queryRaw: unknown }).$queryRaw = vi
       .fn()
       .mockResolvedValueOnce([{ '?column?': 1 }])
       .mockRejectedValueOnce(new Error('down'));

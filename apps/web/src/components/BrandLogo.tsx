@@ -39,7 +39,11 @@ export function BrandLogo({ href = '/', compact = false, showTagline = true }: B
   }
 
   return (
-    <Link href={href} aria-label={compact ? 'GuruGyan LMS home' : undefined} className="flex items-center gap-2.5 font-bold text-lg text-ink">
+    <Link
+      href={href}
+      aria-label={compact ? 'GuruGyan LMS home' : undefined}
+      className="flex items-center gap-2.5 font-bold text-lg text-ink"
+    >
       <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-brand to-brand-hover flex items-center justify-center text-on-brand shadow-lg shadow-brand/30">
         <GraduationCap className="h-5 w-5" />
       </div>

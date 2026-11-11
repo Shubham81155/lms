@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Quiz and assignment due dates on the calendar against a real PostgreSQL: they appear without anyone
@@ -19,7 +19,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -92,10 +92,19 @@ async function as(who: string) {
   return agent;
 }
 
+interface CalendarEvent {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  completed: boolean;
+  extended: boolean;
+  courseId: string;
+}
+
 const calendar = async (who: string, query: Record<string, string> = {}) => {
   const res = await (await as(who)).get('/api/v1/calendar/events').query(query);
   expect(res.status).toBe(200);
-  return res.body as { data: any[]; nextDeadline: any };
+  return res.body as { data: CalendarEvent[]; nextDeadline: { id: string } };
 };
 
 describe('due dates on the calendar', () => {
@@ -120,9 +129,9 @@ describe('due dates on the calendar', () => {
   it('uses the learner’s own extension and marks finished work', async () => {
     const { data, nextDeadline } = await calendar('s2');
     const essay = data.find((e) => e.id === 'assignment-a1');
-    expect(essay.extended).toBe(true);
-    expect(new Date(essay.startsAt).getTime()).toBeGreaterThan(Date.now() + 6 * DAY);
-    expect(data.find((e) => e.id === 'quiz-q1').completed).toBe(true);
+    expect(essay!.extended).toBe(true);
+    expect(new Date(essay!.startsAt).getTime()).toBeGreaterThan(Date.now() + 6 * DAY);
+    expect(data.find((e) => e.id === 'quiz-q1')!.completed).toBe(true);
     // The midterm is done, so the next deadline is the extended essay.
     expect(nextDeadline.id).toBe('assignment-a1');
   });
@@ -135,7 +144,7 @@ describe('due dates on the calendar', () => {
 
   it('shows staff the course dates and keeps other courses out', async () => {
     const teacher = await calendar('teacher');
-    expect(teacher.data.find((e) => e.id === 'assignment-a1').extended).toBe(false);
+    expect(teacher.data.find((e) => e.id === 'assignment-a1')!.extended).toBe(false);
     expect(teacher.data.some((e) => e.courseId === 'c2')).toBe(false);
     expect((await calendar('outsider')).data.map((e) => e.id)).toEqual(['assignment-a-other']);
     expect((await calendar('outsider', { courseId: 'c1' })).data).toEqual([]);

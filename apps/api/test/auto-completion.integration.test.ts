@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Automatic course completion against a real PostgreSQL. Finishing every lesson takes progress to 100%.
@@ -18,7 +18,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,

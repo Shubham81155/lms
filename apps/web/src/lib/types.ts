@@ -165,7 +165,7 @@ export interface AuditLog {
   ipAddress?: string | null;
   userAgent?: string | null;
   user?: Partial<User> | null;
-  diffJson?: any;
+  diffJson?: unknown;
 }
 
 export interface TenantConfig {

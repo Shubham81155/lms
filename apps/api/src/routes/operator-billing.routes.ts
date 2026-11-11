@@ -94,7 +94,7 @@ router.patch(
       },
     });
     await audit(req, 'PLAN_UPDATED', id, {
-      before: Object.fromEntries(Object.keys(input).map((k) => [k, (before as any)[k]])),
+      before: Object.fromEntries(Object.keys(input).map((k) => [k, (before as Record<string, unknown>)[k]])),
       after: input,
     });
     return res.json({ data: operatorPlanView(plan) });

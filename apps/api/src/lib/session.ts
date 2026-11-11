@@ -1,4 +1,5 @@
 import { runWithTenant } from '@enterprise-lms/database';
+import type { Prisma } from '@enterprise-lms/database';
 import { config } from '../config';
 import { prisma } from './prisma';
 
@@ -95,7 +96,7 @@ export async function loadSession(userId: string, tenantId: string, fresh = fals
  */
 export async function revokeSessions(
   userId: string,
-  client: { user: { update: (args: any) => Promise<unknown> } } = prisma as any
+  client: { user: { update: (args: Prisma.UserUpdateArgs) => Promise<unknown> } } = prisma
 ): Promise<void> {
   await client.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
   invalidateSessionCache(userId);

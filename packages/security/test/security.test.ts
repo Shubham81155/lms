@@ -74,7 +74,7 @@ describe('AuditSanitizer', () => {
   });
 
   it('survives cyclic data', () => {
-    const a: Record<string, any> = { name: 'a' };
+    const a: Record<string, unknown> = { name: 'a' };
     a.self = a;
     expect(() => AuditSanitizer.sanitize(a)).not.toThrow();
   });

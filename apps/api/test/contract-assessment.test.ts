@@ -17,7 +17,7 @@ const covered = new Set<string>();
 
 async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: import('@prisma/client').GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -67,7 +67,7 @@ async function as(who: string) {
 }
 
 /** Asserts the status and, when the operation documents that status with a schema, that the body matches it. */
-function contract(key: string, res: { status: number; body: any }, status: number) {
+function contract<B>(key: string, res: { status: number; body: B }, status: number): B {
   expect(res.status, `${key}: ${JSON.stringify(res.body)}`).toBe(status);
   const entry = R[key];
   expect(entry, `${key} is described`).toBeTruthy();
@@ -84,7 +84,8 @@ function contract(key: string, res: { status: number; body: any }, status: numbe
 const V1 = '/api/v1';
 let teacher: request.Agent, s1: request.Agent, s2: request.Agent, adminA: request.Agent;
 let quizId: string, mcId: string, essayId: string, optionIds: string[];
-let assignId: string, subS1: string, subS2: string, criterionId: string, appealId: string, quizSubId: string;
+let secondCriterionId: string;
+let assignId: string, subS1: string, criterionId: string, appealId: string, quizSubId: string;
 
 describe('quizzes', () => {
   it('creates, edits and lists quizzes and questions', async () => {
@@ -144,7 +145,7 @@ describe('quizzes', () => {
     const staff = await teacher.get(`${V1}/quizzes/${quizId}`);
     contract('GET /api/v1/quizzes/:id', staff, 200);
     expect(JSON.stringify(staff.body)).toContain('isCorrect');
-    optionIds = staff.body.data.questions.find((q: any) => q.id === mcId).optionsJson.map((o: any) => o.id);
+    optionIds = staff.body.data.questions.find((q: { id: unknown }) => q.id === mcId).optionsJson.map((o: { id: unknown }) => o.id);
 
     const learner = await s1.get(`${V1}/quizzes/${quizId}`);
     contract('GET /api/v1/quizzes/:id', learner, 200);
@@ -218,7 +219,7 @@ describe('assignments, rubrics and appeals', () => {
     expect(rubric.data.maxPoints).toBe(10);
     criterionId = rubric.data.rubric[0].id;
     const second = rubric.data.rubric[1].id;
-    (globalThis as any).__second = second;
+    secondCriterionId = second;
 
     const staffList = await teacher.get(`${V1}/courses/c1/assignments`);
     contract('GET /api/v1/courses/:courseId/assignments', staffList, 200);
@@ -230,7 +231,7 @@ describe('assignments, rubrics and appeals', () => {
     const a = await s1.post(`${V1}/assignments/${assignId}/submit`).send({ submissionText: 'mine' });
     subS1 = contract('POST /api/v1/assignments/:id/submit', a, 201).data.id;
     const b = await s2.post(`${V1}/assignments/${assignId}/submissions`).send({ submissionText: 'theirs' });
-    subS2 = contract('POST /api/v1/assignments/:id/submissions', b, 201).data.id;
+    contract('POST /api/v1/assignments/:id/submissions', b, 201);
 
     const own = await s1.get(`${V1}/assignments/${assignId}/submissions`);
     contract('GET /api/v1/assignments/:id/submissions', own, 200);
@@ -251,7 +252,7 @@ describe('assignments, rubrics and appeals', () => {
   });
 
   it('grades, appeals and resolves', async () => {
-    const second = (globalThis as any).__second;
+    const second = secondCriterionId;
     const g = await teacher
       .patch(`${V1}/assignments/${assignId}/submissions/${subS1}/grade`)
       .send({ criteria: { [criterionId]: 2, [second]: 2 }, feedback: 'ok' });

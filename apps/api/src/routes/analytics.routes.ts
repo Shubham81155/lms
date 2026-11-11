@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma';
 import { route } from '../lib/http';
 import { isAdminRole } from '../lib/access';
 import { computeAtRisk } from '../lib/risk';
-import { bloomsMastery } from '../lib/bloom';
+import { bloomsMastery, gradingOf, type GradedAnswer } from '../lib/bloom';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
 
 const router = Router();
@@ -49,12 +49,10 @@ router.get(
       .flatMap((q) =>
         q.questions.map((question) => {
           const results = q.submissions
-            .map((s) => (s.answersJson as any)?.grading?.[question.id])
-            .filter((r) => r && !r.needsManualGrading && r.maxPoints > 0);
+            .map((s) => gradingOf(s.answersJson, question.id))
+            .filter((r): r is GradedAnswer => !!r && !r.needsManualGrading && r.maxPoints > 0);
           if (results.length === 0) return null;
-          const pct =
-            (results.reduce((a: number, r: any) => a + r.awardedPoints, 0) / results.reduce((a: number, r: any) => a + r.maxPoints, 0)) *
-            100;
+          const pct = (results.reduce((a, r) => a + r.awardedPoints, 0) / results.reduce((a, r) => a + r.maxPoints, 0)) * 100;
           return {
             questionId: question.id,
             concept: question.questionText.slice(0, 120),

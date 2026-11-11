@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Suspending an organisation ends access that already exists (sessions, SCIM tokens), not only new
@@ -18,7 +18,7 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
-  const user = (id: string, tenantId: string, role: any) =>
+  const user = (id: string, tenantId: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -127,7 +127,7 @@ describe('seat quota', () => {
       )
     );
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
-    expect(results.filter((r) => r.status === 'rejected').every((r: any) => r.reason?.status === 409)).toBe(true);
+    expect(results.filter((r) => r.status === 'rejected').every((r) => (r as PromiseRejectedResult).reason?.status === 409)).toBe(true);
     expect(await admin.user.count({ where: { tenantId: 't-h', email: { startsWith: 'race' } } })).toBe(1);
   });
 });

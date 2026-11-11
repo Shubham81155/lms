@@ -190,9 +190,9 @@ router.post(
           holdExpiresAt: expiresAt,
         },
       });
-    } catch (err: any) {
+    } catch (err) {
       // Two requests for the same address at once: the partial unique index lets only one hold it.
-      if (err?.code === 'P2002') throw new HttpError(409, SLUG_PROBLEM_MESSAGE.pending);
+      if ((err as { code?: string } | null)?.code === 'P2002') throw new HttpError(409, SLUG_PROBLEM_MESSAGE.pending);
       throw err;
     }
 
@@ -272,8 +272,9 @@ router.post(
         where: { id: request.id, status: 'UNVERIFIED', verifiedAt: null },
         data: { status: 'PENDING', verifiedAt: now, holdsSlug: true, holdExpiresAt: new Date(now.getTime() + PENDING_HOLD_MS) },
       });
-    } catch (err: any) {
-      if (err?.code === 'P2002') throw new HttpError(409, `${SLUG_PROBLEM_MESSAGE.pending}. Send a new request with another address.`);
+    } catch (err) {
+      if ((err as { code?: string } | null)?.code === 'P2002')
+        throw new HttpError(409, `${SLUG_PROBLEM_MESSAGE.pending}. Send a new request with another address.`);
       throw err;
     }
     const saved = await basePrisma.organizationRequest.findUniqueOrThrow({ where: { id: request.id } });

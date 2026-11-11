@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Digest e-mails (lib/digest.ts): when one is due (time zones, DAILY/WEEKLY), what goes in it, the signed
@@ -66,7 +66,7 @@ beforeEach(async () => {
   await admin.notification.deleteMany();
 });
 
-function user(id: string, tenantId: string, role: any, over: object = {}) {
+function user(id: string, tenantId: string, role: GlobalRole, over: object = {}) {
   return admin.user.create({
     data: {
       id,

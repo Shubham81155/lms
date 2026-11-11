@@ -8,18 +8,7 @@ import { tenantFeatures } from '../lib/features';
 import { decryptSecret } from '../lib/mfa';
 import { startSession } from '../middleware/auth';
 import { cookieName, cookiePath } from '../lib/cookie-name';
-import {
-  authorizationUrl,
-  discover,
-  exchangeCode,
-  newPkce,
-  randomToken,
-  readFlow,
-  safeEqual,
-  signFlow,
-  verifyIdToken,
-  IdClaims,
-} from '../lib/oidc';
+import { authorizationUrl, discover, exchangeCode, newPkce, randomToken, readFlow, safeEqual, signFlow, verifyIdToken } from '../lib/oidc';
 import { logger } from '../lib/logger';
 import { resolveSsoUser, splitName } from '../lib/sso-user';
 import { appOrigin, callbackUri, originFor } from '../lib/sso-origin';
@@ -174,8 +163,8 @@ router.get('/callback', async (req: Request, res: Response) => {
       // The home page forwards a signed-in user to their own portal.
       return res.redirect(302, `${origin}/`);
     });
-  } catch (err: any) {
-    return fail(String(err?.message ?? err).slice(0, 120), flow?.tenantId);
+  } catch (err) {
+    return fail(String((err as { message?: unknown } | null)?.message ?? err).slice(0, 120), flow?.tenantId);
   }
 });
 

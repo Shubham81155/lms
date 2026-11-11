@@ -20,10 +20,7 @@ const input =
  * The signed-in person's own data rights (GDPR Art. 15/17/20, FERPA directory opt-out),
  * backed by /api/v1/privacy/me/*. Every action is written to the audit trail by the API.
  */
-export const PrivacySettings: React.FC<{ onClose: () => void; onOpenProfile?: () => void }> = ({
-  onClose,
-  onOpenProfile,
-}) => {
+export const PrivacySettings: React.FC<{ onClose: () => void; onOpenProfile?: () => void }> = ({ onClose, onOpenProfile }) => {
   useEscapeKey(onClose);
   const { user, logout } = useAuth();
   const t = useT();

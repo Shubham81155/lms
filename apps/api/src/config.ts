@@ -261,6 +261,19 @@ const envSchema = z
     RETENTION_JOB_INTERVAL_SECONDS: z.coerce.number().int().min(0).default(3600),
     /** Most rows of one data class a retention run removes; the next run continues. */
     RETENTION_ROW_CAP: z.coerce.number().int().min(1).max(100_000).default(5000),
+    /** Whether background workers run inside the API server process; set false when running dist/worker.js separately. */
+    WORKERS_ENABLED: z
+      .preprocess((v) => {
+        if (v === undefined || v === '') return true;
+        if (typeof v === 'boolean') return v;
+        if (typeof v === 'string') {
+          const normalized = v.trim().toLowerCase();
+          if (normalized === 'true' || normalized === '1') return true;
+          if (normalized === 'false' || normalized === '0') return false;
+        }
+        return v;
+      }, z.boolean())
+      .default(true),
   })
   .refine((c) => c.STORAGE_DRIVER !== 's3' || !!c.S3_BUCKET, { message: 'STORAGE_DRIVER=s3 needs S3_BUCKET' })
   .refine((c) => !c.S3_ACCESS_KEY_ID === !c.S3_SECRET_ACCESS_KEY, {

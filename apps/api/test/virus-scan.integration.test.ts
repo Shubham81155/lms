@@ -6,7 +6,7 @@ import os from 'os';
 import path from 'path';
 import { Readable } from 'stream';
 import { mkdtemp, rm } from 'fs/promises';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Virus scanning against a stand-in for clamd that speaks its INSTREAM protocol over TCP: the framing,
@@ -72,7 +72,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,

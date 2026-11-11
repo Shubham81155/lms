@@ -152,12 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             {user?.avatarUrl && !avatarImgError ? (
               /* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */
-              <img
-                src={user.avatarUrl}
-                alt=""
-                className="h-full w-full object-cover"
-                onError={() => setAvatarImgError(true)}
-              />
+              <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" onError={() => setAvatarImgError(true)} />
             ) : (
               <span>{initialsOf(user?.name)}</span>
             )}
@@ -167,9 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <p className="truncate text-xs font-semibold text-ink group-hover:text-brand-fg transition-colors">
                 {user?.name ?? t('shell.userLoading')}
               </p>
-              <p className="truncate text-[11px] text-ink-muted">
-                {user ? t.dyn(`role.${user.role}`, roleTitle(user.role)) : ' '}
-              </p>
+              <p className="truncate text-[11px] text-ink-muted">{user ? t.dyn(`role.${user.role}`, roleTitle(user.role)) : ' '}</p>
             </div>
           )}
         </button>

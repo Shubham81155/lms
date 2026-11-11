@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { NotificationPreference } from '@enterprise-lms/database';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
@@ -56,7 +57,7 @@ export const prefsSchema = z
     }
   );
 
-const prefsView = (p: any) => ({
+const prefsView = (p: NotificationPreference | null | undefined) => ({
   inAppEnabled: p?.inAppEnabled ?? true,
   emailEnabled: p?.emailEnabled ?? true,
   smsEnabled: p?.smsEnabled ?? false,

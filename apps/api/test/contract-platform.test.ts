@@ -15,7 +15,10 @@ const PASSWORD = 'CorrectHorse1!';
 let db: TestDatabase;
 let admin: PrismaClient;
 let app: import('express').Express;
-let TABLE: Record<string, any>;
+interface TableEntry {
+  response: { status: number; contentType?: string; schema: { safeParse(v: unknown): { success: boolean; error?: unknown } } };
+}
+let TABLE: Record<string, TableEntry>;
 const covered = new Set<string>();
 
 beforeAll(async () => {
@@ -23,7 +26,7 @@ beforeAll(async () => {
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
-  const user = (id: string, tenantId: string, role: any) =>
+  const user = (id: string, tenantId: string, role: import('@prisma/client').GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -48,7 +51,7 @@ beforeAll(async () => {
   TABLE = {
     ...(await import('../src/openapi/responses/support.js')).RESPONSES,
     ...(await import('../src/openapi/responses/offboarding.js')).OFFBOARDING_DOCS,
-  };
+  } as unknown as Record<string, TableEntry>;
 }, 240_000);
 
 afterAll(async () => {
@@ -67,7 +70,7 @@ async function as(who: string, tenant: string) {
 }
 
 /** Asserts the status is the documented success status and the body matches its schema (a ZIP: its bytes). */
-function check(key: string, res: request.Response, status?: number): any {
+function check(key: string, res: request.Response, status?: number): request.Response['body'] {
   const entry = TABLE[key];
   expect(entry, `${key} is in the table`).toBeTruthy();
   expect(res.status, `${key}: ${JSON.stringify(res.body)}`).toBe(status ?? entry.response.status);

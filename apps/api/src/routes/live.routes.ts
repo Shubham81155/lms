@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Router, Request } from 'express';
+import type { LiveSession } from '@enterprise-lms/database';
 import { z } from 'zod';
 import { config } from '../config';
 import { prisma } from '../lib/prisma';
@@ -58,7 +59,7 @@ async function loadSession(req: Request, id: string) {
   return s;
 }
 
-const view = (s: any, extra: object = {}) => ({
+const view = (s: LiveSession, extra: object = {}) => ({
   id: s.id,
   courseId: s.courseId,
   title: s.title,

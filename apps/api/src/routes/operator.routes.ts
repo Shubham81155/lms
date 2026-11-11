@@ -83,7 +83,10 @@ export const view = async (t: {
   features: resolveFeatures(t.tier, t.featureFlags),
   /** Features set explicitly for this organisation, overriding the tier's defaults. */
   overrides: Object.fromEntries(
-    FEATURE_KEYS.flatMap((k) => (typeof (t.featureFlags as any)?.[k] === 'boolean' ? [[k, (t.featureFlags as any)[k]]] : []))
+    FEATURE_KEYS.flatMap((k) => {
+      const v = (t.featureFlags as Record<string, unknown> | null)?.[k];
+      return typeof v === 'boolean' ? [[k, v]] : [];
+    })
   ),
 });
 

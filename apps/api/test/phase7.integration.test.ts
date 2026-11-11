@@ -19,7 +19,7 @@ async function seed() {
     ['t-m', 'mit'],
   ])
     await admin.tenant.create({ data: { id, slug, name: slug } });
-  const user = (id: string, tenantId: string, slug: string, role: any) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -194,18 +194,18 @@ describe('assignment rubrics', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.maxPoints).toBe(50);
     expect(res.body.data.rubric).toHaveLength(3);
-    expect(res.body.data.rubric.every((c: any) => c.id)).toBe(true);
+    expect(res.body.data.rubric.every((c: { id: unknown }) => c.id)).toBe(true);
 
     // Learners can read the rubric before they submit.
     const list = await (await as('s1')).get('/api/v1/courses/c1/assignments');
-    const a = list.body.data.find((x: any) => x.id === 'a-rub');
+    const a = list.body.data.find((x: { id: unknown }) => x.id === 'a-rub');
     expect(a.rubricJson).toHaveLength(3);
     expect(a.maxPoints).toBe(50);
   });
 
   it('requires criterion scores for a rubric assignment, and refuses bad ones', async () => {
     const t = await as('teacher');
-    const rubric = (await admin.assignment.findUnique({ where: { id: 'a-rub' } }))!.rubricJson as any[];
+    const rubric = (await admin.assignment.findUnique({ where: { id: 'a-rub' } }))!.rubricJson as { id: string }[];
     const [thesis, evidence, style] = rubric.map((c) => c.id);
     const url = '/api/v1/assignments/a-rub/submissions/a-rub-s1/grade';
 
@@ -228,7 +228,7 @@ describe('assignment rubrics', () => {
     expect(mine.body.data[0]).toMatchObject({ grade: 40.5, feedback: 'Solid.' });
     expect(mine.body.data[0].rubricScoresJson[thesis]).toBe(8);
     const notes = (await (await as('s1')).get('/api/v1/notifications?category=GRADE')).body.data;
-    expect(notes.some((n: any) => n.body === 'Grade: 40.5 / 50')).toBe(true);
+    expect(notes.some((n: { body: string }) => n.body === 'Grade: 40.5 / 50')).toBe(true);
   });
 
   it('keeps plain assignments plain', async () => {
@@ -265,7 +265,7 @@ describe('grade appeals', () => {
   let appealId: string;
 
   beforeAll(async () => {
-    rubricIds = ((await admin.assignment.findUnique({ where: { id: 'a-rub' } }))!.rubricJson as any[]).map((c) => c.id);
+    rubricIds = ((await admin.assignment.findUnique({ where: { id: 'a-rub' } }))!.rubricJson as { id: string }[]).map((c) => c.id);
   });
 
   it('only allows appealing your own graded work', async () => {
@@ -289,7 +289,7 @@ describe('grade appeals', () => {
     for (const who of ['teacher', 'ta']) {
       const notes = (await (await as(who)).get('/api/v1/notifications?category=GRADE')).body.data;
       expect(
-        notes.some((n: any) => n.title === 'Grade appeal on "Rubric essay"'),
+        notes.some((n: { title: string }) => n.title === 'Grade appeal on "Rubric essay"'),
         who
       ).toBe(true);
     }
@@ -357,7 +357,7 @@ describe('grade appeals', () => {
 
     const sub = await admin.assignmentSubmission.findUnique({ where: { id: 'a-rub-s1' } });
     expect(sub?.grade).toBe(43);
-    expect((sub?.rubricScoresJson as any)[evidence]).toBe(15);
+    expect((sub?.rubricScoresJson as Record<string, unknown>)[evidence]).toBe(15);
     const appeal = await admin.gradeAppeal.findUnique({ where: { id: appealId } });
     expect(appeal).toMatchObject({ status: 'UPHELD', response: 'Evidence was strong.', respondedById: 'teacher' });
 
@@ -366,7 +366,7 @@ describe('grade appeals', () => {
     expect((await admin.courseGrade.findFirst({ where: { userId: 's2' } }))?.status).toBe('APPROVED');
 
     const notes = (await (await as('s1')).get('/api/v1/notifications?category=GRADE')).body.data;
-    expect(notes.some((n: any) => /appeal was upheld.*43/.test(n.body))).toBe(true);
+    expect(notes.some((n: { body: string }) => /appeal was upheld.*43/.test(n.body))).toBe(true);
     expect(await admin.auditLog.count({ where: { action: 'GRADE_CHANGED_ON_APPEAL' } })).toBe(1);
     expect(await admin.auditLog.count({ where: { action: 'GRADE_APPEAL_UPHELD' } })).toBe(1);
 
@@ -397,7 +397,7 @@ describe('grade appeals', () => {
     expect((await admin.assignmentSubmission.findUnique({ where: { id: 'a-rub-s2' } }))?.grade).toBe(12);
     expect((await admin.courseGrade.findFirst({ where: { userId: 's2' } }))?.status).toBe('APPROVED');
     const notes = (await (await as('s2')).get('/api/v1/notifications?category=GRADE')).body.data;
-    expect(notes.some((n: any) => n.body === 'Not upheld. Marked against the rubric.')).toBe(true);
+    expect(notes.some((n: { body: string }) => n.body === 'Not upheld. Marked against the rubric.')).toBe(true);
 
     const view = (await s2.get('/api/v1/courses/c1/appeals')).body.data[0];
     expect(view).toMatchObject({ status: 'DENIED', response: 'Marked against the rubric.' });

@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { runWithTenant } from '@enterprise-lms/database';
+import { runWithTenant, type Prisma } from '@enterprise-lms/database';
 import { config } from '../config';
 import { basePrisma, prisma } from './prisma';
 import { HttpError } from './http';
 import { logAuditEvent } from './audit';
 import { logger } from './logger';
-import { startPeriodicJob, withJobLock } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs, withJobLock } from './job-lock';
 import { mailAdmins } from './trial';
 import { mailDelivers, sendMail } from './mailer';
 import { idSchema } from './validate';
@@ -231,7 +231,10 @@ export async function updateBreach(
   }
   next.status = status;
 
-  const done = await prisma.dataBreach.updateMany({ where: { id, tenantId, status: b.status }, data: next as any });
+  const done = await prisma.dataBreach.updateMany({
+    where: { id, tenantId, status: b.status },
+    data: next as Prisma.DataBreachUncheckedUpdateManyInput,
+  });
   if (done.count !== 1) throw new HttpError(409, 'The breach changed meanwhile; reload it');
   const after = await getBreach(tenantId, id);
   const changed = Object.keys(input);
@@ -408,5 +411,10 @@ export async function runBreachJob(now = new Date()): Promise<BreachJobResult> {
 /** One round under the job lock: null when another process is running it. */
 export const runBreachJobLocked = (now?: Date) => withJobLock(BREACH_JOB, () => runBreachJob(now));
 
+export const stopBreachJob = () => stopPeriodicJobs();
+
 /** Starts the periodic job (every BREACH_JOB_INTERVAL_SECONDS; one process at a time across the deployment). */
-export const startBreachJob = () => startPeriodicJob(BREACH_JOB, config.BREACH_JOB_INTERVAL_SECONDS, () => runBreachJob());
+export const startBreachJob = (): (() => void) => {
+  startPeriodicJob(BREACH_JOB, config.BREACH_JOB_INTERVAL_SECONDS, () => runBreachJob());
+  return stopBreachJob;
+};

@@ -1,11 +1,13 @@
 import { runWithTenant } from '@enterprise-lms/database';
+
+type TenantDelegates = Record<string, { deleteMany: (args: { where: { tenantId: string } }) => Promise<unknown> }>;
 import { config } from '../config';
 import { basePrisma, prisma, runInTenantTransaction } from './prisma';
 import { HttpError } from './http';
 import { logger } from './logger';
 import { logAuditEvent } from './audit';
 import { mailDelivers, sendMail } from './mailer';
-import { startPeriodicJob, withJobLock } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs, withJobLock } from './job-lock';
 import { storage } from './storage';
 import { tenantUrl } from './tenant-url';
 import { operatorTenant } from './organizations';
@@ -351,7 +353,8 @@ export async function deleteOrganisation(tenantId: string, now = new Date()): Pr
       if (!row?.deletionScheduledAt || row.deletionScheduledAt.getTime() > now.getTime()) return false;
       await tx.course.deleteMany({ where: { tenantId } });
       // Tables with tenantId but no foreign key to Tenant (SupportPass, SupportHandoff, ...) do not cascade.
-      for (const delegate of unlinkedTenantDelegates()) await (tx as any)[delegate].deleteMany({ where: { tenantId } });
+      for (const delegate of unlinkedTenantDelegates())
+        await (tx as unknown as TenantDelegates)[delegate].deleteMany({ where: { tenantId } });
       await tx.tenant.delete({ where: { id: tenantId } });
       await tx.tenantDeletion.create({
         data: {
@@ -488,9 +491,12 @@ export async function runOffboardingJobs(opts: { now?: Date; budgetMs?: number }
 
 const JOB_MAX_MS = 60 * 60_000;
 
+export const stopOffboardingJob = () => stopPeriodicJobs();
+
 /** Starts the round every OFFBOARDING_JOB_INTERVAL_SECONDS (0: never). */
-export function startOffboardingJob(): void {
+export function startOffboardingJob(): () => void {
   startPeriodicJob(OFFBOARDING_JOB, config.OFFBOARDING_JOB_INTERVAL_SECONDS, () => runOffboardingJobs(), JOB_MAX_MS);
+  return stopOffboardingJob;
 }
 
 /** Runs a round now (a new export need not wait for the next tick); skipped when another process has the lock. */

@@ -7,7 +7,7 @@ import { useT } from '@/lib/i18n';
 import { activateOnKey } from '@/lib/a11y';
 
 export type { NotificationItem };
-import { Bell, Check, CheckCheck, Clock, Award, Video, FileCheck, AlertTriangle, Sparkles, X, ExternalLink, Settings } from 'lucide-react';
+import { Bell, CheckCheck, X, ExternalLink, Settings } from 'lucide-react';
 
 interface NotificationCenterProps {
   isOpen: boolean;
@@ -111,7 +111,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setFilter(tab.id as any)}
+                onClick={() => setFilter(tab.id as typeof filter)}
                 className={`px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-colors ${
                   filter === tab.id ? 'bg-brand text-on-brand shadow-sm' : 'text-ink-muted hover:text-ink'
                 }`}

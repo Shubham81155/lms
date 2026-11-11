@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Under TENANT_BASE_DOMAIN a support handoff link only works at the organisation's own address (its subdomain or
@@ -19,7 +19,7 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-y', slug: 'yale', name: 'Yale', tier: 'ENTERPRISE', customDomain: 'learn.yale.example' } });
   await admin.tenant.create({ data: { id: 't-b', slug: 'brown', name: 'Brown', tier: 'ENTERPRISE' } });
-  const user = (id: string, tenantId: string, role: any) =>
+  const user = (id: string, tenantId: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import type { Prisma } from '@enterprise-lms/database';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
@@ -53,7 +54,11 @@ router.post(
 
     const parsed = raw.map((s) => statementSchema.safeParse(s));
     const bad = parsed.findIndex((p) => !p.success);
-    if (bad >= 0) throw new HttpError(400, 'Invalid xAPI Statement format', { index: bad, issues: (parsed[bad] as any).error.format() });
+    if (bad >= 0)
+      throw new HttpError(400, 'Invalid xAPI Statement format', {
+        index: bad,
+        issues: (parsed[bad] as z.SafeParseError<unknown>).error.format(),
+      });
 
     const privileged = isAdminRole(user.role) || user.role === 'INSTRUCTOR' || user.role === 'TEACHING_ASSISTANT';
     const ids: string[] = [];
@@ -84,7 +89,7 @@ router.post(
           actorUserId: actor?.id ?? null,
           verbId: s.verb.id,
           objectId: s.object.id,
-          statementJson: json as any,
+          statementJson: json as Prisma.InputJsonValue,
           timestamp,
         },
       });
@@ -228,7 +233,7 @@ router.post(
         eventType: body.eventType,
         severity: body.severity,
         snapshotUrl: body.snapshotUrl ?? null,
-        metadataJson: (body.metadata as any) ?? undefined,
+        metadataJson: (body.metadata as Prisma.InputJsonValue | undefined) ?? undefined,
       },
     });
     const after = assessProctoring(

@@ -1,3 +1,4 @@
+import type http from 'http';
 import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -9,30 +10,21 @@ import { logger } from './lib/logger';
 import { requestId, sendError } from './lib/http';
 import { findRlsBypassReason } from '@enterprise-lms/database';
 import { prisma, basePrisma } from './lib/prisma';
-import { lookupTenant, resolveTenant } from './lib/tenant';
+import { lookupTenant } from './lib/tenant';
 import { TENANT_SUSPENDED_MESSAGE, tenantIsBlocked } from './lib/session';
 import { ORG_SLUG } from './lib/organizations';
 import { baseDomainHost, hstsHeaderFor, isUnderBaseDomain, platformHostnames } from './lib/platform-hosts';
 import { tenantFeatures } from './lib/features';
+import * as rateLimitStoreModule from './lib/rate-limit-store';
 import { rateLimitStore, redisHealthy } from './lib/rate-limit-store';
 import { httpMetrics, metricsHandler } from './lib/metrics';
 
 import { apiMounts, rawBodyMounts } from './mounts';
 import { buildOpenApi } from './openapi/spec';
 import internalTlsRoutes from './routes/internal-tls.routes';
-import { startEmailDispatcher } from './lib/email-dispatch';
-import { startDigestJob } from './lib/digest';
-import { startWebhookRetryWorker } from './lib/webhooks';
-import { startFileScanSweep, virusScanner } from './lib/virus-scan';
+import { virusScanner } from './lib/virus-scan';
 import { captchaEnabled } from './lib/captcha';
-import { startPlagiarismSubmitWorker } from './lib/plagiarism-submit';
-import { startCustomDomainRecheck } from './lib/custom-domain-recheck';
-import { startOffboardingJob } from './lib/offboarding';
-import { startTrialJob } from './lib/trial';
-import { startDsarJob } from './lib/data-requests';
-import { startBreachJob } from './lib/breaches';
-import { startRetentionJob } from './lib/retention';
-import { startBillingJob } from './lib/billing';
+import { startAllWorkers } from './worker';
 
 const app = express();
 const PORT = config.PORT;
@@ -311,16 +303,17 @@ app.use((req: Request, res: Response) => {
 
 // Global Centralized Error Handler. Route handlers handle their own errors (lib/http.ts); this
 // catches what escapes middleware, such as malformed JSON bodies. Internals are never returned.
-app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
-  if (err?.type === 'entity.parse.failed') return sendError(req, res, 400, 'Request body is not valid JSON');
-  if (err?.type === 'entity.too.large') return sendError(req, res, 413, 'Request body is too large');
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const errObj = err as { type?: string; message?: string } | undefined;
+  if (errObj?.type === 'entity.parse.failed') return sendError(req, res, 400, 'Request body is not valid JSON');
+  if (errObj?.type === 'entity.too.large') return sendError(req, res, 413, 'Request body is too large');
 
   logger.error(
     { err, requestId: req.id, method: req.method, path: req.originalUrl.replace(/^\/scorm-content\/[^/?]+/, '/scorm-content/<token>') },
     'unhandled error'
   );
   const body: Record<string, unknown> = { error: 'Internal Server Error', requestId: req.id };
-  if (config.NODE_ENV === 'development') body.detail = err?.message;
+  if (config.NODE_ENV === 'development') body.detail = errObj?.message;
   res.status(500).json(body);
 });
 
@@ -343,29 +336,88 @@ async function verifyTenantIsolation(): Promise<void> {
   }
 }
 
+export interface ShutdownDeps {
+  server: Pick<http.Server, 'close'> & { closeAllConnections?: () => void };
+  stopWorkers?: (() => void) | null;
+  disconnectPrisma?: () => Promise<void>;
+  closeRedis?: () => Promise<void> | void;
+  timeoutMs?: number;
+}
+
+/**
+ * Drains the HTTP server, stops background workers, disconnects Prisma, and closes Redis cleanly.
+ */
+export async function gracefulShutdown(signal: string, deps: ShutdownDeps): Promise<void> {
+  logger.info({ signal }, 'shutdown signal received, draining connections');
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(forceTimer);
+      resolve();
+    };
+    const forceTimer = setTimeout(() => {
+      logger.warn({ signal }, 'graceful shutdown timed out waiting for connections to close');
+      deps.server.closeAllConnections?.();
+      done();
+    }, deps.timeoutMs ?? 10_000);
+    forceTimer.unref();
+
+    deps.server.close((err) => {
+      if (err) logger.warn({ err }, 'error closing HTTP server');
+      done();
+    });
+  });
+
+  deps.stopWorkers?.();
+
+  await Promise.allSettled([
+    (async () => {
+      try {
+        await (deps.disconnectPrisma ? deps.disconnectPrisma() : basePrisma.$disconnect());
+      } catch (err) {
+        logger.warn({ err }, 'error disconnecting Prisma during shutdown');
+      }
+    })(),
+    (async () => {
+      try {
+        const closeFn = deps.closeRedis ?? (rateLimitStoreModule as { closeRedis?: () => Promise<void> | void }).closeRedis;
+        await closeFn?.();
+      } catch (err) {
+        logger.warn({ err }, 'error closing Redis during shutdown');
+      }
+    })(),
+  ]);
+}
+
 if (config.NODE_ENV !== 'test') {
   verifyTenantIsolation().then(() => {
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       logger.info({ port: PORT }, 'Enterprise LMS API listening');
     });
-    startEmailDispatcher();
-    startDigestJob();
-    startWebhookRetryWorker();
-    startPlagiarismSubmitWorker();
-    startFileScanSweep();
-    startCustomDomainRecheck();
-    startOffboardingJob();
-    startTrialJob();
-    startDsarJob();
-    startBreachJob();
-    startRetentionJob();
-    startBillingJob();
+    const stopWorkers = config.WORKERS_ENABLED ? startAllWorkers() : null;
+    if (!config.WORKERS_ENABLED) {
+      logger.info('Background workers disabled (WORKERS_ENABLED=false)');
+    }
     if (!virusScanner() && config.NODE_ENV === 'production') {
       logger.warn('Uploads are not scanned for viruses: set CLAMAV_URL (e.g. tcp://clamav:3310) to a ClamAV daemon.');
     }
     if (!captchaEnabled() && config.NODE_ENV === 'production' && config.ORG_REGISTRATION_ENABLED) {
       logger.warn('Organisation registration has no CAPTCHA: set TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY (Cloudflare Turnstile).');
     }
+
+    let shuttingDown = false;
+    const handleSignal = (signal: NodeJS.Signals) => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      void gracefulShutdown(signal, { server, stopWorkers }).finally(() => {
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGTERM', () => handleSignal('SIGTERM'));
+    process.on('SIGINT', () => handleSignal('SIGINT'));
   });
 }
 

@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useApiData } from '@/hooks/useApiData';
+import type { GetResponse } from '@/lib/typed-api';
 
 export interface StaffCourse {
   id: string;
@@ -16,6 +17,11 @@ export interface StaffCourse {
   reviewNote: string | null;
 }
 
+type CourseListItem = GetResponse<'/api/v1/courses'>['data'][number] & {
+  reviewStatus?: StaffCourse['reviewStatus'];
+  reviewNote?: string | null;
+};
+
 /**
  * Courses the signed-in staff member may work with: all of them for administrators, else those they
  * teach. With `editableOnly`, assistants get none: the API lets only administrators and the assigned
@@ -23,7 +29,7 @@ export interface StaffCourse {
  */
 export function useStaffCourses(options: { editableOnly?: boolean } = {}) {
   const { user } = useAuth();
-  const { data, isLoading, error, reload } = useApiData<{ data: any[] }>('/api/v1/courses', { limit: 100 });
+  const { data, isLoading, error, reload } = useApiData<{ data: CourseListItem[] }>('/api/v1/courses', { limit: 100 });
   const editableOnly = !!options.editableOnly;
 
   const courses = useMemo<StaffCourse[]>(() => {
@@ -32,7 +38,7 @@ export function useStaffCourses(options: { editableOnly?: boolean } = {}) {
     const mayEdit = admin || user?.role === 'INSTRUCTOR';
     if (editableOnly && !mayEdit) return [];
     return all
-      .filter((c) => admin || (c.instructors ?? []).some((i: any) => i.user?.id === user?.id))
+      .filter((c) => admin || (c.instructors ?? []).some((i) => i.user?.id === user?.id))
       .map((c) => ({
         id: c.id,
         code: c.code,

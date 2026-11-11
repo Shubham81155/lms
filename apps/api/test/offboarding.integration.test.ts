@@ -5,7 +5,7 @@ import path from 'path';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
 import yauzl from 'yauzl';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Organisation offboarding: full exports (contents, secrets left out, who may download them) and scheduled
@@ -50,7 +50,7 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-op', slug: 'ops', name: 'Operator', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-y', slug: 'yale', name: 'Yale', tier: 'ENTERPRISE' } });
-  const user = (id: string, tenantId: string, role: any) =>
+  const user = (id: string, tenantId: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -132,7 +132,7 @@ async function as(who: string, tenant: string) {
   return agent;
 }
 
-const binary = (res: any, cb: (err: Error | null, body: Buffer) => void) => {
+const binary = (res: request.Response, cb: (err: Error | null, body: Buffer) => void) => {
   const chunks: Buffer[] = [];
   res.on('data', (c: Buffer) => chunks.push(c));
   res.on('end', () => cb(null, Buffer.concat(chunks)));
@@ -179,7 +179,7 @@ describe('full export', () => {
     expect(round.built).toBe(1);
     const state = await h.get('/api/v1/admin/offboarding');
     expect(state.status).toBe(200);
-    const ready = state.body.data.exports.find((e: any) => e.id === harvardExportId);
+    const ready = state.body.data.exports.find((e: { id: unknown }) => e.id === harvardExportId);
     expect(ready).toMatchObject({ status: 'READY' });
     expect(ready.sizeBytes).toBeGreaterThan(0);
     expect(new Date(ready.expiresAt).getTime() - Date.now()).toBeGreaterThan(6.9 * 86_400_000);
@@ -285,7 +285,7 @@ describe('scheduled deletion', () => {
     const state = await h.get('/api/v1/admin/offboarding');
     expect(state.body.data.deletion).toMatchObject({ byOperator: true, canCancel: false });
     expect((await h.delete('/api/v1/admin/offboarding/deletion')).status).toBe(403);
-    expect((await op.get('/api/v1/operator/offboarding')).body.data.scheduled.map((s: any) => s.slug)).toEqual(['harvard']);
+    expect((await op.get('/api/v1/operator/offboarding')).body.data.scheduled.map((s: { slug: unknown }) => s.slug)).toEqual(['harvard']);
     expect((await op.delete('/api/v1/operator/tenants/t-h/deletion')).status).toBe(200);
     expect(await admin.auditLog.count({ where: { tenantId: 't-op', action: { startsWith: 'TENANT_DELETION' } } })).toBe(2);
   });
@@ -324,8 +324,8 @@ describe('scheduled deletion', () => {
     const tomb = await admin.tenantDeletion.findUniqueOrThrow({ where: { tenantId: 't-y' } });
     expect(tomb.slug).toBe('yale');
     expect(Math.round((tomb.slugHeldUntil.getTime() - Date.now()) / 86_400_000)).toBe(90);
-    expect((tomb.summaryJson as any).rows.User).toBe(2);
-    expect((tomb.summaryJson as any).files).toBe(1);
+    expect((tomb.summaryJson as { rows: { User: number } }).rows.User).toBe(2);
+    expect((tomb.summaryJson as { files: number }).files).toBe(1);
     const final = await admin.tenantExport.findUniqueOrThrow({ where: { id: tomb.finalExportId! } });
     expect(final).toMatchObject({ isFinal: true, status: 'READY' });
     expect(Math.round((final.expiresAt!.getTime() - Date.now()) / 86_400_000)).toBe(90);

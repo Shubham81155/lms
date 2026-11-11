@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Billing: GST split and invoice numbering, the Razorpay webhook (signature, idempotency, the subscription
@@ -30,7 +30,7 @@ beforeAll(async () => {
   await admin.tenant.create({ data: { id: 't-a', slug: 'acme', name: 'Acme', tier: 'STARTER', ...trial } });
   await admin.tenant.create({ data: { id: 't-b', slug: 'beta', name: 'Beta', tier: 'STARTER', ...trial } });
   await admin.tenant.create({ data: { id: 't-c', slug: 'gamma', name: 'Gamma', tier: 'STARTER' } });
-  const user = (id: string, tenantId: string, role: any) =>
+  const user = (id: string, tenantId: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -154,7 +154,9 @@ describe('GST and numbering', () => {
     const { basePrisma } = await import('../src/lib/prisma.js');
     const date = new Date('2031-05-05T00:00:00Z');
     const numbers = await Promise.all(
-      Array.from({ length: 8 }, () => basePrisma.$transaction((tx) => invoiceLib.nextInvoiceNumber(tx as any, date)))
+      Array.from({ length: 8 }, () =>
+        basePrisma.$transaction((tx) => invoiceLib.nextInvoiceNumber(tx as Parameters<typeof invoiceLib.nextInvoiceNumber>[0], date))
+      )
     );
     const seqs = numbers.map((n) => Number(n.number.slice(-6))).sort((a, b) => a - b);
     expect(seqs).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
@@ -174,8 +176,8 @@ describe('subscribing, paying, invoices', () => {
     const a = await as('a-admin', 'acme');
     const plans = await a.get('/api/v1/billing/plans');
     expect(plans.status).toBe(200);
-    expect(plans.body.data.map((p: any) => p.code)).toEqual(['starter', 'growth', 'enterprise']);
-    const growth = plans.body.data.find((p: any) => p.code === 'growth');
+    expect(plans.body.data.map((p: { code: unknown }) => p.code)).toEqual(['starter', 'growth', 'enterprise']);
+    const growth = plans.body.data.find((p: { code: unknown }) => p.code === 'growth');
 
     const early = await a.post('/api/v1/billing/subscribe').send({ planId: growth.id, interval: 'MONTH', seats: 5 });
     expect(early.status).toBe(409);
@@ -268,7 +270,7 @@ describe('subscribing, paying, invoices', () => {
 
   it('uses IGST for a buyer in another state', async () => {
     const b = await as('b-admin', 'beta');
-    const growth = (await b.get('/api/v1/billing/plans')).body.data.find((p: any) => p.code === 'growth');
+    const growth = (await b.get('/api/v1/billing/plans')).body.data.find((p: { code: unknown }) => p.code === 'growth');
     await b.put('/api/v1/billing/profile').send({ legalName: 'Beta LLP', address: '9 Ring Road, Delhi', stateCode: '07' });
     expect((await b.post('/api/v1/billing/subscribe').send({ planId: growth.id, interval: 'YEAR', seats: 2 })).status).toBe(201);
     await webhook('subscription.activated', 't-b', { quantity: 2 });
@@ -364,7 +366,7 @@ describe('operator plans and limits', () => {
       ).status
     ).toBe(409);
     const list = await op.get('/api/v1/operator/plans');
-    const growth = list.body.data.find((p: any) => p.code === 'growth');
+    const growth = list.body.data.find((p: { code: unknown }) => p.code === 'growth');
     expect(growth.razorpayRegistered).toBe(true);
     const patched = await op.patch(`/api/v1/operator/plans/${growth.id}`).send({ monthlyPaise: 349_900, yearlyPaise: 3_499_000 });
     expect(patched.body.data).toMatchObject({ monthlyPaise: 349_900, razorpayRegistered: false });
@@ -372,12 +374,12 @@ describe('operator plans and limits', () => {
     expect(row.razorpayMonthlyPlanId).toBeNull();
     expect(row.razorpayYearlyPlanId).toBeNull();
     expect((await op.patch(`/api/v1/operator/plans/${growth.id}`).send({})).status).toBe(400);
-    expect((await a.get('/api/v1/billing/plans')).body.data.find((p: any) => p.code === 'growth').monthlyPaise).toBe(349_900);
+    expect((await a.get('/api/v1/billing/plans')).body.data.find((p: { code: unknown }) => p.code === 'growth').monthlyPaise).toBe(349_900);
   });
 
   it('enforces course, storage and seat limits of an assigned plan', async () => {
     const op = await as('operator', 'ops');
-    const tiny = (await op.get('/api/v1/operator/plans')).body.data.find((p: any) => p.code === 'tiny');
+    const tiny = (await op.get('/api/v1/operator/plans')).body.data.find((p: { code: unknown }) => p.code === 'tiny');
     expect((await op.post('/api/v1/operator/organizations/t-c/plan').send({ planId: tiny.id, seats: 11 })).status).toBe(400);
     expect((await op.post('/api/v1/operator/organizations/t-c/plan').send({ planId: tiny.id, seats: 3 })).status).toBe(200);
     expect(await admin.tenant.findUniqueOrThrow({ where: { id: 't-c' } })).toMatchObject({ seatQuota: 3, tier: 'STARTER' });
@@ -624,7 +626,7 @@ describe('review fixes: GST rate, concurrency, pending state', () => {
       );
     const made = await Promise.allSettled([0, 1, 2, 3, 4].map(make));
     expect(made.filter((r) => r.status === 'fulfilled').length).toBe(2);
-    for (const r of made) if (r.status === 'rejected') expect((r.reason as any).status).toBe(402);
+    for (const r of made) if (r.status === 'rejected') expect((r.reason as { status: number }).status).toBe(402);
     expect(await admin.course.count({ where: { tenantId: 't-lim' } })).toBe(2);
 
     const size = 600 * 1024 ** 2;
@@ -644,6 +646,6 @@ describe('review fixes: GST rate, concurrency, pending state', () => {
       );
     const stored = await Promise.allSettled([0, 1, 2].map(put));
     expect(stored.filter((r) => r.status === 'fulfilled').length).toBe(1);
-    for (const r of stored) if (r.status === 'rejected') expect((r.reason as any).status).toBe(402);
+    for (const r of stored) if (r.status === 'rejected') expect((r.reason as { status: number }).status).toBe(402);
   });
 });

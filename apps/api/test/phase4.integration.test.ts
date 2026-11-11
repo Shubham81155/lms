@@ -28,7 +28,7 @@ const pw = (slug: string) => `${PASSWORD}-${slug}`;
 async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', tier: 'STARTER' } });
-  const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -226,18 +226,18 @@ describe('notifications', () => {
     const list = await s1.get('/api/v1/notifications');
     expect(list.status).toBe(200);
     expect(list.body.unreadCount).toBeGreaterThanOrEqual(1);
-    const n = list.body.data.find((x: any) => x.body === 'Catch up!');
+    const n = list.body.data.find((x: { body: string }) => x.body === 'Catch up!');
     expect(n).toBeTruthy();
 
     // Another user cannot read or delete it.
     const s2 = await as('s2');
     expect((await s2.post(`/api/v1/notifications/${n.id}/read`)).status).toBe(404);
     expect((await s2.delete(`/api/v1/notifications/${n.id}`)).status).toBe(404);
-    expect((await s2.get('/api/v1/notifications')).body.data.find((x: any) => x.id === n.id)).toBeUndefined();
+    expect((await s2.get('/api/v1/notifications')).body.data.find((x: { id: unknown }) => x.id === n.id)).toBeUndefined();
 
     expect((await s1.post(`/api/v1/notifications/${n.id}/read`)).status).toBe(200);
     const unread = await s1.get('/api/v1/notifications?unreadOnly=true');
-    expect(unread.body.data.find((x: any) => x.id === n.id)).toBeUndefined();
+    expect(unread.body.data.find((x: { id: unknown }) => x.id === n.id)).toBeUndefined();
 
     expect((await s1.post('/api/v1/notifications/read-all')).status).toBe(200);
     expect((await s1.get('/api/v1/notifications')).body.unreadCount).toBe(0);
@@ -307,7 +307,7 @@ describe('discussion forums', () => {
     expect((await teacher.post(`/api/v1/threads/${threadId}/posts`).send({ body: '' })).status).toBe(400);
 
     const notes = (await (await as('s1')).get('/api/v1/notifications?category=FORUM')).body.data;
-    expect(notes.some((n: any) => n.title.includes('New reply'))).toBe(true);
+    expect(notes.some((n: { title: string }) => n.title.includes('New reply'))).toBe(true);
 
     const detail = await (await as('s1')).get(`/api/v1/threads/${threadId}`);
     expect(detail.body.data.posts).toHaveLength(2);
@@ -354,8 +354,10 @@ describe('discussion forums', () => {
     expect((await teacher.get('/api/v1/courses/c1/flags')).body.data).toHaveLength(0);
 
     expect((await teacher.patch(`/api/v1/posts/${postId}/moderate`).send({ hidden: true })).status).toBe(200);
-    expect((await (await as('s1')).get(`/api/v1/threads/${threadId}`)).body.data.posts.map((p: any) => p.id)).not.toContain(postId);
-    expect((await teacher.get(`/api/v1/threads/${threadId}`)).body.data.posts.map((p: any) => p.id)).toContain(postId);
+    expect((await (await as('s1')).get(`/api/v1/threads/${threadId}`)).body.data.posts.map((p: { id: unknown }) => p.id)).not.toContain(
+      postId
+    );
+    expect((await teacher.get(`/api/v1/threads/${threadId}`)).body.data.posts.map((p: { id: unknown }) => p.id)).toContain(postId);
 
     await teacher.patch(`/api/v1/threads/${threadId}/moderate`).send({ hidden: true });
     expect((await s4.get(`/api/v1/threads/${threadId}`)).status).toBe(404);
@@ -391,9 +393,9 @@ describe('calendar', () => {
     eventId = res.body.data.id;
 
     const mine = await (await as('s1')).get('/api/v1/calendar/events');
-    expect(mine.body.data.map((e: any) => e.id)).toContain(eventId);
+    expect(mine.body.data.map((e: { id: unknown }) => e.id)).toContain(eventId);
     expect(mine.body.nextDeadline?.id).toBe(eventId);
-    expect((await (await as('s2')).get('/api/v1/calendar/events')).body.data.map((e: any) => e.id)).not.toContain(eventId);
+    expect((await (await as('s2')).get('/api/v1/calendar/events')).body.data.map((e: { id: unknown }) => e.id)).not.toContain(eventId);
     expect((await (await as('s2')).get('/api/v1/calendar/events?courseId=c1')).body.data).toEqual([]);
   });
 
@@ -420,7 +422,7 @@ describe('calendar', () => {
       .post('/api/v1/calendar/events')
       .send({ title: 'Campus closed, holiday', category: 'DEADLINE', startsAt: start, endsAt: end });
     expect(all.status).toBe(201);
-    expect((await (await as('s2')).get('/api/v1/calendar/events')).body.data.map((e: any) => e.id)).toContain(all.body.data.id);
+    expect((await (await as('s2')).get('/api/v1/calendar/events')).body.data.map((e: { id: unknown }) => e.id)).toContain(all.body.data.id);
 
     const ics = await (await as('s1')).get('/api/v1/calendar/export.ics');
     expect(ics.status).toBe(200);
@@ -496,12 +498,14 @@ describe('xAPI learning record store', () => {
 
   it('scopes the stream: learners see only their own, staff see their learners, tenants are isolated', async () => {
     const own = await (await as('s3')).get('/api/v1/analytics/xapi/stream?limit=100');
-    expect(own.body.statements.every((s: any) => s.actor.mbox === 'mailto:s3@x.edu')).toBe(true);
+    expect(own.body.statements.every((s: { actor?: { mbox?: string } | null }) => s.actor?.mbox === 'mailto:s3@x.edu')).toBe(true);
     const asLearnerAskingForOthers = await (await as('s3')).get('/api/v1/analytics/xapi/stream?actorEmail=s1@x.edu');
-    expect(asLearnerAskingForOthers.body.statements.every((s: any) => s.actor.mbox === 'mailto:s3@x.edu')).toBe(true);
+    expect(
+      asLearnerAskingForOthers.body.statements.every((s: { actor?: { mbox?: string } | null }) => s.actor?.mbox === 'mailto:s3@x.edu')
+    ).toBe(true);
 
     const staff = await (await as('teacher')).get('/api/v1/analytics/xapi/stream?limit=100');
-    const actors = new Set(staff.body.statements.map((s: any) => s.actor.mbox));
+    const actors = new Set(staff.body.statements.map((s: { actor?: { mbox?: string } | null }) => s.actor?.mbox));
     expect(actors.size).toBeGreaterThan(1);
     expect((await (await as('m-admin', 'mit')).get('/api/v1/analytics/xapi/stream')).body.total).toBe(0);
   });
@@ -511,7 +515,7 @@ describe('xAPI learning record store', () => {
     const t2 = await as('teacher2');
     const none = await t2.get('/api/v1/analytics/xapi/stream?limit=100');
     expect(none.status).toBe(200);
-    expect(none.body.statements.every((s: any) => s.actor.mbox === 'mailto:teacher2@x.edu')).toBe(true);
+    expect(none.body.statements.every((s: { actor?: { mbox?: string } | null }) => s.actor?.mbox === 'mailto:teacher2@x.edu')).toBe(true);
     expect((await t2.get('/api/v1/analytics/xapi/stream?actorEmail=s3@x.edu')).body.total).toBe(0);
 
     // The course's own instructor sees its learner; administrators and auditors see the whole tenant.
@@ -558,7 +562,7 @@ describe('proctoring telemetry', () => {
     await s1.post('/api/v1/proctoring/events').send(ev('HIGH'));
 
     const teacher = await as('teacher');
-    const alerts = (await teacher.get('/api/v1/notifications?category=EXAM')).body.data.filter((n: any) =>
+    const alerts = (await teacher.get('/api/v1/notifications?category=EXAM')).body.data.filter((n: { title: string }) =>
       n.title.includes('Proctoring flag')
     );
     expect(alerts).toHaveLength(1); // not re-sent for events after the flag
@@ -588,7 +592,7 @@ describe('proctoring telemetry', () => {
     expect(feed.body.openAttempts).toBe(1); // s1's open attempt at the proctored quiz
     expect(feed.body.data.length).toBeGreaterThanOrEqual(4);
     expect(feed.body.data[0]).toMatchObject({ student: 's1 Lasts1', quiz: 'Proctored' });
-    const times = feed.body.data.map((e: any) => new Date(e.timestamp).getTime());
+    const times = feed.body.data.map((e: { timestamp: string }) => new Date(e.timestamp).getTime());
     expect([...times].sort((a, b) => b - a)).toEqual(times); // newest first
     expect((await (await as('teacher')).get('/api/v1/analytics/proctoring?limit=2')).body.data).toHaveLength(2);
 
@@ -606,10 +610,10 @@ describe('early-warning analytics', () => {
     const teacher = await as('teacher');
     const res = await teacher.get('/api/v1/analytics/at-risk?courseId=c1');
     expect(res.status).toBe(200);
-    const ids = res.body.data.map((l: any) => l.id);
+    const ids = res.body.data.map((l: { id: unknown }) => l.id);
     expect(ids).toContain('s3'); // flagged-free but failed attempt + never active
     expect(ids).not.toContain('s1'); // active and passing
-    expect(res.body.data.every((l: any) => l.reasons.length > 0)).toBe(true);
+    expect(res.body.data.every((l: { reasons: unknown[] }) => l.reasons.length > 0)).toBe(true);
 
     expect((await (await as('s1')).get('/api/v1/analytics/at-risk?courseId=c1')).status).toBe(403);
     expect((await (await as('teacher2')).get('/api/v1/analytics/at-risk?courseId=c1')).status).toBe(403);
@@ -628,7 +632,7 @@ describe('early-warning analytics', () => {
     expect(res.body.metrics.totalEnrolled).toBe(3);
     expect(JSON.stringify(res.body)).not.toContain('Liam Johnson');
     expect(res.body.atRiskLearners.length).toBeGreaterThan(0);
-    expect(res.body.itemAnalysis.some((i: any) => i.questionId === 'qq2')).toBe(true);
+    expect(res.body.itemAnalysis.some((i: { questionId: unknown }) => i.questionId === 'qq2')).toBe(true);
     expect((await (await as('s1')).get('/api/v1/analytics/cohort')).status).toBe(403);
     expect((await (await as('m-admin', 'mit')).get('/api/v1/analytics/cohort')).body.metrics.totalEnrolled).toBe(1);
   });
@@ -745,7 +749,7 @@ describe('feature flags, usage metering and tenant export', () => {
     expect(res.headers['content-disposition']).toContain('attachment');
     expect(res.body.users).toHaveLength(8);
     expect(JSON.stringify(res.body)).not.toMatch(/passwordHash|mfaSecret|\$2[aby]\$/);
-    expect(res.body.users.every((u: any) => !u.email.startsWith('m-'))).toBe(true); // no other tenant
+    expect(res.body.users.every((u: { email: string }) => !u.email.startsWith('m-'))).toBe(true); // no other tenant
     expect(await admin.auditLog.count({ where: { tenantId: 't-h', action: 'TENANT_DATA_EXPORTED' } })).toBe(1);
   });
 });
@@ -755,7 +759,9 @@ describe('SCIM 2.0 provisioning', () => {
   let token: string;
   let scimId: string;
   const scim = (method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string, tok: string | null = token) => {
-    const r = (request(app) as any)[method](`/api/v1/scim/v2${path}`).set('content-type', 'application/scim+json');
+    const r = (request(app) as unknown as Record<string, (u: string) => request.Test>)
+      [method](`/api/v1/scim/v2${path}`)
+      .set('content-type', 'application/scim+json');
     return tok ? r.set('authorization', `Bearer ${tok}`) : r;
   };
 
@@ -848,7 +854,7 @@ describe('SCIM 2.0 provisioning', () => {
     expect((await scim('delete', '/Users/admin')).status).toBe(403);
     expect((await scim('get', '/Users/m-student')).status).toBe(404);
     const list = await scim('get', '/Users?count=100');
-    expect(list.body.Resources.every((r: any) => !r.userName.startsWith('m-'))).toBe(true);
+    expect(list.body.Resources.every((r: { userName: string }) => !r.userName.startsWith('m-'))).toBe(true);
   });
 
   it('deprovisions by suspending (history kept) and respects the seat quota', async () => {
@@ -896,7 +902,7 @@ describe('webhooks', () => {
       });
     });
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
-    url = `http://127.0.0.1:${(server.address() as any).port}`;
+    url = `http://127.0.0.1:${(server.address() as import('net').AddressInfo).port}`;
   });
   afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
@@ -948,13 +954,15 @@ describe('webhooks', () => {
 
     // The completion also produced a notification and an xAPI statement.
     const s4 = await as('s4');
-    expect((await s4.get('/api/v1/notifications?category=COURSE')).body.data.some((n: any) => n.title.includes('completed'))).toBe(true);
+    expect(
+      (await s4.get('/api/v1/notifications?category=COURSE')).body.data.some((n: { title: string }) => n.title.includes('completed'))
+    ).toBe(true);
     expect((await s4.get('/api/v1/analytics/xapi/stream?verb=http://adlnet.gov/expapi/verbs/completed')).body.total).toBe(1);
 
     // Re-sending progress does not re-notify.
     await (await as('teacher')).patch('/api/v1/enrollments/e-s4/progress').send({ progressPercent: 100 });
     expect(
-      (await s4.get('/api/v1/notifications?category=COURSE')).body.data.filter((n: any) => n.title.includes('completed'))
+      (await s4.get('/api/v1/notifications?category=COURSE')).body.data.filter((n: { title: string }) => n.title.includes('completed'))
     ).toHaveLength(1);
   });
 
@@ -1058,7 +1066,7 @@ describe('LTI 1.3 launch', () => {
       res.end(JSON.stringify({ keys: [jwk] }));
     });
     await new Promise<void>((r) => jwksServer.listen(0, '127.0.0.1', r));
-    jwksUrl = `http://127.0.0.1:${(jwksServer.address() as any).port}/jwks`;
+    jwksUrl = `http://127.0.0.1:${(jwksServer.address() as import('net').AddressInfo).port}/jwks`;
     await admin.ltiDeployment.create({
       data: {
         tenantId: 't-h',
@@ -1170,8 +1178,8 @@ describe('row-level security on the new tables', () => {
         'webhookDelivery',
         'notificationPreference',
       ] as const) {
-        const adminCount = await (admin as any)[table].count();
-        const appCount = await (mit as any)[table].count();
+        const adminCount = await (admin as unknown as Record<string, { count(): Promise<number> }>)[table].count();
+        const appCount = await (mit as unknown as Record<string, { count(): Promise<number> }>)[table].count();
         expect(appCount, `${table} (admin sees ${adminCount})`).toBe(0);
       }
     } finally {
@@ -1192,10 +1200,10 @@ describe('forum replies are paged', () => {
     let cursor: string | null = null;
     let pages = 0;
     do {
-      const res: any = await s1.get(`/api/v1/threads/${id}?limit=2${cursor ? `&cursor=${cursor}` : ''}`);
+      const res: request.Response = await s1.get(`/api/v1/threads/${id}?limit=2${cursor ? `&cursor=${cursor}` : ''}`);
       expect(res.status).toBe(200);
       expect(res.body.data.posts.length).toBeLessThanOrEqual(2);
-      seen.push(...res.body.data.posts.map((p: any) => p.body));
+      seen.push(...res.body.data.posts.map((p: { body: string }) => p.body));
       cursor = res.body.data.nextCursor;
       pages++;
     } while (cursor);

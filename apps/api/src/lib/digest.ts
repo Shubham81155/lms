@@ -6,7 +6,7 @@ import { logger } from './logger';
 import { mailDelivers, sendMail } from './mailer';
 import { absoluteLink } from './email-dispatch';
 import { personalDue } from './deadlines';
-import { startPeriodicJob, withJobLock } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs, withJobLock } from './job-lock';
 import { tenantUrl } from './tenant-url';
 
 // Digest e-mails: one summary of what a person missed (unread notifications that were not e-mailed on their own,
@@ -533,6 +533,9 @@ export async function runDigestJob(now = new Date()): Promise<DigestResult> {
 /** One round under the job lock: null when another process is running it. */
 export const runDigestJobLocked = (now?: Date) => withJobLock(DIGEST_JOB, () => runDigestJob(now));
 
-export function startDigestJob(): void {
+export const stopDigestJob = () => stopPeriodicJobs();
+
+export function startDigestJob(): () => void {
   startPeriodicJob(DIGEST_JOB, config.DIGEST_JOB_INTERVAL_SECONDS, () => runDigestJob());
+  return stopDigestJob;
 }

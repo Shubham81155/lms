@@ -223,7 +223,7 @@ router.post(
         select: { id: true, scope: true, expiresAt: true, revokedAt: true },
       });
       if (!pass || passStatus(pass) !== 'ACTIVE') throw new HttpError(410, 'This support pass is no longer in force');
-      const user = await activateSupportAccount(tx as any, tenantId);
+      const user = await activateSupportAccount(tx, tenantId);
       await tx.supportPass.update({ where: { id: pass.id }, data: { lastEnteredAt: now, lastEnteredByEmail: handoff.operatorEmail } });
       return { pass, user };
     });

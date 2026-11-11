@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Free trials (lib/trial.ts): new organisations with or without one, the operator's start/extend/end/convert,
@@ -49,7 +49,7 @@ beforeEach(() => {
   });
 });
 
-function user(id: string, tenantId: string, role: any) {
+function user(id: string, tenantId: string, role: GlobalRole) {
   return admin.user.create({
     data: {
       id,

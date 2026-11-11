@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import type { Prisma } from '@enterprise-lms/database';
 import { prisma } from './prisma';
 import { logAuditEvent } from './audit';
 import { notify } from './notify';
@@ -67,7 +68,7 @@ export async function commitGrade(opts: {
     where: { id: submission.id },
     data: {
       grade: resolved.grade,
-      rubricScoresJson: (resolved.rubricScores as any) ?? undefined,
+      rubricScoresJson: (resolved.rubricScores as Prisma.InputJsonValue | null) ?? undefined,
       feedback: opts.feedback || null,
       gradedAt: new Date(),
     },

@@ -1,5 +1,6 @@
 import { Router, Request } from 'express';
 import { z } from 'zod';
+import type { Prisma } from '@enterprise-lms/database';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
@@ -185,7 +186,8 @@ async function scoreItems(courseId: string, learnerIds: string[], all = false) {
     for (const userId of learnerIds) {
       const attempts = q.submissions.filter((s) => s.userId === userId);
       const finished = attempts.filter(
-        (s) => ((s.answersJson as any)?.pendingManual ?? []).length === 0 && s.score !== null && s.maxScore > 0
+        (s) =>
+          ((s.answersJson as { pendingManual?: unknown[] } | null)?.pendingManual ?? []).length === 0 && s.score !== null && s.maxScore > 0
       );
       const best = finished.length ? Math.max(...finished.map((s) => ((s.score as number) / s.maxScore) * 100)) : null;
       byUser.get(userId)!.push({
@@ -345,7 +347,7 @@ router.post(
         curvedPercent: curved[i],
         letter: letterFor(curved[i]),
         incomplete: raws[i].incomplete,
-        breakdownJson: { categories: raws[i].categories, items: scores.get(userId)! } as any,
+        breakdownJson: { categories: raws[i].categories, items: scores.get(userId)! } as unknown as Prisma.InputJsonValue,
         status: 'DRAFT',
         submittedById: null,
         decisionNote: null,

@@ -1,3 +1,4 @@
+import type { Prisma } from '@enterprise-lms/database';
 import { logger } from './logger';
 import { prisma } from './prisma';
 import { AuditSanitizer } from '@enterprise-lms/security';
@@ -10,7 +11,7 @@ export interface AuditLogOptions {
   resourceId?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
-  diffJson?: any;
+  diffJson?: unknown;
 }
 
 /**
@@ -37,7 +38,9 @@ export function normalizeIp(ip: string | undefined | null): string | null {
 
 export async function logAuditEvent(options: AuditLogOptions) {
   try {
-    const sanitizedDiff = options.diffJson ? (AuditSanitizer.sanitize(options.diffJson) as any) : undefined;
+    const sanitizedDiff = options.diffJson
+      ? (AuditSanitizer.sanitize(options.diffJson as Record<string, unknown>) as Prisma.InputJsonValue)
+      : undefined;
 
     return await prisma.auditLog.create({
       data: {
@@ -48,7 +51,7 @@ export async function logAuditEvent(options: AuditLogOptions) {
         resourceId: options.resourceId ?? null,
         ipAddress: normalizeIp(options.ipAddress),
         userAgent: options.userAgent ?? null,
-        diffJson: sanitizedDiff ?? null,
+        diffJson: (sanitizedDiff ?? null) as Prisma.InputJsonValue,
       },
     });
   } catch (error) {
@@ -62,10 +65,7 @@ export async function logAuditEvent(options: AuditLogOptions) {
  * Whitelists the fields recorded in an audit diff, so the log never stores whole records
  * (which can hold PII, large free-text fields, or secrets added to a table later).
  */
-export function pick<T extends Record<string, any>, K extends keyof T>(
-  source: T | null | undefined,
-  keys: readonly K[]
-): Partial<Pick<T, K>> {
+export function pick<T extends object, K extends keyof T>(source: T | null | undefined, keys: readonly K[]): Partial<Pick<T, K>> {
   const out: Partial<Pick<T, K>> = {};
   if (!source) return out;
   for (const key of keys) {

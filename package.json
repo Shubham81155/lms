@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "concurrently -n \"api,web\" -c \"blue,green\" \"npm run dev --workspace=@enterprise-lms/api\" \"npm run dev --workspace=@enterprise-lms/web\"",
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @enterprise-lms/security && npm run build -w @enterprise-lms/database && npm run build -w @enterprise-lms/api && npm run build -w @enterprise-lms/web",
     "lint": "eslint .",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "tsc --noEmit -p tsconfig.json",

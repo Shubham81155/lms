@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { csvRow } from '../lib/csv';
 import { logAuditEvent, normalizeIp, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
-import { EnrollmentStatus } from '@enterprise-lms/database';
+import { EnrollmentStatus, type Prisma } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
 import { httpUrl, idSchema, pageMeta, parseBody, parseQuery } from '../lib/validate';
 
@@ -120,7 +120,7 @@ router.patch(
 );
 
 function auditWhere(tenantId: string, q: z.infer<typeof auditQuery>) {
-  const where: any = { tenantId };
+  const where: Prisma.AuditLogWhereInput = { tenantId };
   if (q.action) where.action = q.action;
   if (q.resourceType) where.resourceType = q.resourceType;
   if (q.resourceId) where.resourceId = q.resourceId;

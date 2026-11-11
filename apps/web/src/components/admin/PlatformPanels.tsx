@@ -77,8 +77,8 @@ export interface Usage {
 
 export const UsagePanel: React.FC = () => {
   const t = useT();
-  const { data, error, reload } = useApiData<{ data: Usage }>('/api/v1/admin/usage');
-  const { busy, error: actionError, run } = useAction();
+  const { data, error } = useApiData<{ data: Usage }>('/api/v1/admin/usage');
+  const { error: actionError, run } = useAction();
   const [exporting, setExporting] = useState(false);
   const u = data?.data;
 

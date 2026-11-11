@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole, type EnrollmentStatus } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Staff enrolling people (by account or by email address) and withdrawing them, plus a learner
@@ -20,7 +20,7 @@ beforeAll(async () => {
     ['t-m', 'mit'],
   ])
     await admin.tenant.create({ data: { id, slug, name: slug } });
-  const user = (id: string, tenantId: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, role: GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -54,7 +54,7 @@ beforeAll(async () => {
   await admin.module.create({ data: { id: 'mod1', courseId: 'c1', title: 'M1' } });
   await admin.lesson.create({ data: { id: 'les1', moduleId: 'mod1', title: 'L1' } });
   await admin.lesson.create({ data: { id: 'les2', moduleId: 'mod1', title: 'L2', orderIndex: 1 } });
-  const enrol = (id: string, userId: string, status: any = 'IN_PROGRESS', progress = 50) =>
+  const enrol = (id: string, userId: string, status: EnrollmentStatus = 'IN_PROGRESS', progress = 50) =>
     admin.enrollment.create({ data: { id, tenantId: 't-h', courseId: 'c1', userId, status, progressPercent: progress } });
   await enrol('e-s1', 's1');
   await enrol('e-s2', 's2');

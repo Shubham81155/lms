@@ -4,7 +4,7 @@ import { basePrisma, prisma } from './prisma';
 import { logger } from './logger';
 import { logAuditEvent } from './audit';
 import { sendMail } from './mailer';
-import { startPeriodicJob } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs } from './job-lock';
 import { subdomainOrigin, tenantUrl } from './tenant-url';
 import { checkTxt, clearedRecheck, removalDate, txtRecordName, txtRecordValue } from './custom-domain';
 
@@ -186,11 +186,14 @@ export async function recheckCustomDomains(opts: RecheckOptions = {}): Promise<R
   return result;
 }
 
+export const stopCustomDomainRecheck = () => stopPeriodicJobs();
+
 /**
  * Starts the re-check. The job runs at least hourly (or every interval, when shorter) and checks only the domains
  * that are due, so each domain is looked up about once per interval however many there are.
  */
-export function startCustomDomainRecheck(): void {
+export function startCustomDomainRecheck(): () => void {
   const interval = config.CUSTOM_DOMAIN_RECHECK_INTERVAL_SECONDS;
   startPeriodicJob(RECHECK_JOB, Math.min(interval, 3600), () => recheckCustomDomains(), 30 * 60_000);
+  return stopCustomDomainRecheck;
 }

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { runWithTenant } from '@enterprise-lms/database';
+import { runWithTenant, type Prisma } from '@enterprise-lms/database';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { invalidateSessionCache, tenantIsBlocked, tenantIsReadOnly, TENANT_SUSPENDED_MESSAGE, TRIAL_ENDED_MESSAGE } from '../lib/session';
@@ -49,10 +49,10 @@ const fail = (res: Response, e: ScimError) =>
 const handle = (fn: (req: Request, res: Response) => Promise<unknown>) => async (req: Request, res: Response) => {
   try {
     await fn(req, res);
-  } catch (err: any) {
+  } catch (err) {
     if (err instanceof ScimError) return fail(res, err);
     if (err instanceof HttpError) return fail(res, new ScimError(err.status, err.message));
-    if (err?.code === 'P2002') return fail(res, new ScimError(409, 'Resource already exists', 'uniqueness'));
+    if ((err as { code?: string } | null)?.code === 'P2002') return fail(res, new ScimError(409, 'Resource already exists', 'uniqueness'));
     return fail(res, new ScimError(500, 'Internal error'));
   }
 };
@@ -80,7 +80,7 @@ router.use(scimAuth);
 
 const baseUrl = (req: Request) => `${req.protocol}://${req.get('host')}/api/v1/scim/v2`;
 
-function toScim(u: any, req: Request) {
+function toScim(u: Prisma.UserGetPayload<{ select: typeof SELECT }>, req: Request) {
   return {
     schemas: [USER_SCHEMA],
     id: u.id,
@@ -133,7 +133,7 @@ router.get(
     const tenantId = req.tenantId!;
     const start = Math.max(1, parseInt(String(req.query.startIndex ?? '1'), 10) || 1);
     const count = Math.min(100, Math.max(0, parseInt(String(req.query.count ?? '50'), 10) || 50));
-    let where: any = { tenantId };
+    let where: Prisma.UserWhereInput = { tenantId };
     if (req.query.filter) {
       const m = /^(userName|externalId)\s+eq\s+"([^"]{1,254})"$/i.exec(String(req.query.filter).trim());
       if (!m) throw new ScimError(400, 'Only "userName eq" and "externalId eq" filters are supported', 'invalidFilter');
@@ -210,7 +210,7 @@ async function mutableUser(req: Request) {
   return u;
 }
 
-const statusOf = (active: boolean) => (active ? 'ACTIVE' : 'SUSPENDED');
+const statusOf = (active: boolean): 'ACTIVE' | 'SUSPENDED' => (active ? 'ACTIVE' : 'SUSPENDED');
 
 router.put(
   '/Users/:id',
@@ -226,7 +226,7 @@ router.put(
         ...(b.name?.givenName ? { firstName: b.name.givenName.trim() } : {}),
         ...(b.name?.familyName ? { lastName: b.name.familyName.trim() } : {}),
         ...(b.externalId !== undefined ? { idpSubjectId: b.externalId } : {}),
-        ...(b.active !== undefined ? { status: statusOf(b.active) as any, tokenVersion: { increment: 1 } } : {}),
+        ...(b.active !== undefined ? { status: statusOf(b.active), tokenVersion: { increment: 1 } } : {}),
       },
       select: SELECT,
     });
@@ -252,12 +252,12 @@ router.patch(
     if (!parsed.success || (parsed.data.schemas && !parsed.data.schemas.includes(PATCH_SCHEMA))) {
       throw new ScimError(400, 'Invalid PatchOp request', 'invalidSyntax');
     }
-    const data: any = {};
+    const data: Prisma.UserUpdateInput = {};
     for (const op of parsed.data.Operations) {
       const kind = op.op.toLowerCase();
       if (kind !== 'replace' && kind !== 'add') throw new ScimError(400, `Operation "${op.op}" is not supported`, 'invalidSyntax');
       // Okta sends {op, path:"active", value:false}; Entra sends {op, value:{active:false}} (and string "False").
-      const entries: [string, any][] = op.path ? [[op.path, op.value]] : Object.entries(op.value ?? {});
+      const entries: [string, unknown][] = op.path ? [[op.path, op.value]] : Object.entries(op.value ?? {});
       for (const [path, raw] of entries) {
         const v = typeof raw === 'string' && /^(true|false)$/i.test(raw) ? raw.toLowerCase() === 'true' : raw;
         if (path === 'active' && typeof v === 'boolean') {
@@ -267,8 +267,9 @@ router.patch(
         else if (path === 'name.familyName' && typeof v === 'string') data.lastName = v.trim();
         else if (path === 'externalId' && typeof v === 'string') data.idpSubjectId = v;
         else if (path === 'name' && v && typeof v === 'object') {
-          if (typeof v.givenName === 'string') data.firstName = v.givenName.trim();
-          if (typeof v.familyName === 'string') data.lastName = v.familyName.trim();
+          const o = v as { givenName?: unknown; familyName?: unknown };
+          if (typeof o.givenName === 'string') data.firstName = o.givenName.trim();
+          if (typeof o.familyName === 'string') data.lastName = o.familyName.trim();
         } else throw new ScimError(400, `Attribute "${path}" cannot be modified`, 'mutability');
       }
     }

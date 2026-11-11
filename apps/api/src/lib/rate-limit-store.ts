@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { RedisStore } from 'rate-limit-redis';
+import { RedisStore, type RedisReply } from 'rate-limit-redis';
 import type { Store } from 'express-rate-limit';
 import { config } from '../config';
 import { logger } from './logger';
@@ -10,6 +10,18 @@ function redis(): Redis | null {
   if (!config.REDIS_URL || config.NODE_ENV === 'test') return null;
   client ??= newRedisClient(config.REDIS_URL);
   return client;
+}
+
+/** Closes the shared Redis client during graceful shutdown. */
+export async function closeRedis(): Promise<void> {
+  if (!client) return;
+  const active = client;
+  client = null;
+  try {
+    await active.quit();
+  } catch {
+    active.disconnect();
+  }
 }
 
 /** Whether Redis answers a PING: null when no Redis is configured (or in tests), so a check can be skipped. */
@@ -48,7 +60,7 @@ export function rateLimitStore(prefix: string): Store | undefined {
 export function redisRateLimitStore(r: Redis, prefix: string): Store {
   const store = new RedisStore({
     prefix: `lms:rl:${prefix}:`,
-    sendCommand: (command: string, ...args: string[]) => r.call(command, ...args) as Promise<any>,
+    sendCommand: (command: string, ...args: string[]) => r.call(command, ...args) as Promise<RedisReply>,
   });
   // The store loads its scripts at once, which can time out while the process is still starting (or Redis is
   // down). It loads them again on first use, so a failed early load must not end the process as an unhandled

@@ -7,7 +7,7 @@ import { basePrisma, prisma } from './prisma';
 import { logger } from './logger';
 import { logAuditEvent } from './audit';
 import { storage } from './storage';
-import { startPeriodicJob } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs } from './job-lock';
 
 // Virus scanning of uploads with a ClamAV daemon (clamd), spoken to over TCP with its INSTREAM command, so no
 // client library or shared disk is needed. Uploads are scanned before they are stored (routes/files.routes.ts);
@@ -179,12 +179,15 @@ export async function scanPendingFiles(opts: { batch?: number } = {}): Promise<S
   return totals;
 }
 
+export const stopFileScanSweep = () => stopPeriodicJobs();
+
 /** Starts the background sweep when a scanner is set; one instance at a time (advisory lock), none overlapping. */
-export function startFileScanSweep(): void {
+export function startFileScanSweep(): () => void {
   const seconds = config.FILE_SCAN_SWEEP_INTERVAL_SECONDS;
-  if (seconds <= 0 || !virusScanner()) return;
+  if (seconds <= 0 || !virusScanner()) return () => {};
   startPeriodicJob('file-scan-sweep', seconds, async () => {
     const r = await scanPendingFiles();
     if (r.clean || r.infected) logger.info(r, 'stored files scanned');
   });
+  return stopFileScanSweep;
 }

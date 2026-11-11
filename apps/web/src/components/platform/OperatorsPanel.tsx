@@ -96,7 +96,9 @@ export const OperatorsPanel: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label htmlFor="op-first-name" className="text-xs font-semibold text-ink">First name</label>
+              <label htmlFor="op-first-name" className="text-xs font-semibold text-ink">
+                First name
+              </label>
               <input
                 id="op-first-name"
                 required
@@ -107,7 +109,9 @@ export const OperatorsPanel: React.FC = () => {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="op-last-name" className="text-xs font-semibold text-ink">Last name</label>
+              <label htmlFor="op-last-name" className="text-xs font-semibold text-ink">
+                Last name
+              </label>
               <input
                 id="op-last-name"
                 required
@@ -120,7 +124,9 @@ export const OperatorsPanel: React.FC = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="op-email" className="text-xs font-semibold text-ink">Institutional / Operator Email</label>
+            <label htmlFor="op-email" className="text-xs font-semibold text-ink">
+              Institutional / Operator Email
+            </label>
             <input
               id="op-email"
               type="email"
@@ -158,20 +164,20 @@ export const OperatorsPanel: React.FC = () => {
           <span>{operators.length} operators</span>
         </div>
 
-        {list.isLoading && !list.data && (
-          <div className="p-8 text-center text-xs text-ink-subtle">Loading operator team…</div>
-        )}
+        {list.isLoading && !list.data && <div className="p-8 text-center text-xs text-ink-subtle">Loading operator team…</div>}
 
-        {!list.isLoading && operators.length === 0 && (
-          <div className="p-8 text-center text-xs text-ink-muted">No operators found.</div>
-        )}
+        {!list.isLoading && operators.length === 0 && <div className="p-8 text-center text-xs text-ink-muted">No operators found.</div>}
 
         <ul className="divide-y divide-line">
           {operators.map((op) => (
-            <li key={op.id} className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-canvas/40 transition-colors">
+            <li
+              key={op.id}
+              className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-canvas/40 transition-colors"
+            >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="h-10 w-10 shrink-0 rounded-2xl bg-orchid/15 border border-orchid/40 text-orchid font-bold flex items-center justify-center text-xs">
-                  {op.firstName[0]?.toUpperCase()}{op.lastName[0]?.toUpperCase()}
+                  {op.firstName[0]?.toUpperCase()}
+                  {op.lastName[0]?.toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -196,11 +202,7 @@ export const OperatorsPanel: React.FC = () => {
 
               <div className="flex flex-wrap items-center gap-4 text-xs text-ink-muted">
                 <div className="flex items-center gap-1.5">
-                  <span
-                    className={`inline-block h-2 w-2 rounded-full ${
-                      op.status === 'ACTIVE' ? 'bg-success' : 'bg-accent'
-                    }`}
-                  />
+                  <span className={`inline-block h-2 w-2 rounded-full ${op.status === 'ACTIVE' ? 'bg-success' : 'bg-accent'}`} />
                   <span className="font-medium text-ink capitalize">{op.status.toLowerCase()}</span>
                 </div>
 

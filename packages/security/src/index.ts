@@ -11,7 +11,6 @@ import * as crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
 
 export class FieldEncryption {
   private key: Buffer;
@@ -145,6 +144,16 @@ export class AccessControlEngine {
 // 3. AUDIT LOG MASKING & SANITIZATION
 // =========================================================
 
+export type Sanitized<T> = T extends Date
+  ? string
+  : T extends bigint
+    ? string
+    : T extends (infer U)[]
+      ? Sanitized<U>[]
+      : T extends Record<string, unknown>
+        ? { [K in keyof T]: Sanitized<T[K]> }
+        : T;
+
 export class AuditSanitizer {
   private static SENSITIVE_KEYS = [
     'password',
@@ -166,8 +175,8 @@ export class AuditSanitizer {
    * Masks passwords/secrets before writing to the audit log. Walks nested objects and arrays,
    * keeps Dates as ISO strings, and stops at a depth limit so cyclic data cannot recurse forever.
    */
-  public static sanitize(data: Record<string, any>): Record<string, any> {
-    return this.walk(data, 0) as Record<string, any>;
+  public static sanitize<T extends Record<string, unknown>>(data: T): Sanitized<T> {
+    return this.walk(data, 0) as Sanitized<T>;
   }
 
   private static walk(value: unknown, depth: number): unknown {

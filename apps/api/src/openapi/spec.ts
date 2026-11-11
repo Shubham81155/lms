@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { extendZodWithOpenApi, OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
+import { extendZodWithOpenApi, OpenAPIRegistry, OpenApiGeneratorV3, type RouteConfig } from '@asteasolutions/zod-to-openapi';
 import { apiMounts, rawBodyMounts } from '../mounts';
 import { inventory, Operation } from './inventory';
 import { DOCS, ErrorResponse, OperationDoc } from './docs';
@@ -151,7 +151,7 @@ export function buildOpenApi() {
       doc.body = undefined;
     }
 
-    const responses: Record<string, any> = {};
+    const responses: Record<string, unknown> = {};
     const asResponse = (r: ResponseDoc) => ({
       description: r.description ?? 'Success',
       ...(r.schema ? { content: { [r.contentType ?? 'application/json']: { schema: r.schema } } } : {}),
@@ -181,7 +181,7 @@ export function buildOpenApi() {
       },
       responses,
       ...(op.roles ? { 'x-required-roles': op.roles } : {}),
-    } as any);
+    } as RouteConfig);
   }
 
   const generator = new OpenApiGeneratorV3(registry.definitions);

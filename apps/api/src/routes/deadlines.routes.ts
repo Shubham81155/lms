@@ -99,7 +99,7 @@ router.put(
         ? { assignmentId_userId: { assignmentId: item.id, userId: input.userId } }
         : { quizId_userId: { quizId: item.id, userId: input.userId } };
     const row = await prisma.deadlineExtension.upsert({
-      where: key as any,
+      where: key,
       create: {
         tenantId,
         userId: input.userId,

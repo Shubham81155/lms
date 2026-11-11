@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Custom domains with proof of ownership: a requested domain waits until DNS carries its TXT record, never
@@ -51,7 +51,7 @@ beforeAll(async () => {
         email,
         firstName: 'A',
         lastName: 'B',
-        role: role as any,
+        role: role as GlobalRole,
         passwordHash: bcrypt.hashSync(PASSWORD, 4),
         emailVerified: true,
       },
@@ -245,7 +245,7 @@ describe('other organisations and the platform operator', () => {
     const asked = await op.put('/api/v1/operator/tenants/t-b/custom-domain').send({ domain: 'learn.beta.edu' });
     expect(asked.status).toBe(200);
     expect(asked.body.data.pending.domain).toBe('learn.beta.edu');
-    const listed = (await op.get('/api/v1/operator/tenants')).body.data.find((t: any) => t.id === 't-b');
+    const listed = (await op.get('/api/v1/operator/tenants')).body.data.find((t: { id: unknown }) => t.id === 't-b');
     expect(listed).toMatchObject({ customDomain: null, pendingCustomDomain: 'learn.beta.edu' });
 
     txt['_lms-verify.learn.beta.edu'] = [asked.body.data.pending.txtValue];

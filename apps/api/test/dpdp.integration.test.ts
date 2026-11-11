@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { runWithTenant } from '@enterprise-lms/database';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
@@ -58,7 +58,7 @@ beforeEach(() => {
   });
 });
 
-function user(id: string, tenantId: string, role: any) {
+function user(id: string, tenantId: string, role: GlobalRole) {
   return admin.user.create({
     data: {
       id,
@@ -115,18 +115,18 @@ describe('consent', () => {
     const saved = await a.put('/api/v1/privacy/consent-purposes').send({ purposes: PURPOSES });
     expect(saved.status).toBe(200);
     matchesDocs('PUT /api/v1/privacy/consent-purposes', saved.body);
-    expect(saved.body.data.map((p: any) => [p.key, p.version])).toEqual([
+    expect(saved.body.data.map((p: { key: unknown; version: unknown }) => [p.key, p.version])).toEqual([
       ['service', 1],
       ['marketing', 1],
     ]);
 
     // Same input again changes nothing; a new wording raises the version.
     const again = await a.put('/api/v1/privacy/consent-purposes').send({ purposes: PURPOSES });
-    expect(again.body.data.every((p: any) => p.version === 1)).toBe(true);
+    expect(again.body.data.every((p: { version: unknown }) => p.version === 1)).toBe(true);
     const reworded = await a
       .put('/api/v1/privacy/consent-purposes')
       .send({ purposes: [{ ...PURPOSES[1], description: 'We e-mail you news and offers about our programmes.' }] });
-    expect(reworded.body.data.find((p: any) => p.key === 'marketing').version).toBe(2);
+    expect(reworded.body.data.find((p: { key: unknown }) => p.key === 'marketing').version).toBe(2);
     expect(await audits('CONSENT_PURPOSE_CREATED')).toBe(2);
     expect(await audits('CONSENT_PURPOSE_UPDATED')).toBe(1);
 
@@ -141,7 +141,7 @@ describe('consent', () => {
     const s1 = await as('s1', 'acme');
     const mine = await s1.get('/api/v1/privacy/consents');
     matchesDocs('GET /api/v1/privacy/consents', mine.body);
-    expect(mine.body.data.map((p: any) => [p.key, p.status])).toEqual([
+    expect(mine.body.data.map((p: { key: unknown; status: unknown }) => [p.key, p.status])).toEqual([
       ['service', 'NONE'],
       ['marketing', 'NONE'],
     ]);
@@ -182,16 +182,16 @@ describe('consent', () => {
     await s2.post('/api/v1/privacy/consents/marketing/grant').send({}); // version 2
     await a.put('/api/v1/privacy/consent-purposes').send({ purposes: [{ ...PURPOSES[1], title: 'News, offers and surveys' }] }); // version 3
     const mine = await s2.get('/api/v1/privacy/consents');
-    expect(mine.body.data.find((p: any) => p.key === 'marketing')).toMatchObject({ status: 'GRANTED', outdated: true });
+    expect(mine.body.data.find((p: { key: unknown }) => p.key === 'marketing')).toMatchObject({ status: 'GRANTED', outdated: true });
 
     const report = await a.get('/api/v1/privacy/consents/report');
     expect(report.status).toBe(200);
     matchesDocs('GET /api/v1/privacy/consents/report', report.body);
-    const marketing = report.body.data.find((r: any) => r.key === 'marketing');
+    const marketing = report.body.data.find((r: { key: unknown }) => r.key === 'marketing');
     // s1 last withdrew (v2); s2 last granted (v2).
     expect(marketing).toMatchObject({ granted: 1, withdrawn: 1, currentVersion: 3 });
     expect(marketing.byVersion).toEqual([{ version: 2, granted: 1, withdrawn: 1 }]);
-    const service = report.body.data.find((r: any) => r.key === 'service');
+    const service = report.body.data.find((r: { key: unknown }) => r.key === 'service');
     expect(service).toMatchObject({ granted: 0, withdrawn: 1 });
     expect(service.noAnswer).toBeGreaterThan(0);
     expect((await (await as('s1', 'acme')).get('/api/v1/privacy/consents/report')).status).toBe(403);
@@ -206,7 +206,7 @@ describe('consent', () => {
     const s1 = await as('s1', 'acme');
     const exp = await s1.get('/api/v1/privacy/me/export');
     expect(exp.status).toBe(200);
-    expect(exp.body.consents.map((c: any) => [c.purposeKey, c.granted])).toEqual([
+    expect(exp.body.consents.map((c: { purposeKey: unknown; granted: unknown }) => [c.purposeKey, c.granted])).toEqual([
       ['marketing', true],
       ['marketing', false],
       ['service', false],

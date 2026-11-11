@@ -7,9 +7,6 @@
 #
 # Redis and ClamAV are not needed: both are optional in apps/api/src/config.ts, and the tests that
 # exercise them use stubs.
-#
-# Not run here: `npm run format:check` (Prettier currently reports most of the repository; add it once
-# `npm run format` has been applied and committed).
 
 name: CI
 
@@ -44,6 +41,8 @@ jobs:
       - run: npm ci
       - name: Generate Prisma client
         run: npm run db:generate -w @enterprise-lms/database
+      - name: Build workspace packages
+        run: npm run build -w @enterprise-lms/security && npm run build -w @enterprise-lms/database
 
       # Each check runs even when an earlier one failed, so one run reports every problem.
       - name: Lint
@@ -58,6 +57,12 @@ jobs:
         if: success() || failure()
         working-directory: apps/web
         run: npx tsc --noEmit -p .
+      - name: Build API
+        if: success() || failure()
+        run: npm run build -w @enterprise-lms/api
+      - name: Security audit (production dependencies)
+        if: success() || failure()
+        run: npm audit --omit=dev --audit-level=high
       - name: OpenAPI description and web types are up to date
         if: success() || failure()
         run: |
@@ -112,6 +117,8 @@ jobs:
       - run: npm ci
       - name: Generate Prisma client
         run: npm run db:generate -w @enterprise-lms/database
+      - name: Build workspace packages
+        run: npm run build -w @enterprise-lms/security && npm run build -w @enterprise-lms/database
       # apps/api/test/setup-env.ts sets every variable config.ts validates (JWT_SECRET, PII_ENCRYPTION_KEY,
       # rate limits, ...) and each integration suite points DATABASE_URL at its own embedded PostgreSQL,
       # so no secrets or database URL are passed here.
@@ -129,6 +136,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      - name: Build security package
+        run: npm run build -w @enterprise-lms/security
       - name: next build
         env:
           # Baked into the /api/v1 rewrite at build time; the value only matters for a deployed image.

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { api, ApiError } from '@/lib/api';
+import { typedGet } from '@/lib/typed-api';
+import { errorMessage } from '@/hooks/useApiData';
 
 export interface AtRiskLearner {
   id: string;
@@ -62,11 +63,10 @@ export function useCohortAnalytics() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get<CohortAnalyticsResponse>('/api/v1/analytics/cohort');
+      const response = await typedGet('/api/v1/analytics/cohort');
       setData(response);
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch cohort analytics';
-      setError(message);
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Failed to fetch cohort analytics'));
     } finally {
       setIsLoading(false);
     }
@@ -95,12 +95,11 @@ export function useXApiStream(limit: number = 20) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get<{ total: number; statements: XApiStatementItem[] }>(`/api/v1/analytics/xapi/stream?limit=${limit}`);
-      setStatements(response.statements || []);
+      const response = await typedGet('/api/v1/analytics/xapi/stream', { limit });
+      setStatements((response.statements || []) as XApiStatementItem[]);
       setTotal(response.total || 0);
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch xAPI stream';
-      setError(message);
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Failed to fetch xAPI stream'));
     } finally {
       setIsLoading(false);
     }

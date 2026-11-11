@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApiData } from '@/hooks/useApiData';
 import { Banner } from '@/components/admin/IdentityPanels';
 import { useT } from '@/lib/i18n';
@@ -123,7 +123,7 @@ const Results: React.FC<{ packageId: string }> = ({ packageId }) => {
 export const ScormResults: React.FC<{ courseId: string }> = ({ courseId }) => {
   const t = useT();
   const { data, isLoading, error } = useApiData<{ data: Package[] }>(`/api/v1/courses/${courseId}/scorm-packages`);
-  const packages = data?.data ?? [];
+  const packages = useMemo(() => data?.data ?? [], [data]);
   const [packageId, setPackageId] = useState('');
   useEffect(() => {
     if (packages.length > 0 && !packages.some((p) => p.id === packageId)) setPackageId(packages[0].id);

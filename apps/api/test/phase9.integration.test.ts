@@ -18,7 +18,7 @@ async function seed() {
     data: { id: 't-h', slug: 'harvard', name: 'Harvard', ferpaCompliant: true, coppaCompliant: false, dataRegion: 'eu-west-1' },
   });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT' } });
-  const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -124,10 +124,10 @@ describe('campuses and departments', () => {
     await admin.course.create({ data: { id: 'c1', tenantId: 't-h', code: 'C1', title: 'C1', status: 'PUBLISHED', departmentId: deptId } });
     await admin.course.create({ data: { id: 'c2', tenantId: 't-h', code: 'C2', title: 'C2', status: 'DRAFT', departmentId: deptId } });
     const list = (await (await as('admin')).get('/api/v1/admin/campuses')).body.data;
-    const cam = list.find((c: any) => c.id === campusId);
+    const cam = list.find((c: { id: unknown }) => c.id === campusId);
     expect(cam).toMatchObject({ code: 'CAM-01', courseCount: 2 });
     expect(cam.departments[0]).toMatchObject({ id: deptId, courseCount: 2 });
-    expect(list.map((c: any) => c.name)).toEqual([...list.map((c: any) => c.name)].sort()); // sorted
+    expect(list.map((c: { name: string }) => c.name)).toEqual([...list.map((c: { name: string }) => c.name)].sort()); // sorted
     expect(JSON.stringify(list)).not.toContain('MIT');
   });
 
@@ -182,7 +182,8 @@ describe('campuses and departments', () => {
 // ---------------------------------------------------------------------------
 describe('compliance report', () => {
   const get = async () => (await (await as('admin')).get('/api/v1/admin/compliance')).body.data;
-  const check = (data: any, id: string) => data.checks.find((c: any) => c.id === id);
+  type HealthCheck = { id: string; status: string; detail: string };
+  const check = (data: { checks: HealthCheck[] }, id: string) => data.checks.find((c) => c.id === id)!;
 
   it('reports measured facts with a status each', async () => {
     const d = await get();

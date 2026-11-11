@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Plus, Trash2, Sparkles, Save, CheckCircle, Layers, ArrowRight, Sliders, Shield, Eye } from 'lucide-react';
+import { X, Plus, Trash2, Sparkles, Save, Layers } from 'lucide-react';
 import { api } from '@/lib/api';
 import { errorMessage } from '@/hooks/useApiData';
 import { aiOffText, useAiStatus } from '@/hooks/useAi';
@@ -255,7 +255,7 @@ export const CourseBuilder: React.FC<CourseBuilderProps> = ({ onClose, onSave })
                 <select
                   id="course-status"
                   value={courseStatus}
-                  onChange={(e) => setCourseStatus(e.target.value as any)}
+                  onChange={(e) => setCourseStatus(e.target.value as CourseDraft['status'])}
                   className="w-full bg-surface border border-line rounded-xl px-3 py-1.5 text-xs text-ink focus:outline-none focus:border-brand font-medium"
                 >
                   <option value="DRAFT">{t('builder.statusOption.DRAFT')}</option>

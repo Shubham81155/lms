@@ -1,3 +1,14 @@
+/** One question's graded answer, as stored under `answersJson.grading`. */
+export interface GradedAnswer {
+  awardedPoints: number;
+  maxPoints: number;
+  needsManualGrading?: boolean;
+}
+
+/** The stored grading of one question within a submission's answers, if any. */
+export const gradingOf = (answersJson: unknown, questionId: string): GradedAnswer | undefined =>
+  (answersJson as { grading?: Record<string, GradedAnswer> } | null | undefined)?.grading?.[questionId];
+
 export const BLOOM_ORDER = ['REMEMBER', 'UNDERSTAND', 'APPLY', 'ANALYZE', 'EVALUATE', 'CREATE'] as const;
 
 /**
@@ -12,7 +23,7 @@ export function bloomsMastery(
     for (const question of q.questions) {
       if (!question.bloomLevel) continue;
       for (const s of q.submissions) {
-        const r = (s.answersJson as any)?.grading?.[question.id];
+        const r = gradingOf(s.answersJson, question.id);
         if (!r || r.needsManualGrading || !(r.maxPoints > 0)) continue;
         const t = totals.get(question.bloomLevel) ?? { awarded: 0, max: 0 };
         t.awarded += r.awardedPoints;

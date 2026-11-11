@@ -24,8 +24,22 @@ function securityOf(handle: unknown): SecurityKind | undefined {
   return undefined;
 }
 
-const rolesOf = (handle: unknown): string[] | undefined =>
-  typeof handle === 'function' && Array.isArray((handle as any).requiredRoles) ? [...(handle as any).requiredRoles] : undefined;
+const rolesOf = (handle: unknown): string[] | undefined => {
+  const roles = typeof handle === 'function' ? (handle as { requiredRoles?: unknown }).requiredRoles : undefined;
+  return Array.isArray(roles) ? [...roles] : undefined;
+};
+
+/** The parts of Express's internal router layer that the inventory reads. */
+interface RouterLayer {
+  name: string;
+  handle: unknown;
+  match: (path: string) => boolean;
+  route?: {
+    path: unknown;
+    methods: Record<string, boolean | undefined>;
+    stack: { handle: unknown }[];
+  };
+}
 
 const joinPath = (prefix: string, path: string) => (prefix + (path === '/' ? '' : path)).replace(/\/+$/, '') || '/';
 
@@ -37,7 +51,7 @@ const joinPath = (prefix: string, path: string) => (prefix + (path === '/' ? '' 
 export function inventory(mounts: Mount[]): Operation[] {
   const ops: Operation[] = [];
   for (const { prefix, router } of mounts) {
-    const stack: any[] = (router as any).stack;
+    const stack = (router as unknown as { stack: RouterLayer[] }).stack;
     stack.forEach((layer, index) => {
       if (!layer.route) {
         if (layer.name === 'router') throw new Error(`Nested routers are not supported by the API inventory (under ${prefix})`);

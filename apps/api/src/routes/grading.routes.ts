@@ -83,7 +83,9 @@ router.put(
     }
     const updated = await prisma.assignment.update({
       where: { id: assignment.id },
-      data: normalised ? { rubricJson: normalised as any, maxPoints: rubricTotal(normalised) } : { rubricJson: Prisma.DbNull },
+      data: normalised
+        ? { rubricJson: normalised as unknown as Prisma.InputJsonValue, maxPoints: rubricTotal(normalised) }
+        : { rubricJson: Prisma.DbNull },
     });
     await logAuditEvent({
       tenantId,
@@ -143,8 +145,8 @@ router.post(
         userAgent: req.headers['user-agent'],
       });
       return res.status(201).json({ data: appeal });
-    } catch (e: any) {
-      if (e?.code === 'P2002') throw new HttpError(409, 'This grade has already been appealed');
+    } catch (e) {
+      if ((e as { code?: string } | null)?.code === 'P2002') throw new HttpError(409, 'This grade has already been appealed');
       throw e;
     }
   })

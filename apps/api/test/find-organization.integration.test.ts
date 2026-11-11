@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type UserStatus } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // "Find my organisation": an e-mail address is sent the sign-in links of the organisations where it has an
@@ -29,7 +29,7 @@ beforeAll(async () => {
   await tenant('t-a', 'old-college', 'Old College', { status: 'ARCHIVED' });
   await tenant('t-o', 'other-college', 'Other College');
   let n = 0;
-  const user = (tenantId: string, email: string, status: any = 'ACTIVE') =>
+  const user = (tenantId: string, email: string, status: UserStatus = 'ACTIVE') =>
     admin.user.create({
       data: { id: `u${++n}`, tenantId, email, firstName: 'Ann', lastName: 'Lee', role: 'STUDENT', status, emailVerified: true },
     });

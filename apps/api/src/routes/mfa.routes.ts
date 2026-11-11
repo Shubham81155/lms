@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
@@ -25,7 +25,7 @@ export const codeSchema = z.object({
 });
 export const disableSchema = z.object({ password: z.string().min(1).max(128), code: z.string().trim().min(6).max(32) });
 
-const me = (req: any) =>
+const me = (req: Request) =>
   prisma.user.findFirst({
     where: { id: req.user!.id, tenantId: tenantIdOf(req) },
     select: { id: true, email: true, mfaEnabled: true, mfaSecret: true, mfaRecoveryHashes: true, passwordHash: true },

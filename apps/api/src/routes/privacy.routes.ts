@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
@@ -64,7 +64,7 @@ export const selfEraseSchema = z.object({
   confirmEmail: z.string().max(320),
 });
 
-async function sendExport(req: any, res: any, userId: string, actorId: string) {
+async function sendExport(req: Request, res: Response, userId: string, actorId: string) {
   const tenantId = tenantIdOf(req);
   const data = await buildUserExport(userId, tenantId);
   if (!data) throw new HttpError(404, 'User not found');
@@ -197,7 +197,7 @@ router.post(
 
 // ---------------------------------------------------------------------------- data-subject requests
 
-const ctxOf = (req: any) => ({ ipAddress: req.ip as string | undefined, userAgent: req.headers['user-agent'] as string | undefined });
+const ctxOf = (req: Request) => ({ ipAddress: req.ip as string | undefined, userAgent: req.headers['user-agent'] as string | undefined });
 const adminOnly = [authenticateJWT, requireRole('SUPER_ADMIN', 'TENANT_ADMIN')] as const;
 
 /** POST /api/v1/privacy/requests - file a request about your own data (access, erasure, correction, ...); it is due in DSAR_DUE_DAYS */

@@ -5,7 +5,7 @@ import { HttpError } from './http';
 import { logAuditEvent } from './audit';
 import { logger } from './logger';
 import { mailDelivers, sendMail } from './mailer';
-import { startPeriodicJob, withJobLock } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs, withJobLock } from './job-lock';
 import { tenantUrl } from './tenant-url';
 import { mailAdmins } from './trial';
 import { eraseUser, erasureBlocker, ERASED_NAME } from './privacy';
@@ -460,5 +460,10 @@ export async function runDsarJob(now = new Date()): Promise<DsarJobResult> {
 /** One round under the job lock: null when another process is running it. */
 export const runDsarJobLocked = (now?: Date) => withJobLock(DSAR_JOB, () => runDsarJob(now));
 
+export const stopDsarJob = () => stopPeriodicJobs();
+
 /** Starts the periodic job (every DSAR_JOB_INTERVAL_SECONDS; one process at a time across the deployment). */
-export const startDsarJob = () => startPeriodicJob(DSAR_JOB, config.DSAR_JOB_INTERVAL_SECONDS, () => runDsarJob());
+export const startDsarJob = (): (() => void) => {
+  startPeriodicJob(DSAR_JOB, config.DSAR_JOB_INTERVAL_SECONDS, () => runDsarJob());
+  return stopDsarJob;
+};

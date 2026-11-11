@@ -1,8 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { api, ApiError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { typedGet, type GetResponse } from '@/lib/typed-api';
+import { errorMessage } from '@/hooks/useApiData';
 import { DashboardStats, AuditLog, PaginatedResponse, PaginationMeta } from '@/lib/types';
+
+type AdminStatsResponse = GetResponse<'/api/v1/admin/stats'>;
+type AuditLogsApiResponse = GetResponse<'/api/v1/admin/audit-logs'>;
 
 export function useDashboardStats() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -14,13 +19,19 @@ export function useDashboardStats() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get<any>('/api/v1/admin/stats');
-      const statsData: DashboardStats = response.stats || response.data || response;
+      const response: AdminStatsResponse = await typedGet('/api/v1/admin/stats');
+      const d = response.data;
+      const statsData: DashboardStats = {
+        totalUsers: d.totalUsers,
+        totalCourses: d.totalCourses,
+        totalEnrollments: d.totalEnrollments,
+        completionRate: d.completionRate,
+        activeToday: d.activeEnrollments,
+      };
       setStats(statsData);
       setData(statsData);
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch dashboard stats';
-      setError(message);
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Failed to fetch dashboard stats'));
       setStats(null);
       setData(null);
     } finally {
@@ -66,7 +77,7 @@ export function useAuditLogs(page: number = 1, filters?: AuditLogFilters) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get<any>('/api/v1/admin/audit-logs', {
+      const response = await api.get<AuditLogsApiResponse>('/api/v1/admin/audit-logs', {
         params: {
           page,
           limit,
@@ -76,48 +87,20 @@ export function useAuditLogs(page: number = 1, filters?: AuditLogFilters) {
         },
       });
 
-      if (response && Array.isArray(response.data)) {
-        const paginatedData = response as PaginatedResponse<AuditLog>;
-        setData(paginatedData);
-        setLogs(paginatedData.data);
-        setPagination(paginatedData.pagination);
-      } else if (response && Array.isArray(response.logs)) {
-        const logList = response.logs as AuditLog[];
-        const meta: PaginationMeta = response.pagination || {
+      const paginatedData: PaginatedResponse<AuditLog> = {
+        data: response.data ?? [],
+        pagination: response.pagination ?? {
           page,
           limit,
-          total: logList.length,
-          totalPages: Math.ceil(logList.length / limit) || 1,
-        };
-        const structured: PaginatedResponse<AuditLog> = {
-          data: logList,
-          pagination: meta,
-        };
-        setData(structured);
-        setLogs(logList);
-        setPagination(meta);
-      } else if (Array.isArray(response)) {
-        const meta: PaginationMeta = {
-          page,
-          limit,
-          total: response.length,
-          totalPages: Math.ceil(response.length / limit) || 1,
-        };
-        const structured: PaginatedResponse<AuditLog> = {
-          data: response,
-          pagination: meta,
-        };
-        setData(structured);
-        setLogs(response);
-        setPagination(meta);
-      } else {
-        setLogs([]);
-        setData(null);
-        setPagination(null);
-      }
-    } catch (err: any) {
-      const message = err instanceof ApiError ? err.message : err?.message || 'Failed to fetch audit logs';
-      setError(message);
+          total: response.data?.length ?? 0,
+          totalPages: Math.ceil((response.data?.length ?? 0) / limit) || 1,
+        },
+      };
+      setData(paginatedData);
+      setLogs(paginatedData.data);
+      setPagination(paginatedData.pagination);
+    } catch (err: unknown) {
+      setError(errorMessage(err, 'Failed to fetch audit logs'));
       setLogs([]);
       setData(null);
       setPagination(null);

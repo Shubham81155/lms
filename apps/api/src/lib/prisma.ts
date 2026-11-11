@@ -1,7 +1,6 @@
 import { createTenantPrismaClient, TenantPrismaClient } from '@enterprise-lms/database';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __tenantPrisma: TenantPrismaClient | undefined;
 }
 

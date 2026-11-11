@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api } from '@/lib/api';
-import { typedGet } from '@/lib/typed-api';
+import { typedDelete, typedGet, typedPost } from '@/lib/typed-api';
+import { errorMessage } from '@/hooks/useApiData';
 
 export interface ServerNotification {
   id: string;
@@ -75,8 +75,8 @@ export function useNotifications() {
       setItems(res.data.map(toItem));
       setUnreadCount(res.unreadCount);
       setError(null);
-    } catch (e: any) {
-      if (alive.current) setError(e?.message ?? 'Could not load notifications');
+    } catch (e: unknown) {
+      if (alive.current) setError(errorMessage(e, 'Could not load notifications'));
     } finally {
       if (alive.current) setIsLoading(false);
     }
@@ -99,7 +99,7 @@ export function useNotifications() {
       setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
       setUnreadCount((c) => Math.max(0, c - 1));
       try {
-        await api.post(`/api/v1/notifications/${id}/read`);
+        await typedPost('/api/v1/notifications/{id}/read', undefined, { id });
       } catch {
         refresh();
       }
@@ -111,7 +111,7 @@ export function useNotifications() {
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
     try {
-      await api.post('/api/v1/notifications/read-all');
+      await typedPost('/api/v1/notifications/read-all', undefined);
     } catch {
       refresh();
     }
@@ -125,7 +125,7 @@ export function useNotifications() {
       setItems((prev) => prev.filter((n) => n.id !== id));
       if (!target.isRead) setUnreadCount((c) => Math.max(0, c - 1));
       try {
-        await api.delete(`/api/v1/notifications/${id}`);
+        await typedDelete('/api/v1/notifications/{id}', { id });
       } catch {
         refresh();
       }

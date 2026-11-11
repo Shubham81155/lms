@@ -8,7 +8,7 @@ import { HttpError } from './http';
 import { logAuditEvent } from './audit';
 import { logger } from './logger';
 import { invalidateTenantSessions, PAYMENT_LAPSED } from './session';
-import { startPeriodicJob, withJobLock } from './job-lock';
+import { startPeriodicJob, stopPeriodicJobs, withJobLock } from './job-lock';
 import { computeGst, invoicePdf, nextInvoiceNumber, sellerParty, type Party } from './billing-invoice';
 import { razorpay, razorpayConfigured, validWebhookSignature } from './razorpay';
 import type { Actor } from './organizations';
@@ -427,7 +427,7 @@ async function applyPlan(tx: Tx, tenantId: string, plan: { tier: string }, seats
   await tx.tenant.update({
     where: { id: tenantId },
     data: {
-      tier: plan.tier as any,
+      tier: plan.tier as Prisma.TenantUpdateInput['tier'],
       seatQuota: seats,
       ...(reopen ? { status: 'ACTIVE', trialEndsAt: null, trialExpiredAt: null, trialRemindersSent: 0 } : {}),
     },
@@ -470,8 +470,8 @@ export async function issueInvoice(
       razorpayPaymentId: input.paymentId,
       description: input.description,
       ...split,
-      buyerJson: buyer as any,
-      sellerJson: seller as any,
+      buyerJson: buyer as unknown as Prisma.InputJsonValue,
+      sellerJson: seller as unknown as Prisma.InputJsonValue,
     },
   });
 }
@@ -556,7 +556,7 @@ export async function handleWebhook(
   const secret = config.RAZORPAY_WEBHOOK_SECRET;
   if (!secret) throw new HttpError(503, 'Webhooks are not set up');
   if (!validWebhookSignature(secret, rawBody, signature)) throw new HttpError(400, 'Invalid signature');
-  let body: any;
+  let body: { event?: unknown; payload?: { subscription?: { entity?: RzpSubscription }; payment?: { entity?: RzpPayment } } } | null;
   try {
     body = JSON.parse(rawBody);
   } catch {
@@ -721,4 +721,8 @@ export async function runBillingJob(now = new Date()): Promise<number> {
 }
 
 export const runBillingJobLocked = (now?: Date) => withJobLock(BILLING_JOB, () => runBillingJob(now));
-export const startBillingJob = () => startPeriodicJob(BILLING_JOB, config.BILLING_JOB_INTERVAL_SECONDS, () => runBillingJob());
+export const stopBillingJob = () => stopPeriodicJobs();
+export const startBillingJob = (): (() => void) => {
+  startPeriodicJob(BILLING_JOB, config.BILLING_JOB_INTERVAL_SECONDS, () => runBillingJob());
+  return stopBillingJob;
+};

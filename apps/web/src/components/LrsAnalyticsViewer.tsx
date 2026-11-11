@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Activity, Terminal, Search, Filter, CheckCircle2, Copy, Download, Clock, Sparkles } from 'lucide-react';
+import { X, Activity, Terminal, CheckCircle2, Copy } from 'lucide-react';
 import { useXApiStream, XApiStatementItem } from '@/hooks/useAnalytics';
 import { useT } from '@/lib/i18n';
 import { activateOnKey } from '@/lib/a11y';
@@ -16,7 +16,7 @@ export const LrsAnalyticsViewer: React.FC<LrsAnalyticsViewerProps> = ({ onClose 
   const [selectedStatement, setSelectedStatement] = useState<XApiStatementItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const { statements, total, isLoading, refetch } = useXApiStream(30);
+  const { statements, total, refetch } = useXApiStream(30);
 
   const filteredStatements = statements.filter((s) => {
     if (selectedVerb === 'ALL') return true;

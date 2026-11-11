@@ -37,7 +37,7 @@ async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard' } });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT' } });
   await admin.tenant.create({ data: { id: 't-s', slug: 'frozen', name: 'Frozen U', status: 'SUSPENDED' } });
-  const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -106,7 +106,7 @@ describe('rendering', () => {
     expect(absoluteLink('/courses/c1')).toBe('http://localhost:3000/courses/c1');
     expect(absoluteLink('https://ok.example/x')).toBe('https://ok.example/x');
     for (const bad of ['javascript:alert(1)', '//evil.example', 'http://insecure.example', 'data:text/html,x', null, ''])
-      expect(absoluteLink(bad as any), String(bad)).toBeNull();
+      expect(absoluteLink(bad as unknown as string), String(bad)).toBeNull();
   });
 
   it('escapes user-supplied text in the HTML part and keeps headers single-line', () => {
@@ -408,7 +408,7 @@ describe('student to-do list', () => {
   it('lists the learner’s own upcoming work, soonest first, with quizzes after assignments', async () => {
     const res = await (await login('s1')).get('/api/v1/enrollments/todo');
     expect(res.status).toBe(200);
-    expect(res.body.data.map((i: any) => i.title)).toEqual([
+    expect(res.body.data.map((i: { title: string }) => i.title)).toEqual([
       'Late lab',
       'Essay A',
       'Pending essay',
@@ -417,7 +417,7 @@ describe('student to-do list', () => {
       'Quiz A',
       'Quiz D',
     ]);
-    const by = Object.fromEntries(res.body.data.map((i: any) => [i.title, i]));
+    const by = Object.fromEntries(res.body.data.map((i: { title: string }) => [i.title, i]));
     expect(by['Late lab']).toMatchObject({ type: 'ASSIGNMENT', overdue: true, submitted: false, course: { code: 'C1' } });
     expect(by['Essay A'].overdue).toBe(false);
     expect(by['Pending essay']).toMatchObject({ submitted: true, overdue: false }); // submitted, awaiting a grade
@@ -427,7 +427,7 @@ describe('student to-do list', () => {
   });
 
   it('leaves out graded work, used-up quizzes, empty quizzes, drafts, dropped courses and other tenants', async () => {
-    const titles = (await (await login('s1')).get('/api/v1/enrollments/todo')).body.data.map((i: any) => i.title);
+    const titles = (await (await login('s1')).get('/api/v1/enrollments/todo')).body.data.map((i: { title: string }) => i.title);
     for (const hidden of ['Graded already', 'Quiz B', 'Quiz C (empty)', 'Draft course work', 'Dropped course work', 'MIT only']) {
       expect(titles, hidden).not.toContain(hidden);
     }
@@ -435,7 +435,9 @@ describe('student to-do list', () => {
 
   it('is private to the caller and requires a login', async () => {
     expect((await (await login('s2')).get('/api/v1/enrollments/todo')).body.data).toEqual([]); // not enrolled anywhere
-    expect((await (await login('m1', 'mit')).get('/api/v1/enrollments/todo')).body.data.map((i: any) => i.title)).toEqual(['MIT only']);
+    expect((await (await login('m1', 'mit')).get('/api/v1/enrollments/todo')).body.data.map((i: { title: string }) => i.title)).toEqual([
+      'MIT only',
+    ]);
     expect((await request(app).get('/api/v1/enrollments/todo')).status).toBe(401);
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // "Continue: <next lesson>" against a real PostgreSQL: a learner's own enrollment list says how many lessons
@@ -17,7 +17,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -85,7 +85,7 @@ async function as(who: string) {
 const mine = async (s: request.Agent) => {
   const res = await s.get('/api/v1/enrollments/my');
   expect(res.status).toBe(200);
-  return new Map<string, any>(res.body.data.map((e: any) => [e.courseId, e]));
+  return new Map<string, unknown>(res.body.data.map((e: { courseId: unknown }) => [e.courseId, e]));
 };
 
 describe('continue where you left off', () => {

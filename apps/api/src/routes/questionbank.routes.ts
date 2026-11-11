@@ -1,7 +1,7 @@
 import { Router, Request } from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
-import { QuestionType } from '@enterprise-lms/database';
+import { QuestionType, type Prisma } from '@enterprise-lms/database';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
@@ -148,7 +148,8 @@ router.patch(
     const patch = parseBody(req, updateSchema);
     validateQuestion({
       questionType: patch.questionType ?? item.questionType,
-      optionsJson: patch.optionsJson !== undefined ? patch.optionsJson : (item.optionsJson as any),
+      optionsJson:
+        patch.optionsJson !== undefined ? patch.optionsJson : (item.optionsJson as Parameters<typeof validateQuestion>[0]['optionsJson']),
       correctAnswer: patch.correctAnswer !== undefined ? patch.correctAnswer : item.correctAnswer,
     });
     if (patch.courseId !== undefined) await checkCourse(req, patch.courseId);
@@ -157,7 +158,7 @@ router.patch(
       where: { id: item.id },
       data: {
         ...rest,
-        ...(optionsJson !== undefined ? { optionsJson: (withOptionIds(optionsJson) as any) ?? undefined } : {}),
+        ...(optionsJson !== undefined ? { optionsJson: withOptionIds(optionsJson) ?? undefined } : {}),
         ...(tags ? { tags: dedupe(tags) } : {}),
       },
     });
@@ -209,7 +210,9 @@ router.post(
             points: i.points,
             orderIndex: next++,
             // Fresh option ids so a copy never shares ids with its bank original.
-            optionsJson: i.optionsJson ? ((i.optionsJson as any[]).map((o) => ({ ...o, id: randomUUID() })) as any) : undefined,
+            optionsJson: i.optionsJson
+              ? ((i.optionsJson as Record<string, unknown>[]).map((o) => ({ ...o, id: randomUUID() })) as Prisma.InputJsonValue)
+              : undefined,
             correctAnswer: i.correctAnswer,
             explanation: i.explanation,
             bloomLevel: i.bloomLevel,

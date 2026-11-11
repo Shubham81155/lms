@@ -1,3 +1,4 @@
+import type { Prisma } from '@enterprise-lms/database';
 import { prisma } from './prisma';
 import { eraseUploadsOf } from './stored-files';
 import { revokeSessions } from './session';
@@ -232,6 +233,6 @@ export async function eraseUser(userId: string, tenantId: string): Promise<void>
       ...((st.statementJson as Record<string, unknown>) ?? {}),
       actor: { objectType: 'Agent', name: 'Erased user', account: { homePage: 'urn:lms:erased', name: userId } },
     };
-    await prisma.xapiStatement.update({ where: { id: st.id }, data: { statementJson: json as any } });
+    await prisma.xapiStatement.update({ where: { id: st.id }, data: { statementJson: json as Prisma.InputJsonValue } });
   }
 }

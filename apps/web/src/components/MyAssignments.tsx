@@ -161,6 +161,8 @@ const Card: React.FC<{ a: Assignment; appeals: Appeal[]; reloadAppeals: () => vo
       setText(sub.submissionText ?? '');
       setFile(sub.fileUrl ?? '');
     }
+    // Reset the form only when a different submission arrives, not on every refetch of the same one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sub?.id]);
 
   const submit = (e: React.FormEvent) => {

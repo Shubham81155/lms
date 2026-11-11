@@ -6,22 +6,7 @@ import { useCourseByCode, useForum, useModerationQueue } from '@/hooks/useEngage
 import { ReportControl, ReportsPanel, ThreadModerationBar } from '@/components/forum/Moderation';
 import { activateOnKey } from '@/lib/a11y';
 import { useT } from '@/lib/i18n';
-import {
-  X,
-  MessageSquare,
-  ThumbsUp,
-  CheckCircle2,
-  Search,
-  Plus,
-  Send,
-  Sparkles,
-  ShieldCheck,
-  User,
-  Filter,
-  Flag,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
+import { X, MessageSquare, ThumbsUp, CheckCircle2, Search, Plus, Send, ShieldCheck, Flag, Eye, EyeOff } from 'lucide-react';
 
 interface DiscussionForumProps {
   /** Used to find the course; falls back to the first course the user can see. */
@@ -517,7 +502,7 @@ export const DiscussionForum: React.FC<DiscussionForumProps> = ({ courseCode, co
                 <select
                   id="thread-category"
                   value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value as any)}
+                  onChange={(e) => setNewCategory(e.target.value as (typeof CATEGORIES)[number])}
                   className="w-full bg-canvas border border-line rounded-xl p-2.5 text-xs text-ink focus:outline-none focus:border-brand"
                 >
                   {CATEGORIES.map((c) => (

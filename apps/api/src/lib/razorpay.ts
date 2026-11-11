@@ -31,7 +31,7 @@ async function call<T>(method: 'POST', path: string, body: unknown): Promise<T> 
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(15_000),
   });
-  const json: any = await res.json().catch(() => ({}));
+  const json = (await res.json().catch(() => ({}))) as { error?: { description?: string } };
   if (!res.ok) throw new HttpError(502, `The payment provider refused the request: ${json?.error?.description ?? res.status}`);
   return json as T;
 }

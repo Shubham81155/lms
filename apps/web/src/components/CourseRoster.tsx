@@ -62,7 +62,7 @@ export const CourseRoster: React.FC<{
   useEffect(() => {
     if (!courseId && courses.length > 0)
       setCourseId(initialCourseId && courses.some((c) => c.id === initialCourseId) ? initialCourseId : courses[0].id);
-  }, [courses, courseId]);
+  }, [courses, courseId, initialCourseId]);
 
   useEffect(() => {
     if (!notice) return;

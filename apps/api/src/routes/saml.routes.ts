@@ -141,7 +141,7 @@ router.post('/acs', async (req: Request, res: Response) => {
       });
       return res.redirect(303, `${origin}/`);
     });
-  } catch (err: any) {
+  } catch (err) {
     // Library errors (bad signature, expired, wrong audience...) are logged and audited, never shown.
     return fail(err instanceof SamlError || err instanceof Error ? String(err.message).slice(0, 120) : 'error');
   }

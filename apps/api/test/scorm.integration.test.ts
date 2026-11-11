@@ -5,7 +5,7 @@ import os from 'os';
 import path from 'path';
 import zlib from 'zlib';
 import { mkdtemp, rm } from 'fs/promises';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // SCORM against a real PostgreSQL (row-level security on) and local storage in a temp folder: unpacking a
@@ -78,7 +78,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any, firstName = id) =>
+  const user = (id: string, role: GlobalRole, firstName = id) =>
     admin.user.create({
       data: {
         id,

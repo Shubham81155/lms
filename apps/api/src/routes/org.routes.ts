@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { findRlsBypassReason } from '@enterprise-lms/database';
 import { config } from '../config';
@@ -24,7 +24,7 @@ import {
 const router = Router();
 router.use(authenticateJWT, requireRole('SUPER_ADMIN', 'TENANT_ADMIN'));
 
-const audit = (req: any, action: string, resourceType: string, resourceId: string, diffJson?: unknown) =>
+const audit = (req: Request, action: string, resourceType: string, resourceId: string, diffJson?: unknown) =>
   logAuditEvent({
     tenantId: tenantIdOf(req),
     userId: req.user!.id,
@@ -184,7 +184,7 @@ router.delete(
 
 // Not a plan feature: any organisation may use its own domain, once DNS proves it controls it (lib/custom-domain.ts).
 
-const domainActor = (req: any) => ({
+const domainActor = (req: Request) => ({
   tenantId: tenantIdOf(req),
   userId: req.user!.id,
   ipAddress: req.ip,

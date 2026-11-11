@@ -20,7 +20,7 @@ async function seed() {
   ]) {
     await admin.tenant.create({ data: { id, slug, name: `${slug} University` } });
   }
-  const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -99,20 +99,20 @@ async function as(who: string, tenant: 'harvard' | 'mit' = 'harvard') {
 describe('course visibility and content access', () => {
   it('shows learners only published courses', async () => {
     const s2 = await as('s2');
-    const ids = (await s2.get('/api/v1/courses')).body.data.map((c: any) => c.id).sort();
+    const ids = (await s2.get('/api/v1/courses')).body.data.map((c: { id: unknown }) => c.id).sort();
     expect(ids).toEqual(['c1', 'c2']);
   });
 
   it('shows an instructor their own drafts but not other instructors’ drafts', async () => {
-    const mine = (await (await as('teacher')).get('/api/v1/courses')).body.data.map((c: any) => c.id);
-    const other = (await (await as('teacher2')).get('/api/v1/courses')).body.data.map((c: any) => c.id);
+    const mine = (await (await as('teacher')).get('/api/v1/courses')).body.data.map((c: { id: unknown }) => c.id);
+    const other = (await (await as('teacher2')).get('/api/v1/courses')).body.data.map((c: { id: unknown }) => c.id);
     expect(mine).toContain('d1');
     expect(other).not.toContain('d1');
   });
 
   it('shows admins and auditors everything', async () => {
     for (const who of ['admin', 'auditor']) {
-      const ids = (await (await as(who)).get('/api/v1/courses')).body.data.map((c: any) => c.id);
+      const ids = (await (await as(who)).get('/api/v1/courses')).body.data.map((c: { id: unknown }) => c.id);
       expect(ids).toContain('d1');
     }
   });
@@ -188,7 +188,7 @@ describe('modules and lessons', () => {
     );
 
     const order = await t.put('/api/v1/courses/c1/modules-order').send({ moduleIds: [m2.id, 'mod-1'] });
-    expect(order.body.data.map((m: any) => m.id)).toEqual([m2.id, 'mod-1']);
+    expect(order.body.data.map((m: { id: unknown }) => m.id)).toEqual([m2.id, 'mod-1']);
 
     expect((await t.delete(`/api/v1/courses/c1/lessons/${lesson.body.data.id}`)).status).toBe(200);
     expect((await t.delete(`/api/v1/courses/c1/modules/${m2.id}`)).status).toBe(200);
@@ -247,7 +247,7 @@ describe('enrolment rules', () => {
 
   it('keeps rosters private: learners see only themselves, instructors only their own courses', async () => {
     const s1 = await as('s1');
-    expect((await s1.get('/api/v1/enrollments/my')).body.data.map((e: any) => e.userId)).toEqual(['s1']);
+    expect((await s1.get('/api/v1/enrollments/my')).body.data.map((e: { userId: unknown }) => e.userId)).toEqual(['s1']);
     expect((await s1.get('/api/v1/enrollments?userId=s4')).status).toBe(403);
     expect((await s1.get('/api/v1/enrollments?courseId=c1')).status).toBe(403);
     expect((await s1.get('/api/v1/users/s4/enrollments')).status).toBe(403);
@@ -644,9 +644,9 @@ describe('assignments', () => {
   it('shows learners their own submission and staff all of them', async () => {
     await (await as('s4')).post(`/api/v1/assignments/${assignmentId}/submit`).send({ submissionText: 'mine' });
     const own = await (await as('s4')).get(`/api/v1/assignments/${assignmentId}/submissions`);
-    expect(own.body.data.map((s: any) => s.userId)).toEqual(['s4']);
+    expect(own.body.data.map((s: { userId: unknown }) => s.userId)).toEqual(['s4']);
     const all = await (await as('teacher')).get(`/api/v1/assignments/${assignmentId}/submissions`);
-    expect(all.body.data.map((s: any) => s.userId).sort()).toEqual(['s1', 's4']);
+    expect(all.body.data.map((s: { userId: unknown }) => s.userId).sort()).toEqual(['s1', 's4']);
   });
 
   it('refuses to delete an assignment that has submissions', async () => {
@@ -712,7 +712,7 @@ describe('validation, errors and logging', () => {
     const m = await as('m-admin', 'mit');
     expect((await m.get('/api/v1/courses/c1')).status).toBe(404);
     expect((await m.get('/api/v1/users/s1')).status).toBe(404);
-    expect((await m.get('/api/v1/courses')).body.data.map((c: any) => c.id)).toEqual(['m1']);
+    expect((await m.get('/api/v1/courses')).body.data.map((c: { id: unknown }) => c.id)).toEqual(['m1']);
     expect((await m.get('/api/v1/admin/stats')).body.data.totalUsers).toBe(2);
   });
 });

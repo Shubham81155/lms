@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { api, ApiError } from '@/lib/api';
+import { api } from '@/lib/api';
+import { typedGet, typedPatch, typedPost, type GetResponse, type PostBody } from '@/lib/typed-api';
+import { errorMessage } from '@/hooks/useApiData';
 import { timeAgo } from '@/hooks/useNotifications';
-
-const messageOf = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : (e as any)?.message || fallback);
 
 // ---------------------------------------------------------------------------
 // Course lookup
@@ -35,9 +35,8 @@ export function useCourseByCode(code?: string, viewer?: { id: string; role: stri
     let alive = true;
     (async () => {
       try {
-        const res = await api.get<any>('/api/v1/courses', { params: { limit: 100 } });
-        const list: CourseRef[] = Array.isArray(res) ? res : (res.data ?? res.courses ?? []);
-        if (alive) setAllCourses(list);
+        const res = await typedGet('/api/v1/courses', { limit: 100 });
+        if (alive) setAllCourses(res.data ?? []);
       } catch {
         if (alive) setAllCourses([]);
       } finally {
@@ -87,6 +86,8 @@ export interface ServerEvent {
   completed: boolean;
 }
 
+type CalendarEventsResponse = GetResponse<'/api/v1/calendar/events'>;
+
 export function useCalendarEvents() {
   const [events, setEvents] = useState<ServerEvent[]>([]);
   const [next, setNext] = useState<ServerEvent | null>(null);
@@ -98,13 +99,13 @@ export function useCalendarEvents() {
     (async () => {
       try {
         const from = new Date(Date.now() - 86_400_000).toISOString();
-        const r = await api.get<{ data: ServerEvent[]; nextDeadline: ServerEvent | null }>('/api/v1/calendar/events', { params: { from } });
+        const r = await api.get<CalendarEventsResponse>('/api/v1/calendar/events', { params: { from } });
         if (!alive) return;
         setEvents(r.data);
         setNext(r.nextDeadline);
         setError(null);
       } catch (e) {
-        if (alive) setError(messageOf(e, 'Could not load the calendar'));
+        if (alive) setError(errorMessage(e, 'Could not load the calendar'));
       } finally {
         if (alive) setIsLoading(false);
       }
@@ -175,9 +176,14 @@ export interface ForumThreadView {
   replies: ForumReplyView[];
 }
 
+type ApiThreadSummary = GetResponse<'/api/v1/courses/{courseId}/threads'>['data'][number];
+type ApiThreadDetail = GetResponse<'/api/v1/threads/{id}'>['data'];
+type ApiPost = ApiThreadDetail['posts'][number];
+type ThreadCategory = PostBody<'/api/v1/courses/{courseId}/threads'>['category'];
+
 const roleOf = (r: string): ForumReplyView['role'] => (r === 'INSTRUCTOR' ? 'INSTRUCTOR' : r === 'TEACHING_ASSISTANT' ? 'TA' : 'STUDENT');
 
-const toReply = (p: any): ForumReplyView => ({
+const toReply = (p: ApiPost): ForumReplyView => ({
   id: p.id,
   author: p.author.name,
   role: roleOf(p.author.role),
@@ -189,7 +195,7 @@ const toReply = (p: any): ForumReplyView => ({
   hidden: !!p.hidden,
 });
 
-const toThread = (t: any, replies: ForumReplyView[] = []): ForumThreadView => ({
+const toThread = (t: ApiThreadSummary, replies: ForumReplyView[] = []): ForumThreadView => ({
   id: t.id,
   title: t.title,
   author: t.author?.name ?? 'Unknown',
@@ -231,15 +237,17 @@ export function useForum(courseId?: string | null, isStaff = false) {
     }
     try {
       // Staff also see hidden threads, so they can restore them.
-      const r = await api.get<{ data: any[] }>(`/api/v1/courses/${courseId}/threads`, {
-        params: { limit: 50, includeHidden: isStaff ? 'true' : 'false' },
-      });
+      const r = await typedGet(
+        '/api/v1/courses/{courseId}/threads',
+        { limit: 50, includeHidden: isStaff ? 'true' : 'false' },
+        { courseId }
+      );
       if (!alive.current) return;
       setThreads(r.data.map((t) => toThread(t)));
       setActiveId((cur) => cur ?? r.data[0]?.id ?? null);
       setError(null);
     } catch (e) {
-      if (alive.current) setError(messageOf(e, 'Could not load discussions'));
+      if (alive.current) setError(errorMessage(e, 'Could not load discussions'));
     } finally {
       if (alive.current) setIsLoading(false);
     }
@@ -254,31 +262,30 @@ export function useForum(courseId?: string | null, isStaff = false) {
   const loadReplies = useCallback(async (threadId: string) => {
     try {
       // The API returns replies a page at a time; fetch them all (bounded) so the thread shows in full.
-      let r = await api.get<{ data: any }>(`/api/v1/threads/${threadId}`);
+      let r = await typedGet('/api/v1/threads/{id}', undefined, { id: threadId });
       const head = r.data;
-      const posts: any[] = [...head.posts];
+      const posts: ApiPost[] = [...head.posts];
       for (let page = 0; r.data.nextCursor && page < 25; page++) {
-        r = await api.get<{ data: any }>(`/api/v1/threads/${threadId}?cursor=${encodeURIComponent(r.data.nextCursor)}`);
+        r = await typedGet('/api/v1/threads/{id}', { cursor: r.data.nextCursor }, { id: threadId });
         posts.push(...r.data.posts);
       }
-      r = { data: { ...head, posts } };
       if (!alive.current) return;
-      const list = r.data.posts.map(toReply);
+      const list = posts.map(toReply);
       setReplies((prev) => ({ ...prev, [threadId]: list }));
       setThreads((prev) =>
         prev.map((t) =>
           t.id === threadId
             ? {
                 ...t,
-                upvotes: r.data.upvotes ?? t.upvotes,
-                votedByMe: !!r.data.votedByMe,
-                replyCount: list.filter((x: ForumReplyView) => !x.hidden).length,
+                upvotes: head.upvotes ?? t.upvotes,
+                votedByMe: !!head.votedByMe,
+                replyCount: list.filter((x) => !x.hidden).length,
               }
             : t
         )
       );
     } catch (e) {
-      if (alive.current) setError(messageOf(e, 'Could not load replies'));
+      if (alive.current) setError(errorMessage(e, 'Could not load replies'));
     }
   }, []);
 
@@ -292,7 +299,7 @@ export function useForum(courseId?: string | null, isStaff = false) {
       await fn();
       if (alive.current) setError(null);
     } catch (e) {
-      if (alive.current) setError(messageOf(e, fallback));
+      if (alive.current) setError(errorMessage(e, fallback));
     } finally {
       if (alive.current) setBusy(false);
     }
@@ -302,7 +309,11 @@ export function useForum(courseId?: string | null, isStaff = false) {
     (input: { title: string; body: string; category: string }) =>
       act(async () => {
         if (!courseId) throw new Error('No course selected');
-        const r = await api.post<{ data: any }>(`/api/v1/courses/${courseId}/threads`, input);
+        const r = await typedPost(
+          '/api/v1/courses/{courseId}/threads',
+          { title: input.title, body: input.body, category: input.category as ThreadCategory },
+          { courseId }
+        );
         await loadThreads();
         setActiveId(r.data.id);
       }, 'Could not post your question'),
@@ -312,7 +323,7 @@ export function useForum(courseId?: string | null, isStaff = false) {
   const postReply = useCallback(
     (threadId: string, body: string) =>
       act(async () => {
-        await api.post(`/api/v1/threads/${threadId}/posts`, { body });
+        await typedPost('/api/v1/threads/{id}/posts', { body }, { id: threadId });
         await loadReplies(threadId);
       }, 'Could not post your reply'),
     [act, loadReplies]
@@ -321,7 +332,7 @@ export function useForum(courseId?: string | null, isStaff = false) {
   const vote = useCallback(
     (targetType: 'THREAD' | 'POST', targetId: string, threadId: string) =>
       act(async () => {
-        const r = await api.post<{ data: { voted: boolean; upvotes: number } }>('/api/v1/votes', { targetType, targetId });
+        const r = await typedPost('/api/v1/votes', { targetType, targetId });
         if (targetType === 'THREAD') {
           setThreads((prev) => prev.map((t) => (t.id === targetId ? { ...t, upvotes: r.data.upvotes, votedByMe: r.data.voted } : t)));
         } else {
@@ -340,7 +351,7 @@ export function useForum(courseId?: string | null, isStaff = false) {
   const endorse = useCallback(
     (postId: string, threadId: string) =>
       act(async () => {
-        await api.post(`/api/v1/posts/${postId}/endorse`);
+        await typedPost('/api/v1/posts/{id}/endorse', undefined, { id: postId });
         await loadReplies(threadId);
       }, 'Could not verify this answer'),
     [act, loadReplies]
@@ -350,7 +361,7 @@ export function useForum(courseId?: string | null, isStaff = false) {
   const moderateThread = useCallback(
     (threadId: string, patch: { pinned?: boolean; locked?: boolean; hidden?: boolean }) =>
       act(async () => {
-        await api.patch(`/api/v1/threads/${threadId}/moderate`, patch);
+        await typedPatch('/api/v1/threads/{id}/moderate', patch, { id: threadId });
         await loadThreads();
       }, 'Could not update the thread'),
     [act, loadThreads]
@@ -360,7 +371,7 @@ export function useForum(courseId?: string | null, isStaff = false) {
   const moderatePost = useCallback(
     (postId: string, hidden: boolean, threadId: string) =>
       act(async () => {
-        await api.patch(`/api/v1/posts/${postId}/moderate`, { hidden });
+        await typedPatch('/api/v1/posts/{id}/moderate', { hidden }, { id: postId });
         await loadReplies(threadId);
       }, 'Could not update the reply'),
     [act, loadReplies]
@@ -369,7 +380,7 @@ export function useForum(courseId?: string | null, isStaff = false) {
   const report = useCallback(
     (targetType: 'THREAD' | 'POST', targetId: string, reason: string) =>
       act(async () => {
-        await api.post('/api/v1/flags', { targetType, targetId, reason });
+        await typedPost('/api/v1/flags', { targetType, targetId, reason });
       }, 'Could not send your report'),
     [act]
   );
@@ -418,11 +429,11 @@ export function useModerationQueue(courseId: string | null | undefined) {
       return;
     }
     try {
-      const r = await api.get<{ data: ForumFlagView[] }>(`/api/v1/courses/${courseId}/flags`);
+      const r = await typedGet('/api/v1/courses/{courseId}/flags', undefined, { courseId });
       setFlags(r.data);
       setError(null);
     } catch (e) {
-      setError(messageOf(e, 'Could not load the reports'));
+      setError(errorMessage(e, 'Could not load the reports'));
     }
   }, [courseId]);
   useEffect(() => {

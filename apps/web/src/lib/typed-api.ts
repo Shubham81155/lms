@@ -8,7 +8,7 @@ import type { paths } from './api-schema';
  */
 type JsonBody<R> = R extends { content: { 'application/json': infer B } } ? B : never;
 
-type GetPaths = { [P in keyof paths]: paths[P] extends { get: any } ? P : never }[keyof paths];
+type GetPaths = { [P in keyof paths]: paths[P] extends { get: object } ? P : never }[keyof paths];
 
 export type GetResponse<P extends GetPaths> = paths[P] extends { get: { responses: { 200: infer OK } } } ? JsonBody<OK> : never;
 export type GetQuery<P extends GetPaths> = paths[P] extends { get: { parameters: { query?: infer Q } } } ? NonNullable<Q> : never;
@@ -29,8 +29,8 @@ export const typedGet = <P extends GetPaths>(path: P, query?: GetQuery<P>, ...re
     params: query as Record<string, string | number | boolean | undefined | null> | undefined,
   });
 
-type Method = 'post' | 'put' | 'patch';
-type WritePaths<M extends Method> = { [P in keyof paths]: paths[P] extends { [K in M]: any } ? P : never }[keyof paths];
+type Method = 'post' | 'put' | 'patch' | 'delete';
+type WritePaths<M extends Method> = { [P in keyof paths]: paths[P] extends { [K in M]: object } ? P : never }[keyof paths];
 type BodyOf<P extends keyof paths, M extends Method> = paths[P] extends {
   [K in M]: { requestBody: { content: { 'application/json': infer B } } };
 }
@@ -48,6 +48,7 @@ type ResponseOf<P extends keyof paths, M extends Method> = paths[P] extends { [K
 
 export type PostBody<P extends WritePaths<'post'>> = BodyOf<P, 'post'>;
 export type PutBody<P extends WritePaths<'put'>> = BodyOf<P, 'put'>;
+export type PatchBody<P extends WritePaths<'patch'>> = BodyOf<P, 'patch'>;
 
 /**
  * Writes whose request body is described by the API: a misspelt or mistyped field fails to compile.
@@ -59,3 +60,5 @@ export const typedPut = <P extends WritePaths<'put'>>(path: P, body: BodyOf<P, '
   api.put<ResponseOf<P, 'put'>>(fill(path, paramsOf(rest)), body);
 export const typedPatch = <P extends WritePaths<'patch'>>(path: P, body: BodyOf<P, 'patch'>, ...rest: ParamsArg<P, 'patch'>) =>
   api.patch<ResponseOf<P, 'patch'>>(fill(path, paramsOf(rest)), body);
+export const typedDelete = <P extends WritePaths<'delete'>>(path: P, ...rest: ParamsArg<P, 'delete'>) =>
+  api.delete<ResponseOf<P, 'delete'>>(fill(path, paramsOf(rest)));

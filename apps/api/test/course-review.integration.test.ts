@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Course publishing review against a real PostgreSQL: off by default (instructors publish), and when an
@@ -18,7 +18,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -59,7 +59,7 @@ async function as(who: string) {
   return agent;
 }
 
-function check(key: string, res: { status: number; body: any }, status: number) {
+function check(key: string, res: Pick<request.Response, 'status' | 'body'>, status: number) {
   expect(res.status, `${key}: ${JSON.stringify(res.body)}`).toBe(status);
   const doc = [RESPONSES[key].response!, ...(RESPONSES[key].otherResponses ?? [])].find((d) => d.status === status);
   expect(doc, `${key}: status ${status} is not documented`).toBeDefined();

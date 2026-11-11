@@ -98,7 +98,7 @@ function startIdp() {
   });
   return new Promise<void>((r) =>
     idp.listen(0, '127.0.0.1', () => {
-      ISSUER = `http://127.0.0.1:${(idp.address() as any).port}`;
+      ISSUER = `http://127.0.0.1:${(idp.address() as import('net').AddressInfo).port}`;
       r();
     })
   );
@@ -109,7 +109,7 @@ async function seed(jwksUrl: string) {
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', tier: 'STARTER' } });
   // Suspended tenants never resolve; an unknown hint would fall through to the default tenant instead.
   await admin.tenant.create({ data: { id: 't-s', slug: 'suspended', name: 'Gone', tier: 'STARTER', status: 'SUSPENDED' } });
-  const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -166,7 +166,7 @@ beforeAll(async () => {
     res.end(JSON.stringify({ keys: [jwk] }));
   });
   await new Promise<void>((r) => jwksServer.listen(0, '127.0.0.1', r));
-  const jwksUrl = `http://127.0.0.1:${(jwksServer.address() as any).port}/jwks`;
+  const jwksUrl = `http://127.0.0.1:${(jwksServer.address() as import('net').AddressInfo).port}/jwks`;
 
   process.env.PLAGIARISM_WEBHOOK_SECRET = PLAG_SECRET;
   process.env.LIVEKIT_URL = 'wss://live.example.org';
@@ -461,7 +461,9 @@ describe('SCIM 2.0', () => {
   let tok: string;
   let id: string;
   const scim = (method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string, bearer: string | null = tok) => {
-    const r = (request(app) as any)[method](`/api/v1/scim/v2${path}`).set('content-type', 'application/scim+json');
+    const r = (request(app) as unknown as Record<string, (u: string) => request.Test>)
+      [method](`/api/v1/scim/v2${path}`)
+      .set('content-type', 'application/scim+json');
     return bearer ? r.set('authorization', `Bearer ${bearer}`) : r;
   };
   const check = (key: string, res: request.Response) => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // The real app, the real migrations, and the unprivileged lms_app role (so RLS is enforced),
@@ -23,7 +23,7 @@ const hash = (p: string) => bcrypt.hashSync(p, 4);
 
 async function seedTenant(id: string, slug: string) {
   await admin.tenant.create({ data: { id, slug, name: `${slug} University` } });
-  const mk = (suffix: string, role: any, extra: object = {}) =>
+  const mk = (suffix: string, role: GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id: `${slug}-${suffix}`,
@@ -110,7 +110,7 @@ describe('an authenticated user only ever sees their own tenant', () => {
     const { agent } = await signIn('harvard', 'student');
     const res = await agent.get('/api/v1/courses');
     expect(res.status).toBe(200);
-    expect(res.body.data.map((c: any) => c.id)).toEqual([COURSE_ID.harvard]);
+    expect(res.body.data.map((c: { id: unknown }) => c.id)).toEqual([COURSE_ID.harvard]);
   });
 
   it('cannot fetch another tenant’s course by id', async () => {
@@ -122,7 +122,7 @@ describe('an authenticated user only ever sees their own tenant', () => {
   it('cannot switch tenant with a header while holding a session', async () => {
     const { agent } = await signIn('harvard', 'student');
     const res = await agent.get('/api/v1/courses').set('x-tenant-id', 'mit');
-    expect(res.body.data.map((c: any) => c.id)).toEqual([COURSE_ID.harvard]);
+    expect(res.body.data.map((c: { id: unknown }) => c.id)).toEqual([COURSE_ID.harvard]);
     const me = await agent.get('/api/v1/auth/me').set('x-tenant-id', 'ten-m');
     expect(me.body.user.tenant.slug).toBe('harvard');
   });
@@ -144,7 +144,7 @@ describe('an authenticated user only ever sees their own tenant', () => {
     const { agent } = await signIn('harvard', 'admin');
     expect((await agent.get('/api/v1/users/mit-student')).status).toBe(404);
     const list = await agent.get('/api/v1/users');
-    expect(list.body.data.every((u: any) => u.tenantId === 'ten-h')).toBe(true);
+    expect(list.body.data.every((u: { tenantId: unknown }) => u.tenantId === 'ten-h')).toBe(true);
     expect(list.body.pagination.total).toBe(4);
   });
 
@@ -156,7 +156,7 @@ describe('an authenticated user only ever sees their own tenant', () => {
 
     const logs = await agent.get('/api/v1/admin/audit-logs');
     expect(logs.body.data.length).toBeGreaterThan(0);
-    expect(logs.body.data.every((l: any) => l.tenantId === 'ten-h')).toBe(true);
+    expect(logs.body.data.every((l: { tenantId: unknown }) => l.tenantId === 'ten-h')).toBe(true);
   });
 
   it('writes audit events under the right tenant', async () => {

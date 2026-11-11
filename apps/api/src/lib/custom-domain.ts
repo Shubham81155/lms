@@ -107,15 +107,16 @@ export async function checkTxt(domain: string, token: string): Promise<TxtCheck>
   try {
     // A long TXT value can arrive split into several strings: they form one value.
     records = (await lookup((r) => r.resolveTxt(name))).map((chunks) => chunks.join('').trim());
-  } catch (err: any) {
-    if (NOT_FOUND.has(err?.code))
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code;
+    if (code !== undefined && NOT_FOUND.has(code))
       return {
         ok: false,
         definite: true,
         error: `No TXT record found at ${name}. DNS changes can take a while to appear; check again later.`,
       };
-    if (err?.code === 'ETIMEOUT') return { ok: false, definite: false, error: 'The DNS lookup timed out. Try again in a few minutes.' };
-    return { ok: false, definite: false, error: `The DNS lookup failed${err?.code ? ` (${err.code})` : ''}. Try again in a few minutes.` };
+    if (code === 'ETIMEOUT') return { ok: false, definite: false, error: 'The DNS lookup timed out. Try again in a few minutes.' };
+    return { ok: false, definite: false, error: `The DNS lookup failed${code ? ` (${code})` : ''}. Try again in a few minutes.` };
   }
   if (records.includes(expected)) return { ok: true, definite: true, error: null };
   return {
@@ -282,7 +283,7 @@ async function audit(targetId: string, actor: DomainActor, action: string, diffJ
 
 /** The secret part of the TXT record value. */
 export const newDomainToken = () => crypto.randomBytes(16).toString('hex');
-const isUniqueViolation = (err: any) => err?.code === 'P2002';
+const isUniqueViolation = (err: unknown) => (err as { code?: string } | null)?.code === 'P2002';
 const TAKEN = 'That domain is already used by another organisation';
 
 /**

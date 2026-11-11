@@ -349,7 +349,7 @@ export const ForumThreadDetail = ForumThreadRecord.extend({
 
 export interface OperationDoc {
   summary: string;
-  query?: z.ZodObject<any>;
+  query?: z.ZodObject<z.ZodRawShape>;
   body?: z.ZodTypeAny;
   /** Success status and body. Omit for endpoints whose response is not yet described. */
   response?: ResponseDoc;

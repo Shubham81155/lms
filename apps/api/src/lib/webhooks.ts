@@ -5,6 +5,7 @@ import { runWithTenant } from '@enterprise-lms/database';
 import { prisma, basePrisma } from './prisma';
 import { logger } from './logger';
 import { config } from '../config';
+import { decryptSecret } from './mfa';
 
 export const WEBHOOK_EVENTS = ['enrollment.completed', 'certificate.issued', 'quiz.submitted', 'user.provisioned', 'webhook.test'] as const;
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
@@ -82,6 +83,14 @@ export async function assertSafeWebhookTarget(raw: string): Promise<void> {
   if (found.some((a) => isBlockedIp(a.address))) throw new Error('Webhook URL host is not allowed');
 }
 
+const ENCRYPTED_SECRET_PATTERN = /^[0-9a-f]{32}:[0-9a-f]{32}:[0-9a-f]+$/i;
+
+/** Decrypts a stored webhook signing secret (iv:tag:cipher), falling back to plaintext for legacy or seeded rows. */
+export function resolveWebhookSecret(stored: string): string {
+  if (!ENCRYPTED_SECRET_PATTERN.test(stored)) return stored;
+  return decryptSecret(stored);
+}
+
 export const signPayload = (secret: string, timestamp: string, body: string) =>
   crypto.createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
 
@@ -112,6 +121,7 @@ async function deliver(
   let error: string | null = null;
   try {
     await assertSafeWebhookTarget(endpoint.url);
+    const signingSecret = resolveWebhookSecret(endpoint.secret);
     const res = await fetch(endpoint.url, {
       method: 'POST',
       redirect: 'manual',
@@ -119,7 +129,7 @@ async function deliver(
         'content-type': 'application/json',
         'x-lms-event': event,
         'x-lms-timestamp': ts,
-        'x-lms-signature': `sha256=${signPayload(endpoint.secret, ts, body)}`,
+        'x-lms-signature': `sha256=${signPayload(signingSecret, ts, body)}`,
         'x-lms-attempt': String(attempt),
       },
       body,
@@ -127,8 +137,8 @@ async function deliver(
     });
     statusCode = res.status;
     if (!res.ok) error = `HTTP ${res.status}`;
-  } catch (err: any) {
-    error = String(err?.message ?? err).slice(0, 300);
+  } catch (err: unknown) {
+    error = String(err instanceof Error ? err.message : err).slice(0, 300);
   }
   const success = error === null;
   const willRetry = !success && !!opts.retry && attempt < MAX_ATTEMPTS && isRetryable(statusCode);
@@ -206,10 +216,19 @@ export async function retryDueWebhooks(opts: { now?: Date; batch?: number } = {}
 
 let timer: NodeJS.Timeout | null = null;
 
+/** Stops the background webhook retry worker. */
+export function stopWebhookRetryWorker(): void {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+}
+
 /** Starts the background retry worker; a tick is skipped while the previous one is still running. */
-export function startWebhookRetryWorker(): void {
+export function startWebhookRetryWorker(): () => void {
   const seconds = config.WEBHOOK_RETRY_INTERVAL_SECONDS;
-  if (seconds <= 0 || timer) return;
+  if (seconds <= 0) return () => {};
+  if (timer) return stopWebhookRetryWorker;
   let running = false;
   timer = setInterval(async () => {
     if (running) return;
@@ -222,6 +241,7 @@ export function startWebhookRetryWorker(): void {
     }
   }, seconds * 1000);
   timer.unref();
+  return stopWebhookRetryWorker;
 }
 
 export { deliver as deliverWebhook };

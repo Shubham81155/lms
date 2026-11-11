@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // The periodic re-check of live custom domains: the TXT record that proved a domain must stay. A definite
@@ -56,7 +56,9 @@ beforeAll(async () => {
   await live('t-legacy', 'legacy', 'Legacy College', 'learn.legacy.edu', null);
   await live('t-gone', 'gone', 'Gone', 'learn.gone.edu', 'tok-gone', { status: 'ARCHIVED' });
   const user = (id: string, tenantId: string, email: string, role: string, extra: object = {}) =>
-    admin.user.create({ data: { id, tenantId, email, firstName: 'A', lastName: 'B', role: role as any, emailVerified: true, ...extra } });
+    admin.user.create({
+      data: { id, tenantId, email, firstName: 'A', lastName: 'B', role: role as GlobalRole, emailVerified: true, ...extra },
+    });
   await user('a-admin', 't-a', 'admin@alpha.edu', 'TENANT_ADMIN');
   await user('a-super', 't-a', 'super@alpha.edu', 'SUPER_ADMIN');
   await user('a-student', 't-a', 'student@alpha.edu', 'STUDENT');

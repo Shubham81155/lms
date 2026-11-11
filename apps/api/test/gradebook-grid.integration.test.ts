@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // The gradebook grid and its CSV export against a real PostgreSQL: who may see it, how each cell is scored
@@ -17,7 +17,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any, firstName = id, lastName = 'L') =>
+  const user = (id: string, role: GlobalRole, firstName = id, lastName = 'L') =>
     admin.user.create({
       data: {
         id,
@@ -120,11 +120,11 @@ describe('gradebook grid', () => {
     const res = await (await as('teacher')).get('/api/v1/courses/c1/gradebook/grid');
     expect(res.status).toBe(200);
     const { items, learners } = res.body.data;
-    expect(items.map((i: any) => [i.id, i.type])).toEqual([
+    expect(items.map((i: { id: unknown; type: unknown }) => [i.id, i.type])).toEqual([
       ['q1', 'QUIZ'],
       ['a1', 'ASSIGNMENT'],
     ]);
-    expect(learners.map((l: any) => l.userId)).toEqual(['s2', 's1']);
+    expect(learners.map((l: { userId: unknown }) => l.userId)).toEqual(['s2', 's1']);
 
     const [s2, s1] = learners;
     expect(s1.scores.q1).toEqual({ percent: 75, pending: false, missing: false });

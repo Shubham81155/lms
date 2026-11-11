@@ -20,6 +20,9 @@ import { app } from '../src/server';
 import { allOperations, buildOpenApi, UNDESCRIBABLE } from '../src/openapi/spec';
 import { stringifyOpenApi } from '../src/openapi/serialize';
 
+/** The slice of the generated document these tests read. */
+type OpenApiDoc = { paths: Record<string, Record<string, Record<string, unknown>>> };
+
 const ops = allOperations();
 const label = (o: { method: string; path: string }) => `${o.method.toUpperCase()} ${o.path}`;
 
@@ -42,10 +45,10 @@ describe('API description', () => {
   });
 
   it('describes every operation, with a summary and every request schema expressible', () => {
-    const doc: any = buildOpenApi();
-    const missing = Object.entries(doc.paths).flatMap(([p, item]: [string, any]) =>
+    const doc = buildOpenApi() as unknown as OpenApiDoc;
+    const missing = Object.entries(doc.paths).flatMap(([p, item]) =>
       Object.entries(item)
-        .filter(([, op]: [string, any]) => !op.summary)
+        .filter(([, op]) => !op.summary)
         .map(([m]) => `${m.toUpperCase()} ${p}`)
     );
     expect(missing).toEqual([]);
@@ -53,10 +56,10 @@ describe('API description', () => {
   });
 
   it('describes a success response for every operation', () => {
-    const doc: any = buildOpenApi();
-    const undescribed = Object.entries(doc.paths).flatMap(([p, item]: [string, any]) =>
+    const doc = buildOpenApi() as unknown as OpenApiDoc;
+    const undescribed = Object.entries(doc.paths).flatMap(([p, item]) =>
       Object.entries(item)
-        .filter(([, op]: [string, any]) => JSON.stringify(op.responses).includes('not yet described'))
+        .filter(([, op]) => JSON.stringify(op.responses).includes('not yet described'))
         .map(([m]) => `${m.toUpperCase()} ${p}`)
     );
     expect(undescribed).toEqual([]);
@@ -70,10 +73,8 @@ describe('API description', () => {
   });
 
   it('lists every route the server mounts, exactly once', () => {
-    const doc: any = buildOpenApi();
-    const described = Object.entries(doc.paths).flatMap(([p, item]: [string, any]) =>
-      Object.keys(item).map((m) => `${m.toUpperCase()} ${p}`)
-    );
+    const doc = buildOpenApi() as unknown as OpenApiDoc;
+    const described = Object.entries(doc.paths).flatMap(([p, item]) => Object.keys(item).map((m) => `${m.toUpperCase()} ${p}`));
     expect(new Set(described).size).toBe(described.length);
     expect(described.length).toBe(ops.length);
   });
@@ -150,12 +151,12 @@ describe('authentication coverage', () => {
   const guarded = ops.filter((o) => o.security === 'session');
   it.each(guarded.map((o) => [label(o), o] as const))('%s answers 401 without a token', async (_name, op) => {
     const url = op.path.replace(/:([A-Za-z0-9_]+)/g, 'x');
-    const res = await (request(app) as any)[op.method](url).send({});
+    const res = await (request(app) as unknown as Record<string, (path: string) => request.Test>)[op.method](url).send({});
     expect(res.status).toBe(401);
   });
 
   it('describes the required roles of guarded routes', () => {
-    const doc: any = buildOpenApi();
+    const doc = buildOpenApi() as unknown as OpenApiDoc;
     expect(doc.paths['/api/v1/admin/export'].get['x-required-roles']).toEqual(['SUPER_ADMIN', 'TENANT_ADMIN']);
   });
 });

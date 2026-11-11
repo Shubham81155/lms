@@ -4,7 +4,7 @@ import { withCourseSlot } from '../lib/billing';
 import { prisma, runInTenantTransaction } from '../lib/prisma';
 import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, tenantIdOf } from '../middleware/auth';
-import { CourseStatus, ContentType, EnrollmentStatus } from '@enterprise-lms/database';
+import { CourseStatus, ContentType, EnrollmentStatus, Prisma } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
 import { httpUrl, idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { progressFromLessons } from '../lib/lesson-progress';
@@ -124,7 +124,7 @@ router.get(
     const { page, limit, status, search, termId } = parseQuery(req, listQuery);
     const user = req.user!;
 
-    const and: any[] = [];
+    const and: Prisma.CourseWhereInput[] = [];
     if (status) and.push({ status });
     if (termId) and.push({ termId });
     if (search) {

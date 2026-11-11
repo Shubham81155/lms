@@ -22,7 +22,7 @@ async function seed() {
   ]) {
     await admin.tenant.create({ data: { id, slug, name: `${slug} University` } });
   }
-  const user = (id: string, tenantId: string, slug: string, role: any) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -96,7 +96,7 @@ async function as(who: string) {
 }
 
 /** Asserts the status and that the body satisfies the documented schema of that status. */
-function check(key: string, res: { status: number; body: any; text?: string }) {
+function check(key: string, res: { status: number; body: unknown; text?: string }) {
   const entry = RESPONSES[key];
   expect(entry, `no entry for ${key}`).toBeDefined();
   const doc = [entry.response!, ...(entry.otherResponses ?? [])].find((d) => d.status === res.status);
@@ -169,7 +169,7 @@ describe('contract: courses', () => {
     const s1 = await as('s1');
     const list = await s1.get('/api/v1/courses/c1/announcements');
     check('GET /api/v1/courses/:courseId/announcements', list);
-    expect(list.body.data.map((a: any) => a.title)).toEqual(['Week 2', 'Typo fixed']); // pinned first
+    expect(list.body.data.map((a: { title: string }) => a.title)).toEqual(['Week 2', 'Typo fixed']); // pinned first
     const recent = await s1.get('/api/v1/announcements/recent');
     check('GET /api/v1/announcements/recent', recent);
     expect(recent.body.data[0].course.code).toBe('C1');
@@ -195,12 +195,14 @@ describe('contract: courses', () => {
     const res = await (await as('s3')).get('/api/v1/enrollments/grades');
     expect(res.status).toBe(200);
     check('GET /api/v1/enrollments/grades', res);
-    const c1 = res.body.data.find((c: any) => c.course.id === 'c1');
+    const c1 = res.body.data.find((c: { course?: { id?: string } | null }) => c.course?.id === 'c1');
     expect(c1.courseGrade).toBeNull();
     expect(c1.assignments[0]).toMatchObject({ id: 'a1', grade: 80, feedback: 'Good', late: false });
     expect(c1.quizzes[0]).toMatchObject({ id: 'q1', attemptsUsed: 0, bestPercent: null });
 
-    const s1 = (await (await as('s1')).get('/api/v1/enrollments/grades')).body.data.find((c: any) => c.course.id === 'c1');
+    const s1 = (await (await as('s1')).get('/api/v1/enrollments/grades')).body.data.find(
+      (c: { course?: { id?: string } | null }) => c.course?.id === 'c1'
+    );
     expect(s1.quizzes[0]).toMatchObject({ attemptsUsed: 1, bestPercent: 100, passed: true });
     expect(s1.assignments[0]).toMatchObject({ submittedAt: null, grade: null });
     expect((await request(app).get('/api/v1/enrollments/grades')).status).toBe(401);
@@ -257,7 +259,7 @@ describe('contract: courses', () => {
     const order = await t.put(`/api/v1/courses/${teacherCourse}/modules-order`).send({ moduleIds: [moduleB, moduleA] });
     expect(order.status).toBe(200);
     check('PUT /api/v1/courses/:id/modules-order', order);
-    expect(order.body.data.map((m: any) => m.id)).toEqual([moduleB, moduleA]);
+    expect(order.body.data.map((m: { id: unknown }) => m.id)).toEqual([moduleB, moduleA]);
 
     const pm = await t.patch(`/api/v1/courses/${teacherCourse}/modules/${moduleA}`).send({ title: 'One renamed', isLocked: true });
     expect(pm.status).toBe(200);
@@ -297,7 +299,7 @@ describe('contract: enrollments, users, certificates', () => {
     const todo = await s4.get('/api/v1/enrollments/todo');
     expect(todo.status).toBe(200);
     check('GET /api/v1/enrollments/todo', todo);
-    expect(todo.body.data.map((i: any) => i.type).sort()).toEqual(['ASSIGNMENT', 'QUIZ']);
+    expect(todo.body.data.map((i: { type: unknown }) => i.type).sort()).toEqual(['ASSIGNMENT', 'QUIZ']);
 
     const empty = await (await as('s5')).get('/api/v1/enrollments/todo');
     check('GET /api/v1/enrollments/todo', empty);
@@ -447,8 +449,8 @@ describe('contract: calendar', () => {
     const list = await (await as('s1')).get('/api/v1/calendar/events');
     expect(list.status).toBe(200);
     check('GET /api/v1/calendar/events', list);
-    expect(list.body.data.filter((e: any) => e.source === 'EVENT')).toHaveLength(2);
-    expect(list.body.data.find((e: any) => e.source === 'ASSIGNMENT')).toMatchObject({
+    expect(list.body.data.filter((e: { source: unknown }) => e.source === 'EVENT')).toHaveLength(2);
+    expect(list.body.data.find((e: { source: unknown }) => e.source === 'ASSIGNMENT')).toMatchObject({
       id: 'assignment-a1',
       itemId: 'a1',
       category: 'DEADLINE',

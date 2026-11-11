@@ -128,10 +128,19 @@ async function postToSubmitUrl(
 
 let timer: NodeJS.Timeout | null = null;
 
+/** Stops the background plagiarism submission worker. */
+export function stopPlagiarismSubmitWorker(): void {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+}
+
 /** Starts the background sender; a tick is skipped while the previous one is still running. */
-export function startPlagiarismSubmitWorker(): void {
+export function startPlagiarismSubmitWorker(): () => void {
   const seconds = config.PLAGIARISM_SUBMIT_INTERVAL_SECONDS;
-  if (seconds <= 0 || timer || !outboundPlagiarismEnabled()) return;
+  if (seconds <= 0 || !outboundPlagiarismEnabled()) return () => {};
+  if (timer) return stopPlagiarismSubmitWorker;
   let running = false;
   timer = setInterval(async () => {
     if (running) return;
@@ -144,4 +153,5 @@ export function startPlagiarismSubmitWorker(): void {
     }
   }, seconds * 1000);
   timer.unref();
+  return stopPlagiarismSubmitWorker;
 }

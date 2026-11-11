@@ -93,7 +93,11 @@ function startIdp() {
         const id_token =
           o.alg === 'HS256'
             ? jwt.sign(payload, 'shared-secret', { algorithm: 'HS256', expiresIn: '5m' })
-            : jwt.sign(payload, (o.key ?? idpKey.privateKey) as any, { algorithm: 'RS256', keyid: 'k1', expiresIn: o.expiresIn ?? 300 });
+            : jwt.sign(payload, (o.key ?? idpKey.privateKey) as jwt.Secret, {
+                algorithm: 'RS256',
+                keyid: 'k1',
+                expiresIn: o.expiresIn ?? 300,
+              });
         return json({ id_token, access_token: 'unused', token_type: 'Bearer' });
       });
       return;
@@ -103,7 +107,7 @@ function startIdp() {
   });
   return new Promise<void>((r) =>
     idp.listen(0, '127.0.0.1', () => {
-      ISSUER = `http://127.0.0.1:${(idp.address() as any).port}`;
+      ISSUER = `http://127.0.0.1:${(idp.address() as import('net').AddressInfo).port}`;
       r();
     })
   );
@@ -112,7 +116,7 @@ function startIdp() {
 async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', tier: 'STARTER' } });
-  const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -431,7 +435,7 @@ describe('OIDC sign-in', () => {
   it('records refusals in the audit log without leaking reasons to the browser', async () => {
     const failures = await admin.auditLog.findMany({ where: { action: 'SSO_LOGIN_FAILED' } });
     expect(failures.length).toBeGreaterThanOrEqual(8);
-    const reasons = failures.map((f) => (f.diffJson as any).reason);
+    const reasons = failures.map((f) => (f.diffJson as { reason?: unknown }).reason);
     expect(reasons).toContain('no matching account');
     expect(reasons).toContain('no verified email');
     const r = await signIn(goodClaims('stranger'));
@@ -510,7 +514,9 @@ describe('accounts created at first sign-in (OIDC)', () => {
     refused(await signIn({ sub: 'sub-new5', email: 'new5@x.edu', email_verified: true }));
     await admin.tenant.update({ where: { id: 't-h' }, data: { seatQuota: null } });
     for (const e of ['new3@x.edu', 'new4@elsewhere.org', 'new5@x.edu']) expect(await created(e)).toBeNull();
-    const reasons = (await admin.auditLog.findMany({ where: { action: 'SSO_LOGIN_FAILED' } })).map((f) => (f.diffJson as any).reason);
+    const reasons = (await admin.auditLog.findMany({ where: { action: 'SSO_LOGIN_FAILED' } })).map(
+      (f) => (f.diffJson as { reason?: unknown }).reason
+    );
     expect(reasons).toContain('no seats left');
     await (await as('admin')).put('/api/v1/admin/sso').send(conf({}));
   });

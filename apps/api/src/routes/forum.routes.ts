@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { logAuditEvent } from '../lib/audit';
@@ -64,7 +64,7 @@ function authorView(
   };
 }
 
-const canWrite = (req: any) => req.user!.role !== 'AUDITOR';
+const canWrite = (req: Request) => req.user!.role !== 'AUDITOR';
 
 async function voteCounts(tenantId: string, type: 'THREAD' | 'POST', ids: string[], userId: string) {
   if (ids.length === 0) return { counts: new Map<string, number>(), mine: new Set<string>() };
@@ -81,7 +81,7 @@ async function voteCounts(tenantId: string, type: 'THREAD' | 'POST', ids: string
   return { counts, mine };
 }
 
-async function loadThread(req: any, threadId: string) {
+async function loadThread(req: Request, threadId: string) {
   const thread = await prisma.forumThread.findFirst({ where: { id: threadId, tenantId: tenantIdOf(req) } });
   if (!thread) throw new HttpError(404, 'Thread not found');
   const access = await requireContentAccess(req, thread.courseId);
@@ -268,8 +268,8 @@ router.post(
     } else {
       try {
         await prisma.forumVote.create({ data: { tenantId, userId: req.user!.id, targetType, targetId } });
-      } catch (err: any) {
-        if (err?.code !== 'P2002') throw err; // concurrent double-click: already voted
+      } catch (err) {
+        if ((err as { code?: string } | null)?.code !== 'P2002') throw err; // concurrent double-click: already voted
       }
     }
     const upvotes = await prisma.forumVote.count({ where: { tenantId, targetType, targetId } });
@@ -294,8 +294,8 @@ router.post(
 
     try {
       await prisma.forumFlag.create({ data: { tenantId, reporterId: req.user!.id, targetType, targetId, reason } });
-    } catch (err: any) {
-      if (err?.code === 'P2002') throw new HttpError(409, 'You have already reported this');
+    } catch (err) {
+      if ((err as { code?: string } | null)?.code === 'P2002') throw new HttpError(409, 'You have already reported this');
       throw err;
     }
     await Promise.all(

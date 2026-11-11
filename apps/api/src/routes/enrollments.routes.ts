@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { personalDue } from '../lib/deadlines';
 import { logAuditEvent } from '../lib/audit';
 import { authenticateJWT, tenantIdOf } from '../middleware/auth';
-import { EnrollmentStatus } from '@enterprise-lms/database';
+import { EnrollmentStatus, Prisma } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
 import { idSchema, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { COURSE_STAFF_ROLES, isAdminRole, canSeeAllCourses } from '../lib/access';
@@ -50,6 +50,12 @@ const courseSummary = {
 
 const isCourseStaff = (user: NonNullable<Request['user']>, instructorIds: string[]) =>
   isAdminRole(user.role) || ((COURSE_STAFF_ROLES as readonly string[]).includes(user.role) && instructorIds.includes(user.id));
+
+function hasPendingManual(answersJson: unknown): boolean {
+  if (typeof answersJson !== 'object' || answersJson === null) return false;
+  const pending = (answersJson as { pendingManual?: unknown }).pendingManual;
+  return Array.isArray(pending) && pending.length > 0;
+}
 
 /**
  * GET /api/v1/enrollments/grades
@@ -148,7 +154,7 @@ router.get(
                 passingPercent: q.passingPercent,
                 bestPercent: best ? Math.round((best.score! / best.maxScore) * 1000) / 10 : null,
                 passed: q.submissions.some((s) => s.passed),
-                awaitingManualGrading: q.submissions.some((s) => ((s.answersJson as any)?.pendingManual ?? []).length > 0),
+                awaitingManualGrading: q.submissions.some((s) => hasPendingManual(s.answersJson)),
               };
             }),
         };
@@ -299,7 +305,7 @@ const listEnrollments = route('Failed to retrieve enrollments', async (req: Requ
   const { page, limit, userId, courseId, status } = parseQuery(req, listQuery);
 
   const rosterMode = (!!userId && userId !== user.id) || (!userId && !!courseId);
-  const where: any = { tenantId };
+  const where: Prisma.EnrollmentWhereInput = { tenantId };
 
   if (!rosterMode) {
     where.userId = user.id;

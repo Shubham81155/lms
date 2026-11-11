@@ -104,7 +104,7 @@ function samlResponse(o: Opts, extraBeforeAssertion = ''): string {
 async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
   await admin.tenant.create({ data: { id: 't-m', slug: 'mit', name: 'MIT', tier: 'STARTER' } });
-  const user = (id: string, tenantId: string, slug: string, role: any, extra: object = {}) =>
+  const user = (id: string, tenantId: string, slug: string, role: import('@prisma/client').GlobalRole, extra: object = {}) =>
     admin.user.create({
       data: {
         id,
@@ -173,7 +173,7 @@ async function signIn(attrs: Record<string, string>, o: Opts = {}, flow: Flow = 
   const withHost = (r: request.Test) => (flow.host ? r.set('Host', flow.host) : r.set('x-tenant-id', 'harvard'));
   const start = await withHost(agent.get('/api/v1/auth/saml/start'));
   if (start.status !== 302 || !start.headers.location.startsWith(ENTRY))
-    return { agent, start, acs: start as request.Response, req: undefined as any };
+    return { agent, start, acs: start as request.Response, req: undefined as unknown as ReturnType<typeof decodeRequest> };
   const req = decodeRequest(start.headers.location);
   const built: Opts = { inResponseTo: req.id, attributes: attrs, ...o };
   const final = flow.mutate ? flow.mutate(built, req.id) : built;
@@ -235,7 +235,9 @@ describe('pure helpers', () => {
 
   it('finds the e-mail and a stable subject in a profile', () => {
     const p = (o: object) =>
-      ({ issuer: IDP, nameID: 'n1', nameIDFormat: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent', ...o }) as any;
+      ({ issuer: IDP, nameID: 'n1', nameIDFormat: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent', ...o }) as unknown as Parameters<
+        typeof saml.emailFromProfile
+      >[0];
     expect(saml.emailFromProfile(p({ email: ' A@x.edu ' }), 'email')).toBe('A@x.edu');
     expect(saml.emailFromProfile(p({ mail: 'm@x.edu' }), 'email')).toBe('m@x.edu');
     expect(saml.emailFromProfile(p({ 'urn:custom:mail': ['c@x.edu'] }), 'urn:custom:mail')).toBe('c@x.edu');
@@ -527,7 +529,7 @@ describe('responses that must be refused', () => {
   it('records refusals in the audit log with a reason, but never in the redirect', async () => {
     const failures = await admin.auditLog.findMany({ where: { action: 'SAML_LOGIN_FAILED' } });
     expect(failures.length).toBeGreaterThanOrEqual(8);
-    expect(failures.every((f) => typeof (f.diffJson as any).reason === 'string')).toBe(true);
+    expect(failures.every((f) => typeof (f.diffJson as { reason?: unknown }).reason === 'string')).toBe(true);
     const r = await signIn({ email: 'stranger@x.edu' }, { nameId: 'nid-stranger' });
     expect(r.acs.headers.location).toBe(`${APP}/login?error=sso_failed`);
   });

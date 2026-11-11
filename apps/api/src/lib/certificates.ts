@@ -28,8 +28,8 @@ export async function issueCertificate(enrollmentId: string, tenantSlug: string)
           verificationQr: `${config.APP_URL}/verify?number=${encodeURIComponent(certificateNumber)}&tenant=${encodeURIComponent(tenantSlug)}`,
         },
       });
-    } catch (err: any) {
-      if (err?.code !== 'P2002') throw err;
+    } catch (err) {
+      if ((err as { code?: string } | null)?.code !== 'P2002') throw err;
       // Either a concurrent request created it, or the number collided; re-check, then retry.
       const raced = await prisma.certificate.findUnique({ where: { enrollmentId } });
       if (raced) return raced;

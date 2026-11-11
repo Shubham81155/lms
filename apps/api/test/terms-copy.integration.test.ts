@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import os from 'os';
 import path from 'path';
 import { mkdtemp, rm } from 'fs/promises';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Academic terms and course copy against a real PostgreSQL (row-level security on): who manages terms,
@@ -23,7 +23,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -149,7 +149,7 @@ async function as(who: string) {
 }
 
 /** Asserts the status, and that the body satisfies the documented schema of that status. */
-function check(key: string, res: { status: number; body: any }, status: number) {
+function check(key: string, res: Pick<request.Response, 'status' | 'body'>, status: number) {
   expect(res.status, `${key}: ${JSON.stringify(res.body)}`).toBe(status);
   const entry = RESPONSES[key];
   expect(entry, `no entry for ${key}`).toBeDefined();
@@ -165,7 +165,7 @@ function check(key: string, res: { status: number; body: any }, status: number) 
 describe('terms', () => {
   it('are listed for everyone and managed by administrators', async () => {
     const list = check('GET /api/v1/terms', await (await as('s1')).get('/api/v1/terms'), 200);
-    expect(list.data.map((t: any) => [t.name, t.courseCount])).toEqual([
+    expect(list.data.map((t: { name: unknown; courseCount: unknown }) => [t.name, t.courseCount])).toEqual([
       ['Spring 2027', 0],
       ['Fall 2026', 1],
     ]);
@@ -186,7 +186,9 @@ describe('terms', () => {
     const t = await as('teacher');
     expect((await t.put('/api/v1/courses/c1').send({ termId: 'nope' })).status).toBe(400);
     const byTerm = await t.get('/api/v1/courses').query({ termId: 'fall' });
-    expect(byTerm.body.data.map((c: any) => [c.code, c.term?.name])).toEqual([['CS101-F26', 'Fall 2026']]);
+    expect(byTerm.body.data.map((c: { code: unknown; term?: { name: unknown } }) => [c.code, c.term?.name])).toEqual([
+      ['CS101-F26', 'Fall 2026'],
+    ]);
     expect((await t.get('/api/v1/courses').query({ termId: 'spring' })).body.data).toEqual([]);
   });
 });

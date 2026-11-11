@@ -121,7 +121,11 @@ export function unlinkedTenantDelegates(): string[] {
 
 const select = (fields: string[]) => Object.fromEntries(fields.map((f) => [f, true]));
 const replacer = (_k: string, v: unknown) => (typeof v === 'bigint' ? v.toString() : v);
-const delegateOf = (plan: TablePlan) => (prisma as any)[plan.delegate];
+interface ReadDelegate {
+  count: (args: { where: unknown }) => Promise<number>;
+  findMany: (args: Record<string, unknown>) => Promise<{ id: string }[]>;
+}
+const delegateOf = (plan: TablePlan) => (prisma as unknown as Record<string, ReadDelegate>)[plan.delegate];
 
 /** Counts each table's rows of the organisation (the deletion summary). */
 export async function countRows(tenantId: string): Promise<Record<string, number>> {
@@ -210,7 +214,7 @@ Passwords, sign-in tokens, MFA secrets, API keys and other credentials are never
 async function writeZip(tenantId: string, exportId: string): Promise<string> {
   const tempPath = path.join(os.tmpdir(), `lms-export-${exportId}.zip`);
   const tenantFields = exportedFields('Tenant');
-  const tenant = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: select(tenantFields) as any });
+  const tenant = await basePrisma.tenant.findUnique({ where: { id: tenantId }, select: select(tenantFields) as Prisma.TenantSelect });
   if (!tenant) throw new Error('The organisation no longer exists');
   const files = await storedFilesOf(tenantId);
   const counts: Record<string, number> = {};

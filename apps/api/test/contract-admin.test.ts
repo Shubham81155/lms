@@ -24,7 +24,7 @@ const covered = new Set<string>();
 
 async function seed() {
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'Harvard', tier: 'ENTERPRISE' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: import('@prisma/client').GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -109,7 +109,7 @@ async function as(who: string, tenant = 'harvard') {
 }
 
 /** Asserts the status is a documented success status and the body matches its schema. */
-function check(key: string, res: request.Response, status?: number): any {
+function check(key: string, res: request.Response, status?: number): request.Response['body'] {
   const entry = RESPONSES[key];
   expect(entry, `${key} is in the table`).toBeTruthy();
   const docs = [entry.response!, ...(entry.otherResponses ?? [])];
@@ -147,15 +147,15 @@ describe('tenant settings, audit log and stats', () => {
   it('audit log: filters, action list and CSV export for auditors', async () => {
     const aud = await as('auditor');
     const actions = check('GET /api/v1/admin/audit-logs/actions', await aud.get('/api/v1/admin/audit-logs/actions'));
-    expect(actions.data.map((a: any) => a.action)).toContain('SEEDED_ORPHAN');
+    expect(actions.data.map((a: { action: unknown }) => a.action)).toContain('SEEDED_ORPHAN');
 
     const byActor = await aud.get('/api/v1/admin/audit-logs?actor=AUDITOR@x.edu&limit=100');
     expect(byActor.status).toBe(200);
     expect(byActor.body.data.length).toBeGreaterThan(0);
-    expect(byActor.body.data.every((l: any) => l.user?.email === 'auditor@x.edu')).toBe(true);
+    expect(byActor.body.data.every((l: { user?: { email?: string } | null }) => l.user?.email === 'auditor@x.edu')).toBe(true);
 
     const csv = await aud.get('/api/v1/admin/audit-logs/export.csv?action=SEEDED_ORPHAN');
-    check('GET /api/v1/admin/audit-logs/export.csv', { ...csv, body: csv.text } as any);
+    check('GET /api/v1/admin/audit-logs/export.csv', { ...csv, body: csv.text } as unknown as request.Response);
     expect(csv.headers['content-type']).toContain('text/csv');
     expect(csv.headers['content-disposition']).toContain('attachment');
     const lines = csv.text
@@ -173,10 +173,10 @@ describe('tenant settings, audit log and stats', () => {
   it('GET /admin/audit-logs (including an entry without a user)', async () => {
     const res = await (await as('auditor')).get('/api/v1/admin/audit-logs?limit=100');
     const body = check('GET /api/v1/admin/audit-logs', res);
-    expect(body.data.some((l: any) => l.user === null && l.action === 'SEEDED_ORPHAN')).toBe(true);
-    expect(body.data.some((l: any) => l.user?.role === 'TENANT_ADMIN')).toBe(true);
+    expect(body.data.some((l: { user: unknown; action: unknown }) => l.user === null && l.action === 'SEEDED_ORPHAN')).toBe(true);
+    expect(body.data.some((l: { user?: { role?: string } | null }) => l.user?.role === 'TENANT_ADMIN')).toBe(true);
     // The embedded user exposes only these fields.
-    expect(keys(body.data.find((l: any) => l.user).user)).toEqual(['email', 'firstName', 'id', 'lastName', 'role']);
+    expect(keys(body.data.find((l: { user: unknown }) => l.user).user)).toEqual(['email', 'firstName', 'id', 'lastName', 'role']);
     expect((await (await as('admin')).get('/api/v1/admin/audit-logs?startDate=2030-01-01&endDate=2020-01-01')).status).toBe(400);
   });
 
@@ -209,7 +209,7 @@ describe('features, usage and export', () => {
   it('the platform operator manages plans, quotas and feature overrides', async () => {
     const op = await as('operator', 'ops');
     const list = check('GET /api/v1/operator/tenants', await op.get('/api/v1/operator/tenants'));
-    const harvard = list.data.find((t: any) => t.slug === 'harvard');
+    const harvard = list.data.find((t: { slug: string }) => t.slug === 'harvard');
     expect(harvard).toMatchObject({ tier: 'ENTERPRISE', seatQuota: null, seatsUsed: 7, overrides: {} });
 
     const set = check(
@@ -296,7 +296,7 @@ describe('webhooks', () => {
       });
     });
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
-    url = `http://127.0.0.1:${(server.address() as any).port}`;
+    url = `http://127.0.0.1:${(server.address() as import('net').AddressInfo).port}`;
   });
   afterAll(() => new Promise<void>((r) => server.close(() => r())));
 
@@ -351,8 +351,10 @@ describe('webhooks', () => {
       },
     });
     const deliveries = check('GET /api/v1/admin/webhooks/:id/deliveries', await a.get(`/api/v1/admin/webhooks/${id}/deliveries`));
-    expect(deliveries.data.some((d: any) => d.payload !== null && d.nextAttemptAt !== null)).toBe(true);
-    expect(deliveries.data.some((d: any) => d.success === true && d.statusCode === 200)).toBe(true);
+    expect(deliveries.data.some((d: { payload: unknown; nextAttemptAt: unknown }) => d.payload !== null && d.nextAttemptAt !== null)).toBe(
+      true
+    );
+    expect(deliveries.data.some((d: { success: unknown; statusCode: unknown }) => d.success === true && d.statusCode === 200)).toBe(true);
     expect(JSON.stringify(deliveries)).not.toContain(secret);
     expect((await a.get('/api/v1/admin/webhooks/nope/deliveries')).status).toBe(404);
     // The secret does not appear in the audit trail either.
@@ -383,7 +385,7 @@ describe('SCIM tokens', () => {
 
     check('DELETE /api/v1/admin/scim-tokens/:id', await a.delete(`/api/v1/admin/scim-tokens/${created.data.id}`));
     expect((await a.delete(`/api/v1/admin/scim-tokens/${created.data.id}`)).status).toBe(404);
-    const after = (await a.get('/api/v1/admin/scim-tokens')).body.data.find((t: any) => t.id === created.data.id);
+    const after = (await a.get('/api/v1/admin/scim-tokens')).body.data.find((t: { id: unknown }) => t.id === created.data.id);
     expect(after.revokedAt).toEqual(expect.any(String));
     expect(check('GET /api/v1/admin/scim-tokens', await a.get('/api/v1/admin/scim-tokens')).data.length).toBe(1);
   });
@@ -411,7 +413,7 @@ describe('OIDC single sign-on', () => {
       res.end('{}');
     });
     await new Promise<void>((r) => idp.listen(0, '127.0.0.1', r));
-    issuer = `http://127.0.0.1:${(idp.address() as any).port}`;
+    issuer = `http://127.0.0.1:${(idp.address() as import('net').AddressInfo).port}`;
   });
   afterAll(() => new Promise<void>((r) => idp.close(() => r())));
 
@@ -541,7 +543,7 @@ describe('campuses, departments and compliance', () => {
 
   it('GET /admin/compliance', async () => {
     const body = check('GET /api/v1/admin/compliance', await (await as('admin')).get('/api/v1/admin/compliance'));
-    expect(body.data.checks.map((c: any) => c.id)).toContain('tenant-isolation');
+    expect(body.data.checks.map((c: { id: unknown }) => c.id)).toContain('tenant-isolation');
     expect(body.data.declarations).toMatchObject({ dataRegion: 'us-east-1' });
   });
 });
@@ -564,13 +566,13 @@ describe('live classes', () => {
 
     const staff = check('GET /api/v1/courses/:courseId/live-sessions', await t.get('/api/v1/courses/c1/live-sessions'));
     expect(staff.configured).toBe(true);
-    expect(staff.data.find((s: any) => s.id === id)).toMatchObject({ attendeeCount: 0 });
+    expect(staff.data.find((s: { id: unknown }) => s.id === id)).toMatchObject({ attendeeCount: 0 });
     const learner = check('GET /api/v1/courses/:courseId/live-sessions', await (await as('s1')).get('/api/v1/courses/c1/live-sessions'));
-    expect(learner.data.find((s: any) => s.id === id)).toMatchObject({ attended: false });
-    expect(learner.data.find((s: any) => s.id === id)).not.toHaveProperty('attendeeCount');
+    expect(learner.data.find((s: { id: unknown }) => s.id === id)).toMatchObject({ attended: false });
+    expect(learner.data.find((s: { id: unknown }) => s.id === id)).not.toHaveProperty('attendeeCount');
 
     const mine = check('GET /api/v1/live-sessions/mine', await (await as('s1')).get('/api/v1/live-sessions/mine'));
-    expect(mine.data.find((s: any) => s.id === id).course).toMatchObject({ id: 'c1', code: 'C1' });
+    expect(mine.data.find((s: { id: unknown }) => s.id === id).course).toMatchObject({ id: 'c1', code: 'C1' });
 
     const patched = check(
       'PATCH /api/v1/live-sessions/:id',
@@ -596,7 +598,7 @@ describe('live classes', () => {
 
     const att = check('GET /api/v1/live-sessions/:id/attendance', await t.get(`/api/v1/live-sessions/${id}/attendance`));
     expect(att.summary.enrolled).toBe(2);
-    expect(att.data.find((r: any) => r.userId === 's1')).toMatchObject({ joinCount: 1, inRoomNow: false });
+    expect(att.data.find((r: { userId: unknown }) => r.userId === 's1')).toMatchObject({ joinCount: 1, inRoomNow: false });
     expect((await (await as('s1')).get(`/api/v1/live-sessions/${id}/attendance`)).status).toBe(403);
 
     const ended = check('POST /api/v1/live-sessions/:id/end', await t.post(`/api/v1/live-sessions/${id}/end`));
@@ -703,8 +705,8 @@ describe('organisation registration and the platform operator', () => {
     const op = await as('operator', 'ops');
     const pending = check('GET /api/v1/operator/requests', await op.get('/api/v1/operator/requests'));
     expect(pending.pagination).toMatchObject({ page: 1, total: 2 });
-    const one = pending.data.find((r: any) => r.slug === 'contract-college');
-    const other = pending.data.find((r: any) => r.slug === 'contract-other');
+    const one = pending.data.find((r: { slug: string }) => r.slug === 'contract-college');
+    const other = pending.data.find((r: { slug: string }) => r.slug === 'contract-other');
     const approved = check(
       'POST /api/v1/operator/requests/:id/approve',
       await op.post(`/api/v1/operator/requests/${one.id}/approve`).send({ tier: 'PROFESSIONAL', seatQuota: 20 })

@@ -17,7 +17,8 @@ let fake: http.Server;
 let lib: typeof import('../src/lib/plagiarism-submit.js');
 let copyleaks: typeof import('../src/lib/copyleaks.js');
 
-type Received = { method: string; url: string; headers: http.IncomingHttpHeaders; body: any };
+type ScanBody = { base64: string; properties: { webhooks: { status: string; statusHeaders: string[][] } } };
+type Received = { method: string; url: string; headers: http.IncomingHttpHeaders; body: ScanBody };
 let received: Received[] = [];
 let logins = 0;
 let submitStatus = 201;

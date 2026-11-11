@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import type { Prisma } from '@enterprise-lms/database';
 import { prisma } from './prisma';
 import { logger } from './logger';
 
@@ -61,7 +62,7 @@ export async function recordStatement(input: RecordInput): Promise<string | null
         actorUserId: input.user.id,
         verbId: input.verb.id,
         objectId: input.object.id,
-        statementJson: statement as any,
+        statementJson: statement as Prisma.InputJsonValue,
         timestamp,
       },
     });

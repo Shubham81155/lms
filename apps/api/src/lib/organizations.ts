@@ -301,8 +301,8 @@ export async function createOrganization(input: NewOrganization, actor: Actor, o
       }
       return { tenant, admin };
     });
-  } catch (err: any) {
-    if (err?.code === 'P2002') throw new HttpError(409, 'That address or domain is already taken');
+  } catch (err) {
+    if ((err as { code?: string } | null)?.code === 'P2002') throw new HttpError(409, 'That address or domain is already taken');
     throw err;
   }
 

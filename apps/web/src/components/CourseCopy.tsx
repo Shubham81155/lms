@@ -54,7 +54,7 @@ export const CourseCopy: React.FC<{ courseId: string; onClose: () => void; onCop
   const [result, setResult] = useState<CopyResult | null>(null);
 
   const src = source.data?.data;
-  const list = terms.data?.data ?? [];
+  const list = useMemo(() => terms.data?.data ?? [], [terms.data]);
   const chosenTerm = termId === undefined ? (src?.termId ?? null) : termId;
   const codeValue = code ?? (src ? `${src.code}-COPY` : '');
   const titleValue = title ?? src?.title ?? '';

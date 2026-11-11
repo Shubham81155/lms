@@ -4,9 +4,9 @@ import { prisma } from '../lib/prisma';
 import { invalidateSessionCache } from '../lib/session';
 import { logAuditEvent, pick } from '../lib/audit';
 import { authenticateJWT, requireRole, startSession, tenantIdOf } from '../middleware/auth';
-import { GlobalRole, UserStatus } from '@enterprise-lms/database';
+import { GlobalRole, Prisma, UserStatus } from '@enterprise-lms/database';
 import { HttpError, route } from '../lib/http';
-import { httpUrl, pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
+import { pageMeta, paginationShape, parseBody, parseQuery } from '../lib/validate';
 import { COURSE_STAFF_ROLES, canSeeAllCourses, isAdminRole } from '../lib/access';
 import { withSeat } from '../lib/features';
 import { sendInvitation } from '../lib/invitations';
@@ -49,6 +49,9 @@ export const listQuery = z.object({
   search: z.string().trim().max(100).optional(),
 });
 
+const hasErrorCode = (err: unknown, code: string): boolean =>
+  typeof err === 'object' && err !== null && 'code' in err && (err as { code?: unknown }).code === code;
+
 const USER_AUDIT_FIELDS = ['firstName', 'lastName', 'avatarUrl', 'role', 'status'] as const;
 
 const safeUserSelect = {
@@ -77,7 +80,7 @@ router.get(
     const tenantId = tenantIdOf(req);
     const { page, limit, role, status, search } = parseQuery(req, listQuery);
 
-    const where: any = { tenantId };
+    const where: Prisma.UserWhereInput = { tenantId };
     if (role) where.role = role;
     if (status) where.status = status;
     if (search) {
@@ -148,8 +151,8 @@ router.post(
           select: safeUserSelect,
         })
       );
-    } catch (err: any) {
-      if (err?.code === 'P2002') throw new HttpError(409, 'A person with this e-mail address already exists');
+    } catch (err: unknown) {
+      if (hasErrorCode(err, 'P2002')) throw new HttpError(409, 'A person with this e-mail address already exists');
       throw err;
     }
 
@@ -230,8 +233,9 @@ router.post(
     let table: string[][];
     try {
       table = parseCsv(input.csv);
-    } catch (e: any) {
-      throw new HttpError(400, `The file is not valid CSV: ${e.message}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new HttpError(400, `The file is not valid CSV: ${msg}`);
     }
     if (table.length < 2) throw new HttpError(400, 'The file needs a header row and at least one person');
     if (table.length - 1 > IMPORT_MAX_ROWS) throw new HttpError(400, `At most ${IMPORT_MAX_ROWS} people can be imported at once`);
@@ -334,9 +338,9 @@ router.post(
             created++;
             if (input.sendInvitations) await sendInvitation({ id: user.id, tenantId, email: row.email, firstName: row.firstName });
             void dispatchWebhook(tenantId, 'user.provisioned', { userId: user.id, email: row.email });
-          } catch (err: any) {
+          } catch (err: unknown) {
             row.status = 'ERROR';
-            row.message = err?.code === 'P2002' ? 'Already has an account' : 'Could not be created';
+            row.message = hasErrorCode(err, 'P2002') ? 'Already has an account' : 'Could not be created';
             continue;
           }
         }

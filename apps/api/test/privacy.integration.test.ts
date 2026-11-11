@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Personal-data export, FERPA directory opt-out and erasure, against a real PostgreSQL with the
@@ -20,7 +20,7 @@ async function seed() {
     ['t-m', 'mit'],
   ])
     await admin.tenant.create({ data: { id, slug, name: slug } });
-  const user = (id: string, tenantId: string, slug: string, role: any) =>
+  const user = (id: string, tenantId: string, slug: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -134,7 +134,9 @@ describe('personal data export', () => {
     expect(res.body.notifications).toHaveLength(1);
     expect(res.body.forum.threads[0].title).toContain('Elm St');
     expect(res.body.learningActivity).toHaveLength(1);
-    expect(res.body.accountActivity.some((a: any) => a.action === 'USER_LOGIN' || a.action === 'PERSONAL_DATA_EXPORTED')).toBe(true);
+    expect(
+      res.body.accountActivity.some((a: { action: unknown }) => a.action === 'USER_LOGIN' || a.action === 'PERSONAL_DATA_EXPORTED')
+    ).toBe(true);
     expect(JSON.stringify(res.body)).not.toMatch(/passwordHash|mfaSecret|\$2[aby]\$/);
   });
 
@@ -154,7 +156,7 @@ describe('FERPA directory opt-out', () => {
   const board = async (who: string) => {
     const res = await (await as(who)).get('/api/v1/courses/c1/threads');
     expect(res.status).toBe(200);
-    return Object.fromEntries(res.body.data.map((t: any) => [t.author.id, t.author.name]));
+    return Object.fromEntries(res.body.data.map((t: { author: { id: unknown; name: unknown } }) => [t.author.id, t.author.name]));
   };
 
   it('hides the name from classmates but not from staff or the person', async () => {
@@ -202,7 +204,7 @@ describe('erasure', () => {
     expect(thread).toMatchObject({ title: '[removed]', body: '[removed]', hidden: true });
     const stmt = await admin.xapiStatement.findUniqueOrThrow({ where: { id: 'x-1' } });
     expect(JSON.stringify(stmt.statementJson)).not.toContain('s1@x.edu');
-    expect((stmt.statementJson as any).verb.id).toBe('completed');
+    expect((stmt.statementJson as { verb: { id: string } }).verb.id).toBe('completed');
 
     // The existing token and a fresh login both stop working.
     expect((await s1.get('/api/v1/auth/me')).status).toBe(401);
@@ -216,7 +218,7 @@ describe('erasure', () => {
     expect(audit).toBeTruthy();
     // Erased people's forum posts are hidden from classmates.
     const threads = await (await as('s3')).get('/api/v1/courses/c1/threads');
-    expect(threads.body.data.some((t: any) => t.author.id === 's1')).toBe(false);
+    expect(threads.body.data.some((t: { author: { id: unknown } }) => t.author.id === 's1')).toBe(false);
   });
 
   it('lets an administrator erase someone on request, with guard rails', async () => {

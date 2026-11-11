@@ -30,11 +30,7 @@ interface ProfileSettingsModalProps {
   defaultTab?: 'profile' | 'password';
 }
 
-export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
-  isOpen,
-  onClose,
-  defaultTab = 'profile',
-}) => {
+export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOpen, onClose, defaultTab = 'profile' }) => {
   useEscapeKey(onClose);
   const { user, refreshUser, updateUserSession } = useAuth();
   const t = useT();
@@ -244,9 +240,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             onClick={() => setActiveTab('profile')}
             className={clsx(
               'flex items-center gap-2 py-3.5 px-4 text-xs font-semibold border-b-2 transition-colors',
-              activeTab === 'profile'
-                ? 'border-brand text-brand'
-                : 'border-transparent text-ink-muted hover:text-ink'
+              activeTab === 'profile' ? 'border-brand text-brand' : 'border-transparent text-ink-muted hover:text-ink'
             )}
           >
             <UserIcon className="h-4 w-4" />
@@ -257,9 +251,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             onClick={() => setActiveTab('password')}
             className={clsx(
               'flex items-center gap-2 py-3.5 px-4 text-xs font-semibold border-b-2 transition-colors',
-              activeTab === 'password'
-                ? 'border-brand text-brand'
-                : 'border-transparent text-ink-muted hover:text-ink'
+              activeTab === 'password' ? 'border-brand text-brand' : 'border-transparent text-ink-muted hover:text-ink'
             )}
           >
             <Lock className="h-4 w-4" />
@@ -273,9 +265,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             <div className="space-y-6">
               {/* Profile Picture Card */}
               <div className="rounded-2xl border border-line bg-canvas p-5 space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-ink-subtle">
-                  Profile Picture
-                </h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-ink-subtle">Profile Picture</h4>
 
                 {avatarError && (
                   <div className="flex items-center gap-2 p-3 text-xs text-danger bg-danger/10 border border-danger/20 rounded-xl">
@@ -317,9 +307,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                   {/* Upload Controls */}
                   <div className="flex-1 space-y-2 text-center sm:text-left">
                     <p className="text-xs font-semibold text-ink">Upload a new photo</p>
-                    <p className="text-[11px] text-ink-muted leading-relaxed">
-                      JPG, PNG, WebP or GIF. Maximum size 5 MB.
-                    </p>
+                    <p className="text-[11px] text-ink-muted leading-relaxed">JPG, PNG, WebP or GIF. Maximum size 5 MB.</p>
 
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
                       <input
@@ -385,9 +373,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
 
               {/* Personal Information Form */}
               <form onSubmit={handleSaveProfile} className="rounded-2xl border border-line bg-canvas p-5 space-y-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-ink-subtle">
-                  Personal Information
-                </h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-ink-subtle">Personal Information</h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <label className="block space-y-1.5">
@@ -456,9 +442,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             <form onSubmit={handleChangePassword} className="rounded-2xl border border-line bg-canvas p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <Shield className="h-4 w-4 text-brand" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-ink-subtle">
-                  Update Account Password
-                </h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-ink-subtle">Update Account Password</h4>
               </div>
 
               <p className="text-xs text-ink-muted leading-relaxed">
@@ -550,9 +534,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                     confirmPassword && confirmPassword !== newPassword ? 'border-danger' : 'border-line'
                   )}
                 />
-                {confirmPassword && confirmPassword !== newPassword && (
-                  <p className="text-[11px] text-danger">Passwords do not match</p>
-                )}
+                {confirmPassword && confirmPassword !== newPassword && <p className="text-[11px] text-danger">Passwords do not match</p>}
               </label>
 
               <div className="pt-2">

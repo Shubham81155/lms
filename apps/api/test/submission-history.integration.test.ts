@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type GlobalRole } from '@prisma/client';
 import { startTestDatabase, TestDatabase } from '../../../packages/database/test-utils/embedded';
 
 // Assignment submission history against a real PostgreSQL (as the unprivileged app role, so row-level
@@ -17,7 +17,7 @@ beforeAll(async () => {
   db = await startTestDatabase();
   admin = new PrismaClient({ datasourceUrl: db.adminUrl });
   await admin.tenant.create({ data: { id: 't-h', slug: 'harvard', name: 'harvard' } });
-  const user = (id: string, role: any) =>
+  const user = (id: string, role: GlobalRole) =>
     admin.user.create({
       data: {
         id,
@@ -77,7 +77,9 @@ describe('submission history', () => {
 
     const res = await versions('s1');
     expect(res.status).toBe(200);
-    expect(res.body.data.map((v: any) => [v.version, v.submissionText, v.fileUrl])).toEqual([
+    expect(
+      res.body.data.map((v: { version: unknown; submissionText: unknown; fileUrl: unknown }) => [v.version, v.submissionText, v.fileUrl])
+    ).toEqual([
       [2, 'Second draft', 'https://files.example/essay.pdf'],
       [1, 'First draft', null],
     ]);
