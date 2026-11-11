@@ -85,15 +85,16 @@ What remains for a fully enterprise-grade launch is laid out in [docs/ENTERPRISE
 
 ## Documentation
 
-| Topic                               | Where                                                                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Multi-tenancy and database roles    | [docs/architecture/multi_tenancy.md](docs/architecture/multi_tenancy.md)                                                  |
-| Authorization model                 | [docs/architecture/api_authorization.md](docs/architecture/api_authorization.md)                                          |
-| Security and compliance             | [docs/architecture/security_compliance.md](docs/architecture/security_compliance.md), [docs/compliance/](docs/compliance) |
-| Production deployment, DNS and TLS  | [docs/deployment/dns-and-tls.md](docs/deployment/dns-and-tls.md)                                                          |
-| Backups, monitoring, restore drills | [docs/deployment/operations.md](docs/deployment/operations.md)                                                            |
-| Custom domains                      | [docs/custom-domains.md](docs/custom-domains.md)                                                                          |
-| Roadmap (built and planned)         | [docs/ROADMAP.md](docs/ROADMAP.md), [docs/ENTERPRISE-ROADMAP.md](docs/ENTERPRISE-ROADMAP.md)                              |
+| Topic                                  | Where                                                                                                                     |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Multi-tenancy and database roles       | [docs/architecture/multi_tenancy.md](docs/architecture/multi_tenancy.md)                                                  |
+| Authorization model                    | [docs/architecture/api_authorization.md](docs/architecture/api_authorization.md)                                          |
+| Security and compliance                | [docs/architecture/security_compliance.md](docs/architecture/security_compliance.md), [docs/compliance/](docs/compliance) |
+| Production deployment, DNS and TLS     | [docs/deployment/dns-and-tls.md](docs/deployment/dns-and-tls.md)                                                          |
+| Public demo on one address (no domain) | [docs/deployment/demo.md](docs/deployment/demo.md)                                                                        |
+| Backups, monitoring, restore drills    | [docs/deployment/operations.md](docs/deployment/operations.md)                                                            |
+| Custom domains                         | [docs/custom-domains.md](docs/custom-domains.md)                                                                          |
+| Roadmap (built and planned)            | [docs/ROADMAP.md](docs/ROADMAP.md), [docs/ENTERPRISE-ROADMAP.md](docs/ENTERPRISE-ROADMAP.md)                              |
 
 ---
 
