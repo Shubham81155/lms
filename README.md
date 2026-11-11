@@ -40,7 +40,7 @@ manage people, sign-in and compliance; a platform operator runs the whole servic
 | Layer    | Technology                                                                                           |
 | -------- | ---------------------------------------------------------------------------------------------------- |
 | Web      | Next.js, React, TypeScript, Tailwind CSS                                                             |
-| API      | Node.js, Express, Zod validation, OpenAPI                                                            |
+| API      | Node.js, Express, Zod 4 validation, OpenAPI                                                          |
 | Data     | PostgreSQL 16 with row-level security, Prisma, optional Redis for shared rate limits                 |
 | Security | bcrypt, httpOnly JWT sessions re-checked on every request, AES-256-GCM field encryption, ClamAV scan |
 | Platform | Docker Compose, Caddy, Prometheus and Alertmanager, S3-compatible storage, LiveKit (live classes)    |
@@ -365,6 +365,7 @@ The API describes itself: `GET /api/v1/openapi.json` (committed copy: `apps/api/
 - After changing routes or schemas: `npm run api:sync` (rewrites `apps/api/openapi.json` and the web's generated `apps/web/src/lib/api-schema.ts`). A test fails if either is stale.
 - The web app calls documented endpoints through `typedGet()` (`apps/web/src/lib/typed-api.ts`): a changed response shape or query parameter is a compile error.
 - `apps/api/test/openapi.test.ts` also proves that every route not on an explicit allow-list answers 401 without a session.
+- **Zod 4** (upgraded from 3 to clear a high-severity advisory in CI's dependency audit, with `@asteasolutions/zod-to-openapi` 9). Two things to know when writing schemas: `apps/api/src/openapi/zod-extend.ts` must be imported before any schema is created, because Zod 4 gives each schema its methods at creation; and `.partial()` still applies `.default()` values, so an update (PATCH) schema must be built from fields without defaults or it will overwrite stored values.
 
 ---
 
