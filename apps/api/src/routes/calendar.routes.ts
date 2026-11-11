@@ -40,6 +40,8 @@ export const createSchema = z.object(eventShape).refine((e) => e.endsAt >= e.sta
 export const updateSchema = z
   .object({
     ...eventShape,
+    // No default here: an update that does not mention the time zone must keep the event's own.
+    timezone: tz.optional(),
     // An event cannot be moved between courses: any value is rejected.
     courseId: z
       .any()

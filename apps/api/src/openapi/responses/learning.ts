@@ -355,7 +355,7 @@ export const RESPONSES: ResponseTable = {
     response: { status: 200, contentType: 'text/html', schema: z.string(), description: 'The player page.' },
     errors: [403, 404],
   },
-  'GET /scorm-content/:token/__state': { response: body(z.object({ cmi: z.record(z.string()) })), errors: [403, 404] },
+  'GET /scorm-content/:token/__state': { response: body(z.object({ cmi: z.record(z.string(), z.string()) })), errors: [403, 404] },
   'POST /scorm-content/:token/__commit': {
     response: body(z.object({ status: z.string(), scorePercent: z.number().nullable(), completed: z.boolean() })),
     errors: [400, 403, 404],

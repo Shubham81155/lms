@@ -168,7 +168,9 @@ export const RESPONSES: ResponseTable = {
     },
     errors: [404, 500],
   },
-  'GET /api/v1/openapi.json': { response: { status: 200, schema: z.record(z.unknown()), description: 'This OpenAPI 3 document.' } },
+  'GET /api/v1/openapi.json': {
+    response: { status: 200, schema: z.record(z.string(), z.unknown()), description: 'This OpenAPI 3 document.' },
+  },
 
   // ---- auth
   'POST /api/v1/auth/resend-verification': {

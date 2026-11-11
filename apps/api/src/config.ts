@@ -13,7 +13,7 @@ const KNOWN_WEAK_SECRETS = [
 ];
 
 const secret = (name: string, min: number, format?: { pattern: RegExp; message: string }) => {
-  let base = z.string({ required_error: `${name} is required` }).min(min, `${name} must be at least ${min} characters`);
+  let base = z.string({ error: `${name} is required` }).min(min, `${name} must be at least ${min} characters`);
   if (format) base = base.regex(format.pattern, format.message);
   return base
     .refine((v) => !v.startsWith('CHANGE_ME'), `${name} is still the CHANGE_ME placeholder`)

@@ -31,7 +31,14 @@ export const createSchema = z.object({
   durationMins: z.number().int().min(5).max(480).default(60),
   allowStudentVideo: z.boolean().default(false),
 });
-export const updateSchema = createSchema.partial().refine((v) => Object.keys(v).length > 0, 'Nothing to change');
+// Zod 4 applies .default() values inside .partial(), so the defaults are removed: an update must only change what it names.
+export const updateSchema = createSchema
+  .partial()
+  .extend({
+    durationMins: createSchema.shape.durationMins.removeDefault().optional(),
+    allowStudentVideo: createSchema.shape.allowStudentVideo.removeDefault().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, 'Nothing to change');
 
 const audit = (req: Request, action: string, id: string, diffJson?: unknown) =>
   logAuditEvent({

@@ -523,6 +523,100 @@
           "TENANT_ADMIN",
           "AUDITOR"
         ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000,
+              "default": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "resourceType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": false,
+            "name": "userId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 254
+            },
+            "required": false,
+            "name": "actor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "resourceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "startDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "endDate",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -783,6 +877,100 @@
           "SUPER_ADMIN",
           "TENANT_ADMIN",
           "AUDITOR"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000,
+              "default": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "resourceType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": false,
+            "name": "userId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 254
+            },
+            "required": false,
+            "name": "actor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "resourceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "startDate",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "endDate",
+            "in": "query"
+          }
         ],
         "responses": {
           "200": {
@@ -4408,7 +4596,8 @@
                           "nullable": true,
                           "enum": [
                             "CERTIFICATE",
-                            "PUBLIC KEY"
+                            "PUBLIC KEY",
+                            null
                           ]
                         },
                         "keyFingerprint": {
@@ -4600,7 +4789,8 @@
                           "nullable": true,
                           "enum": [
                             "CERTIFICATE",
-                            "PUBLIC KEY"
+                            "PUBLIC KEY",
+                            null
                           ]
                         },
                         "keyFingerprint": {
@@ -7006,7 +7196,8 @@
                           "enum": [
                             "ANTHROPIC",
                             "GEMINI",
-                            "XAI"
+                            "XAI",
+                            null
                           ]
                         },
                         "model": {
@@ -7035,7 +7226,8 @@
                           "nullable": true,
                           "enum": [
                             "TENANT",
-                            "PLATFORM"
+                            "PLATFORM",
+                            null
                           ]
                         },
                         "platformDefault": {
@@ -7215,7 +7407,8 @@
                           "enum": [
                             "ANTHROPIC",
                             "GEMINI",
-                            "XAI"
+                            "XAI",
+                            null
                           ]
                         },
                         "model": {
@@ -7244,7 +7437,8 @@
                           "nullable": true,
                           "enum": [
                             "TENANT",
-                            "PLATFORM"
+                            "PLATFORM",
+                            null
                           ]
                         },
                         "platformDefault": {
@@ -7404,7 +7598,8 @@
                           "enum": [
                             "ANTHROPIC",
                             "GEMINI",
-                            "XAI"
+                            "XAI",
+                            null
                           ]
                         },
                         "model": {
@@ -7499,7 +7694,8 @@
                           "enum": [
                             "NOT_ON_PLAN",
                             "TURNED_OFF",
-                            "NOT_CONFIGURED"
+                            "NOT_CONFIGURED",
+                            null
                           ]
                         }
                       },
@@ -8564,7 +8760,8 @@
           {
             "schema": {
               "type": "string",
-              "nullable": true
+              "nullable": true,
+              "format": "date-time"
             },
             "required": false,
             "name": "since",
@@ -8573,7 +8770,8 @@
           {
             "schema": {
               "type": "string",
-              "nullable": true
+              "nullable": true,
+              "format": "date-time"
             },
             "required": false,
             "name": "until",
@@ -9342,11 +9540,13 @@
                   },
                   "dueDate": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "acceptLateUntil": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   }
                 }
               }
@@ -9736,7 +9936,8 @@
                               "PENDING",
                               "SUBMITTED",
                               "COMPLETE",
-                              "FAILED"
+                              "FAILED",
+                              null
                             ]
                           },
                           "plagiarismAttempts": {
@@ -9981,7 +10182,8 @@
                             "PENDING",
                             "SUBMITTED",
                             "COMPLETE",
-                            "FAILED"
+                            "FAILED",
+                            null
                           ]
                         },
                         "plagiarismAttempts": {
@@ -10381,7 +10583,8 @@
                             "PENDING",
                             "SUBMITTED",
                             "COMPLETE",
-                            "FAILED"
+                            "FAILED",
+                            null
                           ]
                         },
                         "plagiarismAttempts": {
@@ -10708,7 +10911,8 @@
                             "PENDING",
                             "SUBMITTED",
                             "COMPLETE",
-                            "FAILED"
+                            "FAILED",
+                            null
                           ]
                         },
                         "plagiarismAttempts": {
@@ -12200,7 +12404,8 @@
                           "nullable": true,
                           "enum": [
                             "MONTH",
-                            "YEAR"
+                            "YEAR",
+                            null
                           ]
                         },
                         "seats": {
@@ -12429,7 +12634,8 @@
                           "nullable": true,
                           "enum": [
                             "MONTH",
-                            "YEAR"
+                            "YEAR",
+                            null
                           ]
                         },
                         "seats": {
@@ -13082,7 +13288,8 @@
                           "nullable": true,
                           "enum": [
                             "MONTH",
-                            "YEAR"
+                            "YEAR",
+                            null
                           ]
                         },
                         "seats": {
@@ -13729,11 +13936,13 @@
                   },
                   "startsAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "endsAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "timezone": {
                     "type": "string",
@@ -14000,16 +14209,17 @@
                   },
                   "startsAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "endsAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "timezone": {
                     "type": "string",
-                    "maxLength": 64,
-                    "default": "UTC"
+                    "maxLength": 64
                   },
                   "courseId": {}
                 }
@@ -15711,11 +15921,13 @@
                   },
                   "dueDate": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "acceptLateUntil": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   }
                 },
                 "required": [
@@ -17798,7 +18010,8 @@
                   },
                   "scheduledAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "durationMins": {
                     "type": "integer",
@@ -18151,11 +18364,13 @@
                   },
                   "availableFrom": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "dueAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "reviewPolicy": {
                     "type": "string",
@@ -21819,8 +22034,8 @@
                           "version": {
                             "type": "string",
                             "enum": [
-                              "1.2",
-                              "2004"
+                              "2004",
+                              "1.2"
                             ]
                           },
                           "launchPath": {
@@ -21964,8 +22179,8 @@
                         "version": {
                           "type": "string",
                           "enum": [
-                            "1.2",
-                            "2004"
+                            "2004",
+                            "1.2"
                           ]
                         },
                         "launchPath": {
@@ -24037,7 +24252,8 @@
                   },
                   "dueAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "reason": {
                     "type": "string",
@@ -25053,17 +25269,16 @@
                   },
                   "scheduledAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "durationMins": {
                     "type": "integer",
                     "minimum": 5,
-                    "maximum": 480,
-                    "default": 60
+                    "maximum": 480
                   },
                   "allowStudentVideo": {
-                    "type": "boolean",
-                    "default": false
+                    "type": "boolean"
                   }
                 }
               }
@@ -32720,7 +32935,7 @@
                     "type": "string",
                     "minLength": 2,
                     "maxLength": 120,
-                    "pattern": "^[\\p{L}\\p{M}\\p{N} .,'’&()-]+$"
+                    "pattern": "^[\\p{L}\\p{M}\\p{N} .,'’&()-]+$/u"
                   },
                   "slug": {
                     "type": "string",
@@ -32755,13 +32970,13 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100,
-                    "pattern": "^[\\p{L}\\p{M} .'’-]+$"
+                    "pattern": "^[\\p{L}\\p{M} .'’-]+$/u"
                   },
                   "contactLastName": {
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 100,
-                    "pattern": "^[\\p{L}\\p{M} .'’-]+$"
+                    "pattern": "^[\\p{L}\\p{M} .'’-]+$/u"
                   },
                   "contactEmail": {
                     "type": "string",
@@ -33556,11 +33771,13 @@
                   },
                   "detectedAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "occurredAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "containment": {
                     "type": "string",
@@ -34011,7 +34228,8 @@
                   },
                   "occurredAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "containment": {
                     "type": "string",
@@ -34027,11 +34245,13 @@
                   },
                   "boardNotifiedAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "peopleNotifiedAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "noNotificationReason": {
                     "type": "string",
@@ -36054,7 +36274,10 @@
                         "status",
                         "directoryOptOut",
                         "createdAt"
-                      ]
+                      ],
+                      "additionalProperties": {
+                        "nullable": true
+                      }
                     },
                     "enrollments": {
                       "type": "array",
@@ -38688,7 +38911,10 @@
                         "status",
                         "directoryOptOut",
                         "createdAt"
-                      ]
+                      ],
+                      "additionalProperties": {
+                        "nullable": true
+                      }
                     },
                     "enrollments": {
                       "type": "array",
@@ -39727,7 +39953,8 @@
                       "APPLY",
                       "ANALYZE",
                       "EVALUATE",
-                      "CREATE"
+                      "CREATE",
+                      null
                     ]
                   },
                   "courseId": {
@@ -40192,7 +40419,8 @@
                       "APPLY",
                       "ANALYZE",
                       "EVALUATE",
-                      "CREATE"
+                      "CREATE",
+                      null
                     ]
                   },
                   "courseId": {
@@ -40875,11 +41103,13 @@
                   },
                   "availableFrom": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "dueAt": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "reviewPolicy": {
                     "type": "string",
@@ -41143,7 +41373,8 @@
                       "APPLY",
                       "ANALYZE",
                       "EVALUATE",
-                      "CREATE"
+                      "CREATE",
+                      null
                     ]
                   }
                 },
@@ -41483,7 +41714,8 @@
                       "APPLY",
                       "ANALYZE",
                       "EVALUATE",
-                      "CREATE"
+                      "CREATE",
+                      null
                     ]
                   }
                 }
@@ -44490,8 +44722,8 @@
                         "version": {
                           "type": "string",
                           "enum": [
-                            "1.2",
-                            "2004"
+                            "2004",
+                            "1.2"
                           ]
                         }
                       },
@@ -45414,11 +45646,13 @@
                   },
                   "startsOn": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "endsOn": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   }
                 },
                 "required": [
@@ -45643,11 +45877,13 @@
                   },
                   "startsOn": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   },
                   "endsOn": {
                     "type": "string",
-                    "nullable": true
+                    "nullable": true,
+                    "format": "date-time"
                   }
                 }
               }
@@ -48468,7 +48704,10 @@
                         },
                         "required": [
                           "mbox"
-                        ]
+                        ],
+                        "additionalProperties": {
+                          "nullable": true
+                        }
                       },
                       "verb": {
                         "type": "object",
@@ -48487,7 +48726,10 @@
                         },
                         "required": [
                           "id"
-                        ]
+                        ],
+                        "additionalProperties": {
+                          "nullable": true
+                        }
                       },
                       "object": {
                         "type": "object",
@@ -48500,7 +48742,10 @@
                         },
                         "required": [
                           "id"
-                        ]
+                        ],
+                        "additionalProperties": {
+                          "nullable": true
+                        }
                       },
                       "result": {
                         "type": "object",
@@ -48516,7 +48761,8 @@
                       },
                       "timestamp": {
                         "type": "string",
-                        "nullable": true
+                        "nullable": true,
+                        "format": "date-time"
                       }
                     },
                     "required": [
@@ -48547,7 +48793,10 @@
                           },
                           "required": [
                             "mbox"
-                          ]
+                          ],
+                          "additionalProperties": {
+                            "nullable": true
+                          }
                         },
                         "verb": {
                           "type": "object",
@@ -48566,7 +48815,10 @@
                           },
                           "required": [
                             "id"
-                          ]
+                          ],
+                          "additionalProperties": {
+                            "nullable": true
+                          }
                         },
                         "object": {
                           "type": "object",
@@ -48579,7 +48831,10 @@
                           },
                           "required": [
                             "id"
-                          ]
+                          ],
+                          "additionalProperties": {
+                            "nullable": true
+                          }
                         },
                         "result": {
                           "type": "object",
@@ -48595,7 +48850,8 @@
                         },
                         "timestamp": {
                           "type": "string",
-                          "nullable": true
+                          "nullable": true,
+                          "format": "date-time"
                         }
                       },
                       "required": [

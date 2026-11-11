@@ -131,7 +131,7 @@ export const organizationRequestSchema = z.object({
   contactEmail: z.string().trim().toLowerCase().email().max(254),
   contactPhone: optionalText(40),
   message: optionalText(2000),
-  acceptTerms: z.literal(true, { errorMap: () => ({ message: 'Accept the terms to continue' }) }),
+  acceptTerms: z.literal(true, { error: 'Accept the terms to continue' }),
   /** Cloudflare Turnstile token, required while the CAPTCHA is on (GET /captcha names a site key). */
   captchaToken: z.string().max(2048).optional(),
 });

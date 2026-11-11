@@ -4670,7 +4670,17 @@ export interface operations {
     };
     getAdminAuditLogs: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                action?: string;
+                resourceType?: string;
+                userId?: string;
+                actor?: string;
+                resourceId?: string;
+                startDate?: string | null;
+                endDate?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4787,7 +4797,17 @@ export interface operations {
     };
     getAdminAuditLogsExportCsv: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                limit?: number;
+                action?: string;
+                resourceType?: string;
+                userId?: string;
+                actor?: string;
+                resourceId?: string;
+                startDate?: string | null;
+                endDate?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8801,7 +8821,9 @@ export interface operations {
                     title?: string;
                     instructions?: string;
                     maxPoints?: number;
+                    /** Format: date-time */
                     dueDate?: string | null;
+                    /** Format: date-time */
                     acceptLateUntil?: string | null;
                 };
             };
@@ -10972,7 +10994,9 @@ export interface operations {
                     description?: string | null;
                     /** @enum {string} */
                     category: "EXAM" | "LAB" | "LECTURE" | "OFFICE_HOURS" | "DEADLINE";
+                    /** Format: date-time */
                     startsAt: string | null;
+                    /** Format: date-time */
                     endsAt: string | null;
                     /** @default UTC */
                     timezone?: string;
@@ -11115,9 +11139,10 @@ export interface operations {
                     description?: string | null;
                     /** @enum {string} */
                     category?: "EXAM" | "LAB" | "LECTURE" | "OFFICE_HOURS" | "DEADLINE";
+                    /** Format: date-time */
                     startsAt?: string | null;
+                    /** Format: date-time */
                     endsAt?: string | null;
-                    /** @default UTC */
                     timezone?: string;
                     courseId?: unknown;
                 };
@@ -11850,7 +11875,9 @@ export interface operations {
                     title: string;
                     instructions: string;
                     maxPoints?: number;
+                    /** Format: date-time */
                     dueDate?: string | null;
+                    /** Format: date-time */
                     acceptLateUntil?: string | null;
                 };
             };
@@ -12915,6 +12942,7 @@ export interface operations {
                 "application/json": {
                     title: string;
                     description?: string;
+                    /** Format: date-time */
                     scheduledAt: string | null;
                     /** @default 60 */
                     durationMins?: number;
@@ -13073,7 +13101,9 @@ export interface operations {
                     proctorCamera?: boolean;
                     proctorMicrophone?: boolean;
                     passingPercent?: number;
+                    /** Format: date-time */
                     availableFrom?: string | null;
+                    /** Format: date-time */
                     dueAt?: string | null;
                     /** @enum {string} */
                     reviewPolicy?: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
@@ -14728,7 +14758,7 @@ export interface operations {
                             courseId: string;
                             title: string;
                             /** @enum {string} */
-                            version: "1.2" | "2004";
+                            version: "2004" | "1.2";
                             launchPath: string;
                             fileCount: number;
                             sizeBytes: number;
@@ -14797,7 +14827,7 @@ export interface operations {
                             courseId: string;
                             title: string;
                             /** @enum {string} */
-                            version: "1.2" | "2004";
+                            version: "2004" | "1.2";
                             launchPath: string;
                             fileCount: number;
                             sizeBytes: number;
@@ -15624,6 +15654,7 @@ export interface operations {
                     itemType: "ASSIGNMENT" | "QUIZ";
                     itemId: string;
                     userId: string;
+                    /** Format: date-time */
                     dueAt: string | null;
                     reason?: string;
                 };
@@ -16269,10 +16300,9 @@ export interface operations {
                 "application/json": {
                     title?: string;
                     description?: string;
+                    /** Format: date-time */
                     scheduledAt?: string | null;
-                    /** @default 60 */
                     durationMins?: number;
-                    /** @default false */
                     allowStudentVideo?: boolean;
                 };
             };
@@ -20183,7 +20213,9 @@ export interface operations {
                     affectedEstimate?: number | null;
                     /** @enum {string} */
                     severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+                    /** Format: date-time */
                     detectedAt?: string | null;
+                    /** Format: date-time */
                     occurredAt?: string | null;
                     containment?: string | null;
                     ownerId?: string | null;
@@ -20348,10 +20380,13 @@ export interface operations {
                     affectedEstimate?: number | null;
                     /** @enum {string} */
                     severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+                    /** Format: date-time */
                     occurredAt?: string | null;
                     containment?: string | null;
                     ownerId?: string | null;
+                    /** Format: date-time */
                     boardNotifiedAt?: string | null;
+                    /** Format: date-time */
                     peopleNotifiedAt?: string | null;
                     noNotificationReason?: string | null;
                     /** @enum {string} */
@@ -21371,6 +21406,8 @@ export interface operations {
                             status: string;
                             directoryOptOut: boolean;
                             createdAt: string;
+                        } & {
+                            [key: string]: unknown;
                         };
                         enrollments: unknown[];
                         quizAttempts: unknown[];
@@ -22530,6 +22567,8 @@ export interface operations {
                             status: string;
                             directoryOptOut: boolean;
                             createdAt: string;
+                        } & {
+                            [key: string]: unknown;
                         };
                         enrollments: unknown[];
                         quizAttempts: unknown[];
@@ -23456,7 +23495,9 @@ export interface operations {
                     proctorCamera?: boolean;
                     proctorMicrophone?: boolean;
                     passingPercent?: number;
+                    /** Format: date-time */
                     availableFrom?: string | null;
+                    /** Format: date-time */
                     dueAt?: string | null;
                     /** @enum {string} */
                     reviewPolicy?: "SCORE_ONLY" | "RESPONSES" | "ANSWERS";
@@ -25079,7 +25120,7 @@ export interface operations {
                             url: string;
                             origin: string;
                             /** @enum {string} */
-                            version: "1.2" | "2004";
+                            version: "2004" | "1.2";
                         };
                     };
                 };
@@ -25558,7 +25599,9 @@ export interface operations {
             content: {
                 "application/json": {
                     name: string;
+                    /** Format: date-time */
                     startsOn: string | null;
+                    /** Format: date-time */
                     endsOn: string | null;
                 };
             };
@@ -25697,7 +25740,9 @@ export interface operations {
             content: {
                 "application/json": {
                     name?: string;
+                    /** Format: date-time */
                     startsOn?: string | null;
+                    /** Format: date-time */
                     endsOn?: string | null;
                 };
             };
@@ -26992,6 +27037,8 @@ export interface operations {
                     actor: {
                         mbox: string;
                         name?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                     verb: {
                         /** Format: uri */
@@ -26999,10 +27046,14 @@ export interface operations {
                         display?: {
                             [key: string]: string;
                         };
+                    } & {
+                        [key: string]: unknown;
                     };
                     object: {
                         /** Format: uri */
                         id: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                     result?: {
                         [key: string]: unknown;
@@ -27010,12 +27061,15 @@ export interface operations {
                     context?: {
                         [key: string]: unknown;
                     };
+                    /** Format: date-time */
                     timestamp?: string | null;
                 } | {
                     id?: string;
                     actor: {
                         mbox: string;
                         name?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                     verb: {
                         /** Format: uri */
@@ -27023,10 +27077,14 @@ export interface operations {
                         display?: {
                             [key: string]: string;
                         };
+                    } & {
+                        [key: string]: unknown;
                     };
                     object: {
                         /** Format: uri */
                         id: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                     result?: {
                         [key: string]: unknown;
@@ -27034,6 +27092,7 @@ export interface operations {
                     context?: {
                         [key: string]: unknown;
                     };
+                    /** Format: date-time */
                     timestamp?: string | null;
                 }[];
             };

@@ -1,14 +1,12 @@
+import './zod-extend';
 import { z } from 'zod';
-import { extendZodWithOpenApi, OpenAPIRegistry, OpenApiGeneratorV3, type RouteConfig } from '@asteasolutions/zod-to-openapi';
+import { OpenAPIRegistry, OpenApiGeneratorV3, type RouteConfig } from '@asteasolutions/zod-to-openapi';
 import { apiMounts, rawBodyMounts } from '../mounts';
 import { inventory, Operation } from './inventory';
 import { DOCS, ErrorResponse, OperationDoc } from './docs';
 import { AUTO_DOCS } from './docs-auto';
 import { RESPONSE_DOCS } from './responses';
 import type { ResponseDoc } from './responses/types';
-
-// Adds `.openapi()` to Zod schemas (only the API description uses it).
-extendZodWithOpenApi(z);
 
 /** Operations that are not in a router: defined directly in server.ts. */
 const SERVER_OPERATIONS: Operation[] = [

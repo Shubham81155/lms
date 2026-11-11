@@ -28,10 +28,10 @@ export const statementSchema = z.object({
       name: z.string().max(200).optional(),
     })
     .passthrough(),
-  verb: z.object({ id: z.string().url().max(2048), display: z.record(z.string()).optional() }).passthrough(),
+  verb: z.object({ id: z.string().url().max(2048), display: z.record(z.string(), z.string()).optional() }).passthrough(),
   object: z.object({ id: z.string().url().max(2048) }).passthrough(),
-  result: z.record(z.unknown()).optional(),
-  context: z.record(z.unknown()).optional(),
+  result: z.record(z.string(), z.unknown()).optional(),
+  context: z.record(z.string(), z.unknown()).optional(),
   timestamp: z.coerce.date().optional(),
 });
 
@@ -57,7 +57,7 @@ router.post(
     if (bad >= 0)
       throw new HttpError(400, 'Invalid xAPI Statement format', {
         index: bad,
-        issues: (parsed[bad] as z.SafeParseError<unknown>).error.format(),
+        issues: (parsed[bad] as z.ZodSafeParseError<unknown>).error.format(),
       });
 
     const privileged = isAdminRole(user.role) || user.role === 'INSTRUCTOR' || user.role === 'TEACHING_ASSISTANT';
@@ -190,7 +190,7 @@ export const proctorEventSchema = z.object({
     .max(2048)
     .refine((u) => /^https:\/\//i.test(u), 'snapshotUrl must be https')
     .optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
