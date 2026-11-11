@@ -1,8 +1,99 @@
-# Enterprise Educational Learning Management System (LMS)
+# GuruGyan: an enterprise multi-tenant LMS
 
-> Multi-tenant LMS for universities and training organisations: courses, quizzes, assignments, gradebook,
-> live classes, SCORM 1.2/2004, LTI 1.3 launch, xAPI learning records, SSO/SCIM, and privacy tooling for FERPA and
-> GDPR requests.
+A learning platform for universities and training organisations. Each organisation gets its own address, branding and
+isolated data; teachers run courses, quizzes and assignments; learners study, submit and track progress; administrators
+manage people, sign-in and compliance; a platform operator runs the whole service.
+
+![Student dashboard](docs/screenshots/student-light.png)
+
+|                                                                     |                                                                        |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| ![Teacher dashboard (dark)](docs/screenshots/teacher-dark.png)      | ![Organisation administration](docs/screenshots/admin-light.png)       |
+| **Teacher**: courses, grading queue, learner analytics, proctoring  | **Administrator**: campuses, branding, seats, SSO, audit trail         |
+| ![Platform operator console](docs/screenshots/operator-light.png)   | ![Sign-in (dark)](docs/screenshots/login.png)                          |
+| **Platform operator**: registrations, organisations, plans, support | **Sign-in** per organisation, light and dark themes, English and Hindi |
+
+## Highlights
+
+- **Tenant isolation in the database.** PostgreSQL row-level security, with the API running as an unprivileged role,
+  plus an append-only audit trail that the application role cannot alter. Tests run as that role.
+- **Enterprise identity.** OIDC and SAML 2.0 single sign-on, SCIM 2.0 provisioning, TOTP multi-factor sign-in,
+  server-side session revocation, account lockout and rate limiting.
+- **Learning standards.** SCORM 1.2 and 2004 playback from a separate content origin, an xAPI learning record store,
+  LTI 1.3 resource-link launch.
+- **Teaching tools.** Courses, terms and course copy, quizzes with auto and manual grading, rubric assignments with
+  late-work rules and appeals, plagiarism checks, a weighted gradebook with CSV export, forums, calendar, live classes.
+- **Proctoring without recording.** Browser events plus per-quiz camera and microphone checks; detection runs in the
+  learner's browser (MediaPipe) and only events are sent, never images or sound.
+- **Privacy and compliance tooling.** DPDP Act consent history and a 72-hour breach register, GDPR and FERPA export and
+  erasure, guardian consent for minors, consented support access, tenant offboarding with scheduled deletion.
+- **Billing.** Razorpay subscriptions, plan and seat limits, GST invoices, trials with a read-only grace period.
+- **Operations.** A production Docker stack (Caddy with automatic certificates, custom domains verified by DNS),
+  nightly encrypted backups with restore drills, Prometheus alerting, readiness and metrics endpoints.
+- **Accessible and local.** WCAG 2.2 AA audit with zero axe violations for every role in light and dark themes, and a
+  complete Hindi interface (about 3,000 messages) with a test that keeps translations in step with the English keys.
+- **Typed end to end.** An OpenAPI description generated from the mounted routes, web types generated from it, and a
+  test that fails when any route is not authenticated by default.
+
+## Tech stack
+
+| Layer    | Technology                                                                                           |
+| -------- | ---------------------------------------------------------------------------------------------------- |
+| Web      | Next.js, React, TypeScript, Tailwind CSS                                                             |
+| API      | Node.js, Express, Zod validation, OpenAPI                                                            |
+| Data     | PostgreSQL 16 with row-level security, Prisma, optional Redis for shared rate limits                 |
+| Security | bcrypt, httpOnly JWT sessions re-checked on every request, AES-256-GCM field encryption, ClamAV scan |
+| Platform | Docker Compose, Caddy, Prometheus and Alertmanager, S3-compatible storage, LiveKit (live classes)    |
+| Quality  | Vitest, axe-core, ESLint, Prettier, GitHub Actions                                                   |
+
+## By the numbers
+
+About 100,000 lines of TypeScript across 498 files, 67 database models, 48 migrations, 327 documented API operations and
+more than 1,500 automated tests (1,206 for the API, 261 for the web app). Typecheck, lint (zero warnings) and formatting
+checks run in CI.
+
+## Quick start
+
+You need Node.js 22 or newer and PostgreSQL 16 (`docker compose up -d db` starts one).
+
+```bash
+npm install
+cp .env.example .env          # then replace every CHANGE_ME (see "Getting Started" below)
+npm run db:deploy -w @enterprise-lms/database
+npm run db:seed   -w @enterprise-lms/database
+npm run dev                    # API on :4000, web on :3000
+```
+
+Open `http://harvard.localhost:3000` (browsers resolve `*.localhost` to your machine) and sign in with the seeded demo
+accounts, all using the `SEED_PASSWORD` from your `.env`:
+
+| Role          | Account                   |
+| ------------- | ------------------------- |
+| Student       | `alex.chen@harvard.edu`   |
+| Teacher       | `david.malan@harvard.edu` |
+| Administrator | `admin@harvard.edu`       |
+
+The platform operator console needs one more step: see "Create the platform operator" below.
+
+## Status
+
+Everything above is built and tested locally and in CI. It has **not** yet been run on a live server with real payments,
+a real identity provider, a real virus scanner or real webcams; those checks are listed in
+[docs/ROADMAP.md](docs/ROADMAP.md). The software reports measured facts about its own configuration
+(`GET /api/v1/admin/compliance`) and does not claim SOC 2, FERPA or other certification.
+What remains for a fully enterprise-grade launch is laid out in [docs/ENTERPRISE-ROADMAP.md](docs/ENTERPRISE-ROADMAP.md).
+
+## Documentation
+
+| Topic                               | Where                                                                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Multi-tenancy and database roles    | [docs/architecture/multi_tenancy.md](docs/architecture/multi_tenancy.md)                                                  |
+| Authorization model                 | [docs/architecture/api_authorization.md](docs/architecture/api_authorization.md)                                          |
+| Security and compliance             | [docs/architecture/security_compliance.md](docs/architecture/security_compliance.md), [docs/compliance/](docs/compliance) |
+| Production deployment, DNS and TLS  | [docs/deployment/dns-and-tls.md](docs/deployment/dns-and-tls.md)                                                          |
+| Backups, monitoring, restore drills | [docs/deployment/operations.md](docs/deployment/operations.md)                                                            |
+| Custom domains                      | [docs/custom-domains.md](docs/custom-domains.md)                                                                          |
+| Roadmap (built and planned)         | [docs/ROADMAP.md](docs/ROADMAP.md), [docs/ENTERPRISE-ROADMAP.md](docs/ENTERPRISE-ROADMAP.md)                              |
 
 ---
 
